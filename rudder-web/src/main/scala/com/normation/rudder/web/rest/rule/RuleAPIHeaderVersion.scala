@@ -9,6 +9,7 @@ import net.liftweb.http.rest.RestHelper
 import net.liftweb.common._
 import net.liftweb.http.LiftResponse
 import com.normation.rudder.web.rest.RestError
+import com.normation.rudder.web.rest.rule.RuleAPI
 
 class RuleAPIHeaderVersion (
     readRule             : RoRuleRepository

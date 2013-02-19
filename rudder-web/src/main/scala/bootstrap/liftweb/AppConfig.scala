@@ -119,9 +119,9 @@ import com.normation.rudder.services.user.PersonIdentService
 import com.normation.rudder.services.workflows.TwoValidationStepsWorkflowServiceImpl
 import com.normation.rudder.web.services.rest.RestExtractorService
 import com.normation.rudder.web.rest.rule.service.RuleApiService1_0
-import com.normation.rudder.web.rest.rule.RuleAPI1_0
-import com.normation.rudder.web.rest.rule.LatestRuleAPI
-import com.normation.rudder.web.rest.rule.RuleAPIHeaderVersion
+import com.normation.rudder.web.rest.rule._
+import com.normation.rudder.web.rest.directive._
+import com.normation.rudder.web.rest.directive.service.DirectiveAPIService1_0
 /**
  * Define a resource for configuration.
  * For now, config properties can only be loaded from either
@@ -391,7 +391,7 @@ object RudderConfig extends Loggable {
   //////////////////////////////////////////////////////////////////////////////////////////
 
 
-  val restExtractorService = RestExtractorService (roRuleRepository,roDirectiveRepository,ruleTargetService)
+  val restExtractorService = RestExtractorService (roRuleRepository,roDirectiveRepository,techniqueRepository,ruleTargetService)
 
   val restDeploy = new RestDeploy(asyncDeploymentAgentImpl, uuidGen)
   val restDyngroupReload = new RestDyngroupReload(dyngroupUpdaterBatch)
@@ -427,6 +427,34 @@ object RudderConfig extends Loggable {
       , ruleApiService1_0
     )
 
+
+   val directiveApiService1_0 =
+    new DirectiveAPIService1_0 (
+        roDirectiveRepository
+      , woDirectiveRepository
+      , uuidGen
+      , asyncDeploymentAgent
+      , changeRequestService
+      , workflowService
+      , restExtractorService
+      , RUDDER_ENABLE_APPROVAL_WORKFLOWS
+    )
+
+  val directiveApi1_0 =
+    new DirectiveAPI1_0 (
+        roDirectiveRepository
+      , restExtractorService
+      , directiveApiService1_0
+    )
+
+  val latestDirectiveApi = new LatestDirectiveAPI (directiveApi1_0)
+
+  val genericDirectiveApi =
+    new DirectiveAPIHeaderVersion (
+        roDirectiveRepository
+      , restExtractorService
+      , directiveApiService1_0
+    )
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
