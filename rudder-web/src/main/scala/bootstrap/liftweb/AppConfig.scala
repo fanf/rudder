@@ -117,6 +117,7 @@ import com.normation.rudder.services.modification.DiffService
 import com.normation.rudder.services.workflows.WorkflowService
 import com.normation.rudder.services.user.PersonIdentService
 import com.normation.rudder.services.workflows.TwoValidationStepsWorkflowServiceImpl
+import com.normation.rudder.web.services.rest.RestExtractorService
 
 /**
  * Define a resource for configuration.
@@ -386,12 +387,26 @@ object RudderConfig extends Loggable {
   ///////////////////////////////////////// REST ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
 
+
+  val restExtractorService = RestExtractorService (roRuleRepository,roDirectiveRepository,ruleTargetService)
+
   val restDeploy = new RestDeploy(asyncDeploymentAgentImpl, uuidGen)
   val restDyngroupReload = new RestDyngroupReload(dyngroupUpdaterBatch)
   val restTechniqueReload = new RestTechniqueReload(techniqueRepositoryImpl, uuidGen)
   val restArchiving = new RestArchiving(itemArchiveManagerImpl,personIdentServiceImpl, uuidGen)
   val restGetGitCommitAsZip = new RestGetGitCommitAsZip(gitRepo)
 
+  val restRules =
+    new RestRuleManagement(
+        roRuleRepository
+      , woRuleRepository
+      , uuidGen
+      , asyncDeploymentAgent
+      , changeRequestService
+      , workflowService
+      , restExtractorService
+      , RUDDER_ENABLE_APPROVAL_WORKFLOWS
+    )
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
