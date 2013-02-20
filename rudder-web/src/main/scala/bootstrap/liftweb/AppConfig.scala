@@ -124,6 +124,8 @@ import com.normation.rudder.web.rest.directive._
 import com.normation.rudder.web.rest.directive.service.DirectiveAPIService1_0
 import com.normation.rudder.web.rest.group.service.GroupApiService1_0
 import com.normation.rudder.web.rest.group._
+import com.normation.rudder.web.rest.node.service.NodeApiService1_0
+import com.normation.rudder.web.rest.node._
 /**
  * Define a resource for configuration.
  * For now, config properties can only be loaded from either
@@ -393,7 +395,15 @@ object RudderConfig extends Loggable {
   //////////////////////////////////////////////////////////////////////////////////////////
 
 
-  val restExtractorService = RestExtractorService (roRuleRepository,roDirectiveRepository,roNodeGroupRepository, techniqueRepository,ruleTargetService)
+  val restExtractorService =
+    RestExtractorService (
+        roRuleRepository
+      , roDirectiveRepository
+      , roNodeGroupRepository
+      , techniqueRepository
+      , ruleTargetService
+      , queryParser
+    )
 
   val restDeploy = new RestDeploy(asyncDeploymentAgentImpl, uuidGen)
   val restDyngroupReload = new RestDyngroupReload(dyngroupUpdaterBatch)
@@ -485,6 +495,27 @@ object RudderConfig extends Loggable {
         roNodeGroupRepository
       , restExtractorService
       , groupApiService1_0
+    )
+
+    val nodeApiService1_0 =
+    new NodeApiService1_0 (
+        newNodeManager
+      , nodeInfoService
+      , removeNodeService
+      , uuidGen
+      , restExtractorService
+    )
+
+  val nodeApi1_0 =
+    new NodeAPI1_0 (
+      nodeApiService1_0
+    )
+
+  val latestNodeApi = new LatestNodeAPI (nodeApi1_0)
+
+  val genericNodeApi =
+    new NodeAPIHeaderVersion (
+      nodeApiService1_0
     )
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
