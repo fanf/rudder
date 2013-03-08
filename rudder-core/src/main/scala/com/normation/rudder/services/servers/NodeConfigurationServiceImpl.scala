@@ -109,7 +109,9 @@ class NodeConfigurationServiceImpl(
             ),
             None,
             Map(),
-            target.nodeContext
+            target.nodeContext,
+            Set(),
+            target.parameters
           )
       } else {
           new SimpleNodeConfiguration(
@@ -130,7 +132,9 @@ class NodeConfigurationServiceImpl(
             ),
             None,
             Map(),
-            target.nodeContext
+            target.nodeContext,
+            Set(),
+            target.parameters
           )
       }
     }
