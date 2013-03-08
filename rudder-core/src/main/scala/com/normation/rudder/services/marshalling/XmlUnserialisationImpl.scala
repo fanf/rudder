@@ -93,6 +93,8 @@ import scala.util.Try
 import scala.util.Success
 import scala.util.{Failure => Catch}
 import com.normation.rudder.domain.logger.ApplicationLogger
+import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.domain.parameters.ParameterName
 
 
 class DirectiveUnserialisationImpl extends DirectiveUnserialisation {
@@ -378,6 +380,30 @@ class DeploymentStatusUnserialisationImpl extends DeploymentStatusUnserialisatio
         case "failure" => ErrorStatus(id, started, ended, errorMessage.map(x => Failure(x)).getOrElse(Failure("")) )
         case s       => NoStatus
       }
+    }
+  }
+}
+
+class GlobalParameterUnserialisationImpl extends GlobalParameterUnserialisation {
+  def unserialise(entry:XNode) : Box[GlobalParameter] = {
+    for {
+      globalParam      <- {
+                            if(entry.label ==  XML_TAG_GLOBAL_PARAMETER) Full(entry)
+                            else Failure("Entry type is not a <%s>: %s".format(XML_TAG_GLOBAL_PARAMETER, entry))
+                          }
+      fileFormatOk     <- TestFileFormat(globalParam)
+
+      name             <- (globalParam \ "name").headOption.map( _.text ) ?~! ("Missing attribute 'name' in entry type globalParameter : " + entry)
+      value            <- (globalParam \ "value").headOption.map( _.text ) ?~! ("Missing attribute 'value' in entry type globalParameter : " + entry)
+      description      <- (globalParam \ "description").headOption.map( _.text ) ?~! ("Missing attribute 'description' in entry type globalParameter : " + entry)
+      overridable      <- (globalParam \ "overridable").headOption.flatMap(s => tryo { s.text.toBoolean } ) ?~! ("Missing attribute 'overridable' in entry type globalParameter : " + entry)
+    } yield {
+      GlobalParameter(
+          ParameterName(name)
+        , value
+        , description
+        , overridable
+      )
     }
   }
 }

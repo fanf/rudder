@@ -44,6 +44,9 @@ import com.normation.cfclerk.domain.Cf3PolicyDraft
 import scala.collection._
 import com.normation.cfclerk.domain.{TechniqueId, Cf3PolicyDraftId,Cf3PolicyDraft, Cf3PolicyDraftContainer}
 import com.normation.rudder.domain.policies.{Rule,RuleId}
+import com.normation.rudder.domain.parameters.Parameter
+import com.normation.rudder.services.policies.ParameterForConfiguration
+import com.normation.cfclerk.domain.ParameterEntry
 
 
 trait NodeConfiguration extends Loggable {
@@ -57,6 +60,8 @@ trait NodeConfiguration extends Loggable {
   def writtenDate               : Option[DateTime]
   def currentSystemVariables    : Map[String, Variable]
   def targetSystemVariables     : Map[String, Variable]
+  def currentParameters         : Set[ParameterForConfiguration]
+  def targetParameters          : Set[ParameterForConfiguration]
 
   lazy val currentRulePolicyDrafts = __currentRulePolicyDrafts.map(ruleWithCf3PolicyDraft => ( ruleWithCf3PolicyDraft.cf3PolicyDraft.id -> ruleWithCf3PolicyDraft.copy()) ).toMap
 
@@ -94,6 +99,7 @@ trait NodeConfiguration extends Loggable {
    */
   def isModified : Boolean = {
     if(currentRulePolicyDrafts.size != targetRulePolicyDrafts.size) true
+    else if (currentParameters !=  targetParameters) true
     else if(currentRulePolicyDrafts.keySet != targetRulePolicyDrafts.keySet) true
     else {
       for {
@@ -175,9 +181,12 @@ trait NodeConfiguration extends Loggable {
 
 object NodeConfiguration {
 
-  def toContainer(outPath : String, server : NodeConfiguration) : Cf3PolicyDraftContainer = {
-    val container = new Cf3PolicyDraftContainer(outPath)
-    server.targetRulePolicyDrafts foreach (x =>  container.add(x._2.cf3PolicyDraft))
+  def toContainer(outPath : String, node : NodeConfiguration) : Cf3PolicyDraftContainer = {
+    val container = new Cf3PolicyDraftContainer(
+        outPath
+      , node.targetParameters.map(x => ParameterEntry(x.name.value, x.value)).toSet
+    )
+    node.targetRulePolicyDrafts foreach (x =>  container.add(x._2.cf3PolicyDraft))
     container
   }
 

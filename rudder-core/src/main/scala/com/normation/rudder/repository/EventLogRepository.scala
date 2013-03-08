@@ -48,6 +48,7 @@ import com.normation.rudder.domain.eventlog.ChangeRequestDiff
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.domain.workflows.WorkflowStepChange
 import com.normation.rudder.domain.workflows.ChangeRequestId
+import com.normation.rudder.domain.parameters._
 
 trait EventLogRepository {
   def eventLogFactory : EventLogFactory
@@ -182,7 +183,53 @@ trait EventLogRepository {
       )
     )
   }
+  
+  def saveAddGlobalParameter(
+      modId    : ModificationId
+    , principal: EventActor
+    , addDiff  : AddGlobalParameterDiff
+    , reason   :Option[String]
+    ) = {
+    saveEventLog(
+        modId
+      , eventLogFactory.getAddGlobalParameterFromDiff(
+          principal           = principal
+        , addDiff             = addDiff
+        , reason = reason
+      )
+    )
+  }
 
+def saveDeleteGlobalParameter(
+    modId     : ModificationId
+  , principal : EventActor
+  , deleteDiff: DeleteGlobalParameterDiff
+  , reason    : Option[String]
+  ) = {
+  saveEventLog(
+      modId
+    , eventLogFactory.getDeleteGlobalParameterFromDiff(
+        principal  = principal
+      , deleteDiff = deleteDiff
+      , reason     = reason
+    )
+  )
+}
+
+def saveModifyGlobalParameter(
+    modId: ModificationId
+  , principal: EventActor
+  , modifyDiff: ModifyGlobalParameterDiff
+  , reason:Option[String]) = {
+  saveEventLog(
+      modId
+    , eventLogFactory.getModifyGlobalParameterFromDiff(
+        principal = principal
+      , modifyDiff = modifyDiff
+      , reason = reason
+    )
+  )
+}
   def saveChangeRequest(modId: ModificationId, principal: EventActor, diff: ChangeRequestDiff, reason:Option[String]) = {
     saveEventLog(
         modId

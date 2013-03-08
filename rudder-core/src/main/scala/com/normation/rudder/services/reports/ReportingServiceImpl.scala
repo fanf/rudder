@@ -90,11 +90,11 @@ class ReportingServiceImpl(
     for (conf@ExpandedRuleVal(ruleId, configs, newSerial) <- expandedRuleVals) {
       currentConfigurationsToRemove.get(ruleId) match {
         // non existant, add it
-        case None => 
+        case None =>
           logger.debug("New rule %s".format(ruleId))
           confToCreate += conf
 
-        case Some(serial) if ((serial == newSerial)&&(configs.size > 0)) => 
+        case Some(serial) if ((serial == newSerial)&&(configs.size > 0)) =>
             // no change if same serial and some config appliable
             logger.debug("Same serial %s for ruleId %s, and configs presents".format(serial, ruleId))
             currentConfigurationsToRemove.remove(ruleId)
@@ -124,7 +124,7 @@ class ReportingServiceImpl(
 
     // Now I need to unfold the configuration to create, so that I get for a given
     // set of ruleId, serial, DirectiveExpectedReports we have the list of  corresponding nodes
-    
+
     sequence(confToCreate) { case ExpandedRuleVal(ruleId, configs, serial) =>
       sequence(configs.toSeq) { case (nodeId, directives) =>
         // each directive are converted into Seq[DirectiveExpectedReports]
@@ -147,7 +147,7 @@ class ReportingServiceImpl(
 	                         )
 	                     )
 	                     }
-	                 } 
+	                 }
 	            )
           }
         } yield {
@@ -158,13 +158,13 @@ class ReportingServiceImpl(
     } match {
       case Empty => logger.warn("Invalid empty return from the directives when generating promises"); Empty
       case e:Failure => logger.warn(e.messageChain); e
-      case Full(expanded) => 
+      case Full(expanded) =>
         // we need to group by DirectiveExpectedReports, RuleId, Serial
         val flatten = expanded.flatten.flatMap { case (ruleId, serial, nodeId, directives) =>
-          directives.map (x => (ruleId, serial, nodeId, x))  
+          directives.map (x => (ruleId, serial, nodeId, x))
         }
 
-        val preparedValues = flatten.groupBy[(RuleId, Int, DirectiveExpectedReports)]{ case (ruleId, serial, nodeId, directive) => 
+        val preparedValues = flatten.groupBy[(RuleId, Int, DirectiveExpectedReports)]{ case (ruleId, serial, nodeId, directive) =>
           (ruleId, serial, directive) }.map { case (key, value) => (key -> value.map(x=> x._3))}.toSeq
 
         // here we group them by rule/serial/seq of node, so that we have the list of all DirectiveExpectedReports that apply to them
@@ -193,7 +193,7 @@ class ReportingServiceImpl(
     confExpectedRepo.findCurrentExpectedReports(ruleId) match {
       case Empty => Empty
       case e:Failure => logger.error("Error when fetching reports for Rule %s : %s".format(ruleId.value, e.messageChain)); e
-      case Full(expected) => Full(expected.map(createLastBatchFromConfigurationReports(_))) 
+      case Full(expected) => Full(expected.map(createLastBatchFromConfigurationReports(_)))
     }
   }
 
@@ -204,9 +204,8 @@ class ReportingServiceImpl(
   def findImmediateReportsByNode(nodeId : NodeId) :  Box[Seq[ExecutionBatch]] = {
     // look in the configuration
     confExpectedRepo.findCurrentExpectedReportsByNode(nodeId) match {
-      case Empty => Empty
-      case e:Failure => logger.error("Error when fetching reports for node %s : %s".format(nodeId.value, e.messageChain)); e
-      case Full(seq) => 
+      case e:EmptyBox => e
+      case Full(seq) =>
         Full(seq.map(expected => createLastBatchFromConfigurationReports(expected, Some(nodeId))))
     }
   }
@@ -230,7 +229,7 @@ class ReportingServiceImpl(
     // If we are only searching on a node, then we restrict the directivesonnode to this node
     val directivesOnNodes = nodeId match {
       case None => expectedConfigurationReports.directivesOnNodes.map(x => DirectivesOnNodeExpectedReport(x.nodeIds, x.directiveExpectedReports))
-      case Some(node) => 
+      case Some(node) =>
         expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeIds.contains(node)).map(x => DirectivesOnNodeExpectedReport(Seq(node), x.directiveExpectedReports))
     }
     new ConfigurationExecutionBatch(
@@ -247,7 +246,7 @@ class ReportingServiceImpl(
   /**
    * Returns a seq of
    * Component, ComponentValues(expanded), ComponentValues (unexpanded))
-   * 
+   *
    */
   private def getCardinality(container : DirectiveVal) : Box[Seq[(String, Seq[String], Seq[String])]] = {
     // Computes the components values, and the unexpanded component values
@@ -264,7 +263,7 @@ class ReportingServiceImpl(
         case (Some(variable), Some(originalVariables)) =>
           logger.warn("Expanded and unexpanded values for bounded variable %s for %s in DirectiveVal %s have not the same size : %s and %s".format(
               boundingVar, container.trackerVariable.spec.name, container.directiveId.value,variable.values, originalVariables.values ))
-          (variable.values, originalVariables.values)        
+          (variable.values, originalVariables.values)
         case (None, Some(originalVariables)) =>
           logger.warn("Somewhere in the expansion of variables, the bounded variable %s for %s in DirectiveVal %s was lost".format(
               boundingVar, container.trackerVariable.spec.name, container.directiveId.value))
@@ -273,7 +272,7 @@ class ReportingServiceImpl(
           logger.warn("Somewhere in the expansion of variables, the bounded variable %s for %s in DirectiveVal %s appeared, but was not originally there".format(
               boundingVar, container.trackerVariable.spec.name, container.directiveId.value))
           (variable.values,Seq()) // this is an autobounding policy
-   
+
       }
     }
 
