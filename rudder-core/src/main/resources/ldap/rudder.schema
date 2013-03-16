@@ -478,4 +478,3 @@ objectclass ( RudderObjectClasses:120
   STRUCTURAL
   MUST ( parameterName )
   MAY ( parameterValue $ description $ overridable ) )
-
