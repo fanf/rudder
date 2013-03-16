@@ -284,7 +284,7 @@ trait ParameterizedValueLookupService_lookupNodeParameterization extends Paramet
     }
   }
 
-private[this] def lookupParameterParametrization(value: String, parameters: Map[String, ParameterForConfiguration]) : Box[String] = {
+  private[this] def lookupParameterParametrization(value: String, parameters: Map[String, ParameterForConfiguration]) : Box[String] = {
     value match {
       case ParameterParametrization(ParameterParam(name)) =>
         parameters.get(name) match {

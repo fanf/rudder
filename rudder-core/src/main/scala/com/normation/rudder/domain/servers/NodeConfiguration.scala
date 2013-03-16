@@ -187,7 +187,6 @@ sealed trait NodeConfiguration extends Loggable {
 }
 
 
-
 object NodeConfiguration {
   def toContainer(outPath : String, node: NodeConfiguration) : Cf3PolicyDraftContainer = {
     val container = new Cf3PolicyDraftContainer(

@@ -44,8 +44,14 @@ import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.rudder.domain.servers.NodeConfiguration
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.RoDirectiveRepository
-
 import net.liftweb.common.Loggable
+import net.liftweb.common.Box
+import org.joda.time.DateTime
+import com.normation.cfclerk.domain.TechniqueId
+import net.liftweb.common.Full
+import com.normation.rudder.domain.parameters.Parameter
+import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.services.policies.ParameterForConfiguration
 
 
 /**
@@ -97,6 +103,15 @@ class NodeConfigurationChangeDetectServiceImpl() extends NodeConfigurationChange
     }
   }
 
+  /**
+   * Checks if two sets of parameters are identical, but doesn't care for
+   * the description or the overridable status
+   */
+  private def detectChangeInParameters(
+      currentParameters : Set[ParameterForConfiguration]
+    , targetParameters  : Set[ParameterForConfiguration]) : Boolean = {
+    currentParameters != targetParameters
+  }
 
   override def detectChangeInNode(node : NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
     logger.debug("Checking changes in node %s".format( node.id) )

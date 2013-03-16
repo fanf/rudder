@@ -321,10 +321,6 @@ object RudderConfig extends Loggable {
 
   val inMemoryChangeRequestRepository : InMemoryChangeRequestRepository = new InMemoryChangeRequestRepository
 
-  val roParameterService : RoParameterService = roParameterServiceImpl
-  val woParameterService : WoParameterService = woParameterServiceImpl
-
-
   val roChangeRequestRepository : RoChangeRequestRepository = RUDDER_ENABLE_APPROVAL_WORKFLOWS match {
       case false =>
         inMemoryChangeRequestRepository
@@ -389,6 +385,8 @@ object RudderConfig extends Loggable {
     , RUDDER_ENABLE_APPROVAL_WORKFLOWS
   )
 
+  val roParameterService : RoParameterService = roParameterServiceImpl
+  val woParameterService : WoParameterService = woParameterServiceImpl
 
   //////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////// REST ///////////////////////////////////////////

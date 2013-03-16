@@ -43,14 +43,13 @@ import com.normation.rudder.domain.policies.SimpleDiff
 import com.normation.utils.HashcodeCaching
 
 
-sealed trait ParameterEventLog extends EventLog
+sealed trait ParameterEventLog extends EventLog { override final val eventLogCategory = ParameterLogCategory }
 
 final case class AddGlobalParameter(
     override val eventDetails : EventLogDetails
 ) extends ParameterEventLog with HashcodeCaching {
   override val cause = None
   override val eventType = AddGlobalParameter.eventType
-  override val eventLogCategory = ParameterLogCategory
 }
 
 object AddGlobalParameter extends EventLogFilter {
@@ -64,7 +63,6 @@ final case class ModifyGlobalParameter(
 ) extends ParameterEventLog with HashcodeCaching {
   override val cause = None
   override val eventType = ModifyGlobalParameter.eventType
-  override val eventLogCategory = ParameterLogCategory
 }
 
 object ModifyGlobalParameter extends EventLogFilter {
@@ -78,7 +76,6 @@ final case class DeleteGlobalParameter(
 ) extends ParameterEventLog with HashcodeCaching {
   override val cause = None
   override val eventType = DeleteGlobalParameter.eventType
-  override val eventLogCategory = ParameterLogCategory
 }
 
 object DeleteGlobalParameter extends EventLogFilter {

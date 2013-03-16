@@ -202,19 +202,18 @@ final case object WorkflowStepChangedEventType extends NoRollbackEventLogType {
   def serialize = "WorkflowStepChanged"
 }
 
-//Parameter event type
+// Parameter event type
 final case object AddGlobalParameterEventType extends RollbackEventLogType {
-def serialize = "GlobalParameterAdded"
+  def serialize = "GlobalParameterAdded"
 }
 
 final case object DeleteGlobalParameterEventType extends RollbackEventLogType {
-def serialize = "GlobalParameterDeleted"
+  def serialize = "GlobalParameterDeleted"
 }
 
 final case object ModifyGlobalParameterEventType extends RollbackEventLogType {
-def serialize = "GlobalParameterModified"
+  def serialize = "GlobalParameterModified"
 }
-
 
 /**
  * List of event generating a modification of promises
@@ -301,6 +300,7 @@ object EventTypeFactory {
     , AddChangeRequestEventType
     , ModifyChangeRequestEventType
     , WorkflowStepChangedEventType
+
     , AddGlobalParameterEventType
     , DeleteGlobalParameterEventType
     , ModifyGlobalParameterEventType

@@ -96,7 +96,7 @@ class ItemArchiveManagerImpl(
       saveGroups     <- exportGroupLibraryAndDeploy(commiter, modId, actor, reason, includeSystem, false)
       saveParameters <- exportParametersAndDeploy(commiter, modId, actor, reason, includeSystem, false)
       msg         =  (  FULL_ARCHIVE_TAG
-                      + " Archive and tag groups, technique library and rules"
+                      + " Archive and tag groups, technique library, rules and parameters"
                       + (reason match {
                           case None => ""
                           case Some(m) => ", reason: " + m
@@ -329,7 +329,7 @@ class ItemArchiveManagerImpl(
         archiveId
       }
   }
-  
+
   override def importParameters(archiveId:GitCommitId, commiter:PersonIdent, modId:ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) = {
     val commitMsg = "User %s requested Parameters archive restoration to commit %s".format(actor.name,archiveId.value)
     for {
