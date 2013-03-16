@@ -44,7 +44,6 @@ import com.normation.cfclerk.domain.Variable
 import org.joda.time.DateTime
 import org.joda.time.format._
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
-import scala.collection._
 import net.liftweb.common._
 import com.normation.rudder.domain.policies.{Rule,RuleId}
 import com.normation.cfclerk.domain.{TechniqueId, Cf3PolicyDraftId,Cf3PolicyDraft, Cf3PolicyDraftContainer}

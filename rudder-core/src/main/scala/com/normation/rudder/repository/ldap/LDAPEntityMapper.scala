@@ -65,7 +65,6 @@ import net.liftweb.json.JsonAST.JObject
 import com.normation.rudder.domain.parameters._
 
 
-
 /**
  * Map objects from/to LDAPEntries
  *
@@ -538,7 +537,7 @@ class LDAPEntityMapper(
       }
     } else Failure("The given entry is not of the expected ObjectClass '%s'. Entry details: %s".format(OC_PARAMETER, e))
   }
-  
+
   def parameter2Entry(parameter: GlobalParameter) : LDAPEntry = {
     val entry = rudderDit.PARAMETERS.parameterModel(
         parameter.name

@@ -41,7 +41,8 @@ import com.normation.cfclerk.domain.Variable
 import net.liftweb.common._
 import org.joda.time.DateTime
 import com.normation.cfclerk.domain.Cf3PolicyDraft
-import scala.collection._
+import scala.collection.Map
+import scala.collection.mutable.{Map => MutMap}
 import com.normation.cfclerk.domain.{TechniqueId, Cf3PolicyDraftId,Cf3PolicyDraft, Cf3PolicyDraftContainer}
 import com.normation.rudder.domain.policies.{Rule,RuleId}
 import com.normation.rudder.domain.parameters.Parameter
@@ -119,7 +120,7 @@ trait NodeConfiguration extends Loggable {
    * @param policy
    */
   protected def updateAllUniqueVariables(policy : Cf3PolicyDraft,
-              policies : mutable.Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft]) = {
+              policies : MutMap[Cf3PolicyDraftId, RuleWithCf3PolicyDraft]) = {
     for (uniqueVariable <- policy.getVariables.filter(x => (x._2 .spec.isUniqueVariable ))) {
       // We need to update only the variable that already exists, not add them !!
       for (instance <- policies.filter(x => (x._2.cf3PolicyDraft.getVariable(uniqueVariable._1) != None ))) {
@@ -128,10 +129,6 @@ trait NodeConfiguration extends Loggable {
     }
 
   }
-
-
-
-
 
 
   def findDirectiveByTechnique(techniqueId : TechniqueId): Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
@@ -153,11 +150,11 @@ trait NodeConfiguration extends Loggable {
   }
 
 
-  def getCurrentDirectives() :  immutable.Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
+  def getCurrentDirectives() :  Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
     currentRulePolicyDrafts.map(x => (x._1, x._2.copy())).toMap
   }
 
-  def getDirectives() : immutable.Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
+  def getDirectives() : Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
     targetRulePolicyDrafts.map(x => (x._1, x._2.copy())).toMap
   }
 
@@ -168,10 +165,10 @@ trait NodeConfiguration extends Loggable {
     targetRulePolicyDrafts.get(id).map(x => x.copy())
   }
 
-  def getCurrentSystemVariables() : immutable.Map[String, Variable] = {
+  def getCurrentSystemVariables() : Map[String, Variable] = {
     currentSystemVariables.map(x => (x._1 -> Variable.matchCopy(x._2))).toMap
   }
-  def getTargetSystemVariables() : immutable.Map[String, Variable] = {
+  def getTargetSystemVariables() : Map[String, Variable] = {
     targetSystemVariables.map(x => (x._1 -> Variable.matchCopy(x._2))).toMap
   }
 

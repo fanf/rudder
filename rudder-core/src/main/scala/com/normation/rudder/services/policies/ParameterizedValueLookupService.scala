@@ -74,7 +74,7 @@ import com.normation.rudder.domain.parameters.Parameter
  *
  * Accessors for parameters
  *    ${rudder.param.ACCESSOR} : replace by the value for the parameter with the name ACCESSOR
- *    
+ *
  * Accessors for node
  * ------------------
  *   ${rudder.node.id} : internal ID of the node (generally an UUID)
@@ -189,7 +189,7 @@ trait ParameterizedValueLookupService {
 
 
   abstract class ParameterParametrization extends Parametrization
-  
+
   case class ParameterParam(parameterName: String) extends ParameterParametrization with HashcodeCaching
 
   object Parametrization {
@@ -228,10 +228,10 @@ trait ParameterizedValueLookupService {
         }
     }
   }
-  
+
   object ParameterParametrization {
     def r = """\$\{rudder\.param\.([\-_a-zA-Z0-9]+)}""".r
-    
+
     def unapply(value:String) : Option[Parametrization] = {
         //start by the most specific and go up
         value match {
@@ -271,8 +271,8 @@ trait ParameterizedValueLookupService_lookupNodeParameterization extends Paramet
       case _ => Full(value) //nothing to replace
     }
   }
-  
-private[this] def lookupParameterParametrization(value: String, parameters: Map[String, ParameterForConfiguration]) : Box[String] = {
+
+  private[this] def lookupParameterParametrization(value: String, parameters: Map[String, ParameterForConfiguration]) : Box[String] = {
     value match {
       case ParameterParametrization(ParameterParam(name)) =>
         parameters.get(name) match {
@@ -287,7 +287,7 @@ private[this] def lookupParameterParametrization(value: String, parameters: Map[
   override def lookupNodeParameterization(targetNodeConfig : targetNodeConfiguration, variables:Seq[Variable]) : Box[Seq[Variable]] = {
     val policyServerOfNode = nodeInfoService.getNodeInfo(targetNodeConfig.nodeInfo.policyServerId)
     val parametersMap = targetNodeConfig.parameters.map(x => (x.name.value -> x)).toMap
-    
+
     for {
       variables <- sequence(variables) { v =>
         for {

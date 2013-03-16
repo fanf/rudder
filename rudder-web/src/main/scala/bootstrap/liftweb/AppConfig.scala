@@ -320,10 +320,6 @@ object RudderConfig extends Loggable {
   val woWorkflowRepository : WoWorkflowRepository = new WoWorkflowJdbcRepository(jdbcTemplate, roWorkflowRepository)
 
   val inMemoryChangeRequestRepository : InMemoryChangeRequestRepository = new InMemoryChangeRequestRepository
- 
-  val roParameterService : RoParameterService = roParameterServiceImpl
-  val woParameterService : WoParameterService = woParameterServiceImpl
-
 
   val roChangeRequestRepository : RoChangeRequestRepository = RUDDER_ENABLE_APPROVAL_WORKFLOWS match {
       case false =>
@@ -389,6 +385,8 @@ object RudderConfig extends Loggable {
     , RUDDER_ENABLE_APPROVAL_WORKFLOWS
   )
 
+  val roParameterService : RoParameterService = roParameterServiceImpl
+  val woParameterService : WoParameterService = woParameterServiceImpl
 
   //////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////// REST ///////////////////////////////////////////
@@ -667,7 +665,7 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val roParameterServiceImpl = new RoParameterServiceImpl(roLDAPParameterRepository)
   private[this] lazy val woParameterServiceImpl = new WoParameterServiceImpl(roParameterServiceImpl, woLDAPParameterRepository, asyncDeploymentAgentImpl)
-  
+
   ///// items archivers - services that allows to transform items to XML and save then on a Git FS /////
   private[this] lazy val gitModificationRepository = new GitModificationSquerylRepository(squerylDatasourceProvider)
   private[this] lazy val gitRuleArchiver: GitRuleArchiver = new GitRuleArchiverImpl(
