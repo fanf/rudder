@@ -82,11 +82,16 @@ class ParameterManagement extends DispatchSnippet with Loggable {
   def displayGridParameters(params:Seq[GlobalParameter], gridName:String) : NodeSeq  = {
     (
       "tbody *" #> ("tr" #> params.map { param =>
+        val lineHtmlId = Helpers.nextFuncName
+        "tr[id]" #> lineHtmlId &
         ".name *" #> param.name.value &
         ".value *" #> param.value &
         ".description *" #> param.description &
         ".overridable *" #> param.overridable &
-        ".change *" #> ajaxButton("Update", () => setAndShowParameterForm(Some(param)), ("class", "smallButton"))
+        ".change *" #> <div>{
+                       ajaxButton("Update", () => setAndShowParameterForm(Some(param)), ("class", "smallButton")) ++
+                       ajaxButton("Delete", () => showRemovePopupForm(param), ("class", "smallButton"))
+                       }</div>        
       }) &
       ".createParameter *" #> ajaxButton("Create", () => setAndShowParameterForm(None))
      ).apply(dataTableXml(gridName)) ++ Script(initJs)
@@ -110,10 +115,10 @@ class ParameterManagement extends DispatchSnippet with Loggable {
         </thead>
 
         <tbody>
-          <tr class="parameterLine">
+          <tr class="parameterLine" id="lineId">
             <td class="name">[name of parameter]</td>
             <td class="value">[value of parameter]</td>
-            <td class="description">[description]On clicke et ca deroule</td>
+            <td class="description">[description]</td>
             <td class="change">[change / delete]</td>
           </tr>
         </tbody>
@@ -167,13 +172,63 @@ class ParameterManagement extends DispatchSnippet with Loggable {
     OnLoad(JsRaw("""correctButtons();"""))
   }
 
+  /**
+   * Display a popup to confirm  deletion of parameter
+   */
+  private[this] def showRemovePopupForm(parameter : GlobalParameter) : JsCmd = {
+    val popupContent = (
+       "#removeActionDialog *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
+       "#dialogRemoveButton" #> { removeButton % ("id", "removeButton") } &
+       ".reasonsFieldsetPopup" #> { crReasonsRemovePopup.map { f =>
+         "#explanationMessage" #> <div>{userPropertyService.reasonsFieldExplanation}</div> &
+         "#reasonsField" #> f.toForm_!
+       } } &
+        "#errorDisplay *" #> { updateAndDisplayNotifications(formTrackerRemovePopup) }
+    )(popupRemoveForm)
+    
+    SetHtml("deletionPopup", popupContent)
+  }
   
   private[this] def updateGrid() : JsCmd = {
     Replace(gridContainer, display()) & OnLoad(JsRaw("""correctButtons();"""))
   }
   
   
+  
 
-    
+  private[this] def deletePopupXml(paramName : String) : NodeSeq = {
+    <div id="removeActionDialog" class="nodisplay">
+     <div class="simplemodal-title">
+       <h1>Delete global Parameter {paramName}</h1>
+       <hr/>
+     </div>
+     <div class="simplemodal-content">
+       <div>
+         <img src="/images/icWarn.png" alt="Warning!" height="32" width="32" class="warnicon"/>
+         <h2>Are you sure that you want to delete this item?</h2>
+       </div>
+       <br />
+        <div class="reasonsFieldsetPopup">
+        <div id="explanationMessage">
+          Here comes the explanation to reasons field
+        </div>
+        <div id="reasonsField">
+          Here comes the reasons field
+        </div>
+      </div>
+       <br />
+       <hr class="spacer" />
+     </div>
+     <div class="simplemodal-bottom">
+       <hr/>
+       <div class="popupButton">
+         <span>
+           <button class="simplemodal-close" onClick="$.modal.close();">Cancel</button>
+           <button id="dialogRemoveButton">Delete</button>
+         </span>
+       </div>
+     </div>
+   </div>
+  }
 
 }
