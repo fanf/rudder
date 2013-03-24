@@ -169,4 +169,3 @@ case class SimpleNodeConfiguration(
   }
 
 }
-

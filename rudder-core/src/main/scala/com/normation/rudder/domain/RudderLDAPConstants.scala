@@ -38,7 +38,6 @@ import com.normation.utils.Utils
 import com.normation.inventory.ldap.core.LDAPConstants._
 import net.liftweb.common.Loggable
 import com.normation.cfclerk.domain.Variable
-import com.normation.rudder.domain.parameters.Parameter
 import com.normation.rudder.services.policies.ParameterForConfiguration
 
 object RudderLDAPConstants extends Loggable {

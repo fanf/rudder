@@ -51,7 +51,6 @@ import com.normation.utils.HashcodeCaching
 import com.normation.rudder.domain.parameters.Parameter
 import com.normation.rudder.services.policies.ParameterForConfiguration
 
-
 /**
  * The root server, will surely have a lot of nice feature
  * @author nicolas
