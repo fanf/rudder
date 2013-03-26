@@ -31,7 +31,7 @@
 *
 *************************************************************************************
 */
-package com.normation.rudder.web.components
+package com.normation.rudder.web.components.popup
 
 import bootstrap.liftweb.RudderConfig
 
@@ -53,21 +53,20 @@ import com.normation.rudder.web.model.{
   WBTextField, FormTracker, WBTextAreaField, WBRadioField
 }
 import java.util.regex.Pattern
+import CreateOrUpdateGlobalParameterPopup._
 
-class GlobalParameterForm(
-  htmlIdForm : String,
+class CreateOrUpdateGlobalParameterPopup(
   parameter : Option[GlobalParameter],
   onSuccessCallback : (String) => JsCmd = { (String) => Noop },
   onFailureCallback : () => JsCmd = { () => Noop }
 ) extends DispatchSnippet  with Loggable {
- 
   private[this] val roParameterService = RudderConfig.roParameterService
   private[this] val woParameterService = RudderConfig.woParameterService
   private[this] val uuidGen            = RudderConfig.stringUuidGenerator
   private[this] val userPropertyService= RudderConfig.userPropertyService
   
   def dispatch = {
-    case "showForm" =>  { _ =>   showForm }
+    case "popupContent" =>  { _ =>   popupContent }
   }
   
   private[this] def onSubmit() : JsCmd = {
@@ -82,8 +81,8 @@ class GlobalParameterForm(
       )
       parameter match {
         case None => // creation
-          woParameterService.saveParameter(newParameter, ModificationId(uuidGen.newUuid), CurrentUser.getActor, piReasons.map(_.is)) match {
-            case Full(x) => onSuccess
+          woParameterService.saveParameter(newParameter, ModificationId(uuidGen.newUuid), CurrentUser.getActor, paramReasons.map(_.is)) match {
+            case Full(x) => closePopup() & onSuccessCallback(parameterName.is)
             case Empty => 
               logger.error("An error occurred while saving the parameter")
               formTracker.addFormError(error("An error occurred while saving the parameter"))
@@ -94,8 +93,8 @@ class GlobalParameterForm(
               onFailure 
           }
         case Some(oldParam) => 
-          woParameterService.updateParameter(newParameter, ModificationId(uuidGen.newUuid), CurrentUser.getActor, piReasons.map(_.is)) match {
-            case Full(x) => onSuccess
+          woParameterService.updateParameter(newParameter, ModificationId(uuidGen.newUuid), CurrentUser.getActor, paramReasons.map(_.is)) match {
+            case Full(x) => closePopup() & onSuccessCallback(parameterName.is)
             case Empty => 
               logger.error("An error occurred while updating the parameter")
               formTracker.addFormError(error("An error occurred while updating the parameter"))
@@ -105,9 +104,7 @@ class GlobalParameterForm(
               formTracker.addFormError(error(m))
               onFailure 
           }
-      }
-      
-      
+      }     
     }
   }
   
@@ -115,16 +112,16 @@ class GlobalParameterForm(
     formTracker.addFormError(error("The form contains some errors, please correct them"))
     updateFormClientSide()
   }
-  private[this] def onSuccess: JsCmd = {
-    notifications ::=  <span class="greenscala">The parameter was successfully created</span>
-    updateFormClientSide & onSuccessCallback("")
-  }
   
+  private[this] def closePopup() : JsCmd = {
+    JsRaw(""" $.modal.close();""")
+  }
+    
   /**
    * Update the form when something happened
    */
   private[this] def updateFormClientSide() : JsCmd = {
-    SetHtml("paramForm", showForm()) & JsRaw("correctButtons();")
+    SetHtml(htmlId_popupContainer, popupContent()) & JsRaw("correctButtons();")
   }
   
   private[this] def updateAndDisplayNotifications(formTracker : FormTracker) : NodeSeq = {
@@ -147,25 +144,26 @@ class GlobalParameterForm(
   private[this] val parameterName = new WBTextField("Name", parameter.map(_.name.value).getOrElse("")) {
     override def setFilter = notNull _ :: trim _ :: Nil
     override def errorClassName = ""
-    override def inputField = parameter match {
+    override def inputField = (parameter match {
       case Some(entry) => super.inputField % ("disabled" -> "true")
       case None => super.inputField
-    }
+    }) % ("onkeydown" , "return processKey(event , 'createParameterSaveButton')")  % ("tabindex","1")
     override def validations =
       valMinLen(3, "The name must have at least 3 characters") _ ::
       valRegex(patternName, "The name can contain only letters, digits and underscore") _ :: Nil
   }
   
   // The value may be empty
-  private[this] val parameterValue = new WBTextField("Value", parameter.map(_.value).getOrElse("")) {
+  private[this] val parameterValue = new WBTextAreaField("Value", parameter.map(_.value).getOrElse("")) {
     override def setFilter = trim _ :: Nil
+    override def inputField = super.inputField  % ("style" -> "height:3em")  % ("tabindex","2")
     override def errorClassName = ""
     override def validations = Nil
   }
 
   private[this] val parameterDescription = new WBTextAreaField("Description", parameter.map(_.description).getOrElse("")) {
     override def setFilter = notNull _ :: trim _ :: Nil
-    override def inputField = super.inputField  % ("style" -> "height:3em")
+    override def inputField = super.inputField  % ("style" -> "height:3em")  % ("tabindex","3")
     override def errorClassName = ""
     override def validations = Nil
   }
@@ -186,7 +184,7 @@ class GlobalParameterForm(
   // default value is true
   val parameterOverridable = true
   
-  private[this] val piReasons = {
+  private[this] val paramReasons = {
     import com.normation.rudder.web.services.ReasonBehavior._
     userPropertyService.reasonsFieldBehavior match {
       case Disabled => None
@@ -199,7 +197,7 @@ class GlobalParameterForm(
     new WBTextAreaField("Message", "") {
       override def setFilter = notNull _ :: trim _ :: Nil
       override def inputField = super.inputField  %
-        ("style" -> "height:5em;")
+        ("style" -> "height:5em;")  % ("tabindex","4")
       override def errorClassName = ""
       override def validations() = {
         if(mandatory){
@@ -211,19 +209,19 @@ class GlobalParameterForm(
     }
   }
   
-  private[this] val formTracker = new FormTracker(parameterName,parameterValue)
+  private[this] val formTracker = new FormTracker(parameterName :: parameterValue :: paramReasons.toList)
 
   private[this] var notifications = List.empty[NodeSeq]
 
   private[this] def error(msg:String) = <span class="error">{msg}</span>
   
-  def showForm() = {
+  def popupContent() = {
     (
-      ".title *" #> parameter.map(x => "Update parameter").getOrElse("Create a new parameter") &
+      "#title *" #> parameter.map(x => "Update global parameter").getOrElse("Create a new global parameter") &
       ".name" #> parameterName.toForm_! &
       ".value" #> parameterValue.toForm_! &
       ".description *" #> parameterDescription.toForm_! &
-      ".itemReason *" #> { piReasons.map { f =>
+      ".itemReason *" #> { paramReasons.map { f =>
         <div>
           <div style="margin:10px 0px 5px 0px; color:#444">
             {userPropertyService.reasonsFieldExplanation}
@@ -231,7 +229,8 @@ class GlobalParameterForm(
           {f.toForm_!}
         </div>
       } } &
-      ".save *" #> SHtml.ajaxSubmit("Save", onSubmit _) andThen
+      "#cancel"  #> (SHtml.ajaxButton("Cancel", { () => closePopup() })  % ("tabindex","6")) &
+      "#save" #> (SHtml.ajaxSubmit(parameter.map(_ => "Update").getOrElse("Save"), onSubmit _) % ("id","createParameterSaveButton")  % ("tabindex","5")) andThen
       ".notifications *"  #> { updateAndDisplayNotifications(formTracker) }
     ).apply(formXml())
   }
@@ -239,20 +238,36 @@ class GlobalParameterForm(
   private[this] def formXml() : NodeSeq = {
     SHtml.ajaxForm(
     <div id="paramForm">
-      <div class="inner-portlet">
-        <div class="inner-portlet-header">
-          <div class="title">Here comes title</div>
-        </div>
+      <div class="simplemodal-title">
+        <h1 id="title">Here comes title</h1>
+        <hr/>
+      </div>
+      <div class="simplemodal-content">
         <div class="notifications">Here comes validation messages</div>
-        <div style="overflow:auto;">
-          <div class="name"/>
-          <div class="value"/>
-        </div>
+        <hr class="spacer"/>
+        <div class="name"/>
+        <hr class="spacer"/>
+        <div class="value"/>
+        <hr class="spacer" />
         <div class="description"/>
-        <div class="overridable"/>
-        <div class="cancel"/>
-        <div class="save"/>
+        <hr class="spacer" />
+        <div class="itemReason"/>
+        <hr class="spacer" />
+      </div>
+      <div class="simplemodal-bottom">
+        <hr/>
+        <div class="popupButton">
+          <span>
+            <div id="cancel"/>
+            <div id="save"/>
+          </span>
+        </div>
       </div>
     </div>)
   }
+}
+
+object CreateOrUpdateGlobalParameterPopup {
+  val htmlId_popupContainer = "createGlobalParameterContainer"
+  val htmlId_popup = "createGlobalParameterPopup"
 }

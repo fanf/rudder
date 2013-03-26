@@ -6,7 +6,7 @@
 </head>
 
 <div class="portlet">
-  <div class="portlet-header">Parameters</div>
+  <div class="portlet-header">Global Parameters</div>
   <div class="portlet-content">  
     <div class="intro">
       <div>
@@ -17,7 +17,7 @@
     <div>
       <div class="inner-portlet">
         <lift:authz role="directive_read">
-          <div class="inner-portlet-header">List of Parameters</div>
+          <div class="inner-portlet-header">List of global Parameters</div>
           <div class="inner-portlet-content">
             <div class="lift:configuration.ParameterManagement.display"/>
           </div>
@@ -31,7 +31,15 @@
     </lift:authz>
    
   </div>
-  <div id="deletionPopup"/>  
+    <div id="createGlobalParameterPopup" class="nodisplay">
+	    <lift:ignore>
+	      This div gets the content of the CreateOrUpdateGlobalParameterPopup injected within
+	    </lift:ignore>
+	<div id="createGlobalParameterContainer"/>
+  </div>
+
+   <div id="deletionPopup" class="nodisplay"/>
+
   <br/>
 </div>
 </lift:surround>

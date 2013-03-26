@@ -53,7 +53,8 @@ import com.normation.rudder.web.model.{
 }
 import java.util.regex.Pattern
 import net.liftweb.http.js.JE.JsRaw
-import com.normation.rudder.web.components.GlobalParameterForm
+import com.normation.rudder.web.components.popup.CreateOrUpdateGlobalParameterPopup
+import net.liftweb.http.js.JE.JsVar
 
 class ParameterManagement extends DispatchSnippet with Loggable {
 
@@ -63,8 +64,14 @@ class ParameterManagement extends DispatchSnippet with Loggable {
   private[this] val gridContainer = "ParamGrid"
   private[this] val htmlId_form   = "globalParameterForm"
   
+  // For the deletion popup
+  private[this] val woParameterService = RudderConfig.woParameterService
+  private[this] val uuidGen            = RudderConfig.stringUuidGenerator
+  private[this] val userPropertyService= RudderConfig.userPropertyService
+
+  
   //the current GlobalParameterForm component
-  private[this] val parameterForm = new LocalSnippet[GlobalParameterForm]
+  private[this] val parameterPopup = new LocalSnippet[CreateOrUpdateGlobalParameterPopup]
     
   def dispatch = {
     case "display" => { _ =>  display }
@@ -83,17 +90,19 @@ class ParameterManagement extends DispatchSnippet with Loggable {
     (
       "tbody *" #> ("tr" #> params.map { param =>
         val lineHtmlId = Helpers.nextFuncName
-        "tr[id]" #> lineHtmlId &
-        ".name *" #> param.name.value &
+        ".parameterLine [jsuuid]" #> lineHtmlId &
+        ".parameterLine [class]" #> Text("curspoint") &
+        ".name *" #> <b>{param.name.value}</b> &
         ".value *" #> param.value &
-        ".description *" #> param.description &
+        ".description *" #> <span><b>Description: </b>{param.description}</span> &
+        ".description [id]" #> ("description-" + lineHtmlId) &
         ".overridable *" #> param.overridable &
-        ".change *" #> <div>{
-                       ajaxButton("Update", () => setAndShowParameterForm(Some(param)), ("class", "smallButton")) ++
-                       ajaxButton("Delete", () => showRemovePopupForm(param), ("class", "smallButton"))
+        ".change *" #> <div >{
+                       ajaxButton("Update", () => showPopup(Some(param)), ("class", "mediumButton"), ("align", "left")) ++
+                       ajaxButton("Delete", () => showRemovePopupForm(param), ("class", "mediumButton"), ("style", "margin-left:5px;"))
                        }</div>        
       }) &
-      ".createParameter *" #> ajaxButton("Create", () => setAndShowParameterForm(None))
+      ".createParameter *" #> ajaxButton("Add Parameter", () => showPopup(None))
      ).apply(dataTableXml(gridName)) ++ Script(initJs)
   }
   
@@ -107,18 +116,17 @@ class ParameterManagement extends DispatchSnippet with Loggable {
       <table id={gridName} class="display" cellspacing="0">
         <thead>
           <tr class="head">
-            <th class="titleId">Name</th>
+            <th>Name</th>
             <th>Value</th>
-            <th>Description</th>
             <th>Change</th>
           </tr>
         </thead>
 
         <tbody>
-          <tr class="parameterLine" id="lineId">
-            <td class="name">[name of parameter]</td>
+          <tr class="parameterLine">
+            <td class="name listopen">[name of parameter]</td>
             <td class="value">[value of parameter]</td>
-            <td class="description">[description]</td>
+            <div class="description" style="display:none;" >[description]</div>
             <td class="change">[change / delete]</td>
           </tr>
         </tbody>
@@ -150,63 +158,214 @@ class ParameterManagement extends DispatchSnippet with Loggable {
             "bJQueryUI"    : true,
             "aaSorting"    : [[ 0, "asc" ]],
             "aoColumns": [
-              { "sWidth": "180px" },
-              { "sWidth": "180px" },
-              { "sWidth": "300px" },
-              { "sWidth": "150px" }
+              { "sWidth": "450px" },
+              { "sWidth": "450px" },
+              { "sWidth": "140px" }
             ],
             "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>'
           });
           $('.dataTables_filter input').attr("placeholder", "Search");
           """.format(gridName).replaceAll("#table_var#",jsVarNameForId(gridName))
-        )
+        ) &
+        JsRaw("""
+        /* Formating function for row details */
+          function fnFormatDetails(id) {
+            var sOut = '<span id="'+id+'" class="parametersDescriptionDetails"/>';
+            return sOut;
+          };
+
+          $(#table_var#.fnGetNodes() ).each( function () {
+            $(this).click( function (event) {
+              var jTr = $(this);
+              var opened = jTr.prop("open");
+              var source = event.target || event.srcElement;
+              if (!( $(source).is("button"))) {
+                if (opened && opened.match("opened")) {
+                  jTr.prop("open", "closed");
+                  $(this).find("td.listclose").removeClass("listclose").addClass("listopen");
+                  #table_var#.fnClose(this);
+                } else {
+                  jTr.prop("open", "opened");
+                  $(this).find("td.listopen").removeClass("listopen").addClass("listclose");
+                  var jsid = jTr.attr("jsuuid");
+                  var color = 'color1';
+                  if(jTr.hasClass('color2'))
+                    color = 'color2';
+                  var row = $(#table_var#.fnOpen(this, fnFormatDetails(jsid), 'details'));
+                  $(row).addClass(color + ' parametersDescription');
+                  $('#'+jsid).html($('#description-'+jsid).html());
+                }
+               }
+            } );
+          })
+
+
+      """.replaceAll("#table_var#",jsVarNameForId(gridName))
+      )
     )
   }
 
-  private[this] def setAndShowParameterForm(parameter : Option[GlobalParameter]) : JsCmd = {
-    val form = new GlobalParameterForm(htmlId_form, parameter, (String) => updateGrid() )
-    parameterForm.set(Full(form))
+  private[this] def showPopup(parameter : Option[GlobalParameter]) : JsCmd = {
+    setCreationPopup(parameter)
+    val popupHtml = createPopup
+    SetHtml(CreateOrUpdateGlobalParameterPopup.htmlId_popupContainer, popupHtml) &
+    JsRaw( """ createPopup("%s",300,600) """.format(CreateOrUpdateGlobalParameterPopup.htmlId_popup))
+
+  }
     
-    SetHtml(htmlId_form, form.dispatch("showForm")(NodeSeq.Empty)) & 
-    JsRaw("""scrollToElement("%s");""".format(htmlId_form)) & 
-    OnLoad(JsRaw("""correctButtons();"""))
+  private[this] def setCreationPopup(parameter : Option[GlobalParameter]) : Unit = {
+    parameterPopup.set(
+        Full(
+            new CreateOrUpdateGlobalParameterPopup(
+                parameter
+              , (String) => updateGrid() & successPopup 
+            )
+        )
+      )
   }
 
   /**
-   * Display a popup to confirm  deletion of parameter
-   */
-  private[this] def showRemovePopupForm(parameter : GlobalParameter) : JsCmd = {
-    val popupContent = (
-       "#removeActionDialog *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
-       "#dialogRemoveButton" #> { removeButton % ("id", "removeButton") } &
-       ".reasonsFieldsetPopup" #> { crReasonsRemovePopup.map { f =>
-         "#explanationMessage" #> <div>{userPropertyService.reasonsFieldExplanation}</div> &
-         "#reasonsField" #> f.toForm_!
-       } } &
-        "#errorDisplay *" #> { updateAndDisplayNotifications(formTrackerRemovePopup) }
-    )(popupRemoveForm)
-    
-    SetHtml("deletionPopup", popupContent)
+    * Create the creation popup
+    */
+  def createPopup : NodeSeq = {
+    parameterPopup.is match {
+      case Failure(m,_,_) =>  <span class="error">Error: {m}</span>
+      case Empty => <div>The component is not set</div>
+      case Full(popup) => popup.popupContent()
+    }
   }
+  
+ 
   
   private[this] def updateGrid() : JsCmd = {
     Replace(gridContainer, display()) & OnLoad(JsRaw("""correctButtons();"""))
   }
   
+  ///////////// success pop-up ///////////////
+  private[this] def successPopup : JsCmd = {
+    JsRaw(""" callPopupWithTimeout(200, "successConfirmationDialog", 100, 350)
+    """)
+  }
   
+  private[this] def onSuccessDeleteCallback() : JsCmd = {
+    updateGrid() & successPopup
+  }
   
+  private[this] val reason = {
+    import com.normation.rudder.web.services.ReasonBehavior._
+    userPropertyService.reasonsFieldBehavior match {
+      case Disabled => None
+      case Mandatory => Some(buildReasonField(true, "subContainerReasonField"))
+      case Optionnal => Some(buildReasonField(false, "subContainerReasonField"))
+    }
+  }
+    
+  def buildReasonField(mandatory:Boolean, containerClass:String = "twoCol") = {
+    new WBTextAreaField("Message", "") {
+      override def setFilter = notNull _ :: trim _ :: Nil
+      override def inputField = super.inputField  %
+        ("style" -> "height:5em;")  % ("tabindex","4")
+      override def errorClassName = ""
+      override def validations() = {
+        if(mandatory){
+          valMinLen(5, "The reason must have at least 5 characters.") _ :: Nil
+        } else {
+          Nil
+        }
+      }
+    }
+  }
+  private[this] val formTrackerRemovePopup = new FormTracker(reason.toList)
 
-  private[this] def deletePopupXml(paramName : String) : NodeSeq = {
-    <div id="removeActionDialog" class="nodisplay">
+  private[this] var notifications = List.empty[NodeSeq]
+
+  private[this] def updateAndDisplayNotifications(formTracker : FormTracker) : NodeSeq = {
+    val notifications = formTrackerRemovePopup.formErrors
+    formTrackerRemovePopup.cleanErrors
+
+    if(notifications.isEmpty) {
+      NodeSeq.Empty
+    }
+    else {
+      <div id="notifications" class="notify">
+        <ul class="field_errors">{notifications.map( n => <li>{n}</li>) }</ul>
+      </div>
+    }
+  }
+  
+  private[this] def updateRemoveFormClientSide(parameter : GlobalParameter) : JsCmd = {
+    SetHtml("deletionPopupContainer", deletePopupContent(parameter)) & JsRaw("correctButtons();")
+  }
+  
+  private[this] def onFailureRemovePopup(parameter : GlobalParameter) : JsCmd = {
+    formTrackerRemovePopup.addFormError(error("The form contains some errors, please correct them."))
+    updateRemoveFormClientSide(parameter) 
+  }
+  
+  private[this] def error(msg:String) = <span class="error">{msg}</span>
+
+  private[this] def removeButton(parameter : GlobalParameter): Elem = {
+    def removeParameters(): JsCmd = {
+      if(formTrackerRemovePopup.hasErrors) {
+        onFailureRemovePopup(parameter)
+      } else {
+        val modId = ModificationId(uuidGen.newUuid)
+        woParameterService.delete(parameter.name, modId,  CurrentUser.getActor, reason.map(_.is)) match {
+          case Full(x) => closePopup() & onSuccessDeleteCallback()
+          case Empty =>
+            logger.error("An error occurred while deleting the parameter")
+            formTrackerRemovePopup.addFormError(error("An error occurred while deleting the parameter"))
+            onFailureRemovePopup(parameter)
+          case Failure(m,_,_) =>
+              logger.error("An error occurred while deleting the parameter: " + m)
+              formTrackerRemovePopup.addFormError(error(m))
+              onFailureRemovePopup(parameter)
+        }
+      }
+    }
+
+    SHtml.ajaxSubmit("Delete", removeParameters _)
+    }
+    
+  /**
+   * Display a popup to confirm  deletion of parameter
+   */
+  private[this] def showRemovePopupForm(parameter : GlobalParameter) : JsCmd = {
+    // we need to empty the reason
+    reason.map(x => x.set(""))
+    SetHtml("deletionPopup", deletePopupContent(parameter)) &
+    JsRaw( """ createPopup("deletionPopup",140,150) """)
+  }
+  private[this] def closePopup() : JsCmd = {
+    JsRaw(""" $.modal.close();""")
+  }
+  
+  private[this] def deletePopupContent(parameter : GlobalParameter) : NodeSeq = {
+    (
+       "#deletionPopupContainer *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
+       "#areYouSure *" #> s"Are you sure that you want to delete the Global Parameter: ${parameter.name.value} ?" &
+       "#dialogRemoveButton" #> { removeButton(parameter) % ("id", "removeButton") } &
+       ".reasonsFieldsetPopup" #> { reason.map { f =>
+         "#explanationMessage" #> <div>{userPropertyService.reasonsFieldExplanation}</div> &
+         "#reasonsField" #> f.toForm_!
+       } } andThen
+        ".notifications *" #> { updateAndDisplayNotifications(formTrackerRemovePopup) }
+    )(deletePopupXml)
+  }
+   
+
+  private[this] def deletePopupXml : NodeSeq = {
+    <div id="deletionPopupContainer">
      <div class="simplemodal-title">
-       <h1>Delete global Parameter {paramName}</h1>
+       <h1 id="title">Delete Global Parameter</h1>
        <hr/>
      </div>
      <div class="simplemodal-content">
        <div>
          <img src="/images/icWarn.png" alt="Warning!" height="32" width="32" class="warnicon"/>
-         <h2>Are you sure that you want to delete this item?</h2>
+         <h2 id="areYouSure">Are you sure that you want to delete this item?</h2>
        </div>
+       <div class="notifications">Here comes validation messages</div>
        <br />
         <div class="reasonsFieldsetPopup">
         <div id="explanationMessage">
@@ -230,5 +389,4 @@ class ParameterManagement extends DispatchSnippet with Loggable {
      </div>
    </div>
   }
-
 }
