@@ -156,7 +156,7 @@ class CreateOrUpdateGlobalParameterPopup(
   // The value may be empty
   private[this] val parameterValue = new WBTextAreaField("Value", parameter.map(_.value).getOrElse("")) {
     override def setFilter = trim _ :: Nil
-    override def inputField = super.inputField  % ("style" -> "height:3em")  % ("tabindex","2")
+    override def inputField = super.inputField  % ("style" -> "height:4em")  % ("tabindex","2")
     override def errorClassName = ""
     override def validations = Nil
   }
