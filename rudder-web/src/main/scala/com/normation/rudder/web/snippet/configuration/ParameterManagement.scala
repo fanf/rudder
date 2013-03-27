@@ -94,11 +94,11 @@ class ParameterManagement extends DispatchSnippet with Loggable {
         ".parameterLine [class]" #> Text("curspoint") &
         ".name *" #> <b>{param.name.value}</b> &
         ".value *" #> param.value &
-        ".description *" #> <span><b>Description: </b>{param.description}</span> &
+        ".description *" #> <span><u>Description:</u> <i>{Text(param.description)}</i></span> &
         ".description [id]" #> ("description-" + lineHtmlId) &
         ".overridable *" #> param.overridable &
         ".change *" #> <div >{
-                       ajaxButton("Update", () => showPopup(Some(param)), ("class", "mediumButton"), ("align", "left")) ++
+                       ajaxButton("Edit", () => showPopup(Some(param)), ("class", "mediumButton"), ("align", "left")) ++
                        ajaxButton("Delete", () => showRemovePopupForm(param), ("class", "mediumButton"), ("style", "margin-left:5px;"))
                        }</div>        
       }) &
@@ -158,8 +158,8 @@ class ParameterManagement extends DispatchSnippet with Loggable {
             "bJQueryUI"    : true,
             "aaSorting"    : [[ 0, "asc" ]],
             "aoColumns": [
-              { "sWidth": "450px" },
-              { "sWidth": "450px" },
+              { "sWidth": "300px" },
+              { "sWidth": "600px" },
               { "sWidth": "140px" }
             ],
             "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>'
