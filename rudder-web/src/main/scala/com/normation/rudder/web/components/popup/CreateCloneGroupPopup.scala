@@ -32,7 +32,7 @@ class CreateCloneGroupPopup(
   nodeGroup : Option[NodeGroup],
   groupGenerator : Option[NodeGroup] = None,
   onSuccessCategory : (NodeGroupCategory) => JsCmd,
-  onSuccessGroup : (NodeGroup) => JsCmd,
+  onSuccessGroup : (NodeGroup,NodeGroupCategoryId) => JsCmd,
   onSuccessCallback : (String) => JsCmd = { (String) => Noop },
   onFailureCallback : () => JsCmd = { () => Noop } )
   extends DispatchSnippet with Loggable {
@@ -130,13 +130,14 @@ class CreateCloneGroupPopup(
         }
       } else {
         // we are creating a group
+        val parentCategoryId = NodeGroupCategoryId(piContainer.is)
         woNodeGroupRepository.createNodeGroup(
           piName.is,
           piDescription.is,
           nodeGroup.map(x => x.query).getOrElse(groupGenerator.flatMap(_.query)),
           {piStatic.is match { case "dynamic" => true ; case _ => false } },
           nodeGroup.map(x => x.serverList).getOrElse(Set[NodeId]()),
-          NodeGroupCategoryId(piContainer.is),
+          parentCategoryId,
           nodeGroup.map(x => x.isEnabled).getOrElse(true),
           ModificationId(uuidGen.newUuid),
           CurrentUser.getActor,
@@ -145,7 +146,7 @@ class CreateCloneGroupPopup(
           case Full(x) =>
             closePopup() &
             onSuccessCallback(x.group.id.value) &
-            onSuccessGroup(x.group)
+            onSuccessGroup(x.group, parentCategoryId)
           case Empty =>
             logger.error("An error occurred while saving the group")
             formTracker.addFormError(error("An error occurred while saving the group"))

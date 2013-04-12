@@ -371,7 +371,7 @@ class RuleEditForm(
     formTracker.addFormError(error("There are no modification to save."))
     onFailure()
   }
-  
+
   /*
    * Create the ajax save button
    */
@@ -496,7 +496,7 @@ class RuleEditForm(
       JsRaw("$.modal.close();") & onSuccessCallback() & SetHtml("editRuleZone",
           <div id="editRuleZone">Rule successfully deleted</div>
       ) &
-      SetHtml(htmlId_rule, 
+      SetHtml(htmlId_rule,
           <div id={htmlId_rule}>Rule successfully deleted</div>
       )
     } else {
@@ -594,7 +594,7 @@ class RuleEditForm(
     targetInfo.target match {
       case GroupTarget(id) =>
         nodeGroupRepository.getNodeGroup(id) match {
-          case Full(group) => nodeGroupToJsTreeNode(group)
+          case Full((group,parentCatId)) => nodeGroupToJsTreeNode(group)
           case _ => new JsTreeNode {
             override def body = <span class="error">Can not find node {id.value}</span>
             override def children = Nil
@@ -1197,7 +1197,7 @@ class RuleEditForm(
       case None => Text("Not Applied")
     }
   }
-  
+
   val batch = reportingService.findImmediateReportsByRule(rule.id)
 
   <div>
@@ -1668,7 +1668,7 @@ class RuleEditForm(
   }
 
   /**
-   * Unfold the report to (Seq[ComponentValueRuleStatusReport], DirectiveId) 
+   * Unfold the report to (Seq[ComponentValueRuleStatusReport], DirectiveId)
    */
   def getComponentValueRule(report: RuleStatusReport): (Seq[ComponentValueRuleStatusReport], DirectiveId) = {
     report match {
@@ -1680,7 +1680,7 @@ class RuleEditForm(
         (Seq(value), value.directiveid)
     }
   }
-  
+
   /**
    * convert the componentvaluesrules to componentValueRule and Directive
    * Checks as well that all componentvaluesrules belong to the same directive
@@ -1790,7 +1790,7 @@ class RuleEditForm(
        }
       val (reports, directiveId) = getComponentValueRule(directiveByNode)
       val tab = showReportsByType(reports, directiveId)
-         xml++tab}    
+         xml++tab}
     ).apply(popupXml)
   }
 
@@ -1838,7 +1838,7 @@ class RuleEditForm(
   val htmlId_reportsPopup = "popup_" + htmlId_rulesGridZone
   val htmlId_modalReportsPopup = "modal_" + htmlId_rulesGridZone
 
-  
+
   /**
    * Create the popup
    */
@@ -1852,7 +1852,7 @@ class RuleEditForm(
     ) &
     JsRaw( """ createPopup("%s",600,900)""".format(htmlId_modalReportsPopup))
   }
-  
+
   /**
    * We need to have a Popup with all the ComponentValueRuleStatusReports for
    * cases when differents nodes have differents values

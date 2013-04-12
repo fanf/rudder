@@ -76,7 +76,7 @@ import bootstrap.liftweb.RudderConfig
 class CreateCategoryOrGroupPopup(
   groupGenerator : Option[NodeGroup] = None,
   onSuccessCategory : (NodeGroupCategory) => JsCmd,
-  onSuccessGroup : (NodeGroup) => JsCmd,
+  onSuccessGroup : (NodeGroup, NodeGroupCategoryId) => JsCmd,
   onSuccessCallback : (String) => JsCmd = { _ => Noop },
   onFailureCallback : () => JsCmd = { () => Noop }
        ) extends DispatchSnippet with Loggable {
@@ -286,7 +286,7 @@ class CreateCategoryOrGroupPopup(
         ) match {
           case Full(x) =>
             closePopup() &
-            onSuccessCallback(x.group.id.value) & onSuccessGroup(x.group)
+            onSuccessCallback(x.group.id.value) & onSuccessGroup(x.group, NodeGroupCategoryId(piContainer.is))
           case Empty =>
             logger.error("An error occurred while saving the group")
             formTracker.addFormError(error("An error occurred while saving the group"))

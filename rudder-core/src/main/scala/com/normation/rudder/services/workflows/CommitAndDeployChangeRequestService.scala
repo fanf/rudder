@@ -153,8 +153,8 @@ class CommitAndDeployChangeRequestServiceImpl(
           Full("OK")
         case Some(group) =>
           for {
-            currentGroup <- roNodeGroupRepo.getNodeGroup(group.id)
-            check        <- if(currentGroup == group) {
+            (g, _) <- roNodeGroupRepo.getNodeGroup(group.id)
+            check  <- if(g == group) {
                               Full("OK")
                             } else {
                               Failure(s"Group ${group.name} (id: ${group.id.value}) has diverged since change request creation")
