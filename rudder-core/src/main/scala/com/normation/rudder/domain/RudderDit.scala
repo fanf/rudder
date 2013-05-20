@@ -152,6 +152,12 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
   ) {
     activeTechniques =>
 
+    //method that check is an entry if of the given type
+
+    def isACategory(e:LDAPEntry) = e.isA(OC_TECHNIQUE_CATEGORY)
+    def isAnActiveTechnique(e:LDAPEntry) = e.isA(OC_ACTIVE_TECHNIQUE)
+    def isADirective(e:LDAPEntry) = e.isA(OC_DIRECTIVE)
+
     /**
      * From a DN of a category, return the value of the rdn (uuid)
      */

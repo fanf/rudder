@@ -54,6 +54,7 @@ import com.normation.rudder.repository.CategoryWithActiveTechniques
 import scala.collection.immutable.SortedMap
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
+import com.normation.rudder.repository.FullActiveTechniqueCategory
 
 
 class DummyActiveTechniqueRepository extends RoDirectiveRepository {
@@ -106,8 +107,9 @@ class DummyActiveTechniqueRepository extends RoDirectiveRepository {
   def getDirectives(activeTechniqueId: ActiveTechniqueId,includeSystem: Boolean): Box[Seq[Directive]] = ???
   def getParentActiveTechniqueCategory(id: ActiveTechniqueCategoryId): Box[ActiveTechniqueCategory] = ???
   def getParentsForActiveTechnique(id: ActiveTechniqueId): Box[ActiveTechniqueCategory] = ???
-  def getParentsForActiveTechniqueCategory(id: ActiveTechniqueCategoryId): Box[List[ActiveTechniqueCategory]] = ???  
+  def getParentsForActiveTechniqueCategory(id: ActiveTechniqueCategoryId): Box[List[ActiveTechniqueCategory]] = ???
   def getActiveTechniqueAndDirective(id:DirectiveId) : Box[(ActiveTechnique, Directive)] = ???
+  def getFullDirectiveLibrary() : Box[FullActiveTechniqueCategory] = ???
 }
 
 
