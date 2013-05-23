@@ -32,7 +32,7 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.repository
+package com.normation.rudder.repository.inmemory
 
 import com.normation.rudder.domain.nodes._
 import com.normation.inventory.domain.NodeId
@@ -49,52 +49,19 @@ import com.normation.utils.Utils
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import scala.collection.immutable.SortedMap
-import com.normation.rudder.domain.policies.RuleTargetInfo
+import com.normation.rudder.repository.RoNodeGroupRepository
 
-/**
- * Here is the ordering for a List[NodeGroupCategoryId]
- * MUST start by the root !
- */
-object GroupCategoryRepositoryOrdering extends Ordering[List[NodeGroupCategoryId]] {
-  type ID = NodeGroupCategoryId
-  override def compare(x:List[ID],y:List[ID]) = {
-    Utils.recTreeStringOrderingCompare(x.map( _.value ), y.map( _.value ))
 
+
+class RoCacheNodeGroupRepository(source:RoNodeGroupRepository) {
+
+  object Cache {
+    private[this] var cache = null
+    update()
+
+    def update() : Unit = { cache = source.getGroupsByCategory(true) }
+    def get() = cache
   }
-}
-
-/**
- * Here is the ordering for a List[NodeGroupCategoryId]
- * MUST start by the root !
- */
-object NodeGroupCategoryOrdering extends Ordering[List[NodeGroupCategoryId]] {
-  type ID = NodeGroupCategoryId
-  override def compare(x:List[ID],y:List[ID]) = {
-    Utils.recTreeStringOrderingCompare(x.map( _.value ), y.map( _.value ))
-  }
-}
-
-
-/**
- * A simple container for a category
- * and its direct children ActiveTechniques
- */
-final case class CategoryAndNodeGroup(
-    category: NodeGroupCategory
-  , groups  : Set[NodeGroup]
-) extends HashcodeCaching
-
-
-final case class FullNodeGroupCategory(
-    id          : NodeGroupCategoryId
-  , name        : String
-  , description : String
-  , children    : List[FullNodeGroupCategory]
-  , items       : List[RuleTargetInfo]
-  , isSystem    : Boolean = false
-)
-
-trait RoNodeGroupRepository {
 
   /**
    * Get a server group by its id
