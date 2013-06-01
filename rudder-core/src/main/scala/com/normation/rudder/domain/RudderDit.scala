@@ -240,6 +240,10 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
   ) {
     group =>
 
+    def isACategory(e:LDAPEntry) = e.isA(OC_GROUP_CATEGORY)
+    def isAGroup(e:LDAPEntry) = e.isA(OC_RUDDER_NODE_GROUP)
+    def isASpecialTarget(e:LDAPEntry) = e.isA(OC_SPECIAL_TARGET)
+
     /**
      * From a DN of a category, return the value of the rdn (uuid)
      */

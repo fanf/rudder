@@ -50,6 +50,10 @@ import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import scala.collection.immutable.SortedMap
 import com.normation.rudder.domain.policies.RuleTargetInfo
+import com.normation.rudder.domain.policies.FullRuleTargetInfo
+import com.normation.rudder.domain.policies.RuleTargetInfo
+import com.normation.rudder.domain.policies.FullGroupTarget
+import com.normation.rudder.domain.policies.FullGroupTarget
 
 /**
  * Here is the ordering for a List[NodeGroupCategoryId]
@@ -86,15 +90,47 @@ final case class CategoryAndNodeGroup(
 
 
 final case class FullNodeGroupCategory(
-    id          : NodeGroupCategoryId
-  , name        : String
-  , description : String
-  , children    : List[FullNodeGroupCategory]
-  , items       : List[RuleTargetInfo]
-  , isSystem    : Boolean = false
-)
+    id           : NodeGroupCategoryId
+  , name         : String
+  , description  : String
+  , subCategories: List[FullNodeGroupCategory]
+  , targetInfos  : List[FullRuleTargetInfo]
+  , isSystem     : Boolean = false
+) {
+
+  def toNodeGroupCategory = NodeGroupCategory(
+      id = id
+    , name = name
+    , description = description
+    , children = subCategories.map( _.id )
+    , items = targetInfos.map( _.toTargetInfo )
+    , isSystem = isSystem
+  )
+
+  val ownGroups = targetInfos.collect {
+        case FullRuleTargetInfo(g:FullGroupTarget, _, _, _, _) => (g.nodeGroup.id, g)
+      }.toMap
+
+  val allGroups: Map[NodeGroupId, FullGroupTarget] = (
+      ownGroups ++ subCategories.flatMap( _.allGroups )
+  ).toMap
+
+  val categoryByGroupId: Map[NodeGroupId, NodeGroupCategoryId] = (
+      ownGroups.map { case (gid, _) => (gid, id)} ++ subCategories.flatMap( _.categoryByGroupId)
+  ).toMap
+
+  val allCategories: Map[NodeGroupCategoryId, FullNodeGroupCategory] = {
+      subCategories.flatMap( _.allCategories ) :+ (id -> this)
+  }.toMap
+}
 
 trait RoNodeGroupRepository {
+
+  /**
+   * Get the full group tree with all information
+   * for categories and groups.
+   */
+  def getFullGroupLibrary(): Box[FullNodeGroupCategory]
 
   /**
    * Get a server group by its id

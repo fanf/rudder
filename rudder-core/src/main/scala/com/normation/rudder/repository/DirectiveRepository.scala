@@ -85,7 +85,7 @@ final case class CategoryWithActiveTechniques(
  * Technique versions in techniquesDateTime
  * and in "techniques"
  */
-case class FullActiveTechnique(
+final case class FullActiveTechnique(
     id                  : ActiveTechniqueId
   , techniqueName       : TechniqueName
   , acceptationDatetimes: Map[TechniqueVersion, DateTime]
@@ -108,13 +108,13 @@ case class FullActiveTechnique(
 }
 
 
-case class FullActiveTechniqueCategory(
+final case class FullActiveTechniqueCategory(
     id              : ActiveTechniqueCategoryId
   , name            : String
   , description     : String
   , subCategories   : List[FullActiveTechniqueCategory]
   , activeTechniques: List[FullActiveTechnique]
-  , isSystem   : Boolean = false // by default, we can't create system Category
+  , isSystem        : Boolean = false // by default, we can't create system Category
 ) {
 
   val allDirectives : Map[DirectiveId, (FullActiveTechnique, Directive)] = (
@@ -275,8 +275,6 @@ trait RoDirectiveRepository {
    * of this category)
    */
   def containsDirective(id: ActiveTechniqueCategoryId) : Boolean
-
-
 }
 
 trait WoDirectiveRepository {

@@ -430,10 +430,9 @@ class RoLDAPDirectiveRepository(
     case class AllMaps(
         categories: Map[ActiveTechniqueCategoryId, ActiveTechniqueCategory]
       , activeTechiques: Map[ActiveTechniqueId, ActiveTechnique]
-      , directives: Map[DirectiveId, Directive]
       , categoriesByCategory: Map[ActiveTechniqueCategoryId, List[ActiveTechniqueCategoryId]]
       , activeTechniquesByCategory: Map[ActiveTechniqueCategoryId, List[ActiveTechniqueId]]
-      , directivesByActiveTechnique: Map[ActiveTechniqueId, List[DirectiveId]]
+      , directivesByActiveTechnique: Map[ActiveTechniqueId, List[Directive]]
     )
 
     //here, active technique is expected to have an empty list of children
@@ -443,9 +442,7 @@ class RoLDAPDirectiveRepository(
         , techniqueName = at.techniqueName
         , techniques = techniqueRepository.getByName(at.techniqueName)
         , acceptationDatetimes = at.acceptationDatetimes
-        , directives = maps.directivesByActiveTechnique.getOrElse(at.id, Nil).map { directiveId =>
-            maps.directives.getOrElse(directiveId, throw new IllegalArgumentException(s"Missing directive with id ${directiveId} in the list of available directives"))
-          }
+        , directives = maps.directivesByActiveTechnique.getOrElse(at.id, Nil)
         , isEnabled = at.isEnabled
         , isSystem = at.isSystem
       )
@@ -477,7 +474,7 @@ class RoLDAPDirectiveRepository(
      */
 
 
-    val emptyAll = AllMaps(Map(), Map(), Map(), Map(), Map(), Map())
+    val emptyAll = AllMaps(Map(), Map(), Map(), Map(), Map())
     import rudderDit.ACTIVE_TECHNIQUES_LIB._
 
     def mappingError(current:AllMaps, e:LDAPEntry, eb:EmptyBox) : AllMaps = {
@@ -524,10 +521,9 @@ class RoLDAPDirectiveRepository(
            mapper.entry2Directive(e) match {
              case Full(dir) =>
                val atId = mapper.dn2ActiveTechniqueId(e.dn.getParent)
-               val dirsForAt = dir.id :: current.directivesByActiveTechnique.getOrElse(atId, Nil)
+               val dirsForAt = dir :: current.directivesByActiveTechnique.getOrElse(atId, Nil)
                current.copy(
-                   directives = current.directives + (dir.id -> dir)
-                 , directivesByActiveTechnique = current.directivesByActiveTechnique + (atId -> dirsForAt)
+                   directivesByActiveTechnique = current.directivesByActiveTechnique + (atId -> dirsForAt)
                )
              case eb:EmptyBox => mappingError(current, e, eb)
            }

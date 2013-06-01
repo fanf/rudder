@@ -82,7 +82,7 @@ object Groups {
   private sealed trait RightPanel
   private case object NoPanel extends RightPanel
   private case class GroupForm(group:NodeGroup, parentCategoryId:NodeGroupCategoryId) extends RightPanel with HashcodeCaching
-  private case class CategoryForm(category:NodeGroupCategory) extends RightPanel with HashcodeCaching
+  private case class CategoryForm(category: NodeGroupCategory) extends RightPanel with HashcodeCaching
 
 }
 
@@ -91,16 +91,19 @@ object Groups {
 class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with Loggable {
   import Groups._
 
-  private[this] val roNodeGroupRepository = RudderConfig.roNodeGroupRepository
+  private[this] val getFullGroupLibrary   = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
   private[this] val woNodeGroupRepository = RudderConfig.woNodeGroupRepository
   private[this] val uuidGen               = RudderConfig.stringUuidGenerator
 
-  def mainDispatch =  Map(
-      "head" -> head _ ,
-     "groupHierarchy" ->  groupHierarchy() ,
-     "initRightPanel" -> initRightPanel _,
-     "detailsPopup" ->  { _:NodeSeq => NodeGroupForm.staticBody }
+  val mainDispatch = {
+    val lib = getFullGroupLibrary()
+    Map(
+        "head" -> head _
+      , "detailsPopup" ->  { _:NodeSeq => NodeGroupForm.staticBody }
+      , "initRightPanel" -> { _: NodeSeq => initRightPanel(lib) }
+      , "groupHierarchy" -> groupHierarchy(lib)
     )
+  }
 
   def extendsAt = SnippetExtensionKey(classOf[Groups].getSimpleName)
 
@@ -112,8 +115,6 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
 
   //the popup component
   private[this] val creationPopup = new LocalSnippet[CreateCategoryOrGroupPopup]
-
-  private[this] val rootCategoryId = roNodeGroupRepository.getRootCategory.id
 
   /**
    * Head of the portlet, nothing much yet
@@ -136,10 +137,10 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    * @param html
    * @return
    */
-  def groupHierarchy() : CssSel = {
-      ("#groupTree" #> buildGroupTree("") &
-      "#newItem" #> groupNewItem())
-  }
+  def groupHierarchy(rootCategory: Box[FullNodeGroupCategory]) : CssSel = (
+      "#groupTree" #> buildGroupTree(rootCategory, "")
+    & "#newItem"   #> groupNewItem()
+  )
 
   def groupNewItem() : NodeSeq = {
     <div id="createANewItem">
@@ -151,8 +152,8 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    * Does the init part (showing the right component and highlighting
    * the tree if necessary)
    */
-  def initRightPanel(html:NodeSeq) : NodeSeq = {
-    Script(OnLoad(parseJsArg))
+  def initRightPanel(rootCategory: Box[FullNodeGroupCategory]) : NodeSeq = {
+    Script(OnLoad(parseJsArg(rootCategory)))
   }
 
 
@@ -162,14 +163,18 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    *
    * We want to look for #{ "groupId":"XXXXXXXXXXXX" }
    */
-  private[this] def parseJsArg() : JsCmd = {
+  private[this] def parseJsArg(rootCategory: Box[FullNodeGroupCategory]) : JsCmd = {
     def displayDetails(groupId:String) = {
-      roNodeGroupRepository.getNodeGroup(new NodeGroupId(groupId)) match {
-        case t: EmptyBox => Noop
-        case Full((nodeGroup,parentCatId)) =>
-          refreshTree(htmlTreeNodeId(groupId)) &
-          refreshRightPanel(GroupForm(nodeGroup,parentCatId)) &
-          JsRaw("createTooltip()")
+      val gid = NodeGroupId(groupId)
+      rootCategory match {
+        case eb: EmptyBox => Noop
+        case Full(lib) => lib.allGroups.get(gid) match {
+          case None => Noop
+          case Some(fullGroupTarget) => //so we also have its parent category
+            refreshTree(htmlTreeNodeId(groupId)) &
+            refreshRightPanel(GroupForm(fullGroupTarget.nodeGroup, lib.categoryByGroupId(gid))) &
+            JsRaw("createTooltip()")
+        }
       }
     }
 
@@ -241,12 +246,22 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   /**
    * build the tree of categories and group and init its JS
    */
-  private[this] def buildGroupTree(selectedNode:String) : NodeSeq = {
-    (
-      <div id={htmlId_groupTree}>
-        <ul>{ nodeGroupCategoryToJsTreeNode(roNodeGroupRepository.getRootCategory).toXml }</ul>
-      </div>
-    ) ++ Script(OnLoad(
+  private[this] def buildGroupTree(rootCategory: Box[FullNodeGroupCategory], selectedNode: String) : NodeSeq = {
+    rootCategory match {
+      case eb: EmptyBox =>
+        val e = eb ?~! "Can not get the group library"
+        logger.error(e.messageChain)
+        e.rootExceptionCause.foreach { ex =>
+          logger.error("Root exception was:", ex)
+        }
+
+        <div id={htmlId_groupTree}>Error: {e.msg}</div>
+      case Full(lib) =>
+      (
+        <div id={htmlId_groupTree}>
+          <ul>{nodeGroupCategoryToJsTreeNode(lib, lib).toXml }</ul>
+        </div>
+      ) ++ Script(OnLoad(
       //build jstree and
       //init bind callback to move
       JsRaw("""
@@ -275,9 +290,9 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
         // %1$s
         htmlId_groupTree ,
         // %2$s
-        SHtml.ajaxCall(JsVar("arg"), moveGroup _)._2.toJsCmd,
+        SHtml.ajaxCall(JsVar("arg"), moveGroup(lib) _)._2.toJsCmd,
         // %3$s
-        SHtml.ajaxCall(JsVar("arg"), moveCategory _ )._2.toJsCmd,
+        SHtml.ajaxCall(JsVar("arg"), moveCategory(lib) _ )._2.toJsCmd,
         // %4$s
         selectedNode ,
         S.contextPath
@@ -288,7 +303,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
         }
  */
       )))
-    )
+    )}
   }
 
   /**
@@ -303,7 +318,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   }
 
   ///////////////////// Callback function for Drag'n'drop in the tree /////////////////////
-  private[this] def moveGroup(arg: String) : JsCmd = {
+  private[this] def moveGroup(lib:FullNodeGroupCategory)(arg: String) : JsCmd = {
     //parse arg, which have to  be json object with sourceGroupId, destCatId
     try {
       (for {
@@ -316,9 +331,9 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
         case (sourceGroupId, destCatId) :: Nil =>
           (for {
             result <- woNodeGroupRepository.move(NodeGroupId(sourceGroupId), NodeGroupCategoryId(destCatId), ModificationId(uuidGen.newUuid), CurrentUser.getActor, Some("Group moved by user"))?~! "Error while trying to move group with requested id '%s' to category id '%s'".format(sourceGroupId,destCatId)
-            (ng,cat) <- roNodeGroupRepository.getNodeGroup(NodeGroupId(sourceGroupId))
+            group  <- Box(lib.allGroups.get(NodeGroupId(sourceGroupId))) ?~! s"No such group: ${sourceGroupId}"
           } yield {
-            (ng,cat)
+            (group.nodeGroup, lib.categoryByGroupId(group.nodeGroup.id))
           }) match {
             case Full((ng,cat)) =>
               refreshTree(htmlTreeNodeId(ng.id.value)) & JsRaw("""setTimeout(function() { $("[groupid=%s]").effect("highlight", {}, 2000)}, 100)""".format(sourceGroupId)) & refreshRightPanel(GroupForm(ng,cat))
@@ -332,7 +347,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
     }
   }
 
-  private[this] def moveCategory(arg: String) : JsCmd = {
+  private[this] def moveCategory(lib: FullNodeGroupCategory)(arg: String) : JsCmd = {
     //parse arg, which have to  be json object with sourceGroupId, destCatId
     try {
       (for {
@@ -344,18 +359,19 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
        }) match {
         case (sourceCatId, destCatId) :: Nil =>
           (for {
-            group <- roNodeGroupRepository.getGroupCategory(NodeGroupCategoryId(sourceCatId)) ?~! "Error while trying to find category with requested id %s".format(sourceCatId)
+            category <- Box(lib.allCategories.get(NodeGroupCategoryId(sourceCatId))) ?~! "Error while trying to find category with requested id %s".format(sourceCatId)
+
             result <- woNodeGroupRepository.saveGroupCategory(
-                          group
+                          category.toNodeGroupCategory
                         , NodeGroupCategoryId(destCatId)
                         , ModificationId(uuidGen.newUuid)
                         , CurrentUser.getActor
                         , reason = None)?~! "Error while trying to move category with requested id '%s' to category id '%s'".format(sourceCatId,destCatId)
           } yield {
-            (group,result)
+            (category.id.value, result)
           }) match {
-            case Full((group,res)) =>
-              refreshTree(htmlTreeNodeId(group.id.value)) & OnLoad(JsRaw("""setTimeout(function() { $("[catid=%s]").effect("highlight", {}, 2000);}, 100)""".format(sourceCatId))) & refreshRightPanel(CategoryForm(res))
+            case Full((id,res)) =>
+              refreshTree(htmlTreeNodeId(id)) & OnLoad(JsRaw("""setTimeout(function() { $("[catid=%s]").effect("highlight", {}, 2000);}, 100)""".format(sourceCatId))) & refreshRightPanel(CategoryForm(res))
             case f:Failure => Alert(f.messageChain + "\nPlease reload the page")
             case Empty => Alert("Error while trying to move category with requested id '%s' to category id '%s'\nPlease reload the page.".format(sourceCatId,destCatId))
           }
@@ -369,7 +385,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   ////////////////////
 
   private[this] def refreshTree(selectedNode:String) : JsCmd =  {
-    Replace(htmlId_groupTree, buildGroupTree(selectedNode:String)) &
+    Replace(htmlId_groupTree, buildGroupTree(getFullGroupLibrary(), selectedNode:String)) &
     OnLoad(After(TimeSpan(50), JsRaw("""createTooltip();""")))
   }
 
@@ -384,9 +400,9 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    *   - groups
    * -
    */
-  private[this] def nodeGroupCategoryToJsTreeNode(category:NodeGroupCategory) : JsTreeNode = new JsTreeNode {
-    def onClickCategory(category:NodeGroupCategory) : JsCmd = {
-      displayACategory(category)
+  private[this] def nodeGroupCategoryToJsTreeNode(category:FullNodeGroupCategory, root:FullNodeGroupCategory) : JsTreeNode = new JsTreeNode {
+    def onClickCategory(category:FullNodeGroupCategory) : JsCmd = {
+      displayACategory(category.toNodeGroupCategory)
     }
     override def body = {
       val tooltipId = Helpers.nextFuncName
@@ -399,9 +415,12 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
           )
       )
     }
-    override def children = category.children.flatMap(x => nodeGroupCategoryIdToJsTreeNode(x)) ++ category.items.map(x => policyTargetInfoToJsTreeNode(x))
+    override def children = (
+         category.subCategories.map(x => nodeGroupCategoryToJsTreeNode(x, root))
+      ++ category.targetInfos.map(x => policyTargetInfoToJsTreeNode(x, root))
+    )
     override val attrs =
-      ( "rel" -> { if(category.id == rootCategoryId) "root-category" else if (category.isSystem) "system_category" else "category"  } ) ::
+      ( "rel" -> { if(category.id == root.id) "root-category" else if (category.isSystem) "system_category" else "category"  } ) ::
       ( "catId" -> category.id.value ) ::
       ( "class" -> "" ) ::
       Nil
@@ -412,29 +431,11 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
     refreshRightPanel(CategoryForm(category))
   }
 
-
-  //fetch server group category id and transform it to a tree node
-  private[this] def nodeGroupCategoryIdToJsTreeNode(id:NodeGroupCategoryId) : Box[JsTreeNode] = {
-    roNodeGroupRepository.getGroupCategory(id) match {
-      case Full(group) => Full(nodeGroupCategoryToJsTreeNode(group))
-      case e:EmptyBox =>
-        val f = e ?~! "Error while fetching Group category %s".format(id)
-        logger.error(f.messageChain)
-        f
-    }
-  }
-
   //fetch server group id and transform it to a tree node
-  private[this] def policyTargetInfoToJsTreeNode(targetInfo:RuleTargetInfo) : JsTreeNode = {
-    targetInfo.target match {
-      case GroupTarget(id) =>
-        roNodeGroupRepository.getNodeGroup(id) match {
-          case Full((group,parentGroupId)) => nodeGroupToJsTreeNode(group,parentGroupId)
-          case _ => new JsTreeNode {
-            override def body = <span class="error">Can not find node {id.value}</span>
-            override def children = Nil
-          }
-        }
+  private[this] def policyTargetInfoToJsTreeNode(targetInfo: FullRuleTargetInfo, root: FullNodeGroupCategory) : JsTreeNode = {
+    targetInfo match {
+      case FullRuleTargetInfo(FullGroupTarget(target, nodeGroup), _, _, _, _) =>
+        nodeGroupToJsTreeNode(nodeGroup, root.categoryByGroupId(nodeGroup.id))
       case x => new JsTreeNode {
          override def body =  {
            val tooltipId = Helpers.nextFuncName
