@@ -127,7 +127,6 @@ final case class FullNodeGroupCategory(
     , exclude: FullNodeGroupCategory => Boolean
   ) : List[(List[NodeGroupCategoryId], FullNodeGroupCategory)] = {
 
-    println(s"process ${this.id}: exclude=${exclude(this)}")
     if(exclude(this)){
       Nil
     } else {
