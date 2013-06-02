@@ -96,12 +96,11 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   private[this] val uuidGen               = RudderConfig.stringUuidGenerator
 
   val mainDispatch = {
-    val lib = getFullGroupLibrary()
     Map(
         "head" -> head _
       , "detailsPopup" ->  { _:NodeSeq => NodeGroupForm.staticBody }
-      , "initRightPanel" -> { _: NodeSeq => initRightPanel(lib) }
-      , "groupHierarchy" -> groupHierarchy(lib)
+      , "initRightPanel" -> { _: NodeSeq => initRightPanel() }
+      , "groupHierarchy" -> groupHierarchy(boxGroupLib)
     )
   }
 
@@ -115,6 +114,8 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
 
   //the popup component
   private[this] val creationPopup = new LocalSnippet[CreateCategoryOrGroupPopup]
+
+  private[this] var boxGroupLib = getFullGroupLibrary()
 
   /**
    * Head of the portlet, nothing much yet
@@ -138,26 +139,22 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    * @return
    */
   def groupHierarchy(rootCategory: Box[FullNodeGroupCategory]) : CssSel = (
-      "#groupTree" #> buildGroupTree(rootCategory, "")
-    & "#newItem"   #> groupNewItem(rootCategory)
+      "#groupTree" #> buildGroupTree("")
+    & "#newItem"   #> groupNewItem()
   )
 
-  def groupNewItem(rootCategory: Box[FullNodeGroupCategory]) : NodeSeq = {
-    //if we don't have the root category, just does not display anything
-    //error will appears elsewhere alredy
-    rootCategory.map( lib =>
-      <div id="createANewItem">
-        { SHtml.ajaxButton("Create a new item", () => showPopup(lib)) }
-      </div>
-    ).getOrElse(NodeSeq.Empty)
+  def groupNewItem() : NodeSeq = {
+    <div id="createANewItem">
+      { SHtml.ajaxButton("Create a new item", () => showPopup()) }
+    </div>
   }
 
   /**
    * Does the init part (showing the right component and highlighting
    * the tree if necessary)
    */
-  def initRightPanel(rootCategory: Box[FullNodeGroupCategory]) : NodeSeq = {
-    Script(OnLoad(parseJsArg(rootCategory)))
+  def initRightPanel() : NodeSeq = {
+    Script(OnLoad(parseJsArg(boxGroupLib)))
   }
 
 
@@ -175,6 +172,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
         case Full(lib) => lib.allGroups.get(gid) match {
           case None => Noop
           case Some(fullGroupTarget) => //so we also have its parent category
+            //no modification, so no refreshGroupLib
             refreshTree(htmlTreeNodeId(groupId)) &
             refreshRightPanel(GroupForm(fullGroupTarget.nodeGroup, lib.categoryByGroupId(gid))) &
             JsRaw("createTooltip()")
@@ -216,7 +214,9 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
           , rootCategory
           , { (redirect: Either[NodeGroup,ChangeRequestId]) =>
               redirect match {
-                case Left(group) => refreshTree(htmlTreeNodeId(group.id.value))
+                case Left(group) =>
+                  refreshGroupLib()
+                  refreshTree(htmlTreeNodeId(group.id.value))
                 case Right(crId) => RedirectTo(s"""/secure/utilities/changeRequest/${crId.value}""")
               }
             }
@@ -234,7 +234,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
 
   //utility to refresh right panel
   private[this] def refreshRightPanel(panel:RightPanel) : JsCmd = {
-    getFullGroupLibrary() match {
+    boxGroupLib match {
       case Full(lib) => SetHtml(htmlId_item, setAndShowRightPanel(panel, lib))
       case eb: EmptyBox =>
         val e = eb ?~! "Error when trying to get the root node group category"
@@ -243,6 +243,11 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
     }
   }
 
+  //that must be separated from refreshTree/refreshRightPanel
+  //to avoid duplicate refresh or useless one (when only displaying without modification)
+  private[this] def refreshGroupLib() : Unit = {
+    boxGroupLib = getFullGroupLibrary()
+  }
 
   private[this] def setCreationPopup(rootCategory: FullNodeGroupCategory) : Unit = {
     creationPopup.set(Full(new CreateCategoryOrGroupPopup(
@@ -255,15 +260,15 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   }
 
   private[this] def onSuccessCallback() = {
-    (id: String) => refreshTree(htmlTreeNodeId(id))
+    (id: String) => {refreshGroupLib; refreshTree(htmlTreeNodeId(id)) }
   }
 
 
   /**
    * build the tree of categories and group and init its JS
    */
-  private[this] def buildGroupTree(rootCategory: Box[FullNodeGroupCategory], selectedNode: String) : NodeSeq = {
-    rootCategory match {
+  private[this] def buildGroupTree(selectedNode: String) : NodeSeq = {
+    boxGroupLib match {
       case eb: EmptyBox =>
         val e = eb ?~! "Can not get the group library"
         logger.error(e.messageChain)
@@ -352,7 +357,12 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
             (group.nodeGroup, lib.categoryByGroupId(group.nodeGroup.id))
           }) match {
             case Full((ng,cat)) =>
-              refreshTree(htmlTreeNodeId(ng.id.value)) & JsRaw("""setTimeout(function() { $("[groupid=%s]").effect("highlight", {}, 2000)}, 100)""".format(sourceGroupId)) & refreshRightPanel(GroupForm(ng,cat))
+              refreshGroupLib()
+              (
+                  refreshTree(htmlTreeNodeId(ng.id.value))
+                & JsRaw("""setTimeout(function() { $("[groupid=%s]").effect("highlight", {}, 2000)}, 100)""".format(sourceGroupId))
+                & refreshRightPanel(GroupForm(ng,cat))
+              )
             case f:Failure => Alert(f.messageChain + "\nPlease reload the page")
             case Empty => Alert("Error while trying to move group with requested id '%s' to category id '%s'\nPlease reload the page.".format(sourceGroupId,destCatId))
           }
@@ -387,7 +397,12 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
             (category.id.value, result)
           }) match {
             case Full((id,res)) =>
-              refreshTree(htmlTreeNodeId(id)) & OnLoad(JsRaw("""setTimeout(function() { $("[catid=%s]").effect("highlight", {}, 2000);}, 100)""".format(sourceCatId))) & refreshRightPanel(CategoryForm(res))
+              refreshGroupLib
+              (
+                  refreshTree(htmlTreeNodeId(id))
+                & OnLoad(JsRaw("""setTimeout(function() { $("[catid=%s]").effect("highlight", {}, 2000);}, 100)""".format(sourceCatId)))
+                & refreshRightPanel(CategoryForm(res))
+              )
             case f:Failure => Alert(f.messageChain + "\nPlease reload the page")
             case Empty => Alert("Error while trying to move category with requested id '%s' to category id '%s'\nPlease reload the page.".format(sourceCatId,destCatId))
           }
@@ -401,7 +416,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   ////////////////////
 
   private[this] def refreshTree(selectedNode:String) : JsCmd =  {
-    Replace(htmlId_groupTree, buildGroupTree(getFullGroupLibrary(), selectedNode:String)) &
+    Replace(htmlId_groupTree, buildGroupTree(selectedNode:String)) &
     OnLoad(After(TimeSpan(50), JsRaw("""createTooltip();""")))
   }
 
@@ -443,7 +458,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   }
 
   private[this] def displayACategory(category : NodeGroupCategory) : JsCmd = {
-    //update UI
+    //update UI - no modification here, so no refreshGroupLib
     refreshRightPanel(CategoryForm(category))
   }
 
@@ -515,18 +530,22 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    * @return
    */
   private[this] def showGroupSection(sg : NodeGroup, parentCategoryId: NodeGroupCategoryId) : JsCmd = {
-    //update UI
+    //update UI - no modeification here, so no refreshGroupLib
     refreshRightPanel(GroupForm(sg, parentCategoryId))&
     JsRaw("""this.window.location.hash = "#" + JSON.stringify({'groupId':'%s'})""".format(sg.id.value))
   }
 
-  private[this] def showPopup(rootCategory: FullNodeGroupCategory) : JsCmd = {
-    setCreationPopup(rootCategory)
+  private[this] def showPopup() : JsCmd = {
 
-    //update UI
-    SetHtml("createGroupContainer", createPopup) &
-    JsRaw( """ createPopup("createGroupPopup")""")
+    boxGroupLib match {
+      case eb: EmptyBox => Alert("Error when trying to get the list of categories")
+      case Full(rootCategory) =>
+        setCreationPopup(rootCategory)
 
+        //update UI
+        SetHtml("createGroupContainer", createPopup) &
+        JsRaw( """ createPopup("createGroupPopup")""")
+    }
   }
 }
 
