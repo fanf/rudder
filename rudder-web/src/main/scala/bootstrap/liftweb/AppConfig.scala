@@ -958,7 +958,7 @@ object RudderConfig extends Loggable {
       , LDAPConstants.A_OS_KERNEL_VERSION
     ))
   private[this] lazy val logDisplayerImpl: LogDisplayer = new LogDisplayer(reportsRepositoryImpl, roLdapDirectiveRepository, roLdapRuleRepository)
-  private[this] lazy val categoryHierarchyDisplayerImpl: CategoryHierarchyDisplayer = new CategoryHierarchyDisplayer(roLdapNodeGroupRepository)
+  private[this] lazy val categoryHierarchyDisplayerImpl: CategoryHierarchyDisplayer = new CategoryHierarchyDisplayer()
   private[this] lazy val dyngroupUpdaterBatch: UpdateDynamicGroups = new UpdateDynamicGroups(
       dynGroupServiceImpl
     , new DynGroupUpdaterServiceImpl(roLdapNodeGroupRepository, woLdapNodeGroupRepository, queryProcessor)

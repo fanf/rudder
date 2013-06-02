@@ -139,13 +139,17 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    */
   def groupHierarchy(rootCategory: Box[FullNodeGroupCategory]) : CssSel = (
       "#groupTree" #> buildGroupTree(rootCategory, "")
-    & "#newItem"   #> groupNewItem()
+    & "#newItem"   #> groupNewItem(rootCategory)
   )
 
-  def groupNewItem() : NodeSeq = {
-    <div id="createANewItem">
-      { SHtml.ajaxButton("Create a new item", () => showPopup()) }
-    </div>
+  def groupNewItem(rootCategory: Box[FullNodeGroupCategory]) : NodeSeq = {
+    //if we don't have the root category, just does not display anything
+    //error will appears elsewhere alredy
+    rootCategory.map( lib =>
+      <div id="createANewItem">
+        { SHtml.ajaxButton("Create a new item", () => showPopup(lib)) }
+      </div>
+    ).getOrElse(NodeSeq.Empty)
   }
 
   /**
@@ -201,7 +205,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
    *  Manage the state of what should be displayed on the right panel.
    * It could be nothing, a group edit form, or a category edit form.
    */
-  private[this] def setAndShowRightPanel(panel:RightPanel) : NodeSeq = {
+  private[this] def setAndShowRightPanel(panel: RightPanel, rootCategory: FullNodeGroupCategory) : NodeSeq = {
     panel match {
       case NoPanel => NodeSeq.Empty
       case GroupForm(group,parentCatId) =>
@@ -209,6 +213,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
             htmlId_item
           , group
           , parentCatId
+          , rootCategory
           , { (redirect: Either[NodeGroup,ChangeRequestId]) =>
               redirect match {
                 case Left(group) => refreshTree(htmlTreeNodeId(group.id.value))
@@ -221,21 +226,32 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
         form.dispatch("showForm")(NodeSeq.Empty);
 
       case CategoryForm(category) =>
-        val form = new NodeGroupCategoryForm(htmlId_item, category, onSuccessCallback())
+        val form = new NodeGroupCategoryForm(htmlId_item, category, rootCategory, onSuccessCallback())
         nodeGroupCategoryForm.set(Full(form))
         form.showForm()
     }
   }
 
   //utility to refresh right panel
-  private[this] def refreshRightPanel(panel:RightPanel) : JsCmd = SetHtml(htmlId_item, setAndShowRightPanel(panel))
+  private[this] def refreshRightPanel(panel:RightPanel) : JsCmd = {
+    getFullGroupLibrary() match {
+      case Full(lib) => SetHtml(htmlId_item, setAndShowRightPanel(panel, lib))
+      case eb: EmptyBox =>
+        val e = eb ?~! "Error when trying to get the root node group category"
+        logger.error(e.messageChain)
+        Alert(e.messageChain)
+    }
+  }
 
 
-  private[this] def setCreationPopup : Unit = {
+  private[this] def setCreationPopup(rootCategory: FullNodeGroupCategory) : Unit = {
     creationPopup.set(Full(new CreateCategoryOrGroupPopup(
-      onSuccessCategory = displayACategory,
-      onSuccessGroup = showGroupSection,
-      onSuccessCallback = onSuccessCallback())))
+        None
+      , rootCategory
+      , onSuccessCategory = displayACategory
+      , onSuccessGroup = showGroupSection
+      , onSuccessCallback = onSuccessCallback()
+    )))
   }
 
   private[this] def onSuccessCallback() = {
@@ -504,8 +520,8 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
     JsRaw("""this.window.location.hash = "#" + JSON.stringify({'groupId':'%s'})""".format(sg.id.value))
   }
 
-  private[this] def showPopup() : JsCmd = {
-    setCreationPopup
+  private[this] def showPopup(rootCategory: FullNodeGroupCategory) : JsCmd = {
+    setCreationPopup(rootCategory)
 
     //update UI
     SetHtml("createGroupContainer", createPopup) &

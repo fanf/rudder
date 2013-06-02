@@ -72,27 +72,30 @@ class SearchNodes extends StatefulSnippet with Loggable {
   val lock = new Object
   private[this] val quickSearchService = RudderConfig.quickSearchService
   private[this] val queryParser = RudderConfig.cmdbQueryParser
+  private[this] val getFullGroupLibrary = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
 
   //the popup component to create the group
   private[this] val creationPopup = new LocalSnippet[CreateCategoryOrGroupPopup]
 
   private[this] def setCreationPopup(query : Option[Query], serverList : Box[Seq[NodeInfo]]) : Unit = {
-         creationPopup.set(Full(new CreateCategoryOrGroupPopup(
-            // create a totally invalid group
-             Some(new NodeGroup(
-                    null,
-                    null,
-                    null,
-                    query,
-                    true,
-                    serverList.openOr(Seq[NodeInfo]()).map(_.id).toSet,
-                    true,
-                    false
-                  )
-             ),
-            onSuccessCategory= { _ => Noop },
-            onSuccessGroup = { (node:NodeGroup, _) => RedirectTo("""/secure/nodeManager/groups#{"groupId":"%s"}""".format(node.id.value)) }
-         )))
+      creationPopup.set(getFullGroupLibrary().map( lib =>
+          new CreateCategoryOrGroupPopup(
+          // create a totally invalid group
+          Some(new NodeGroup(
+              null,
+              null,
+              null,
+              query,
+              true,
+              serverList.openOr(Seq[NodeInfo]()).map(_.id).toSet,
+              true,
+              false
+              )
+          )
+        , rootCategory = lib
+        , onSuccessCategory= { _ => Noop }
+        , onSuccessGroup = { (node:NodeGroup, _) => RedirectTo("""/secure/nodeManager/groups#{"groupId":"%s"}""".format(node.id.value)) }
+      )))
   }
 
   val searchNodeComponent = new LocalSnippet[SearchNodeComponent]

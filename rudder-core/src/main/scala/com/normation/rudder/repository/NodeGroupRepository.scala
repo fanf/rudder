@@ -107,6 +107,41 @@ final case class FullNodeGroupCategory(
     , isSystem = isSystem
   )
 
+  /**
+   * Get the list of categories, starting by that one,
+   * and with chlidren sorted with the given ordering.
+   * So we get:
+   * cat1
+   *  - cat1.1
+   *     - cat1.1.1
+   *     - cat1.1.2
+   *  - cat1.2
+   *     - cat1.2.1
+   *     etc.
+   *
+   * Some categories AND ALL THERE SUBCATEGORIES can be
+   * exclude with the "exclude" predicat is true.
+   */
+  def getSortedCategories(
+      ordering: (FullNodeGroupCategory, FullNodeGroupCategory) => Boolean
+    , exclude: FullNodeGroupCategory => Boolean
+  ) : List[(List[NodeGroupCategoryId], FullNodeGroupCategory)] = {
+
+    println(s"process ${this.id}: exclude=${exclude(this)}")
+    if(exclude(this)){
+      Nil
+    } else {
+      val subCats = for {
+        directSubCat    <- subCategories.sortWith(ordering)
+        (subId, subCat) <- directSubCat.getSortedCategories(ordering, exclude)
+      } yield {
+        (id :: subId, subCat)
+      }
+
+      (List(id) -> this) :: subCats
+    }
+  }
+
   val ownGroups = targetInfos.collect {
         case FullRuleTargetInfo(g:FullGroupTarget, _, _, _, _) => (g.nodeGroup.id, g)
       }.toMap
