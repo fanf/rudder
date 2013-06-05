@@ -339,7 +339,7 @@ class ModificationValidationPopup(
       NodeSeq.Empty
     } else {
       val cmp = new RuleGrid("remove_popup_grid", rules.toSeq, None, false)
-      cmp.rulesGrid(popup = true,linkCompliancePopup = false)
+      cmp.rulesGridWithUpdatedInfo(popup = true,linkCompliancePopup = false)
     }
   }
   ///////////// fields for category settings ///////////////////

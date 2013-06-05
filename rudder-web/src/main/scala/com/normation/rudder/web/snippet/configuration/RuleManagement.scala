@@ -155,7 +155,7 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
                 {SHtml.ajaxButton("Add a new rule", () => showPopup(None), ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
               </div>
             </lift:authz>
-             {ruleGrid.rulesGrid() }
+             {ruleGrid.rulesGridWithUpdatedInfo() }
            </div>
 
   }

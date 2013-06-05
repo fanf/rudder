@@ -63,6 +63,12 @@ import com.normation.eventlog.ModificationId
 import bootstrap.liftweb.RudderConfig
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeInfo
 
 
 object RuleGrid {
@@ -113,13 +119,24 @@ class RuleGrid(
   def reportTemplate = chooseTemplate("reports", "report", template)
 
   def dispatch = {
-    case "rulesGrid" => { _:NodeSeq => rulesGrid() }
+    case "rulesGrid" => { _:NodeSeq => rulesGrid(getAllNodeInfos(), getFullNodeGroupLib(), getFullDirectiveLib()) }
   }
 
   def jsVarNameForId(tableId:String) = "oTable" + tableId
 
-  def rulesGrid(popup:Boolean = false, linkCompliancePopup:Boolean = true) : NodeSeq = {
-    showRulesDetails(popup,rules,linkCompliancePopup) match {
+  def rulesGridWithUpdatedInfo(popup: Boolean = false, linkCompliancePopup:Boolean = true) = {
+    rulesGrid(getAllNodeInfos(), getFullNodeGroupLib(), getFullDirectiveLib(), popup, linkCompliancePopup)
+  }
+
+
+  def rulesGrid(
+      allNodeInfos: Box[Set[NodeInfo]]
+    , groupLib    : Box[FullNodeGroupCategory]
+    , directiveLib: Box[FullActiveTechniqueCategory]
+    , popup       : Boolean = false
+    , linkCompliancePopup:Boolean = true
+  ) : NodeSeq = {
+    showRulesDetails(popup,rules,linkCompliancePopup, allNodeInfos, groupLib, directiveLib) match {
       case eb:EmptyBox =>
         val e = eb ?~! "Error when trying to get information about rules"
         logger.error(e.messageChain)
@@ -212,7 +229,13 @@ class RuleGrid(
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private[this] def showRulesDetails(popup:Boolean, rules:Seq[Rule], linkCompliancePopup:Boolean) : Box[NodeSeq] = {
+  private[this] def showRulesDetails(
+      popup:Boolean
+    , rules:Seq[Rule]
+    , linkCompliancePopup:Boolean
+    , allNodeInfos: Box[Set[NodeInfo]]
+    , groupLib    : Box[FullNodeGroupCategory]
+    , directiveLib: Box[FullActiveTechniqueCategory]) : Box[NodeSeq] = {
     sealed trait Line { val rule:Rule }
 
     case class OKLine(
@@ -632,9 +655,9 @@ class RuleGrid(
     } }
 
     for {
-      directivesLib <- getFullDirectiveLib()
-      groupsLib     <- getFullNodeGroupLib()
-      nodes         <- getAllNodeInfos()
+      directivesLib <- directiveLib
+      groupsLib     <- groupLib
+      nodes         <- allNodeInfos
     } yield {
       displayGridLines(directivesLib, groupsLib, nodes)
     }
