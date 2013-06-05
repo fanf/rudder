@@ -42,16 +42,16 @@ import RudderLDAPConstants._
 import com.normation.inventory.ldap.core.LDAPConstants.{
   A_OC,A_NAME,A_DESCRIPTION
 }
-
 import com.normation.inventory.domain.NodeId
-
 import net.liftweb.common.{Box,Failure,Full,EmptyBox,Empty}
 import Box._
-
 import com.normation.ldap.sdk._
 import BuildFilter._
 import com.normation.rudder.repository.ldap.LDAPEntityMapper
 import com.normation.utils.Control.sequence
+import com.normation.rudder.repository.FullNodeGroupCategory
+import com.normation.rudder.domain.nodes.NodeInfo
+import net.liftweb.common.Loggable
 
 
 trait RuleTargetService {
@@ -72,6 +72,12 @@ trait RuleTargetService {
    * For a given target, find back its NodeIds
    */
   def getNodeIds(target:RuleTarget) : Box[Seq[NodeId]]
+
+  /**
+   * A pure version of the "getNodeIds" that return the list of
+   * nodeIds without any I/O for the given rule.
+   */
+  def pureGetNodeIds(rule: Rule, groupLibrary: FullNodeGroupCategory, allNodeIds: Set[NodeInfo]) : Set[NodeId]
 
   /**
    * Get all information related to the target (isEnabled, etc).
@@ -100,9 +106,38 @@ class RuleTargetServiceImpl(
 ) extends RuleTargetService with
   RuleTargetService_findTargets with
   TargetToNodeIds with
-  TargetInfoService
+  TargetInfoService with
+  PureGetNodeIds
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+trait PureGetNodeIds extends RuleTargetService with Loggable {
+  /**
+   * A pure version of the "getNodeIds" that return the list of
+   * nodeIds without any I/O.
+   */
+  override def pureGetNodeIds(rule: Rule, groupLibrary: FullNodeGroupCategory, allNodeInfos: Set[NodeInfo]) : Set[NodeId] = {
+    (Set[NodeId]()/:rule.targets) {
+      case (nodes, t:NonGroupRuleTarget) =>
+        t match {
+          case AllTarget => return allNodeInfos.map( _.id )
+          case AllTargetExceptPolicyServers => nodes ++ allNodeInfos.collect { case(n) if(!n.isPolicyServer) => n.id }
+          case PolicyServerTarget(nodeId) => nodes + nodeId
+        }
+      //here, if we don't find the group, we consider it's an error in the
+      //target recording, but don't fail, just log it.
+      case (nodes, GroupTarget(groupId)) =>
+        val nodesForGroup = groupLibrary.allGroups.get(groupId).map( _.nodeGroup.serverList) match {
+          case None =>
+            logger.error(s"Ignoring target for Group with ID='${groupId.value}' used in rule '${rule.name}' (id:${rule.id.value}) because that group is not presnt in group library")
+            Set()
+          case Some(ids) => ids
+        }
+        nodes ++ nodesForGroup
+    }
+  }
+}
 
 trait TargetToNodeIds extends RuleTargetService {
 
@@ -117,6 +152,7 @@ trait TargetToNodeIds extends RuleTargetService {
       case AllTargetExceptPolicyServers => nodeInfoService.getAllUserNodeIds()
     }
   }
+
 }
 
 

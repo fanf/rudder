@@ -54,6 +54,7 @@ import com.normation.rudder.domain.policies.FullRuleTargetInfo
 import com.normation.rudder.domain.policies.RuleTargetInfo
 import com.normation.rudder.domain.policies.FullGroupTarget
 import com.normation.rudder.domain.policies.FullGroupTarget
+import com.normation.rudder.domain.policies.FullRuleTargetInfo
 
 /**
  * Here is the ordering for a List[NodeGroupCategoryId]
@@ -156,6 +157,10 @@ final case class FullNodeGroupCategory(
   val allCategories: Map[NodeGroupCategoryId, FullNodeGroupCategory] = {
       subCategories.flatMap( _.allCategories ) :+ (id -> this)
   }.toMap
+
+  val allTargets: Map[RuleTarget, FullRuleTargetInfo] = (
+      targetInfos.map(t => (t.target.target, t)).toMap ++ subCategories.flatMap( _.allTargets)
+  )
 }
 
 trait RoNodeGroupRepository {

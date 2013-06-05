@@ -51,10 +51,10 @@ sealed abstract class RuleTarget {
   def target:String
 }
 
-trait NonGroupRuleTarget extends RuleTarget
+sealed trait NonGroupRuleTarget extends RuleTarget
 
 object GroupTarget { def r = "group:(.+)".r }
-case class GroupTarget(groupId:NodeGroupId) extends RuleTarget with HashcodeCaching {
+final case class GroupTarget(groupId:NodeGroupId) extends RuleTarget with HashcodeCaching {
   override def target = "group:"+groupId.value
 }
 
@@ -64,16 +64,16 @@ case class GroupTarget(groupId:NodeGroupId) extends RuleTarget with HashcodeCach
 //}
 
 object PolicyServerTarget { def r = "policyServer:(.+)".r }
-case class PolicyServerTarget(nodeId:NodeId) extends NonGroupRuleTarget with HashcodeCaching {
+final case class PolicyServerTarget(nodeId:NodeId) extends NonGroupRuleTarget with HashcodeCaching {
   override def target = "policyServer:"+nodeId.value
 }
 
-case object AllTarget extends NonGroupRuleTarget {
+final case object AllTarget extends NonGroupRuleTarget {
   override def target = "special:all"
   def r = "special:all".r
 }
 
-case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
+final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
   override def target = "special:all_exceptPolicyServers"
   def r = "special:all_exceptPolicyServers".r
 }
