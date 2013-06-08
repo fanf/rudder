@@ -44,6 +44,7 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.utils.Control.sequence
 import com.normation.rudder.domain.policies.RuleTarget
 import com.normation.utils.HashcodeCaching
+import com.normation.rudder.domain.nodes.NodeInfo
 
 /**
  * A service that handle parameterized value of
@@ -119,7 +120,7 @@ trait ParameterizedValueLookupService {
    * We can provide a NodeInfo as cache for the node.
    *
    */
-  def lookupNodeParameterization(nodeId:NodeId, variables:Seq[Variable]) : Box[Seq[Variable]]
+  def lookupNodeParameterization(nodeId:NodeId, variables:Seq[Variable], allNodes:Set[NodeInfo]) : Box[Seq[Variable]]
 
   /**
    * Replace all parameterization of the form
@@ -128,7 +129,7 @@ trait ParameterizedValueLookupService {
    * TODO: handle cache !!
    *
    */
-  def lookupRuleParameterization(variables:Seq[Variable]) : Box[Seq[Variable]]
+  def lookupRuleParameterization(variables:Seq[Variable], allNodeInfos:Set[NodeInfo]) : Box[Seq[Variable]]
 
 
 
@@ -254,13 +255,13 @@ trait ParameterizedValueLookupService_lookupNodeParameterization extends Paramet
   }
 
 
-  override def lookupNodeParameterization(nodeId:NodeId, variables:Seq[Variable]) : Box[Seq[Variable]] = {
+  override def lookupNodeParameterization(nodeId:NodeId, variables:Seq[Variable], allNodes:Set[NodeInfo]) : Box[Seq[Variable]] = {
     for {
-      nodeInfo <- nodeInfoService.getNodeInfo(nodeId)
+      nodeInfo <- Box(allNodes.find( _.id == nodeId)) ?~! s"Can not find node with id ${nodeId.value}"
       variables <- sequence(variables) { v =>
         for {
           values <- sequence(v.values) { value =>
-            lookupNodeVariable(nodeInfo, nodeInfoService.getNodeInfo(nodeInfo.policyServerId), value)
+            lookupNodeVariable(nodeInfo, Box(allNodes.find( _.id == nodeInfo.policyServerId)), value)
           }
         } yield Variable.matchCopy(v, values)
       }
@@ -283,14 +284,14 @@ trait ParameterizedValueLookupService_lookupRuleParameterization extends Paramet
    * Replace all parameterization of the form
    * ${CONFGIGURATION_RULE_ID.XXX} by their values
    */
-  override def lookupRuleParameterization(variables:Seq[Variable]) : Box[Seq[Variable]] = {
+  override def lookupRuleParameterization(variables:Seq[Variable], allNodeInfos:Set[NodeInfo]) : Box[Seq[Variable]] = {
      sequence(variables) { variable =>
      logger.debug("Processing variable : %s".format(variable))
        (sequence(variable.values) { value =>
          value match {
            case CrParametrization(CrTargetParametrization(targetConfiguRuleId, targetAccessorName)) =>
              logger.debug("Processing rule's parameterized value on target: %s".format(value))
-             lookupTargetParameter(variable.spec, RuleId(targetConfiguRuleId), targetAccessorName)
+             lookupTargetParameter(variable.spec, RuleId(targetConfiguRuleId), targetAccessorName, allNodeInfos)
            case CrParametrization(CrVarParametrization(targetConfiguRuleId, varAccessorName)) =>
              logger.debug("Processing rule's parameterized value on variable: %s".format(value))
              lookupVariableParameter(variable.spec, RuleId(targetConfiguRuleId), varAccessorName)
@@ -324,7 +325,9 @@ trait ParameterizedValueLookupService_lookupRuleParameterization extends Paramet
   private[this] def lookupTargetParameter(
     sourceVariableSpec:VariableSpec,
     targetConfiguRuleId:RuleId,
-    targetAccessorName:String) : Box[Seq[String]] = {
+    targetAccessorName:String,
+    allNodes: Set[NodeInfo]
+  ) : Box[Seq[String]] = {
 
     if(isValidAccessorName(targetAccessorName)) {
       for {
@@ -339,7 +342,7 @@ trait ParameterizedValueLookupService_lookupRuleParameterization extends Paramet
         nodeIds <- sequence(targets.toSeq){target => directiveTargetService.getNodeIds(target)}
         cf1 = logger.trace("Fetched nodes ids : %s".format(nodeIds))
         nodeInfos <- sequence(nodeIds.flatten.distinct) { nodeId =>
-          nodeInfoService.getNodeInfo(nodeId)
+          allNodes.find( _.id == nodeId)
         }
         cf2 = logger.trace("Fetched nodes infos : %s".format(nodeInfos))
         cardinalityOk <- {

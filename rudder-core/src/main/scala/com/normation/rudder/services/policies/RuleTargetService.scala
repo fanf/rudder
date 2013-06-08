@@ -73,26 +73,6 @@ trait RuleTargetService {
    */
   def getNodeIds(target:RuleTarget) : Box[Seq[NodeId]]
 
-  /**
-   * A pure version of the "getNodeIds" that return the list of
-   * nodeIds without any I/O for the given rule.
-   */
-  def pureGetNodeIds(rule: Rule, groupLibrary: FullNodeGroupCategory, allNodeIds: Set[NodeInfo]) : Set[NodeId]
-
-  /**
-   * Get all information related to the target (isEnabled, etc).
-   * @param target
-   * @return Return empty is no such target exists, Failure in case of an error,
-   *   Full(info) in case of success.
-   */
-  def getTargetInfo(target:RuleTarget) : Box[RuleTargetInfo]
-
-  /**
-   * Retrieve all target defined in the system.
-   * @return
-   */
-  def getAllTargetInfo(includeSystem:Boolean = false) : Box[Seq[RuleTargetInfo]]
-
 }
 
 
@@ -106,38 +86,11 @@ class RuleTargetServiceImpl(
 ) extends RuleTargetService with
   RuleTargetService_findTargets with
   TargetToNodeIds with
-  TargetInfoService with
-  PureGetNodeIds
+  TargetInfoService
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-trait PureGetNodeIds extends RuleTargetService with Loggable {
-  /**
-   * A pure version of the "getNodeIds" that return the list of
-   * nodeIds without any I/O.
-   */
-  override def pureGetNodeIds(rule: Rule, groupLibrary: FullNodeGroupCategory, allNodeInfos: Set[NodeInfo]) : Set[NodeId] = {
-    (Set[NodeId]()/:rule.targets) {
-      case (nodes, t:NonGroupRuleTarget) =>
-        t match {
-          case AllTarget => return allNodeInfos.map( _.id )
-          case AllTargetExceptPolicyServers => nodes ++ allNodeInfos.collect { case(n) if(!n.isPolicyServer) => n.id }
-          case PolicyServerTarget(nodeId) => nodes + nodeId
-        }
-      //here, if we don't find the group, we consider it's an error in the
-      //target recording, but don't fail, just log it.
-      case (nodes, GroupTarget(groupId)) =>
-        val nodesForGroup = groupLibrary.allGroups.get(groupId).map( _.nodeGroup.serverList) match {
-          case None =>
-            logger.error(s"Ignoring target for Group with ID='${groupId.value}' used in rule '${rule.name}' (id:${rule.id.value}) because that group is not presnt in group library")
-            Set()
-          case Some(ids) => ids
-        }
-        nodes ++ nodesForGroup
-    }
-  }
-}
 
 trait TargetToNodeIds extends RuleTargetService {
 
@@ -148,8 +101,8 @@ trait TargetToNodeIds extends RuleTargetService {
     target match {
       case GroupTarget(groupId) => groupRepository.getNodeGroup(groupId).map{ case(g,parentCatId) => g.serverList.toSeq }
       case PolicyServerTarget(nodeId) => Full(Seq(nodeId))
-      case AllTarget => nodeInfoService.getAllIds
-      case AllTargetExceptPolicyServers => nodeInfoService.getAllUserNodeIds()
+      case AllTarget => nodeInfoService.getAll.map( _.toSeq.map( _.id ))
+      case AllTargetExceptPolicyServers => nodeInfoService.getAll.map( _.toSeq.collect { case n if(!n.isPolicyServer) => n.id } )
     }
   }
 
@@ -163,65 +116,6 @@ trait TargetInfoService extends  RuleTargetService {
   def ldap : LDAPConnectionProvider[RoLDAPConnection]
   def rudderDit : RudderDit
   def mapper: LDAPEntityMapper
-
-  /*
-   * TODO: there is no real reason to take appart Group and other
-   * targets.
-   * It may be clever to a TargetId LDAP attribute type, that
-   * nodeId < targetId, and that all other targets have a
-   * targetId defined by convention, or why not one by
-   * Ideas ex: special:all ==> targetId=all ;
-   *           policyServer:root => targetId=root ;
-   * Potential problem:
-   * - how to deserialize ? (one sub attribute by type ?)
-   * - overlaping ids.
-   */
-
-
-  override def getTargetInfo(target:RuleTarget) : Box[RuleTargetInfo] = {
-    //retrieve a target info from the target in LDAP directory
-    //does no do any other validation than checking that the target is the actually retrieved target info
-    def ldapGetTargetInfo : Box[RuleTargetInfo] = {
-      for {
-        con <- ldap
-        entry <- con.get(rudderDit.GROUP.SYSTEM.targetDN(target)) ?~! "Error when fetching for target info entry with DN: %s".format(rudderDit.GROUP.SYSTEM.targetDN(target))
-        targetInfo <- mapper.entry2RuleTargetInfo(entry) ?~! "Error when mapping entry with DN '%s' into a directive target info".format(entry.dn)
-        checkSameTarget <- if(target == targetInfo.target) Full("OK") else Failure("The retrieved target info does not match parameter target. Parameter target: '%s' ; retrieved target: '%s'".format(target, targetInfo.target))
-      } yield {
-        targetInfo
-      }
-    }
-
-    target match {
-      case GroupTarget(groupId) => groupRepository.getNodeGroup(groupId).map { case(g,parentCatId) =>
-        RuleTargetInfo(target, g.name , g.description , g.isEnabled , g.isSystem)
-      }
-      case PolicyServerTarget(nodeId) =>
-        for {
-          node <- nodeInfoService.getNodeInfo(nodeId) ?~! "Error when fetching for node %s".format(nodeId)
-          targetInfo <- ldapGetTargetInfo
-        } yield {
-          targetInfo
-        }
-      //other policy
-      case AllTarget => ldapGetTargetInfo
-      case AllTargetExceptPolicyServers => ldapGetTargetInfo
-    }
-  }
-
-  override def getAllTargetInfo(includeSystem:Boolean = false) : Box[Seq[RuleTargetInfo]] = {
-    val base_filter = OR( IS(OC_RUDDER_NODE_GROUP), IS(OC_SPECIAL_TARGET))
-    val filter = if(includeSystem) base_filter else AND(base_filter, EQ(A_IS_SYSTEM,false.toLDAPString))
-    for {
-      con <- ldap
-      //for each directive entry, map it. if one fails, all fails
-      targetInfos <- sequence(con.searchSub(rudderDit.GROUP.dn,  filter, A_OC, A_NODE_GROUP_UUID, A_NAME, A_RULE_TARGET, A_DESCRIPTION, A_IS_ENABLED, A_IS_SYSTEM)) { entry =>
-        mapper.entry2RuleTargetInfo(entry) ?~! "Error when transforming LDAP entry into a directive Target Info. Entry: %s".format(entry)
-      }
-    } yield {
-      targetInfos
-    }
-  }
 
 }
 

@@ -94,7 +94,6 @@ class RuleGrid(
 
   private[this] val reportingService = RudderConfig.reportingService
   private[this] val getAllNodeInfos  = RudderConfig.nodeInfoService.getAll _
-  private[this] val pureGetNodeIds   = RudderConfig.ruleTargetService.pureGetNodeIds _
   private[this] val techniqueRepository = RudderConfig.techniqueRepository
 
   //used to error tempering
@@ -275,7 +274,7 @@ class RuleGrid(
       if(rule.isEnabled) {
 
         val isAllTargetsEnabled = rule.targets.flatMap( groupLib.allTargets.get(_) ).filter(!_.isEnabled).isEmpty
-        val nodeTargetSize = pureGetNodeIds(rule, groupLib, allNodeInfos).size
+        val nodeTargetSize = groupLib.getNodeIds(rule.targets, allNodeInfos).size
         if (nodeTargetSize !=0) {
           if(isAllTargetsEnabled) {
             val disabled = (rule.directiveIds
@@ -550,7 +549,7 @@ class RuleGrid(
                  <div class="tooltipContent" id={tooltipId}><h3>Reason(s)</h3><div>{why}</div></div>
               case x:NotAppliedStatus =>
                 val isAllTargetsEnabled = line.targets.filter(t => !t.isEnabled).isEmpty
-                val nodeSize = pureGetNodeIds(line.rule, groupsLib, nodes).size
+                val nodeSize = groupsLib.getNodeIds(line.rule.targets, nodes).size
                 val conditions = Seq(
                     ( line.rule.isEnabled, "rule disabled" ),
                     ( line.trackerVariables.size > 0, "No policy defined"),

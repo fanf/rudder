@@ -55,6 +55,11 @@ import com.normation.rudder.domain.policies.RuleTargetInfo
 import com.normation.rudder.domain.policies.FullGroupTarget
 import com.normation.rudder.domain.policies.FullGroupTarget
 import com.normation.rudder.domain.policies.FullRuleTargetInfo
+import com.normation.rudder.domain.policies.AllTargetExceptPolicyServers
+import com.normation.rudder.domain.policies.AllTarget
+import com.normation.rudder.domain.policies.NonGroupRuleTarget
+import com.normation.rudder.domain.policies.PolicyServerTarget
+import com.normation.rudder.domain.policies.GroupTarget
 
 /**
  * Here is the ordering for a List[NodeGroupCategoryId]
@@ -97,7 +102,7 @@ final case class FullNodeGroupCategory(
   , subCategories: List[FullNodeGroupCategory]
   , targetInfos  : List[FullRuleTargetInfo]
   , isSystem     : Boolean = false
-) {
+) extends Loggable with HashcodeCaching {
 
   def toNodeGroupCategory = NodeGroupCategory(
       id = id
@@ -161,6 +166,31 @@ final case class FullNodeGroupCategory(
   val allTargets: Map[RuleTarget, FullRuleTargetInfo] = (
       targetInfos.map(t => (t.target.target, t)).toMap ++ subCategories.flatMap( _.allTargets)
   )
+
+
+  /**
+   * Return all node ids that match the set of target.
+   */
+  def getNodeIds(targets: Set[RuleTarget], allNodeInfos: Set[NodeInfo]) : Set[NodeId] = {
+    (Set[NodeId]()/:targets) {
+      case (nodes, t:NonGroupRuleTarget) =>
+        t match {
+          case AllTarget => return allNodeInfos.map( _.id )
+          case AllTargetExceptPolicyServers => nodes ++ allNodeInfos.collect { case(n) if(!n.isPolicyServer) => n.id }
+          case PolicyServerTarget(nodeId) => nodes + nodeId
+        }
+      //here, if we don't find the group, we consider it's an error in the
+      //target recording, but don't fail, just log it.
+      case (nodes, GroupTarget(groupId)) =>
+        val nodesForGroup = allGroups.get(groupId).map( _.nodeGroup.serverList) match {
+          case None =>
+            logger.error(s"Ignoring target for Group with ID='${groupId.value}' because that group is not present in group library")
+            Set()
+          case Some(ids) => ids
+        }
+        nodes ++ nodesForGroup
+    }
+  }
 }
 
 trait RoNodeGroupRepository {

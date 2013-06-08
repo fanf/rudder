@@ -50,7 +50,7 @@ import com.normation.rudder.exceptions.LicenseException
 import com.normation.cfclerk.services.SystemVariableSpecService
 
 trait SystemVariableService {
-  def getSystemVariables(nodeInfo: NodeInfo): Box[Map[String, Variable]]
+  def getSystemVariables(nodeInfo: NodeInfo, allNodeInfos:collection.immutable.Set[NodeInfo]): Box[Map[String, Variable]]
 }
 
 class SystemVariableServiceImpl(
@@ -88,7 +88,7 @@ class SystemVariableServiceImpl(
   val syslogPortConfig = SystemVariable(systemVariableSpecService.get("SYSLOGPORT"))
   syslogPortConfig.saveValue(syslogPort.toString)
 
-  def getSystemVariables(nodeInfo: NodeInfo): Box[Map[String, Variable]] = {
+  def getSystemVariables(nodeInfo: NodeInfo, allNodeInfos:collection.immutable.Set[NodeInfo]): Box[Map[String, Variable]] = {
     logger.debug("Preparing the system variables for server %s".format(nodeInfo.id.value))
 
     // Set the roles of the nodes
@@ -136,7 +136,7 @@ class SystemVariableServiceImpl(
       val allowedNodeVar = new SystemVariable(SystemVariableSpec(name = "${rudder.hasPolicyServer-" + nodeInfo.id.value + ".target.hostname}", description = "", multivalued = true))
       allowedNodeVar.values = Seq("${rudder.hasPolicyServer-" + nodeInfo.id.value + ".target.hostname}")
 
-      parameterizedValueLookupService.lookupRuleParameterization(Seq(allowedNodeVar)) match {
+      parameterizedValueLookupService.lookupRuleParameterization(Seq(allowedNodeVar),allNodeInfos) match {
         case Full(variable) =>
           allowConnect ++= variable.flatMap(x => x.values)
           clientList ++= variable.flatMap(x => x.values)
@@ -146,9 +146,9 @@ class SystemVariableServiceImpl(
       }
     }
 
-    nodeInfoService.getNodeInfo(nodeInfo.policyServerId) match {
-      case Full(policyServer) => allowConnect += policyServer.hostname
-      case f: EmptyBox => logger.error("Couldn't find the policy server of node %s".format(nodeInfo.id.value))
+    allNodeInfos.find( _.id == nodeInfo.policyServerId) match {
+      case Some(policyServer) => allowConnect += policyServer.hostname
+      case None => logger.error("Couldn't find the policy server of node %s".format(nodeInfo.id.value))
     }
 
     varAllowConnect.saveValues(allowConnect.toSeq)

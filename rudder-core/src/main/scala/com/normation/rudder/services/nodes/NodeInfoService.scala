@@ -68,13 +68,13 @@ trait NodeInfoService {
    * @param nodeId
    * @return
    */
-  def find(nodeIds: Seq[NodeId]) : Box[Seq[NodeInfo]]
+//  def find(nodeIds: Seq[NodeId]) : Box[Seq[NodeInfo]]
 
 
   /**
    * Get all node ids
    */
-  def getAllIds() : Box[Seq[NodeId]]
+//  def getAllIds() : Box[Seq[NodeId]]
 
   /**
    * Get all node infos.
@@ -89,7 +89,7 @@ trait NodeInfoService {
    * Get all "simple" node ids (i.e, all user nodes,
    * for example, NOT policy servers)
    */
-  def getAllUserNodeIds() : Box[Seq[NodeId]]
+//  def getAllUserNodeIds() : Box[Seq[NodeId]]
 
   /**
    * Get all systen node ids, for example

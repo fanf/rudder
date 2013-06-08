@@ -95,9 +95,7 @@ class HistorizationServiceImpl(
   def updateNodes() : Box[Unit] = {
     try {
     // Fetch all nodeinfo from the ldap
-      val ids = nodeInfoService.getAllUserNodeIds().openOr({HistorizationLogger.error("Could not fetch all node ids"); Seq()})
-
-      val nodeInfos = nodeInfoService.find(ids).openOr(
+      val nodeInfos = nodeInfoService.getAll.map( _.filter(_.isPolicyServer).toSeq).openOr(
           {HistorizationLogger.error("Could not fetch node details "); Seq()} )
 
       // fetch all the current nodes in the jdbc

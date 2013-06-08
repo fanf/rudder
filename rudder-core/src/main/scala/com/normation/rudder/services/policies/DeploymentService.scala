@@ -80,6 +80,7 @@ case class targetNodeConfiguration(
  */
 trait DeploymentService extends Loggable {
 
+  def nodeInfoService : NodeInfoService
 
   /**
    * All mighy method that take all modified rules, find their
@@ -92,6 +93,7 @@ trait DeploymentService extends Loggable {
   def deploy() : Box[Seq[NodeConfiguration]] = {
     val initialTime = DateTime.now().getMillis
     val result = for {
+      allNodeInfos <- nodeInfoService.getAll ?~! "Could not get Node Infos"
       rules <- findDependantRules ?~! "Could not find dependant rules"
       log1 = logger.debug("rules dependency solved in %d millisec, start to build RuleVals".format((DateTime.now().getMillis - initialTime)))
 
@@ -105,11 +107,11 @@ trait DeploymentService extends Loggable {
       log2 = logger.debug("RuleVals built in %d millisec, start to expand their values".format((DateTime.now().getMillis - crValTime)))
 
       expandRuleTime = DateTime.now().getMillis
-      ruleVals <- expandRuleVal(rawRuleVals)?~! "Cannot expand Rule vals values"
+      ruleVals <- expandRuleVal(rawRuleVals, allNodeInfos)?~! "Cannot expand Rule vals values"
       _ = logger.debug("RuleVals expanded in %d millisec, start to build targetNodeConfiguration".format((DateTime.now().getMillis - expandRuleTime)))
 
       targetNodeTime = DateTime.now().getMillis
-      (targetNodeConfigurations, expandedRules) <- buildtargetNodeConfigurations(ruleVals) ?~! "Cannot build target configuration node"
+      (targetNodeConfigurations, expandedRules) <- buildtargetNodeConfigurations(ruleVals, allNodeInfos) ?~! "Cannot build target configuration node"
       log3 = logger.debug("targetNodeConfiguration built in %d millisec, start to update whose needed to be updated.".format((DateTime.now().getMillis - targetNodeTime)))
 
       updateConfNodeTime = DateTime.now().getMillis
@@ -175,14 +177,14 @@ trait DeploymentService extends Loggable {
   /**
    * Expand the ${rudder.confRule.varName} in ruleVals
    */
-   def expandRuleVal(rawRuleVals:Seq[RuleVal]) : Box[Seq[RuleVal]]
+   def expandRuleVal(rawRuleVals:Seq[RuleVal], allNodeInfos: Set[NodeInfo]) : Box[Seq[RuleVal]]
 
   /**
    * From a list of ruleVal, find the list of all impacted nodes
    * with the actual Cf3PolicyDraftBean they will have.
    * Replace all ${node.varName} vars.
    */
-  def buildtargetNodeConfigurations(ruleVals:Seq[RuleVal]) : Box[(Seq[targetNodeConfiguration], Seq[ExpandedRuleVal])]
+  def buildtargetNodeConfigurations(ruleVals:Seq[RuleVal], allNodeInfos: Set[NodeInfo]) : Box[(Seq[targetNodeConfiguration], Seq[ExpandedRuleVal])]
 
   /**
    * For each CFCNodeConfiguration, look if the target node is already configured or
@@ -309,13 +311,13 @@ trait DeploymentService_buildRuleVals extends DeploymentService {
        rawRuleVals <- findRuleVals(rules) ?~! "Could not find configuration vals"
      } yield rawRuleVals
    }
-  
+
   /**
    * Expand the ${rudder.confRule.varName} in ruleVals
    */
-   override def expandRuleVal(rawRuleVals:Seq[RuleVal]) : Box[Seq[RuleVal]] = {
+   override def expandRuleVal(rawRuleVals:Seq[RuleVal], allNodeInfos: Set[NodeInfo]) : Box[Seq[RuleVal]] = {
      for {
-       replacedConfigurationVals <- replaceVariable(rawRuleVals) ?~! "Could not replace variables"
+       replacedConfigurationVals <- replaceVariable(rawRuleVals, allNodeInfos) ?~! "Could not replace variables"
      } yield replacedConfigurationVals
    }
 
@@ -344,13 +346,13 @@ trait DeploymentService_buildRuleVals extends DeploymentService {
     * @param rules
     * @return
     */
-   private[this] def replaceVariable(ruleVals:Seq[RuleVal]) : Box[Seq[RuleVal]] = {
+   private[this] def replaceVariable(ruleVals:Seq[RuleVal], allNodeInfos: Set[NodeInfo]) : Box[Seq[RuleVal]] = {
      sequence(ruleVals) { crv => {
        for {
          updatedPolicies <- { sequence(crv.directiveVals) {
            policy =>
              for {
-               replacedVariables <- parameterizedValueLookupService.lookupRuleParameterization(policy.variables.values.toSeq) ?~!
+               replacedVariables <- parameterizedValueLookupService.lookupRuleParameterization(policy.variables.values.toSeq, allNodeInfos) ?~!
                    "Error when processing rule (%s/%s:%s/%s) with variables: %s".format(
                        crv.ruleId.value,
                        policy.techniqueId.name.value,
@@ -382,7 +384,7 @@ trait DeploymentService_buildRuleVals extends DeploymentService {
   ) : Box[Seq[ExpandedRuleVal]] = {
     Full(rulesVal.map(ruleVal => {
       rules.find { case(id,serial) => id == ruleVal.ruleId } match {
-        case Some((id,serial)) => 
+        case Some((id,serial)) =>
           ruleVal.copy(serial = serial)
         case _ => ruleVal
       }
@@ -397,7 +399,6 @@ trait DeploymentService_buildRuleVals extends DeploymentService {
 trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService with Loggable {
   def systemVarService: SystemVariableService
   def targetToNodeService : RuleTargetService
-  def nodeInfoService : NodeInfoService
   def parameterizedValueLookupService : ParameterizedValueLookupService
 
   /**
@@ -419,7 +420,7 @@ trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService 
    * with the actual Cf3PolicyDraftBean they will have.
    * Replace all ${rudder.node.varName} vars, returns the nodes ready to be configured, and expanded RuleVal
    */
-  override def buildtargetNodeConfigurations(ruleVals:Seq[RuleVal]) : Box[(Seq[targetNodeConfiguration], Seq[ExpandedRuleVal])] = {
+  override def buildtargetNodeConfigurations(ruleVals:Seq[RuleVal], allNodeInfos: Set[NodeInfo]) : Box[(Seq[targetNodeConfiguration], Seq[ExpandedRuleVal])] = {
     val targetNodeConfigMap = scala.collection.mutable.Map[NodeId, MutabletargetNodeConfiguration]()
 
     ruleVals.foreach { ruleVal =>
@@ -436,8 +437,8 @@ trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService 
         targetNodeConfigMap.get(nodeId) match {
           case None => //init nodeConfig for that id
             (for {
-              nodeInfo <- nodeInfoService.getNodeInfo(nodeId)
-              nodeContext <- systemVarService.getSystemVariables(nodeInfo)
+              nodeInfo <- Box(allNodeInfos.find( _.id == nodeId)) ?~! s"Node with ID ${nodeId.value} was not found"
+              nodeContext <- systemVarService.getSystemVariables(nodeInfo, allNodeInfos)
             } yield {
               val nodeConfig = MutabletargetNodeConfiguration(nodeInfo, nodeContext.toMap)
               nodeConfig.identifiablePolicyDrafts ++= ruleVal.toPolicyDrafts
@@ -458,7 +459,7 @@ trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService 
     if(duplicates.isEmpty) {
       //replace variable of the form ${rudder.node.XXX} in both context and variable beans
       val nodes = sequence(targetNodeConfigMap.values.toSeq) { x =>
-        replaceNodeVars(x)
+        replaceNodeVars(x, allNodeInfos)
       }
 
       for {
@@ -504,13 +505,13 @@ trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService 
   /**
    * Replace variables in a node
    */
-  private[this] def replaceNodeVars(targetNodeConfig:MutabletargetNodeConfiguration) : Box[MutabletargetNodeConfiguration] = {
+  private[this] def replaceNodeVars(targetNodeConfig:MutabletargetNodeConfiguration, allNodeInfos: Set[NodeInfo]) : Box[MutabletargetNodeConfiguration] = {
     val nodeId = targetNodeConfig.nodeInfo.id
     //replace in system vars
     def replaceNodeContext() : Box[Map[String, Variable]] = {
       (sequence(targetNodeConfig.nodeContext.toSeq) { case (k, variable) =>
         for {
-          replacedVar <- parameterizedValueLookupService.lookupNodeParameterization(nodeId, Seq(variable))
+          replacedVar <- parameterizedValueLookupService.lookupNodeParameterization(nodeId, Seq(variable), allNodeInfos)
         } yield {
           (k, replacedVar(0))
         }
@@ -523,7 +524,7 @@ trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService 
     def replaceDirective(policy:PolicyDraft) : Box[PolicyDraft] = {
       ( for {
         variables <- Full(policy.__variableMap.values.toSeq)
-        replacedVars <- parameterizedValueLookupService.lookupNodeParameterization(nodeId, variables)
+        replacedVars <- parameterizedValueLookupService.lookupNodeParameterization(nodeId, variables, allNodeInfos)
       } yield {
         policy.copy(
             __variableMap = Map[String, Variable]() ++ policy.__variableMap ++ replacedVars.map(v => (v.spec.name, v) )
@@ -535,21 +536,21 @@ trait DeploymentService_buildtargetNodeConfigurations extends DeploymentService 
     }
 
     def identifyModifiedVariable(originalVars : Seq[Variable], replacedVars : Seq[Variable]) : Seq[Variable] = {
-      replacedVars.map { variable =>  
+      replacedVars.map { variable =>
         { originalVars.filter( x => x.spec == variable.spec ) match {
           case seq if seq.size == 0 => None
           case seq if seq.size > 1 => logger.debug("too many replaced variable for one variable " + seq); None
-          case seq => 
+          case seq =>
             val original = seq.head
-            if (original.values == variable.values) 
+            if (original.values == variable.values)
               Some(original)
 	        else
 	          None
 	        }
-        } 
+        }
       }.flatten
     }
-    
+
     for {
       replacedNodeContext <- replaceNodeContext()
       replacedDirective <- sequence(targetNodeConfig.identifiablePolicyDrafts) { case(pib) =>
@@ -579,7 +580,7 @@ trait DeploymentService_updateAndWriteRule extends DeploymentService {
   def nodeConfigurationChangeDetectService : NodeConfigurationChangeDetectService
 
   def roRuleRepo: RoRuleRepository
-  
+
   def woRuleRepo: WoRuleRepository
 
    /**
