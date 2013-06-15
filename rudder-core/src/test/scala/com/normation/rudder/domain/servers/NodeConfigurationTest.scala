@@ -120,11 +120,11 @@ class NodeConfigurationTest {
         Map(),
         Map())
     assertEquals(newNode.isPolicyServer, false)
-    assertEquals(newNode.getCurrentDirectives.size.toLong, 0L)
-    assertEquals(newNode.getDirectives.size.toLong, 0L)
+    assertEquals(newNode.currentRulePolicyDrafts.size.toLong, 0L)
+    assertEquals(newNode.targetRulePolicyDrafts.size.toLong, 0L)
 
-    assertEquals(newNode.getCurrentSystemVariables.size.toLong, 0L)
-    assertEquals(newNode.getTargetSystemVariables.size.toLong, 0L)
+    assertEquals(newNode.currentSystemVariables.size.toLong, 0L)
+    assertEquals(newNode.targetSystemVariables.size.toLong, 0L)
 
     assertEquals(newNode.isModified, false)
     assertEquals(newNode.targetMinimalNodeConfig.agentsName.size.toLong, 0L)
@@ -139,8 +139,8 @@ class NodeConfigurationTest {
 
         assertEquals(node.isModified, true)
         // Current policy don't change, but target does
-        assertEquals(node.getCurrentDirectives.size.toLong, 0)
-        assertEquals(node.getDirectives.size.toLong, 1L)
+        assertEquals(node.currentRulePolicyDrafts.size.toLong, 0)
+        assertEquals(node.targetRulePolicyDrafts.size.toLong, 1L)
 
         assertEquals(node.findDirectiveByTechnique(new TechniqueId(TechniqueName("ppId"), TechniqueVersion("1.0"))).size.toLong, 1L)
         assertEquals(node.findDirectiveByTechnique(new TechniqueId(TechniqueName("ppId1"), TechniqueVersion("1.0"))).size.toLong, 0L)
@@ -164,11 +164,11 @@ class NodeConfigurationTest {
         Map())
 
     assertEquals(newNode.isPolicyServer, false)
-    assertEquals(newNode.getCurrentDirectives.size.toLong, 1L)
-    assertEquals(newNode.getDirectives.size.toLong, 1L)
+    assertEquals(newNode.currentRulePolicyDrafts.size.toLong, 1L)
+    assertEquals(newNode.targetRulePolicyDrafts.size.toLong, 1L)
 
-    assertEquals(newNode.getCurrentSystemVariables.size.toLong, 0L)
-    assertEquals(newNode.getTargetSystemVariables.size.toLong, 0L)
+    assertEquals(newNode.currentSystemVariables.size.toLong, 0L)
+    assertEquals(newNode.targetSystemVariables.size.toLong, 0L)
 
     assertEquals(newNode.isModified, false)
     assertEquals(newNode.targetMinimalNodeConfig.agentsName.size.toLong, 0L)

@@ -94,7 +94,9 @@ case class ExpandedRuleVal(
 case class RuleWithCf3PolicyDraft (
     ruleId        : RuleId
   , cf3PolicyDraft: Cf3PolicyDraft
-) extends HashcodeCaching
+) extends HashcodeCaching {
+  val draftId = cf3PolicyDraft.id
+}
 
 /**
  * This is the draft of the policy, not yet a cfengine policy, but a level of abstraction between both
@@ -111,13 +113,15 @@ case class PolicyDraft(
 )extends HashcodeCaching {
   def toRuleWithCf3PolicyDraft : RuleWithCf3PolicyDraft =
     RuleWithCf3PolicyDraft(ruleId,
-        new Cf3PolicyDraft(
+        Cf3PolicyDraft(
             Cf3PolicyDraftId(ruleId.value + "@@" + directiveId.value)
           , techniqueId
-          , __variableMap = Map[String, Variable]() ++__variableMap
+          , __variableMap
           , trackerVariable
           , priority = priority
-          , serial = serial ))
+          , serial = serial
+        )
+    )
 
   def toDirectiveVal : DirectiveVal = {
     DirectiveVal(

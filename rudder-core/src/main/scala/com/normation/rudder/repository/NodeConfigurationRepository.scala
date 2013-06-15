@@ -37,7 +37,6 @@ package com.normation.rudder.repository
 import com.normation.inventory.domain.NodeId
 import net.liftweb.common.Box
 import com.normation.rudder.domain.policies.RuleId
-import scala.collection._
 import com.normation.rudder.domain.servers._
 import com.normation.rudder.domain._
 import com.normation.rudder.exceptions._

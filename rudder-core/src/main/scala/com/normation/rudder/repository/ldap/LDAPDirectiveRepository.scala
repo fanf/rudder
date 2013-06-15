@@ -653,7 +653,7 @@ class WoLDAPDirectiveRepository(
                        for {
                          parents  <- activeTechniqueBreadCrump(activeTechnique.id)
                          commiter <- personIdentService.getPersonIdentOrDefault(actor.name)
-                         archived <- gitPiArchiver.archiveDirective(directive, technique.id.name, parents.map( _.id), technique.rootSection, Some(modId,commiter, reason))
+                         archived <- gitPiArchiver.archiveDirective(directive, technique.id.name, parents.map( _.id), technique.rootSection, Some((modId,commiter, reason)))
                        } yield archived
                      } else Full("ok")
     } yield {

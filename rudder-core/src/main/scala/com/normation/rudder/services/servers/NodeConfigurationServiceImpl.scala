@@ -47,7 +47,6 @@ import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.Rule
 import com.normation.utils.User
 import com.normation.eventlog.EventActor
-import scala.collection._
 import com.normation.rudder.domain.servers._
 import com.normation.rudder.domain._
 import com.normation.rudder.services.servers._
@@ -245,7 +244,7 @@ class NodeConfigurationServiceImpl(
               //server.id  = target.nodeInfo.id.value //not mutable TODO: use it in the constructor
 
               node.copy(
-                  __targetRulePolicyDrafts = Seq[RuleWithCf3PolicyDraft](),
+                  targetRulePolicyDrafts = Seq[RuleWithCf3PolicyDraft](),
                   targetMinimalNodeConfig = new MinimalNodeConfig(
                       target.nodeInfo.name ,
                       target.nodeInfo.hostname ,
@@ -259,7 +258,7 @@ class NodeConfigurationServiceImpl(
 
             case Full(rootServer : RootNodeConfiguration) =>
               rootServer.copy(
-                  __targetRulePolicyDrafts = Seq[RuleWithCf3PolicyDraft](),
+                  targetRulePolicyDrafts = Seq[RuleWithCf3PolicyDraft](),
                   targetMinimalNodeConfig = new MinimalNodeConfig(
                       target.nodeInfo.name ,
                       target.nodeInfo.hostname ,
@@ -416,7 +415,7 @@ class NodeConfigurationServiceImpl(
           LOGGER.warn("Must also write the modification of node {}", node.id)
           return ParamFailure[Seq[NodeId]]("NodeConfiguration " + node.id + " needs to be written too", Full(new VariableException("NodeConfiguration " + node + " needs to be written too")), Empty, ids)
         } else {
-          if (node.getDirectives.size == 0) {
+          if (node.targetRulePolicyDrafts.size == 0) {
             LOGGER.warn("Can't write a server without policy {}", node.id)
             return Failure("Can't write a server without policy " + node, Full(throw new TechniqueException("Can't write a server without policy ")), Empty)
 
@@ -552,12 +551,12 @@ class NodeConfigurationServiceImpl(
 
     for (directive <- directives) {
         // check the legit character of the policy
-        if (modifiedNode.getDirective(directive.cf3PolicyDraft.id) != None) {
+        if (modifiedNode.targetRulePolicyDrafts.find( _.draftId == directive.draftId) != None) {
           LOGGER.warn("Cannot add a directive with the same id than an already existing one {} ",
-              directive.cf3PolicyDraft.id)
+              directive.draftId)
           return ParamFailure[RuleWithCf3PolicyDraft](
               "Duplicate directive",
-              Full(new TechniqueException("Duplicate directive " + directive.cf3PolicyDraft.id)),
+              Full(new TechniqueException("Duplicate directive " + directive.draftId)),
               Empty,
               directive)
         }

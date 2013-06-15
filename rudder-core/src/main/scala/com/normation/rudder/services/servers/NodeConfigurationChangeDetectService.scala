@@ -109,31 +109,31 @@ class NodeConfigurationChangeDetectServiceImpl(
     // First case : a change in the minimalnodeconfig is a change of all CRs
     if (node.currentMinimalNodeConfig != node.targetMinimalNodeConfig) {
       logger.trace("A change in the minimal configuration of node %s".format( node.id) )
-      return node.getCurrentDirectives.map(x => x._2.ruleId).toSet ++ node.getDirectives.map(x => x._2.ruleId).toSet
+      return node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
     }
 
     // Second case : a change in the system variable is a change of all CRs
-    if (detectChangeInSystemVar(node.getCurrentSystemVariables, node.getTargetSystemVariables)) {
+    if (detectChangeInSystemVar(node.currentSystemVariables, node.targetSystemVariables)) {
       logger.trace("A change in the system variable node %s".format( node.id) )
-      return node.getCurrentDirectives.map(x => x._2.ruleId).toSet ++ node.getDirectives.map(x => x._2.ruleId).toSet
+      return node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
     }
 
     val mySet = scala.collection.mutable.Set[RuleId]()
 
-    val currents = node.getCurrentDirectives
-    val targets  = node.getDirectives
+    val currents = node.currentRulePolicyDrafts
+    val targets  = node.targetRulePolicyDrafts
     // Other case :
     // Added or modified directive
     for (target <- targets) {
-      currents.get(target._1) match {
-        case None =>  mySet += target._2.ruleId
+      currents.find( _.draftId == target.draftId) match {
+        case None =>  mySet += target.ruleId
         case Some(currentIdPi) =>
           // Check that the PI is in the same CR
-          if (currentIdPi.ruleId != target._2.ruleId) {
-            mySet += target._2.ruleId
+          if (currentIdPi.ruleId != target.ruleId) {
+            mySet += target.ruleId
             mySet += currentIdPi.ruleId
           } else {
-            if (!currentIdPi.cf3PolicyDraft.equalsWithSameValues(target._2.cf3PolicyDraft)) {
+            if (!currentIdPi.cf3PolicyDraft.equalsWithSameValues(target.cf3PolicyDraft)) {
               mySet += currentIdPi.ruleId
               // todo : check the date also
             }
@@ -142,23 +142,23 @@ class NodeConfigurationChangeDetectServiceImpl(
     }
 
     // Removed PI
-    for ((currentCFCId, currentIdentifiable) <- currents) {
-      targets.get(currentCFCId) match {
+    for (currentIdentifiable <- currents) {
+      targets.find( _.draftId == currentIdentifiable.draftId) match {
         case None => mySet += currentIdentifiable.ruleId
         case Some(x) => // Nothing to do, it has been handled previously
       }
     }
 
-    mySet ++= currents.filter(x => getAcceptationDate(x._2.cf3PolicyDraft.techniqueId) match {
+    mySet ++= currents.filter(x => getAcceptationDate(x.cf3PolicyDraft.techniqueId) match {
       case Full(acceptationDate) =>
         node.writtenDate match {
           case Some(writtenDate) => acceptationDate.isAfter(writtenDate)
           case None => true
         }
-      case _ => logger.warn("Could not find the acceptation date for policy package %s version %s".format(x._2.cf3PolicyDraft.techniqueId.name, x._2.cf3PolicyDraft.techniqueId.version.toString))
+      case _ => logger.warn("Could not find the acceptation date for policy package %s version %s".format(x.cf3PolicyDraft.techniqueId.name, x.cf3PolicyDraft.techniqueId.version.toString))
                 false
 
-    }).map(x => x._2.ruleId)
+    }).map(_.ruleId)
 
     mySet.toSet
 

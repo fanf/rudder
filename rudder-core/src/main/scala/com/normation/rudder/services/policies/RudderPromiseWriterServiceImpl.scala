@@ -118,7 +118,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
     val folders = mutable.Buffer[(NodeConfiguration, String, String, String)]()
     // Writing the policy
     for (node <- updateBatch.updatedNodeConfigurations.valuesIterator) {
-      if (node.getDirectives.size == 0) {
+      if (node.targetRulePolicyDrafts.size == 0) {
         logger.error("Could not write the promises for server %s : No policy found on server".format(node.id))
         throw new Exception("Could not write the promises : no policy on machine " + node)
       }
@@ -155,16 +155,16 @@ class RudderCf3PromisesFileWriterServiceImpl(
     val folders = mutable.Set[(NodeConfiguration, String, String, String)]()
 
     for (agentType <- node.targetMinimalNodeConfig.agentsName) {
-      val varNova = SystemVariable(systemVariableSpecService.get("NOVA"))
-      val varCommunity = SystemVariable(systemVariableSpecService.get("COMMUNITY"))
+      var varNova = SystemVariable(systemVariableSpecService.get("NOVA"), Seq())
+      var varCommunity = SystemVariable(systemVariableSpecService.get("COMMUNITY"), Seq())
 
       agentType match {
-        case NOVA_AGENT => varNova.saveValue("true")
-        case COMMUNITY_AGENT => varCommunity.saveValue("true")
+        case NOVA_AGENT => varNova = varNova.copyWithSavedValue("true")
+        case COMMUNITY_AGENT => varCommunity = varCommunity.copyWithSavedValue("true")
         case x => return Failure("Unrecognized agent type: %s. Known values are: %s".format(x, AgentType.allValues))
       }
 
-      val systemVariables = node.getTargetSystemVariables + (varNova.spec.name -> varNova) + (varCommunity.spec.name -> varCommunity)
+      val systemVariables = node.targetSystemVariables + (varNova.spec.name -> varNova) + (varCommunity.spec.name -> varCommunity)
 
       val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = nodeConfigurationRepository.getRootNodeConfiguration match {
         case Full(root: NodeConfiguration) if root.id == node.id => (pathComputer.getRootPath(agentType), pathComputer.getRootPath(agentType) + newPostfix, pathComputer.getRootPath(agentType) + backupPostfix, pathComputer.getRootPath(agentType) + newPostfix)

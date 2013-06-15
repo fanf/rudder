@@ -73,8 +73,7 @@ class LDAPNodeConfigurationMapper(
     var returnedMap = scala.collection.mutable.Map[String, Variable]()
     for ((variableName, values) <- variableMap) {
       try {
-        val settedVariable = SystemVariable(systemVariableSpecService.get(variableName))
-        settedVariable.values = values
+        val settedVariable = new SystemVariable(systemVariableSpecService.get(variableName), values)
         returnedMap += (settedVariable.spec.name -> settedVariable)
       } catch {
         case e: Exception => logger.error("Could not fetch spec for system variable %s".format(variableName))
@@ -257,8 +256,8 @@ class LDAPNodeConfigurationMapper(
     def fromDirective(identifiable:RuleWithCf3PolicyDraft,  serverEntry:LDAPEntry, isCurrent:Boolean) : LDAPEntry = {
 
       val entry =
-        if(isCurrent) rudderDit.NODE_CONFIGS.NODE_CONFIG.CF3POLICYDRAFT.model(identifiable.cf3PolicyDraft.id.value, serverEntry.dn)
-        else rudderDit.NODE_CONFIGS.NODE_CONFIG.TARGET_CF3POLICYDRAFT.model(identifiable.cf3PolicyDraft.id.value, serverEntry.dn)
+        if(isCurrent) rudderDit.NODE_CONFIGS.NODE_CONFIG.CF3POLICYDRAFT.model(identifiable.draftId.value, serverEntry.dn)
+        else rudderDit.NODE_CONFIGS.NODE_CONFIG.TARGET_CF3POLICYDRAFT.model(identifiable.draftId.value, serverEntry.dn)
 
       val vars = identifiable.cf3PolicyDraft.getVariables().values.toSeq :+ identifiable.cf3PolicyDraft.trackerVariable
       entry +=! (A_RULE_UUID, identifiable.ruleId.value)
@@ -306,14 +305,14 @@ class LDAPNodeConfigurationMapper(
     serverEntry +=!(A_IS_POLICY_SERVER, server.isPolicyServer.toLDAPString )
 
     // Add the system variable
-    serverEntry +=!(A_NODE_CONFIGURATION_SYSTEM_VARIABLE, variableToSeq(server.getCurrentSystemVariables().values.toSeq):_*)
-    serverEntry +=!(A_NODE_CONFIGURATION_TARGET_SYSTEM_VARIABLE, variableToSeq(server.getTargetSystemVariables().values.toSeq):_*)
+    serverEntry +=!(A_NODE_CONFIGURATION_SYSTEM_VARIABLE, variableToSeq(server.currentSystemVariables.values.toSeq):_*)
+    serverEntry +=!(A_NODE_CONFIGURATION_TARGET_SYSTEM_VARIABLE, variableToSeq(server.targetSystemVariables.values.toSeq):_*)
 
     //should be ok, that's why we use an exception
     LDAPTree(
       Seq(serverEntry) ++  //server root entry
-      { server.getCurrentDirectives.map( directive => fromDirective(directive._2, serverEntry, true)) } ++
-      { server.getDirectives.map( directive => fromDirective(directive._2, serverEntry, false)) }
+      { server.currentRulePolicyDrafts.map( draft => fromDirective(draft, serverEntry, true)) } ++
+      { server.targetRulePolicyDrafts.map( draft => fromDirective(draft, serverEntry, false)) }
     ) match {
       case Full(tree) => tree
       case e:EmptyBox =>
