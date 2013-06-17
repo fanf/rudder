@@ -45,6 +45,7 @@ import com.normation.cfclerk.domain.{TechniqueId, Cf3PolicyDraftId,Cf3PolicyDraf
 import com.normation.rudder.domain.policies.{Rule,RuleId}
 import com.normation.utils.HashcodeCaching
 import com.normation.inventory.domain.AgentType
+import com.normation.inventory.domain.NodeId
 
 case class MinimalNodeConfig(
     name                         : String
@@ -55,7 +56,7 @@ case class MinimalNodeConfig(
 ) extends HashcodeCaching
 
 sealed trait NodeConfiguration extends Loggable {
-  def id                        : String
+  def id                        : NodeId
   def currentRulePolicyDrafts   : Seq[RuleWithCf3PolicyDraft]
   def targetRulePolicyDrafts    : Seq[RuleWithCf3PolicyDraft]
   def isPolicyServer            : Boolean
@@ -195,7 +196,7 @@ object NodeConfiguration {
 ///////////////////////////////////////
 
 final case class RootNodeConfiguration(
-    id                       : String
+    id                       : NodeId
   , currentRulePolicyDrafts  : Seq[RuleWithCf3PolicyDraft] = Seq()
   , targetRulePolicyDrafts   : Seq[RuleWithCf3PolicyDraft] = Seq()
   , isPolicyServer           : Boolean
@@ -255,7 +256,7 @@ object RootNodeConfiguration {
 }
 
 final case class SimpleNodeConfiguration(
-    id                       : String
+    id                       : NodeId
   , currentRulePolicyDrafts  : Seq[RuleWithCf3PolicyDraft] = Seq()
   , targetRulePolicyDrafts   : Seq[RuleWithCf3PolicyDraft] = Seq()
   , isPolicyServer           : Boolean = false

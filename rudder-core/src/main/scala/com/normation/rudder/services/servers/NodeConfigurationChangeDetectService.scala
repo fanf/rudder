@@ -44,6 +44,7 @@ import net.liftweb.common.Box
 import org.joda.time.DateTime
 import com.normation.cfclerk.domain.TechniqueId
 import net.liftweb.common.Full
+import com.normation.rudder.repository.FullActiveTechniqueCategory
 
 
 /**
@@ -51,21 +52,24 @@ import net.liftweb.common.Full
  */
 trait NodeConfigurationChangeDetectService {
 
-  def detectChangeInNode(node : NodeConfiguration) : Set[RuleId]
+  def detectChangeInNode(node : NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId]
 
-  def detectChangeInNodes(nodes : Seq[NodeConfiguration]) : Seq[RuleId]
+  def detectChangeInNodes(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
+    nodes.flatMap(node => detectChangeInNode(node, directiveLib)).toSet
+  }
 
 }
 
 
-class NodeConfigurationChangeDetectServiceImpl(
-    activeTechniqueRepository : RoDirectiveRepository) extends NodeConfigurationChangeDetectService with Loggable {
+class NodeConfigurationChangeDetectServiceImpl() extends NodeConfigurationChangeDetectService with Loggable {
+
+
 
   /**
    * Return true if the variables are differents
    */
   private def compareVariablesValues(one : Variable, two : Variable) : Boolean = {
-    return one.values.map(x => x.trim) != two.values.map(x => x.trim)
+    one.values.map(x => x.trim) != two.values.map(x => x.trim)
   }
 
   /**
@@ -93,79 +97,65 @@ class NodeConfigurationChangeDetectServiceImpl(
   }
 
 
-  /**
-   * Fetch the acceptation date of a Technique
-   */
-  private def getAcceptationDate(TechniqueId : TechniqueId) : Box[DateTime] = {
-    activeTechniqueRepository.getActiveTechnique(TechniqueId.name).map(x =>
-      x.acceptationDatetimes(TechniqueId.version))
-
-  }
-
-
-  def detectChangeInNode(node : NodeConfiguration) : Set[RuleId] = {
-    logger.info("Checking changes in node %s".format( node.id) )
+  override def detectChangeInNode(node : NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
+    logger.debug("Checking changes in node %s".format( node.id) )
 
     // First case : a change in the minimalnodeconfig is a change of all CRs
     if (node.currentMinimalNodeConfig != node.targetMinimalNodeConfig) {
       logger.trace("A change in the minimal configuration of node %s".format( node.id) )
-      return node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
-    }
+      node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
 
     // Second case : a change in the system variable is a change of all CRs
-    if (detectChangeInSystemVar(node.currentSystemVariables, node.targetSystemVariables)) {
+    } else if (detectChangeInSystemVar(node.currentSystemVariables, node.targetSystemVariables)) {
       logger.trace("A change in the system variable node %s".format( node.id) )
-      return node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
-    }
+      node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
+    } else {
 
-    val mySet = scala.collection.mutable.Set[RuleId]()
+      val mySet = scala.collection.mutable.Set[RuleId]()
 
-    val currents = node.currentRulePolicyDrafts
-    val targets  = node.targetRulePolicyDrafts
-    // Other case :
-    // Added or modified directive
-    for (target <- targets) {
-      currents.find( _.draftId == target.draftId) match {
-        case None =>  mySet += target.ruleId
-        case Some(currentIdPi) =>
-          // Check that the PI is in the same CR
-          if (currentIdPi.ruleId != target.ruleId) {
+      val currents = node.currentRulePolicyDrafts
+      val targets  = node.targetRulePolicyDrafts
+      // Other case :
+      // Added or modified directive
+      for (target <- targets) {
+        currents.find( _.draftId == target.draftId) match {
+          case None =>
             mySet += target.ruleId
-            mySet += currentIdPi.ruleId
-          } else {
-            if (!currentIdPi.cf3PolicyDraft.equalsWithSameValues(target.cf3PolicyDraft)) {
+          case Some(currentIdPi) =>
+            // Check that the PI is in the same CR
+            if (currentIdPi.ruleId != target.ruleId) {
+              mySet += target.ruleId
               mySet += currentIdPi.ruleId
-              // todo : check the date also
+            } else {
+              if (!currentIdPi.cf3PolicyDraft.equalsWithSameValues(target.cf3PolicyDraft)) {
+                mySet += currentIdPi.ruleId
+                // todo : check the date also
+              }
             }
-          }
-      }
-    }
-
-    // Removed PI
-    for (currentIdentifiable <- currents) {
-      targets.find( _.draftId == currentIdentifiable.draftId) match {
-        case None => mySet += currentIdentifiable.ruleId
-        case Some(x) => // Nothing to do, it has been handled previously
-      }
-    }
-
-    mySet ++= currents.filter(x => getAcceptationDate(x.cf3PolicyDraft.techniqueId) match {
-      case Full(acceptationDate) =>
-        node.writtenDate match {
-          case Some(writtenDate) => acceptationDate.isAfter(writtenDate)
-          case None => true
         }
-      case _ => logger.warn("Could not find the acceptation date for policy package %s version %s".format(x.cf3PolicyDraft.techniqueId.name, x.cf3PolicyDraft.techniqueId.version.toString))
-                false
+      }
 
-    }).map(_.ruleId)
+      // Removed PI
+      for (currentIdentifiable <- currents) {
+        targets.find( _.draftId == currentIdentifiable.draftId) match {
+          case None => mySet += currentIdentifiable.ruleId
+          case Some(x) => // Nothing to do, it has been handled previously
+        }
+      }
 
-    mySet.toSet
+      mySet ++= currents.filter(x => directiveLib.allTechniques.get(x.cf3PolicyDraft.techniqueId) match {
+        case Some((_, Some(acceptationDate))) =>
+          node.writtenDate match {
+            case Some(writtenDate) => acceptationDate.isAfter(writtenDate)
+            case None => true
+          }
+        case _ =>
+          logger.warn("Could not find the acceptation date for policy package %s version %s".format(x.cf3PolicyDraft.techniqueId.name, x.cf3PolicyDraft.techniqueId.version.toString))
+          false
 
-  }
+      }).map(_.ruleId)
 
-
-  def detectChangeInNodes(nodes : Seq[NodeConfiguration]) = {
-    nodes.flatMap(node => detectChangeInNode(node)).toSet.toSeq
+      mySet.toSet
+    }
   }
 }

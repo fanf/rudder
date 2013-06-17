@@ -37,6 +37,7 @@ package com.normation.rudder.domain.transporter
 import com.normation.rudder.domain.eventlog._
 import scala.collection._
 import com.normation.rudder.domain.servers._
+import com.normation.inventory.domain.NodeId
 
 /**
  * UpdateBatch : holds the informations regarding the current update happening :
@@ -50,11 +51,11 @@ class UpdateBatch {
 
 
 
-  val updatedNodeConfigurations = mutable.Map[String, NodeConfiguration]()
+  val updatedNodeConfigurations = mutable.Map[NodeId, NodeConfiguration]()
 
 
 
-  def getNodeConfiguration(id : String) : Option[NodeConfiguration] = {
+  def getNodeConfiguration(id : NodeId) : Option[NodeConfiguration] = {
     updatedNodeConfigurations.get(id)
   }
 

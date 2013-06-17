@@ -43,6 +43,7 @@ import java.io.File
 import java.io.IOException
 import com.normation.rudder.repository.LicenseRepository
 import com.normation.cfclerk.domain.PromisesFinalMoveInfo
+import com.normation.inventory.domain.NodeId
 
 trait TemplateWriter extends Loggable {
   val licenseRepository : LicenseRepository
@@ -52,7 +53,7 @@ trait TemplateWriter extends Loggable {
    * Write the promises of all the nodes
    * @param updateBatch : the container for the server to be updated
    */
-  def writePromisesForMachines(updateBatch : UpdateBatch) : Box[Seq[PromisesFinalMoveInfo]]
+  def writePromisesForMachines(updateBatch : UpdateBatch, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
 
   /**
    * Write data specific from the roles
@@ -74,11 +75,11 @@ trait TemplateWriter extends Loggable {
       case true =>  copyLicenseFile(nodeConfiguration.id, newMachineFolder)
 
 
-      case false => copyLicenseFile(nodeConfiguration.targetMinimalNodeConfig.policyServerId, newMachineFolder)
+      case false => copyLicenseFile(NodeId(nodeConfiguration.targetMinimalNodeConfig.policyServerId), newMachineFolder)
     }
   }
 
-  private def copyLicenseFile(nodeConfigurationid: String, newMachineFolder:String) : Unit = {
+  private def copyLicenseFile(nodeConfigurationid: NodeId, newMachineFolder:String) : Unit = {
     licenseRepository.findLicense(nodeConfigurationid) match {
       case None => throw new Exception("Could not find license file")
       case Some(license) =>

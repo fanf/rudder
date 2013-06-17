@@ -40,7 +40,6 @@ import com.normation.inventory.domain.NOVA_AGENT
 import com.normation.cfclerk.domain.Variable
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.cfclerk.services.impl.Cf3PromisesFileWriterServiceImpl
-import scala.collection._
 import scala.io.Source
 import net.liftweb.common._
 import java.util.zip.ZipEntry
@@ -68,6 +67,7 @@ import com.normation.inventory.domain.AgentType
 import net.liftweb.util.Helpers.tryo
 import com.normation.cfclerk.services.SystemVariableSpecService
 import scala.sys.process.ProcessLogger
+import com.normation.inventory.domain.NodeId
 
 class RudderCf3PromisesFileWriterServiceImpl(
   techniqueRepository: TechniqueRepository,
@@ -113,9 +113,9 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * It no longer change the status of the nodeconfiguration
    * @param updateBatch : the container for the server to be updated
    */
-  override def writePromisesForMachines(updateBatch: UpdateBatch): Box[Seq[PromisesFinalMoveInfo]] = {
+  override def writePromisesForMachines(updateBatch: UpdateBatch, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
     // A buffer of node, promisefolder, newfolder, backupfolder
-    val folders = mutable.Buffer[(NodeConfiguration, String, String, String)]()
+    val folders = collection.mutable.Buffer[(NodeConfiguration, String, String, String)]()
     // Writing the policy
     for (node <- updateBatch.updatedNodeConfigurations.valuesIterator) {
       if (node.targetRulePolicyDrafts.size == 0) {
@@ -127,9 +127,9 @@ class RudderCf3PromisesFileWriterServiceImpl(
         logger.error(msg)
         throw new RuntimeException(msg)
       }
-      val (baseNodePath, backupNodePath) = pathComputer.computeBaseNodePath(node)
+      val (baseNodePath, backupNodePath) = pathComputer.computeBaseNodePath(node.id, rootNodeId, allNodeConfigs)
 
-      prepareRulesForAgents(baseNodePath, backupNodePath, node) match {
+      prepareRulesForAgents(baseNodePath, backupNodePath, node, rootNodeId) match {
         case Full(x) =>
           folders ++= x
         case e: EmptyBox => return (e ?~! "Error when preparing rules for agents")
@@ -137,7 +137,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
 
     }
 
-    tryo(movePromisesToFinalPosition(folders.map((x) => PromisesFinalMoveInfo(x._1.id, x._2, x._3, x._4))))
+    tryo(movePromisesToFinalPosition(folders.map((x) => PromisesFinalMoveInfo(x._1.id.value, x._2, x._3, x._4))))
 
   }
 
@@ -150,9 +150,9 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * @param cause
    * @return : a Set of node, base folder, new folder, backup folder (don't want to return duplicate)
    */
-  private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: NodeConfiguration): Box[Set[(NodeConfiguration, String, String, String)]] = {
+  private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: NodeConfiguration, rootNodeConfigurationId:NodeId): Box[Set[(NodeConfiguration, String, String, String)]] = {
 
-    val folders = mutable.Set[(NodeConfiguration, String, String, String)]()
+    val folders = collection.mutable.Set[(NodeConfiguration, String, String, String)]()
 
     for (agentType <- node.targetMinimalNodeConfig.agentsName) {
       var varNova = SystemVariable(systemVariableSpecService.get("NOVA"), Seq())
@@ -166,9 +166,10 @@ class RudderCf3PromisesFileWriterServiceImpl(
 
       val systemVariables = node.targetSystemVariables + (varNova.spec.name -> varNova) + (varCommunity.spec.name -> varCommunity)
 
-      val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = nodeConfigurationRepository.getRootNodeConfiguration match {
-        case Full(root: NodeConfiguration) if root.id == node.id => (pathComputer.getRootPath(agentType), pathComputer.getRootPath(agentType) + newPostfix, pathComputer.getRootPath(agentType) + backupPostfix, pathComputer.getRootPath(agentType) + newPostfix)
-        case _ => (baseNodePath, baseNodePath + newPostfix, backupNodePath, baseNodePath + newPostfix + "/rules" + agentType.toRulesPath()) // we'll want to move the root folders
+      val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = if(rootNodeConfigurationId == node.id) {
+        (pathComputer.getRootPath(agentType), pathComputer.getRootPath(agentType) + newPostfix, pathComputer.getRootPath(agentType) + backupPostfix, pathComputer.getRootPath(agentType) + newPostfix)
+      } else {
+        (baseNodePath, baseNodePath + newPostfix, backupNodePath, baseNodePath + newPostfix + "/rules" + agentType.toRulesPath()) // we'll want to move the root folders
       }
 
       val tmls = prepareCf3PromisesFileTemplate(NodeConfiguration.toContainer(newNodeRulePath, node), systemVariables)
@@ -224,7 +225,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
       folders += ((node, nodeRulePath, newNodePath, backupNodeRulePath))
     }
 
-    Full(folders)
+    Full(folders.toSet)
 
   }
 

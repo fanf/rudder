@@ -55,6 +55,7 @@ import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.domain.TechniqueName
+import com.normation.cfclerk.domain.TechniqueId
 
 
 
@@ -90,7 +91,6 @@ final case class FullActiveTechnique(
   , techniqueName       : TechniqueName
   , acceptationDatetimes: Map[TechniqueVersion, DateTime]
   , techniques          : Map[TechniqueVersion, Technique]
-    //TODO: remove directives ids, they DON'T have to be here.
   , directives          : List[Directive]
   , isEnabled           : Boolean = true
   , isSystem            : Boolean = false
@@ -137,6 +137,11 @@ final case class FullActiveTechniqueCategory(
     + (id -> activeTechniques)
   )
 
+  val allTechniques: Map[TechniqueId, (Technique, Option[DateTime])] = {
+    allActiveTechniques.flatMap { case (_, at) =>  (at.techniques.map { case(version, technique) =>
+      (TechniqueId(at.techniqueName, version) -> ((technique, at.acceptationDatetimes.get(version))))
+    }) }
+  }
 }
 
 

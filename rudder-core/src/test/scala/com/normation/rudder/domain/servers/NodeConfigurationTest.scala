@@ -47,6 +47,7 @@ import com.normation.cfclerk.domain._
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.rudder.domain.policies.RuleId
 import net.liftweb.common._
+import com.normation.inventory.domain.NodeId
 
 
 
@@ -110,7 +111,7 @@ class NodeConfigurationTest {
   @Test
   def simpleCreateNodeConfiguration() {
     /* Create a simple node configuration and check its configuration after */
-    val newNode = new SimpleNodeConfiguration("id",
+    val newNode = new SimpleNodeConfiguration(NodeId("id"),
         Seq(),
         Seq(),
         false,
@@ -154,7 +155,7 @@ class NodeConfigurationTest {
 
   @Test
   def completeCreateNodeConfiguration() {
-    val newNode = new SimpleNodeConfiguration("id",
+    val newNode = new SimpleNodeConfiguration(NodeId("id"),
         Seq(policyVaredOne), Seq(policyVaredOne),
         false,
         minNodeConf,

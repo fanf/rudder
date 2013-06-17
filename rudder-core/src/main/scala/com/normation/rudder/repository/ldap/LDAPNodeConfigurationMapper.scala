@@ -213,7 +213,7 @@ class LDAPNodeConfigurationMapper(
         targetNodeConfig <- getTargetMinimalNodeConfig(tree.root()) ?~! "Missing target node minimal configuration"
       } yield {
         if(tree.root.isA(OC_ROOT_POLICY_SERVER)) {
-          val server = new RootNodeConfiguration(id, currentPIs,targetPIs, true,
+          val server = new RootNodeConfiguration(NodeId(id), currentPIs,targetPIs, true,
                 getCurrentMinimalNodeConfig(tree.root()),
                 targetNodeConfig,
                 writtenDate.map(_.dateTime),
@@ -223,7 +223,7 @@ class LDAPNodeConfigurationMapper(
 
           server
         } else {
-          val server = new SimpleNodeConfiguration(id, currentPIs,targetPIs, tree.root().getAsBoolean(A_IS_POLICY_SERVER).getOrElse(false),
+          val server = new SimpleNodeConfiguration(NodeId(id), currentPIs,targetPIs, tree.root().getAsBoolean(A_IS_POLICY_SERVER).getOrElse(false),
               getCurrentMinimalNodeConfig(tree.root()),
               targetNodeConfig,
               writtenDate.map(_.dateTime),
@@ -275,13 +275,10 @@ class LDAPNodeConfigurationMapper(
       entry
     }
 
-    //if server id is null or empty, throw an error here
-    val id = NodeId(Utils.??!(server.id).getOrElse(throw new BusinessException("NodeConfiguration UUID can not be null nor emtpy")))
-
     //Build the server entry and its children (role an directives)
     val serverEntry : LDAPEntry = server match {
-      case rootNodeConfiguration:RootNodeConfiguration => rudderDit.NODE_CONFIGS.NODE_CONFIG.rootPolicyServerModel(id)
-      case s => rudderDit.NODE_CONFIGS.NODE_CONFIG.nodeConfigurationModel(id)
+      case rootNodeConfiguration:RootNodeConfiguration => rudderDit.NODE_CONFIGS.NODE_CONFIG.rootPolicyServerModel(server.id)
+      case s => rudderDit.NODE_CONFIGS.NODE_CONFIG.nodeConfigurationModel(server.id)
     }
     serverEntry +=!(A_SERVER_IS_MODIFIED, server.isModified.toLDAPString)
     //serverEntry +=!(A_LAST_UPDATE_DATE, GeneralizedTime( Utils.??(server.modificationDate).getOrElse(DateTime.now) ).toString)

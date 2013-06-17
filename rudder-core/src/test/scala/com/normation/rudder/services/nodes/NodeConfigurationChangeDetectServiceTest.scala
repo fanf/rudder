@@ -55,62 +55,9 @@ import scala.collection.immutable.SortedMap
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
+import com.normation.inventory.domain.NodeId
+import com.normation.rudder.repository.FullActiveTechnique
 
-
-class DummyActiveTechniqueRepository extends RoDirectiveRepository {
-
-
-  val userPtMap = Map[TechniqueName, ActiveTechnique](
-      TechniqueName("ppId") -> new ActiveTechnique(null,
-                                      TechniqueName("ppId"),
-                                      scala.collection.immutable.Map(TechniqueVersion("1.0") ->new DateTime(0)),
-                                      Nil,
-                                      true,
-                                      true),
-      TechniqueName("ppId1") -> new ActiveTechnique(null,
-                                      TechniqueName("ppId1"),
-                                      scala.collection.immutable.Map(TechniqueVersion("1.0") ->new DateTime(0)),
-                                      Nil,
-                                      true,
-                                      true)
-  )
-
-  def getActiveTechnique(id:ActiveTechniqueId) = Failure("Can't call this")
-  def getActiveTechniqueByCategory(includeSystem:Boolean = false) : Box[SortedMap[List[ActiveTechniqueCategoryId], CategoryWithActiveTechniques]] = Failure("Can't call this")
-
-  def getActiveTechnique(id:TechniqueName) = userPtMap.get(id)
-
-  def addTechniqueInUserLibrary(
-    categoryId:ActiveTechniqueCategoryId,
-    techniqueName:TechniqueName,
-    versions:Seq[TechniqueVersion], modId: ModificationId, actor: EventActor, reason:Option[String]
-  ) = Failure("Can't call this")
-
-  def move(uactiveTechniqueId:ActiveTechniqueId, newCategoryId:ActiveTechniqueCategoryId, modId: ModificationId, actor: EventActor, reason:Option[String]) = Failure("Can't call this")
-
-  def changeStatus(uactiveTechniqueId:ActiveTechniqueId, status:Boolean, modId: ModificationId, actor: EventActor, reason:Option[String]) : Box[ActiveTechniqueId] = Failure("Can't call this")
-
-  def setAcceptationDatetimes(uactiveTechniqueId:ActiveTechniqueId, datetimes: Map[TechniqueVersion,DateTime], modId: ModificationId, actor: EventActor, reason:Option[String]) = Failure("Can't call this")
-
-  def delete(uactiveTechniqueId:ActiveTechniqueId, modId: ModificationId, actor: EventActor, reason:Option[String]) = Failure("Can't call this")
-
-  def activeTechniqueBreadCrump(id:ActiveTechniqueId) = Failure("Can't call this")
-
-  def containsDirective(id: ActiveTechniqueCategoryId): Boolean = ???
-  def getActiveTechnique(id: DirectiveId): Box[ActiveTechnique] = ???
-  def getActiveTechniqueCategory(id: ActiveTechniqueCategoryId): Box[ActiveTechniqueCategory] = ???
-  def getActiveTechniqueLibrary: Box[ActiveTechniqueCategory] = ???
-  def getAll(includeSystem: Boolean): Box[Seq[Directive]] = ???
-  def getAllActiveTechniqueCategories(includeSystem: Boolean):  Box[Seq[ActiveTechniqueCategory]] = ???
-  def getDirective(directiveId:  DirectiveId): Box[Directive] = ???
-  def getDirectiveWithContext(directiveId: DirectiveId): Box[(Technique, ActiveTechnique, Directive)] = ???
-  def getDirectives(activeTechniqueId: ActiveTechniqueId,includeSystem: Boolean): Box[Seq[Directive]] = ???
-  def getParentActiveTechniqueCategory(id: ActiveTechniqueCategoryId): Box[ActiveTechniqueCategory] = ???
-  def getParentsForActiveTechnique(id: ActiveTechniqueId): Box[ActiveTechniqueCategory] = ???
-  def getParentsForActiveTechniqueCategory(id: ActiveTechniqueCategoryId): Box[List[ActiveTechniqueCategory]] = ???
-  def getActiveTechniqueAndDirective(id:DirectiveId) : Box[(ActiveTechnique, Directive)] = ???
-  def getFullDirectiveLibrary() : Box[FullActiveTechniqueCategory] = ???
-}
 
 
 @RunWith(classOf[JUnitRunner])
@@ -118,7 +65,36 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
 
   /* Test the change in node */
 
-  val service = new NodeConfigurationChangeDetectServiceImpl(new DummyActiveTechniqueRepository)
+  val service = new NodeConfigurationChangeDetectServiceImpl()
+
+  val directiveLib = FullActiveTechniqueCategory(
+      id = null
+    , name = "foo"
+    , description = ""
+    , subCategories = Nil
+    , activeTechniques = (
+          FullActiveTechnique(
+              id = ActiveTechniqueId("at-ppId")
+            , techniqueName = TechniqueName("ppId")
+            , acceptationDatetimes = Map(TechniqueVersion("1.0") -> new DateTime(0))
+            , techniques = Map(TechniqueVersion("1.0") -> null)
+            , directives = Nil
+            , isEnabled = true
+            , isSystem = false
+          )
+       :: FullActiveTechnique(
+              id = ActiveTechniqueId("at-ppId0")
+            , techniqueName = TechniqueName("ppId1")
+            , acceptationDatetimes = Map(TechniqueVersion("1.0") -> new DateTime(0))
+            , techniques = Map(TechniqueVersion("1.0") -> null)
+            , directives = Nil
+            , isEnabled = true
+            , isSystem = false
+          )
+        :: Nil
+      )
+    , isSystem = true
+  )
 
   private val simplePolicy = new RuleWithCf3PolicyDraft(
       new RuleId("ruleId"),
@@ -178,7 +154,7 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
 
   "An empty node " should {
     "not have a change if everything is equal" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(),
                   Seq(),
                   false,
@@ -186,10 +162,10 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) must beTheSameAs(Set())
+                  Map()), directiveLib) must beTheSameAs(Set())
     }
     "not have a change if the minimal are different, but there is no CR" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(),
                   Seq(),
                   false,
@@ -197,14 +173,14 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf2,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) must beTheSameAs(Set())
+                  Map()), directiveLib) must beTheSameAs(Set())
     }
   }
 
 
   "An node with one easy CR " should {
     "not have a change if everything is equal" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(simplePolicy),
                   Seq(simplePolicy),
                   false,
@@ -212,11 +188,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) must beTheSameAs(Set())
+                  Map()), directiveLib) must beTheSameAs(Set())
     }
 
     "have its CR that changed if the minimal are different" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(simplePolicy),
                   Seq(simplePolicy),
                   false,
@@ -224,13 +200,13 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf2,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId"))
     }
   }
 
   "An node with one complex CR " should {
     "not have a change if everything is equal" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(policyVaredOne),
                   false,
@@ -238,11 +214,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) must beTheSameAs(Set())
+                  Map()), directiveLib) must beTheSameAs(Set())
     }
 
     "have a change if a variable is not equal" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(policyOtherVaredOne),
                   false,
@@ -250,11 +226,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if serial is not equals (but same variable)" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(nextPolicyVaredOne),
                   false,
@@ -262,11 +238,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if minimal is not equals" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(nextPolicyVaredOne),
                   false,
@@ -274,11 +250,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf2,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if minimal is not equals and serial different" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(nextPolicyVaredOne),
                   false,
@@ -286,11 +262,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf2,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if nothing is different, but previous CR is not existant" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(),
                   Seq(policyVaredOne),
                   false,
@@ -298,11 +274,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if nothing is different, but previous CR is existant and current is non existant" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(),
                   false,
@@ -310,11 +286,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if min is different, previous CR is existant and current is non existant" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(policyVaredOne),
                   Seq(),
                   false,
@@ -322,11 +298,11 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf2,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
 
     "have a change if min is different, previous CR is non existant and current is existant" in {
-      service.detectChangeInNode(new SimpleNodeConfiguration("id",
+      service.detectChangeInNode(new SimpleNodeConfiguration(NodeId("id"),
                   Seq(),
                   Seq(policyVaredOne),
                   false,
@@ -334,7 +310,7 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
                   minNodeConf2,
                   Some(new DateTime(1)),
                   Map(),
-                  Map())) === Set(new RuleId("ruleId1"))
+                  Map()), directiveLib) === Set(new RuleId("ruleId1"))
     }
   }
 

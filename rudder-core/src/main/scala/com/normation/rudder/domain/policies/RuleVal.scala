@@ -71,7 +71,7 @@ case class RuleVal(
         ruleId
       , pol.directiveId
       , pol.techniqueId
-      , __variableMap = pol.variables
+      , variableMap = pol.variables
       , pol.trackerVariable
       , priority = pol.priority
       , serial = serial
@@ -105,7 +105,7 @@ case class PolicyDraft(
     ruleId         : RuleId
   , directiveId    : DirectiveId
   , techniqueId    : TechniqueId
-  , __variableMap  : Map[String, Variable]
+  , variableMap  : Map[String, Variable]
   , trackerVariable: TrackerVariable
   , priority       : Int
   , serial         : Int
@@ -116,7 +116,7 @@ case class PolicyDraft(
         Cf3PolicyDraft(
             Cf3PolicyDraftId(ruleId.value + "@@" + directiveId.value)
           , techniqueId
-          , __variableMap
+          , variableMap
           , trackerVariable
           , priority = priority
           , serial = serial
@@ -129,7 +129,7 @@ case class PolicyDraft(
       , directiveId
       , priority
       , trackerVariable
-      , __variableMap
+      , variableMap
       , originalVariables
     )
   }
