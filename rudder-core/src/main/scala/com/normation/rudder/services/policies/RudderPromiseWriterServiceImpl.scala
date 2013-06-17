@@ -127,7 +127,11 @@ class RudderCf3PromisesFileWriterServiceImpl(
         logger.error(msg)
         throw new RuntimeException(msg)
       }
-      val (baseNodePath, backupNodePath) = pathComputer.computeBaseNodePath(node.id, rootNodeId, allNodeConfigs)
+
+      val (baseNodePath, backupNodePath) = pathComputer.computeBaseNodePath(node.id, rootNodeId, allNodeConfigs) match {
+        case Full(x) => x
+        case e:EmptyBox => return (e ?~! s"Error when computing the path for node ${node.id.value}")
+      }
 
       prepareRulesForAgents(baseNodePath, backupNodePath, node, rootNodeId) match {
         case Full(x) =>
@@ -180,8 +184,6 @@ class RudderCf3PromisesFileWriterServiceImpl(
       for { (activeTechniqueId, preparedTemplate) <- tmls } {
         writePromisesFiles(preparedTemplate.templatesToCopy , preparedTemplate.environmentVariables , newNodeRulePath)
       }
-
-      writeSpecificsData(node, newNodeRulePath)
 
       agentType match {
         case NOVA_AGENT => writeLicense(node, newNodeRulePath)

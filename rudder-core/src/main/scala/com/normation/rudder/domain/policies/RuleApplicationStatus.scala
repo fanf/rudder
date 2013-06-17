@@ -32,35 +32,20 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.services.path
+package com.normation.rudder.domain.policies
 
-import com.normation.rudder.domain.servers.NodeConfiguration
-import com.normation.inventory.domain.AgentType
-import com.normation.inventory.domain.NodeId
-import net.liftweb.common.Box
 
 /**
- * Utilitary tool to compute the path of a server promises (and others information) on the rootMachine
- *
- * @author nicolas
- *
+ * Application status of a rule
  */
-trait PathComputer {
 
-  /**
-   * Compute the base path for a server, i.e. the full path on the root server to the data
-   * the searched server will fetch, and the backup folder
-   * Finish by the server name, with no trailing /
-   * Ex : /opt/hive/cfserved/serverA/served/serverB, /opt/hive/backup/serverA/served/serverB
-   * @param searchedNode : the server we search
-   * @return
-   */
-  def computeBaseNodePath(searchedNodeId : NodeId, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[((String, String))]
+sealed trait ApplicationStatus
+sealed trait NotAppliedStatus extends ApplicationStatus
+sealed trait AppliedStatus extends ApplicationStatus
 
-  /**
-   * Return the path of the promises for the root (we directly write its promises in its path)
-   * @param agent
-   * @return
-   */
-  def getRootPath(agentType : AgentType) : String
-}
+final case object NotAppliedNoPI extends NotAppliedStatus
+final case object NotAppliedNoTarget extends NotAppliedStatus
+final case object NotAppliedCrDisabled extends NotAppliedStatus
+
+final case object FullyApplied extends AppliedStatus
+final case class PartiallyApplied(disabled: Seq[(ActiveTechnique, Directive)]) extends AppliedStatus

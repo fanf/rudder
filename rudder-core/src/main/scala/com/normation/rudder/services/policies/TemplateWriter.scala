@@ -46,7 +46,8 @@ import com.normation.cfclerk.domain.PromisesFinalMoveInfo
 import com.normation.inventory.domain.NodeId
 
 trait TemplateWriter extends Loggable {
-  val licenseRepository : LicenseRepository
+  def licenseRepository : LicenseRepository
+
   def getSharesFolder() : String
 
   /**
@@ -55,25 +56,11 @@ trait TemplateWriter extends Loggable {
    */
   def writePromisesForMachines(updateBatch : UpdateBatch, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
 
-  /**
-   * Write data specific from the roles
-   */
-  def writeSpecificsData(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
-    /*nodeConfiguration match {
-        case CopyFile(x) =>
-          for (fileName <- x.fileNames) {
-            createSymLink(fileName, newMachineFolder)
-          }
-        case _ => ;
-      }*/
-  }
-
 
   def writeLicense(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
     logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.id);
     nodeConfiguration.isPolicyServer match {
       case true =>  copyLicenseFile(nodeConfiguration.id, newMachineFolder)
-
 
       case false => copyLicenseFile(NodeId(nodeConfiguration.targetMinimalNodeConfig.policyServerId), newMachineFolder)
     }

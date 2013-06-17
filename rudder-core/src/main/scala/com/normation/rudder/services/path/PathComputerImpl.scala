@@ -73,10 +73,12 @@ class PathComputerImpl(
    * @param searchedNodeConfiguration : the machine we search
    * @return
    */
-  def computeBaseNodePath(searchedNodeId : NodeId, rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration]) :  (String, String) = {
-    val path = recurseComputePath(rootNodeId, searchedNodeId, "/"  + searchedNodeId.value, allNodeConfigs)
-
-    (FilenameUtils.normalize(baseFolder + relativeShareFolder + "/" + path) , FilenameUtils.normalize(backupFolder + path))
+  def computeBaseNodePath(searchedNodeId : NodeId, rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration]): Box[((String, String))] = {
+    for {
+      path <- recurseComputePath(rootNodeId, searchedNodeId, "/"  + searchedNodeId.value, allNodeConfigs)
+    } yield {
+      (FilenameUtils.normalize(baseFolder + relativeShareFolder + "/" + path) , FilenameUtils.normalize(backupFolder + path))
+    }
   }
 
   /**

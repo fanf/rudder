@@ -52,7 +52,7 @@ import com.normation.utils.Control.sequence
 import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.domain.nodes.NodeInfo
 import net.liftweb.common.Loggable
-
+import com.normation.rudder.repository.FullActiveTechniqueCategory
 
 trait RuleTargetService {
 

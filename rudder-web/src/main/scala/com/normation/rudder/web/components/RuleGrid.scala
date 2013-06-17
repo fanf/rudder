@@ -34,16 +34,21 @@
 
 package com.normation.rudder.web.components
 
+import com.normation.cfclerk.domain.Technique
+import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.rudder.domain.policies._
-import com.normation.rudder.services.policies.RuleTargetService
-import com.normation.rudder.repository._
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.policies._
+import com.normation.rudder.domain.eventlog.RudderEventActor
+import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.repository._
+import com.normation.rudder.services.reports.ReportingService
+import com.normation.rudder.services.nodes.NodeInfoService
+import com.normation.rudder.services.policies.RuleTargetService
 import net.liftweb.http.js._
 import JsCmds._
-import com.normation.rudder.services.reports.ReportingService
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.services.nodes.NodeInfoService
 import JE._
 import net.liftweb.common._
 import net.liftweb.http._
@@ -55,20 +60,8 @@ import com.normation.utils.StringUuidGenerator
 import com.normation.exceptions.TechnicalException
 import com.normation.utils.Control.sequence
 import com.normation.utils.HashcodeCaching
-import com.normation.rudder.domain.eventlog.RudderEventActor
-import com.normation.cfclerk.domain.Technique
-import com.normation.cfclerk.services.TechniqueRepository
-import com.normation.rudder.domain.reports.bean._
 import com.normation.eventlog.ModificationId
 import bootstrap.liftweb.RudderConfig
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeInfo
 
 
 object RuleGrid {
@@ -91,6 +84,7 @@ class RuleGrid(
 
   private[this] val getFullNodeGroupLib = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
   private[this] val getFullDirectiveLib = RudderConfig.roDirectiveRepository.getFullDirectiveLibrary _
+  private[this] val getRuleApplicationStatus = RudderConfig.ruleApplicationStatus.isApplied _
 
   private[this] val reportingService = RudderConfig.reportingService
   private[this] val getAllNodeInfos  = RudderConfig.nodeInfoService.getAll _
@@ -251,53 +245,7 @@ class RuleGrid(
         targets:Box[Set[RuleTargetInfo]]
     ) extends Line with HashcodeCaching
 
-    sealed trait ApplicationStatus
-    sealed trait NotAppliedStatus extends ApplicationStatus
-    sealed trait AppliedStatus extends ApplicationStatus
 
-    final case object NotAppliedNoPI extends NotAppliedStatus
-    final case object NotAppliedNoTarget extends NotAppliedStatus
-    final case object NotAppliedCrDisabled extends NotAppliedStatus
-
-    final case object FullyApplied extends AppliedStatus
-    final case class PartiallyApplied(disabled: Seq[(ActiveTechnique, Directive)]) extends AppliedStatus
-
-
-    //is a cr applied for real ?
-    def isApplied(
-        rule        : Rule
-      , groupLib    : FullNodeGroupCategory
-      , directiveLib: FullActiveTechniqueCategory
-      , allNodeInfos: Set[NodeInfo]
-    ) : ApplicationStatus = {
-
-      if(rule.isEnabled) {
-
-        val isAllTargetsEnabled = rule.targets.flatMap( groupLib.allTargets.get(_) ).filter(!_.isEnabled).isEmpty
-        val nodeTargetSize = groupLib.getNodeIds(rule.targets, allNodeInfos).size
-        if (nodeTargetSize !=0) {
-          if(isAllTargetsEnabled) {
-            val disabled = (rule.directiveIds
-                .flatMap( directiveLib.allDirectives.get(_) )
-                .filterNot { case (activeTechnique, directive) => activeTechnique.isEnabled && directive.isEnabled }
-            )
-            if(disabled.size == 0) {
-              FullyApplied
-            } else if(rule.directiveIds.size - disabled.size > 0) {
-              PartiallyApplied(disabled.toSeq.map{ case(at,d) => (at.toActiveTechnique,d) })
-            } else {
-              NotAppliedNoPI
-            }
-          } else {
-            NotAppliedNoTarget
-          }
-        } else {
-          NotAppliedNoTarget
-        }
-      } else {
-        NotAppliedCrDisabled
-      }
-    }
 
     /*
      * For the Directive:
@@ -507,7 +455,7 @@ class RuleGrid(
 
       (trackerVariables, targetsInfo) match {
         case (Full(seq), Full(targets)) =>
-          val applicationStatus = isApplied(rule, groupsLib, directivesLib, nodes)
+          val applicationStatus = getRuleApplicationStatus(rule, groupsLib, directivesLib, nodes)
           val compliance =  applicationStatus match {
             case _:NotAppliedStatus => Full(None)
             case _ =>  computeCompliance(rule)

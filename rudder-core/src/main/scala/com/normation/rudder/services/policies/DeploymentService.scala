@@ -74,6 +74,8 @@ import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.repository.RoNodeGroupRepository
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.FullActiveTechniqueCategory
+import com.normation.rudder.repository.FullNodeGroupCategory
+import com.normation.rudder.domain.nodes.NodeInfo
 
 /**
  * TODO: ca devrait être un "target node configuration", ie
@@ -123,7 +125,7 @@ trait DeploymentService extends Loggable {
       _ = logger.debug("Historization of name done in %d millisec".format(timeHistorize))
 
       crValTime = DateTime.now().getMillis
-      rawRuleVals <- buildRuleVals(allRules, directiveLib) ?~! "Cannot build Rule vals"
+      rawRuleVals <- buildRuleVals(allRules, directiveLib, groupLib, allNodeInfos) ?~! "Cannot build Rule vals"
       timeCrVal = (DateTime.now().getMillis - crValTime)
       _ = logger.debug("RuleVals built in %d millisec, start to expand their values".format(timeCrVal))
 
@@ -220,7 +222,7 @@ trait DeploymentService extends Loggable {
    * rules.
    * These objects are a cache of all rules
    */
-   def buildRuleVals(rules:Seq[Rule], directiveLib: FullActiveTechniqueCategory) : Box[Seq[RuleVal]]
+  def buildRuleVals(rules:Seq[Rule], directiveLib: FullActiveTechniqueCategory, groupLib: FullNodeGroupCategory, allNodeInfos: Set[NodeInfo]) : Box[Seq[RuleVal]]
 
   /**
    * Expand the ${rudder.confRule.varName} in ruleVals
@@ -315,6 +317,7 @@ class DeploymentServiceImpl (
   , override val historizationService : HistorizationService
   , override val roNodeGroupRepository: RoNodeGroupRepository
   , override val roDirectiveRepository: RoDirectiveRepository
+  , override val ruleApplicationStatusService: RuleApplicationStatusService
 ) extends DeploymentService with
   DeploymentService_findDependantRules_bruteForce with
   DeploymentService_buildRuleVals with
@@ -355,7 +358,7 @@ trait DeploymentService_findDependantRules_bruteForce extends DeploymentService 
 
 trait DeploymentService_buildRuleVals extends DeploymentService {
 
-
+  def ruleApplicationStatusService: RuleApplicationStatusService
   def ruleValService : RuleValService
   def parameterizedValueLookupService : ParameterizedValueLookupService
 
@@ -365,13 +368,18 @@ trait DeploymentService_buildRuleVals extends DeploymentService {
    * rules.
    * These objects are a cache of all rules
    */
-   override def buildRuleVals(rules:Seq[Rule], directiveLib: FullActiveTechniqueCategory) : Box[Seq[RuleVal]] = {
-     for {
-       rawRuleVals <- sequence(rules) {  rule =>
-                        ruleValService.buildRuleVal(rule, directiveLib)
-                      } ?~! "Could not find configuration vals"
-     } yield rawRuleVals
-   }
+  override def buildRuleVals(rules:Seq[Rule], directiveLib: FullActiveTechniqueCategory, groupLib: FullNodeGroupCategory, allNodeInfos: Set[NodeInfo]) : Box[Seq[RuleVal]] = {
+    val appliedRules = rules.filter(r => ruleApplicationStatusService.isApplied(r, groupLib, directiveLib, allNodeInfos) match {
+      case _:AppliedStatus => true
+      case _ => false
+    })
+
+    for {
+      rawRuleVals <- sequence(appliedRules) {  rule =>
+                       ruleValService.buildRuleVal(rule, directiveLib)
+                     } ?~! "Could not find configuration vals"
+    } yield rawRuleVals
+  }
 
   /**
    * Expand the ${rudder.confRule.varName} in ruleVals

@@ -281,6 +281,7 @@ object RudderConfig extends Loggable {
   val inventoryHistoryLogRepository: InventoryHistoryLogRepository = diffRepos
   val inventoryEventLogService: InventoryEventLogService = inventoryLogEventServiceImpl
   val ruleTargetService: RuleTargetService = ruleTargetServiceImpl
+  val ruleApplicationStatus: RuleApplicationStatusService = ruleApplicationStatusImpl
   val newNodeManager: NewNodeManager = newNodeManagerImpl
   val nodeGrid: NodeGrid = nodeGridImpl
   val nodeSummaryService: NodeSummaryService = nodeSummaryServiceImpl
@@ -433,6 +434,7 @@ object RudderConfig extends Loggable {
   //
 
 
+  private[this] lazy val ruleApplicationStatusImpl: RuleApplicationStatusService = new RuleApplicationStatusServiceImpl()
   private[this] lazy val acceptedNodesDitImpl: InventoryDit = new InventoryDit(LDAP_INVENTORIES_ACCEPTED_BASEDN, LDAP_INVENTORIES_SOFTWARE_BASEDN, "Accepted inventories")
   private[this] lazy val pendingNodesDitImpl: InventoryDit = new InventoryDit(LDAP_INVENTORIES_PENDING_BASEDN, LDAP_INVENTORIES_SOFTWARE_BASEDN, "Pending inventories")
   private[this] lazy val removedNodesDitImpl = new InventoryDit(LDAP_INVENTORIES_REMOVED_BASEDN,LDAP_INVENTORIES_SOFTWARE_BASEDN,"Removed Servers")
@@ -845,7 +847,8 @@ object RudderConfig extends Loggable {
           reportingServiceImpl,
           historizationService,
           roNodeGroupRepository,
-          roDirectiveRepository
+          roDirectiveRepository,
+          ruleApplicationStatusImpl
       )
       , eventLogDeploymentServiceImpl
       , deploymentStatusSerialisation)
