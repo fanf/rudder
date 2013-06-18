@@ -173,7 +173,6 @@ class DependencyAndDeletionServiceImpl(
   , woRuleRepository     : WoRuleRepository
   , woGroupRepository    : WoNodeGroupRepository
   , mapper               : LDAPEntityMapper
-  , targetService        : RuleTargetService
 ) extends DependencyAndDeletionService with Loggable {
 
   /**

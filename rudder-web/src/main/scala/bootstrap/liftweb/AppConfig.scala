@@ -280,7 +280,6 @@ object RudderConfig extends Loggable {
   val startStopOrchestrator: StartStopOrchestrator = startStopOrchestratorImpl
   val inventoryHistoryLogRepository: InventoryHistoryLogRepository = diffRepos
   val inventoryEventLogService: InventoryEventLogService = inventoryLogEventServiceImpl
-  val ruleTargetService: RuleTargetService = ruleTargetServiceImpl
   val ruleApplicationStatus: RuleApplicationStatusService = ruleApplicationStatusImpl
   val newNodeManager: NewNodeManager = newNodeManagerImpl
   val nodeGrid: NodeGrid = nodeGridImpl
@@ -595,9 +594,7 @@ object RudderConfig extends Loggable {
   //we need a roLdap query checker for nodes in pending
   private[this] lazy val inventoryQueryChecker = new PendingNodesLDAPQueryChecker(new InternalLDAPQueryProcessor(roLdap, pendingNodesDitImpl, new DitQueryData(pendingNodesDitImpl), ldapEntityMapper))
   private[this] lazy val dynGroupServiceImpl = new DynGroupServiceImpl(rudderDitImpl, roLdap, ldapEntityMapper, inventoryQueryChecker)
-  private[this] lazy val ruleTargetServiceImpl = new RuleTargetServiceImpl(
-    roLdapNodeGroupRepository, nodeInfoServiceImpl,     Seq(
-      new SpecialAllTargetUpits: UnitRuleTargetService,      new SpecialAllTargetExceptPolicyServersTargetUpits(nodeInfoServiceImpl),      new PolicyServerTargetUpits(nodeInfoServiceImpl),      new GroupTargetUpits(roLdapNodeGroupRepository)),    roLdap,    rudderDitImpl,    ldapEntityMapper)
+
   private[this] lazy val ldapFullInventoryRepository = new FullInventoryRepositoryImpl(inventoryDitService, inventoryMapper, rwLdap)
   private[this] lazy val unitRefuseGroup: UnitRefuseInventory = new RefuseGroups(
     "refuse_node:delete_id_in_groups",
@@ -884,7 +881,7 @@ object RudderConfig extends Loggable {
     ldapNodeConfigurationRepository,
     techniqueRepositoryImpl)
   private[this] lazy val licenseService: NovaLicenseService = new NovaLicenseServiceImpl(licenseRepository, ldapNodeConfigurationRepository, RUDDER_DIR_LICENSESFOLDER)
-  private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(ruleTargetServiceImpl,configurationExpectedRepo, reportsRepositoryImpl, techniqueRepositoryImpl)
+  private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(configurationExpectedRepo, reportsRepositoryImpl, techniqueRepositoryImpl)
   private[this] lazy val configurationExpectedRepo = new com.normation.rudder.repository.jdbc.RuleExpectedReportsJdbcRepository(jdbcTemplate)
   private[this] lazy val reportsRepositoryImpl = new com.normation.rudder.repository.jdbc.ReportsJdbcRepository(jdbcTemplate)
   private[this] lazy val dataSourceProvider = new RudderDatasourceProvider(RUDDER_JDBC_DRIVER, RUDDER_JDBC_URL, RUDDER_JDBC_USERNAME, RUDDER_JDBC_PASSWORD)
@@ -937,7 +934,6 @@ object RudderConfig extends Loggable {
       , woLdapRuleRepository
       , woLdapNodeGroupRepository
       , ldapEntityMapper
-      , ruleTargetServiceImpl
   )
   private[this] lazy val quickSearchServiceImpl = new QuickSearchServiceImpl(
     roLdap, nodeDitImpl, acceptedNodesDitImpl, ldapEntityMapper,

@@ -45,7 +45,7 @@ import com.normation.rudder.domain.policies.{RuleTargetInfo, GroupTarget, RuleTa
 import com.normation.rudder.web.model.JsTreeNode
 import com.normation.utils.Control.sequence
 import com.normation.rudder.web.components.popup.CreateCategoryOrGroupPopup
-import com.normation.rudder.domain.nodes.{NodeGroup,  NodeInfo}
+import com.normation.rudder.domain.nodes.{NodeGroupId, NodeGroup,  NodeInfo}
 import com.normation.rudder.web.services.{LogDisplayer, ReportDisplayer, DisplayNode}
 import com.normation.inventory.ldap.core.LDAPFullInventoryRepository
 import com.normation.exceptions.TechnicalException
@@ -60,6 +60,11 @@ import JE._
 import net.liftmodules.widgets.autocomplete._
 import com.normation.rudder.repository.RoNodeGroupRepository
 import bootstrap.liftweb.RudderConfig
+import com.normation.rudder.repository.FullNodeGroupCategory
+import com.normation.rudder.domain.policies.FullRuleTargetInfo
+import com.normation.rudder.domain.policies.FullGroupTarget
+import com.normation.rudder.domain.policies.FullRuleTargetInfo
+import com.normation.rudder.domain.nodes.NodeGroup
 
 
 
@@ -89,7 +94,8 @@ object ShowNodeDetailsFromNode {
 }
 
 class ShowNodeDetailsFromNode(
-  nodeId:NodeId
+    nodeId  : NodeId
+  , groupLib: FullNodeGroupCategory
 ) extends DispatchSnippet with Loggable {
   import ShowNodeDetailsFromNode._
 
@@ -148,7 +154,7 @@ class ShowNodeDetailsFromNode(
               </div>,
              "jsTree" ->
               <div id={htmlId_crTree}>
-                <ul>{buildTree(node)}</ul>
+                <ul>{buildTree(node.id)}</ul>
               </div>,
               "nodeDetails" -> DisplayNode.showNodeDetails(inventory, Some(node.creationDate), isDisplayingInPopup = withinPopup),
               "inventory" -> DisplayNode.show(inventory, false),
@@ -159,38 +165,6 @@ class ShowNodeDetailsFromNode(
             )
   }
 
-  private def findTargets(node : NodeInfo): Box[Seq[RuleTarget]] = {
-    for {
-      allTargets <- targetService.findTargets(Seq(node.id)) //allTargets: Map[NodeId, Set[RuleTarget]]
-      targets = allTargets.values.flatMap(_.toSeq).filter(x => x.isInstanceOf[GroupTarget]).toSeq
-    } yield {
-      targets
-    }
-  }
-
-
-  private def buildTree(node : NodeInfo) : NodeSeq = {
-    findTargets(node) match {
-      case Full(seq) => targets = seq
-            nodeGroupRepository.findGroupHierarchy(
-            nodeGroupRepository.getRootCategory().id,
-            seq) match {
-          case Empty => <div>This node is not contained in any group</div>
-          case f:Failure => <div class="error">{f.messageChain}</div>
-          case Full(category) => categoryToJsTreeNode(category).toXml
-      }
-      case Empty => <div>This node is not contained in any group</div>
-      case f:Failure => <div class="error">{f.messageChain}</div>
-    }
-  }
-
-
- /********************************************
-  * Utilitary methods for JSTree
-  ********************************************/
-  private[this] val rootCategoryId = nodeGroupRepository.getRootCategory.id
-  private[this] var targets :  Seq[RuleTarget] = Seq()
-
   /**
    * Javascript to initialize a tree.
    * htmlId is the id of the div enclosing tree datas
@@ -198,57 +172,44 @@ class ShowNodeDetailsFromNode(
   private def buildJsTree(htmlId:String) : JsExp = JsRaw(
     """buildGroupTree('#%s', '%s')""".format(htmlId,S.contextPath)
   )
+ /********************************************
+  * Utilitary methods for JSTree
+  ********************************************/
+  private[this] val rootCategoryId = nodeGroupRepository.getRootCategory.id
 
-  private[this] def categoryToJsTreeNode(category:NodeGroupCategory) : JsTreeNode = new JsTreeNode {
-    override def body = {
-        <a><span class="treeGroupCategoryName tooltipable" title="" tooltipid={category.id.value.replaceAll("/", "")} >{category.name}</span></a>
-        <div class="tooltipContent" id={category.id.value.replaceAll("/", "")}><h3>{category.name}</h3><div>{category.description}</div></div>
-    }
+  //build the tree category, filtering only category with groups
+  private def buildTree(nodeId: NodeId) : NodeSeq = {
 
-    override val attrs =
-      ( "rel" -> { if(category.id == rootCategoryId) "root-category" else "category" } ) ::
-      ( "catId" -> category.id.value ) ::
-      ( "class" -> "" ) ::
-      Nil
-
-    override def children = (
-      category.children.map(x =>  nodeGroupRepository.findGroupHierarchy(x, targets)).collect { case Full(x) => categoryToJsTreeNode(x) }
-      ++ category.items.map(x => policyTargetInfoToJsTreeNode(x) )
-    )
-  }
-
-
-  //fetch server group id and transform it to a tree node
-  private[this] def policyTargetInfoToJsTreeNode(targetInfo:RuleTargetInfo) : JsTreeNode = {
-    targetInfo.target match {
-      case GroupTarget(id) =>
-        nodeGroupRepository.getNodeGroup(id) match {
-          case Full((group,parentCatId)) => nodeGroupToJsTreeNode(group)
-          case _ => new JsTreeNode {
-            override def body = <span class="error">Can not find node {id.value}</span>
-            override def children = Nil
-          }
-        }
-      case x => new JsTreeNode {
-         override def body = { <span class="treeGroupName tooltipable" title="" tooltipid={targetInfo.target.target} >{targetInfo.name} <span class="greyscala">(special)</span></span>
-             <div class="tooltipContent" id={targetInfo.target.target}><h3>{targetInfo.name}</h3><div>{targetInfo.description}</div></div>
-          }
-         override def children = Nil
-         override val attrs = ( "rel" -> "special_target" ) :: Nil
+    def displayCategory(category: FullNodeGroupCategory) : JsTreeNode = new JsTreeNode {
+      override def body = {
+          <a><span class="treeGroupCategoryName tooltipable" title="" tooltipid={category.id.value.replaceAll("/", "")} >{category.name}</span></a>
+          <div class="tooltipContent" id={category.id.value.replaceAll("/", "")}><h3>{category.name}</h3><div>{category.description}</div></div>
       }
+
+      override val attrs =
+        ( "rel" -> { if(category.id == rootCategoryId) "root-category" else "category" } ) ::
+        ( "catId" -> category.id.value ) ::
+        ( "class" -> "" ) ::
+        Nil
+
+      override def children = (
+        category.subCategories.collect { case cat if(cat.allGroups.values.exists( _.nodeGroup.serverList.contains(nodeId))) => displayCategory(cat) }
+        ++ category.targetInfos.collect { case FullRuleTargetInfo(FullGroupTarget(_, g), _, _, _, _) if( g.serverList.contains(nodeId)
+            ) => displayGroup(g) }
+      )
     }
+
+    def displayGroup(group: NodeGroup) : JsTreeNode = new JsTreeNode {
+
+      override def body = <a href="#"><span class="treeGroupName">{List(group.name,group.isDynamic?"dynamic"|"static").mkString(": ")}</span></a>
+      override def children = Nil
+      override val attrs =
+        ( "rel" -> "group" ) ::
+        ( "groupId" -> group.id.value ) ::
+        Nil
+    }
+
+    displayCategory(groupLib).toXml
   }
 
-  /**
-   * Transform a WBNodeGroup into a JsTree leaf.
-   */
-  private[this] def nodeGroupToJsTreeNode(group : NodeGroup) : JsTreeNode = new JsTreeNode {
-
-    override def body = <a href="#"><span class="treeGroupName">{List(group.name,group.isDynamic?"dynamic"|"static").mkString(": ")}</span></a>
-    override def children = Nil
-    override val attrs =
-      ( "rel" -> "group" ) ::
-      ( "groupId" -> group.id.value ) ::
-      Nil
-  }
 }

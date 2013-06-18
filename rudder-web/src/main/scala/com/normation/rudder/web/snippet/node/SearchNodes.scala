@@ -77,9 +77,16 @@ class SearchNodes extends StatefulSnippet with Loggable {
   //the popup component to create the group
   private[this] val creationPopup = new LocalSnippet[CreateCategoryOrGroupPopup]
 
+  private[this] val groupLibrary = getFullGroupLibrary() match {
+    case Full(x) => x
+    case eb:EmptyBox =>
+      val e = eb ?~! "Major error: can not get the node group library"
+      logger.error(e.messageChain)
+      throw new Exception(e.messageChain)
+  }
+
   private[this] def setCreationPopup(query : Option[Query], serverList : Box[Seq[NodeInfo]]) : Unit = {
-      creationPopup.set(getFullGroupLibrary().map( lib =>
-          new CreateCategoryOrGroupPopup(
+      creationPopup.set(Full(new CreateCategoryOrGroupPopup(
           // create a totally invalid group
           Some(new NodeGroup(
               null,
@@ -92,7 +99,7 @@ class SearchNodes extends StatefulSnippet with Loggable {
               false
               )
           )
-        , rootCategory = lib
+        , rootCategory = groupLibrary
         , onSuccessCategory= { _ => Noop }
         , onSuccessGroup = { (node:NodeGroup, _) => RedirectTo("""/secure/nodeManager/groups#{"groupId":"%s"}""".format(node.id.value)) }
       )))
@@ -181,7 +188,7 @@ class SearchNodes extends StatefulSnippet with Loggable {
       val regex = """.+\[(.+)\]""".r
       s match {
         case regex(id) =>
-          SetHtml("serverDetails", (new ShowNodeDetailsFromNode(NodeId(id)).display())) &
+          SetHtml("serverDetails", (new ShowNodeDetailsFromNode(NodeId(id), groupLibrary).display())) &
           updateLocationHash(id)
         case _ =>
           Alert("No server was selected")
@@ -216,7 +223,7 @@ class SearchNodes extends StatefulSnippet with Loggable {
    */
   private[this] def parseJsArg(): JsCmd = {
     def displayDetails(nodeId:String) = {
-      SetHtml("serverDetails", (new ShowNodeDetailsFromNode(new NodeId(nodeId))).display())
+      SetHtml("serverDetails", (new ShowNodeDetailsFromNode(new NodeId(nodeId), groupLibrary)).display())
     }
 
     def executeQuery(query:String) : JsCmd = {
@@ -286,7 +293,7 @@ class SearchNodes extends StatefulSnippet with Loggable {
   private def showNodeDetails(s:String) : JsCmd = {
     val arr = s.split("\\|")
     val nodeId = arr(1)
-    SetHtml("serverDetails", (new ShowNodeDetailsFromNode(new NodeId(nodeId))).display()) &
+    SetHtml("serverDetails", (new ShowNodeDetailsFromNode(new NodeId(nodeId), groupLibrary)).display()) &
     updateLocationHash(nodeId) &
     JsRaw("""scrollToElement("serverDetails");""".format(nodeId))
   }
