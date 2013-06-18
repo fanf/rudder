@@ -34,7 +34,6 @@
 
 package com.normation.rudder.services.policies
 
-import com.normation.rudder.domain.transporter.UpdateBatch
 import net.liftweb.common._
 import com.normation.rudder.domain.servers.NodeConfiguration
 import org.apache.commons.io.FilenameUtils
@@ -54,8 +53,7 @@ trait TemplateWriter extends Loggable {
    * Write the promises of all the nodes
    * @param updateBatch : the container for the server to be updated
    */
-  def writePromisesForMachines(updateBatch : UpdateBatch, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
-
+  def writePromisesForMachines(configuration: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
 
   def writeLicense(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
     logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.id);

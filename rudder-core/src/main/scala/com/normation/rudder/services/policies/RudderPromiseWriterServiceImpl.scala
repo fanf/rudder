@@ -58,7 +58,6 @@ import com.normation.stringtemplate.language.formatter._
 import org.antlr.stringtemplate._
 import org.antlr.stringtemplate.language._
 import com.normation.stringtemplate.language._
-import com.normation.rudder.domain.transporter._
 import com.normation.rudder.domain.eventlog._
 import com.normation.rudder.services.reports._
 import com.normation.cfclerk.domain._
@@ -113,11 +112,11 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * It no longer change the status of the nodeconfiguration
    * @param updateBatch : the container for the server to be updated
    */
-  override def writePromisesForMachines(updateBatch: UpdateBatch, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
+  override def writePromisesForMachines(configurations: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
     // A buffer of node, promisefolder, newfolder, backupfolder
     val folders = collection.mutable.Buffer[(NodeConfiguration, String, String, String)]()
     // Writing the policy
-    for (node <- updateBatch.updatedNodeConfigurations.valuesIterator) {
+    for (node <- configurations.values) {
       if (node.targetRulePolicyDrafts.size == 0) {
         logger.error("Could not write the promises for server %s : No policy found on server".format(node.id))
         throw new Exception("Could not write the promises : no policy on machine " + node)

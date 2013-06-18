@@ -41,7 +41,6 @@ import com.normation.inventory.services.core.FullInventoryRepository
 import com.normation.rudder.services.nodes._
 import com.normation.rudder.domain.nodes.{NodeGroupCategory, NodeInfo, NodeGroup}
 import com.normation.rudder.domain.queries.Query
-import com.normation.rudder.services.policies.{DependencyAndDeletionService, RuleTargetService}
 import com.normation.rudder.domain.policies.{RuleTargetInfo, GroupTarget, RuleTarget}
 import com.normation.rudder.web.model.JsTreeNode
 import com.normation.utils.Control.sequence

@@ -71,7 +71,7 @@ trait RuleTargetService {
   /**
    * For a given target, find back its NodeIds
    */
-  def getNodeIds(target:RuleTarget) : Box[Seq[NodeId]]
+//  def getNodeIds(target:RuleTarget) : Box[Seq[NodeId]]
 
 }
 
@@ -97,7 +97,7 @@ trait TargetToNodeIds extends RuleTargetService {
   def groupRepository : RoNodeGroupRepository
   def nodeInfoService : NodeInfoService
 
-  override def getNodeIds(target:RuleTarget) : Box[Seq[NodeId]] = {
+  def getNodeIds(target:RuleTarget) : Box[Seq[NodeId]] = {
     target match {
       case GroupTarget(groupId) => groupRepository.getNodeGroup(groupId).map{ case(g,parentCatId) => g.serverList.toSeq }
       case PolicyServerTarget(nodeId) => Full(Seq(nodeId))

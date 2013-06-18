@@ -65,7 +65,6 @@ import org.slf4j.{Logger,LoggerFactory}
 import com.normation.cfclerk.services._
 import net.liftweb.common._
 import com.normation.cfclerk.domain._
-import com.normation.rudder.domain.transporter._
 import com.normation.rudder.domain.eventlog._
 import com.normation.rudder.services.eventlog._
 import com.normation.eventlog._
@@ -230,14 +229,12 @@ class NodeConfigurationServiceImpl(
    */
   def writeTemplateForUpdatedNodeConfigurations(rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]] = {
     val updatedNodeConfigurations = allNodeConfigs.filter( _._2.isModified )
-    val updateBatch = new UpdateBatch
 
     for ((_, node) <- updatedNodeConfigurations) {
       if (node.targetRulePolicyDrafts.size == 0) {
         logger.warn(s"Can't write a server without policy ${node.id.value}")
         return Failure("Can't write a server without policy " + node, Full(throw new TechniqueException("Can't write a server without policy ")), Empty)
       }
-      updateBatch.addNodeConfiguration(node)
     }
 
     if(updatedNodeConfigurations.size == 0) {
@@ -247,17 +244,15 @@ class NodeConfigurationServiceImpl(
     }
 
 
-    policyTranslator.writePromisesForMachines(updateBatch, rootNodeId, allNodeConfigs) match {
+    policyTranslator.writePromisesForMachines(updatedNodeConfigurations, rootNodeId, allNodeConfigs) match {
       case e: EmptyBox => return e
       case Full(f) => f;
     }
 
     val writeTime = DateTime.now().getMillis
 
-    val savedNodes = repository.saveMultipleNodeConfigurations(updateBatch.updatedNodeConfigurations.valuesIterator.map(x => x.commitModification).toSeq)
+    val savedNodes = repository.saveMultipleNodeConfigurations(updatedNodeConfigurations.values.map(x => x.commitModification).toSeq)
     logger.debug("Written in ldap the node configuration caches in %d millisec".format((DateTime.now().getMillis - writeTime)))
-
-    // save this rootCause
     savedNodes
   }
 
