@@ -35,7 +35,6 @@
 package com.normation.rudder.web.components
 
 import com.normation.rudder.domain.policies._
-import com.normation.rudder.services.policies.RuleTargetService
 import com.normation.rudder.batch.{AsyncDeploymentAgent,AutomaticStartDeployment}
 import com.normation.rudder.repository._
 import com.normation.rudder.domain.policies._
@@ -74,6 +73,7 @@ import com.normation.eventlog.ModificationId
 import bootstrap.liftweb.RudderConfig
 import com.normation.rudder.web.components.popup.RuleModificationValidationPopup
 import com.normation.rudder.domain.workflows.ChangeRequestId
+import com.normation.rudder.web.services.DisplayNodeGroupTree
 
 object RuleEditForm {
 
@@ -147,7 +147,6 @@ class RuleEditForm(
   private[this] val techniqueRepository  = RudderConfig.techniqueRepository
   private[this] val reportingService     = RudderConfig.reportingService
   private[this] val nodeInfoService      = RudderConfig.nodeInfoService
-  private[this] val nodeGroupRepository  = RudderConfig.roNodeGroupRepository
   private[this] val treeUtilService      = RudderConfig.jsTreeUtilService
   private[this] val userPropertyService  = RudderConfig.userPropertyService
 
@@ -157,8 +156,8 @@ class RuleEditForm(
   private[this] var selectedTargets = rule.targets
   private[this] var selectedDirectiveIds = rule.directiveIds
 
+  private[this] val getFullNodeGroupLib = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
 
-  private[this] val rootCategoryId = nodeGroupRepository.getRootCategory.id
 
   //////////////////////////// public methods ////////////////////////////
   val extendsAt = SnippetExtensionKey(classOf[RuleEditForm].getSimpleName)
@@ -171,20 +170,28 @@ class RuleEditForm(
   private[this] def showForm(tab :Int = 0) : NodeSeq = {
 
     val form = {
-      if(CurrentUser.checkRights(Read("rule"))) {
-        val formContent = if (CurrentUser.checkRights(Edit("rule"))) {
-          showCrForm()
-        } else {
-          <div>You have no rights to see rules details, please contact your administrator</div>
-        }
+      getFullNodeGroupLib() match {
+        case Full(groupLib) =>
+          if(CurrentUser.checkRights(Read("rule"))) {
+            val formContent = if (CurrentUser.checkRights(Edit("rule"))) {
+              showCrForm(groupLib)
+            } else {
+              <div>You have no rights to see rules details, please contact your administrator</div>
+            }
 
-        (
-          "#editForm" #> formContent &
-          "#details"  #> showRuleDetails()
-        ).apply(body)
+            (
+              "#editForm" #> formContent &
+              "#details"  #> showRuleDetails()
+            ).apply(body)
 
-      } else {
-        <div>You have no rights to see rules details, please contact your administrator</div>
+          } else {
+            <div>You have no rights to see rules details, please contact your administrator</div>
+          }
+
+        case eb: EmptyBox =>
+          val e = eb ?~! "An error happens when trying to get the node group library"
+          logger.error(e.messageChain)
+          <div class="error">{e.msg}</div>
       }
     }
 
@@ -221,7 +228,7 @@ class RuleEditForm(
   }
 
 
-  private[this] def showCrForm() : NodeSeq = {
+  private[this] def showCrForm(groupLib: FullNodeGroupCategory) : NodeSeq = {
     (
       "#editForm *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       ClearClearable &
@@ -264,9 +271,11 @@ class RuleEditForm(
         }</div> } &
       "#selectGroupField" #> {
         <div id={htmlId_groupTree}>
-          <ul>
-            {nodeGroupCategoryToJsTreeNode(nodeGroupRepository.getRootCategory).toXml}
-          </ul>
+          <ul>{DisplayNodeGroupTree.displayTree(
+              groupLib
+            , None
+            , Some(onClickRuleTarget)
+          )}</ul>
         </div> } &
       "#save" #> saveButton &
       "#notifications" #>  updateAndDisplayNotifications &
@@ -396,6 +405,10 @@ class RuleEditForm(
     save % ( "onclick" -> newOnclick)
   }
 
+  private[this] def onClickRuleTarget(targetInfo: FullRuleTargetInfo, parentCategory: FullNodeGroupCategory) : JsCmd = {
+      selectedTargets = selectedTargets + targetInfo.target.target
+      Noop
+  }
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////// Edit form ///////////////////////////////
@@ -533,141 +546,7 @@ class RuleEditForm(
   * Utilitary methods for JS
   ********************************************/
 
-  /**
-   * Transform a NodeGroupCategory into category JsTree node :
-   * - contains:
-   *   - other categories
-   *   - groups
-   * -
-   */
 
-  private def nodeGroupCategoryToJsTreeNode(category:NodeGroupCategory) : JsTreeNode = {
-    new JsTreeNode {
-      override def body = {
-        val tooltipid = Helpers.nextFuncName
-          <a href="#">
-          <span class="treeGroupCategoryName tooltipable" tooltipid={tooltipid}
-            title={category.description}>
-            {category.name}
-          </span>
-        </a>
-          <div class="tooltipContent" id={tooltipid}>
-          <h3>{category.name}</h3>
-          <div>{category.description}</div>
-        </div>
-      }
-
-      override def children = {
-        category.children.flatMap(x => nodeGroupCategoryIdToJsTreeNode(x)) ++
-        category.items.map(x => policyTargetInfoToJsTreeNode(x))
-      }
-
-      val rel =
-        if(category.id == rootCategoryId)
-          "root-category"
-        else if (category.isSystem)
-            "system_category"
-          else
-            "category"
-
-      override val attrs =
-        ( "rel" -> rel ) ::
-        ( "catId" -> category.id.value ) ::
-        ( "class" -> "" ) ::
-        Nil
-    }
-  }
-
-
-  //fetch node group category id and transform it to a tree node
-  private def nodeGroupCategoryIdToJsTreeNode(id:NodeGroupCategoryId) : Box[JsTreeNode] = {
-    nodeGroupRepository.getGroupCategory(id) match {
-      //remove sytem category
-      case Full(category) =>  Full(nodeGroupCategoryToJsTreeNode(category))
-      case e:EmptyBox =>
-        val f = e ?~! "Error while fetching Group category %s".format(id)
-        logger.error(f.messageChain)
-        f
-    }
-  }
-
-  //fetch node group id and transform it to a tree node
-  private def policyTargetInfoToJsTreeNode(targetInfo:RuleTargetInfo) : JsTreeNode = {
-    targetInfo.target match {
-      case GroupTarget(id) =>
-        nodeGroupRepository.getNodeGroup(id) match {
-          case Full((group,parentCatId)) => nodeGroupToJsTreeNode(group)
-          case _ => new JsTreeNode {
-            override def body = <span class="error">Can not find node {id.value}</span>
-            override def children = Nil
-          }
-        }
-      case x =>
-        new JsTreeNode {
-          override def body =  {
-            val tooltipid = Helpers.nextFuncName
-            SHtml.a( () => onClickNode(x),
-              <span class="treeGroupName tooltipable" title="" tooltipid={tooltipid} >
-                {targetInfo.name}
-                { if (targetInfo.isSystem)
-                  <span title={targetInfo.description} class="greyscala">(System)</span>
-                }
-              <div class="tooltipContent" id={tooltipid}>
-                <h3>{targetInfo.name}</h3>
-                <div>{targetInfo.description}</div>
-              </div>
-              </span>
-          )
-        }
-
-         override def children = Nil
-         override val attrs =
-           ( "rel" -> "system_target" ) ::
-           ( "groupId" -> x.target ) ::
-           ( "id" -> ("jsTree-" + x.target) ) ::
-           Nil
-      }
-    }
-  }
-
-  private[this] def onClickNode(target:RuleTarget) : JsCmd = {
-        selectedTargets = selectedTargets + target
-        Noop
-  }
-
-  /**
-   * Transform a WBNodeGroup into a JsTree leaf.
-   */
-  private def nodeGroupToJsTreeNode(group : NodeGroup) : JsTreeNode = {
-    new JsTreeNode {
-
-      val content = {
-        val tooltipid = Helpers.nextFuncName
-        <span class="treeGroupName tooltipable" tooltipid={tooltipid} title={group.description}>
-            {List(group.name,group.isDynamic?"dynamic"|"static").mkString(": ")}
-            { if (group.isSystem)
-                <span title={group.description} class="greyscala">(System) </span>
-            }
-          <div class="tooltipContent" id={tooltipid}>
-            <h3>{group.name}</h3>
-            <div>{group.description}</div>
-          </div>
-        </span>
-      }
-
-      override def body = {
-        SHtml.a( () =>  onClickNode(GroupTarget(group.id)),content)
-      }
-
-      override def children = Nil
-
-      override val attrs =
-        ( "rel" -> { if (group.isSystem) "system_target" else "group"} ) ::
-        ( "groupId" -> group.id.value ) ::
-        ( "id" -> ("jsTree-" + group.id.value) ) ::
-        Nil
-    }
-  }
 
 
   /**

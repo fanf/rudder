@@ -45,7 +45,6 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.repository._
 import com.normation.rudder.services.reports.ReportingService
 import com.normation.rudder.services.nodes.NodeInfoService
-import com.normation.rudder.services.policies.RuleTargetService
 import net.liftweb.http.js._
 import JsCmds._
 import com.normation.inventory.domain.NodeId

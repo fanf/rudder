@@ -71,7 +71,6 @@ class RuleManagement extends DispatchSnippet with SpringExtendableSnippet[RuleMa
   import RuleManagement._
 
   private[this] val ruleRepository    = RudderConfig.roRuleRepository
-  private[this] val targetInfoService = RudderConfig.ruleTargetService
   private[this] val uuidGen           = RudderConfig.stringUuidGenerator
 
   //the popup component

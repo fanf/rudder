@@ -71,6 +71,7 @@ import com.normation.utils.StringUuidGenerator
 import bootstrap.liftweb.RudderConfig
 import com.normation.rudder.domain.workflows.ChangeRequest
 import com.normation.rudder.domain.workflows.ChangeRequestId
+import com.normation.rudder.web.services.DisplayNodeGroupTree
 
 
 object Groups {
@@ -253,7 +254,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
     creationPopup.set(Full(new CreateCategoryOrGroupPopup(
         None
       , rootCategory
-      , onSuccessCategory = displayACategory
+      , onSuccessCategory = displayCategory
       , onSuccessGroup = showGroupSection
       , onSuccessCallback = onSuccessCallback()
     )))
@@ -280,7 +281,11 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
       case Full(lib) =>
       (
         <div id={htmlId_groupTree}>
-          <ul>{nodeGroupCategoryToJsTreeNode(lib, lib).toXml }</ul>
+          <ul>{DisplayNodeGroupTree.displayTree(
+                  groupLib = lib
+                , onClickCategory = Some(fullDisplayCategory)
+                , onClickTarget  = Some(showTargetInfo)
+           )}</ul>
         </div>
       ) ++ Script(OnLoad(
       //build jstree and
@@ -424,116 +429,30 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
   * Utilitary methods for JS
   ********************************************/
 
-  /**
-   * Transform a NodeGroupCategory into category JsTree node :
-   * - contains:
-   *   - other categories
-   *   - groups
-   * -
-   */
-  private[this] def nodeGroupCategoryToJsTreeNode(category:FullNodeGroupCategory, root:FullNodeGroupCategory) : JsTreeNode = new JsTreeNode {
-    def onClickCategory(category:FullNodeGroupCategory) : JsCmd = {
-      displayACategory(category.toNodeGroupCategory)
-    }
-    override def body = {
-      val tooltipId = Helpers.nextFuncName
-
-      SHtml.a(
-          {() => onClickCategory(category)}
-        , (
-            <span class="treeGroupCategoryName tooltipable" title="" tooltipid={tooltipId}>{category.name}</span>
-            <div class="tooltipContent" id={tooltipId}>{if(category.description.size > 0) category.description else category.name}</div>
-          )
-      )
-    }
-    override def children = (
-         category.subCategories.map(x => nodeGroupCategoryToJsTreeNode(x, root))
-      ++ category.targetInfos.map(x => policyTargetInfoToJsTreeNode(x, root))
-    )
-    override val attrs =
-      ( "rel" -> { if(category.id == root.id) "root-category" else if (category.isSystem) "system_category" else "category"  } ) ::
-      ( "catId" -> category.id.value ) ::
-      ( "class" -> "" ) ::
-      Nil
-  }
-
-  private[this] def displayACategory(category : NodeGroupCategory) : JsCmd = {
+  private[this] def displayCategory(category : NodeGroupCategory) : JsCmd = {
     //update UI - no modification here, so no refreshGroupLib
     refreshRightPanel(CategoryForm(category))
   }
 
-  //fetch server group id and transform it to a tree node
-  private[this] def policyTargetInfoToJsTreeNode(targetInfo: FullRuleTargetInfo, root: FullNodeGroupCategory) : JsTreeNode = {
-    targetInfo match {
-      case FullRuleTargetInfo(FullGroupTarget(target, nodeGroup), _, _, _, _) =>
-        nodeGroupToJsTreeNode(nodeGroup, root.categoryByGroupId(nodeGroup.id))
-      case x => new JsTreeNode {
-         override def body =  {
-           val tooltipId = Helpers.nextFuncName
-           (<a style="cursor:default">
-             <span class="treeGroupName tooltipable" title="" tooltipid={tooltipId}>{targetInfo.name}
-              {if (targetInfo.isSystem) <span class="greyscala">(System)</span>}
-             </span>
-             <div class="tooltipContent" id={tooltipId}>{
-               if(targetInfo.description.size > 0) targetInfo.description else targetInfo.name
-             }</div>
-            </a>
-           )
-         }
-         override def children = Nil
-         override val attrs = ( "rel" -> "system_target" ) :: Nil
-      }
-    }
+  //adaptater
+  private[this] def fullDisplayCategory(category: FullNodeGroupCategory) = displayCategory(category.toNodeGroupCategory)
+
+  private[this] def showGroupSection(g: NodeGroup, parentCategoryId: NodeGroupCategoryId) = {
+    refreshRightPanel(GroupForm(g, parentCategoryId))&
+    JsRaw(s"""this.window.location.hash = "#" + JSON.stringify({'groupId':'${g.id.value}'})""")
   }
 
-
-  /**
-   * Transform a WBNodeGroup into a JsTree leaf.
-   */
-  private[this] def nodeGroupToJsTreeNode(group : NodeGroup, parentCategoryId: NodeGroupCategoryId) : JsTreeNode = new JsTreeNode {
-    //ajax function that update the bottom
-    def onClickNode() : JsCmd = {
-      showGroupSection(group, parentCategoryId)
-    }
-
-    override def body = {
-      val tooltipId = Helpers.nextFuncName
-      val xml  = {
-        <span class="treeGroupName tooltipable" title="" tooltipid={tooltipId}>{s" ${group.name}: ${group.isDynamic?"dynamic"|"static"}"}
-        {if (group.isSystem) <span class="greyscala">(System)</span>}
-        </span>
-        <div class="tooltipContent" id={tooltipId}>{
-          if(group.description.size > 0) group.description else group.name
-        }</div>
-      }
-
-      if (group.isSystem)
-        <a style="cursor:default">{xml}</a>
-      else
-        SHtml.a(onClickNode _,xml)
-    }
-
-    override def children = Nil
-    override val attrs =
-      if(group.isSystem) {
-        ( "rel" -> "system_target" ) :: Nil
-      } else {
-        ( "rel" -> "group" ) ::
-        ( "groupId" -> group.id.value ) ::
-        ( "id" -> ("jsTree-" + group.id.value) ) :: Nil
-      }
-  }
-
-  /**
-   * Show the group component.
-   * @param sg
-   * @return
-   */
-  private[this] def showGroupSection(sg : NodeGroup, parentCategoryId: NodeGroupCategoryId) : JsCmd = {
+  private[this] def showTargetInfo(targetInfo: FullRuleTargetInfo, parentCategory: FullNodeGroupCategory) : JsCmd = {
     //update UI - no modeification here, so no refreshGroupLib
-    refreshRightPanel(GroupForm(sg, parentCategoryId))&
-    JsRaw("""this.window.location.hash = "#" + JSON.stringify({'groupId':'%s'})""".format(sg.id.value))
+
+    //action only for node group
+
+    targetInfo.target match {
+      case t:FullGroupTarget => showGroupSection(t.nodeGroup, parentCategory.id)
+      case _ => Noop
+    }
   }
+
 
   private[this] def showPopup() : JsCmd = {
 

@@ -54,15 +54,16 @@ import com.normation.cfclerk.domain._
 import org.joda.time.DateTime
 import com.normation.rudder.repository.ActiveTechniqueLibraryArchiveId
 import com.normation.rudder.repository.NodeGroupLibraryArchiveId
+import com.normation.rudder.domain.nodes.NodeGroupCategoryId
 
 class CATEGORY(
-    uuid: String,
-    parentDN : DN,
-    name : String = "",
-    description : String = "",
-    isSystem : Boolean = false,
-    objectClass : String,
-    objectClassUuid : String
+    val uuid: String,
+    val parentDN : DN,
+    val name : String = "",
+    val description : String = "",
+    val isSystem : Boolean = false,
+    val objectClass : String,
+    val objectClassUuid : String
 )(implicit dit:AbstractDit) extends ENTRY1(objectClassUuid, uuid) {
 
   lazy val rdn : RDN = this.rdn(this.rdnValue._1)
@@ -154,6 +155,8 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
 
     //method that check is an entry if of the given type
 
+    val rootCategoryId = ActiveTechniqueCategoryId(this.uuid)
+
     def isACategory(e:LDAPEntry) = e.isA(OC_TECHNIQUE_CATEGORY)
     def isAnActiveTechnique(e:LDAPEntry) = e.isA(OC_ACTIVE_TECHNIQUE)
     def isADirective(e:LDAPEntry) = e.isA(OC_DIRECTIVE)
@@ -239,6 +242,8 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
       objectClassUuid = A_GROUP_CATEGORY_UUID
   ) {
     group =>
+
+    val rootCategoryId = NodeGroupCategoryId(this.uuid)
 
     def isACategory(e:LDAPEntry) = e.isA(OC_GROUP_CATEGORY)
     def isAGroup(e:LDAPEntry) = e.isA(OC_RUDDER_NODE_GROUP)
