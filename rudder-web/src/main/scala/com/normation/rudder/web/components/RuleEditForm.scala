@@ -410,7 +410,7 @@ class RuleEditForm(
     save % ( "onclick" -> newOnclick)
   }
 
-  private[this] def onClickRuleTarget(targetInfo: FullRuleTargetInfo, parentCategory: FullNodeGroupCategory) : JsCmd = {
+  private[this] def onClickRuleTarget(parentCategory: FullNodeGroupCategory, targetInfo: FullRuleTargetInfo) : JsCmd = {
       selectedTargets = selectedTargets + targetInfo.target.target
       Noop
   }

@@ -66,7 +66,7 @@ object DisplayNodeGroupTree extends Loggable {
   def displayTree(
       groupLib       : FullNodeGroupCategory
     , onClickCategory: Option[FullNodeGroupCategory => JsCmd]
-    , onClickTarget  : Option[(FullRuleTargetInfo, FullNodeGroupCategory) => JsCmd]
+    , onClickTarget  : Option[(FullNodeGroupCategory, FullRuleTargetInfo) => JsCmd]
     , keepCategory   : FullNodeGroupCategory => Boolean = _ => true
     , keepTargetInfo : FullRuleTargetInfo => Boolean = _ => true
   ) : NodeSeq =  {
@@ -74,14 +74,9 @@ object DisplayNodeGroupTree extends Loggable {
 
     def displayCategory(
         category: FullNodeGroupCategory
-      , onClickCategory: Option[FullNodeGroupCategory => JsCmd]
-      , onClickTarget  : Option[(FullRuleTargetInfo, FullNodeGroupCategory) => JsCmd]
     ) : JsTreeNode = new JsTreeNode {
 
-      private[this] val localOnClickTarget = onClickTarget match {
-        case None => None
-        case Some(f) => Some( (t:FullRuleTargetInfo) => f(t, category))
-      }
+      private[this] val localOnClickTarget = onClickTarget.map( _.curried(category) )
 
       private[this] val tooltipId = Helpers.nextFuncName
       private[this] val xml = (
@@ -98,7 +93,7 @@ object DisplayNodeGroupTree extends Loggable {
       }
 
       override def children = (
-           category.subCategories.collect { case x if(keepCategory(x)) => displayCategory(x, onClickCategory, onClickTarget) }
+           category.subCategories.collect { case x if(keepCategory(x)) => displayCategory(x) }
         ++ category.targetInfos.collect { case x if(keepTargetInfo(x)) => displayFullRuleTargetInfo(x, localOnClickTarget) }
       )
 
@@ -121,7 +116,7 @@ object DisplayNodeGroupTree extends Loggable {
 
     def displayFullRuleTargetInfo(
         targetInfo    : FullRuleTargetInfo
-      , onClickNode   : Option[(FullRuleTargetInfo) => JsCmd]
+      , onClickNode   : Option[FullRuleTargetInfo => JsCmd]
     ) : JsTreeNode = new JsTreeNode {
 
       override def children = Nil
@@ -166,7 +161,7 @@ object DisplayNodeGroupTree extends Loggable {
 
     }
 
-    displayCategory(groupLib, onClickCategory, onClickTarget).toXml
+    displayCategory(groupLib).toXml
   }
 
   //build the tree category, filtering only category with groups
@@ -174,7 +169,7 @@ object DisplayNodeGroupTree extends Loggable {
       groupLib       : FullNodeGroupCategory
     , nodeId         : NodeId
     , onClickCategory: Option[FullNodeGroupCategory => JsCmd] = None
-    , onClickTarget  : Option[(FullRuleTargetInfo, FullNodeGroupCategory) => JsCmd] = None
+    , onClickTarget  : Option[(FullNodeGroupCategory, FullRuleTargetInfo) => JsCmd] = None
   ) : NodeSeq = {
 
     displayTree(

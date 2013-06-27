@@ -442,7 +442,7 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
     JsRaw(s"""this.window.location.hash = "#" + JSON.stringify({'groupId':'${g.id.value}'})""")
   }
 
-  private[this] def showTargetInfo(targetInfo: FullRuleTargetInfo, parentCategory: FullNodeGroupCategory) : JsCmd = {
+  private[this] def showTargetInfo(parentCategory: FullNodeGroupCategory, targetInfo: FullRuleTargetInfo) : JsCmd = {
     //update UI - no modeification here, so no refreshGroupLib
 
     //action only for node group
