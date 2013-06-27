@@ -98,8 +98,8 @@ object DisplayNodeGroupTree extends Loggable {
       }
 
       override def children = (
-           category.subCategories.map(x => displayCategory(x, onClickCategory, onClickTarget))
-        ++ category.targetInfos.map(x => displayFullRuleTargetInfo(x, localOnClickTarget))
+           category.subCategories.collect { case x if(keepCategory(x)) => displayCategory(x, onClickCategory, onClickTarget) }
+        ++ category.targetInfos.collect { case x if(keepTargetInfo(x)) => displayFullRuleTargetInfo(x, localOnClickTarget) }
       )
 
 

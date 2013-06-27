@@ -74,6 +74,7 @@ import bootstrap.liftweb.RudderConfig
 import com.normation.rudder.web.components.popup.RuleModificationValidationPopup
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.web.services.DisplayNodeGroupTree
+import com.normation.rudder.web.services.DisplayDirectiveTree
 
 object RuleEditForm {
 
@@ -254,7 +255,7 @@ class RuleEditForm(
       "#longDescriptionField" #> crLongDescription.toForm_! &
       "#selectPiField" #> {
         <div id={htmlId_activeTechniquesTree}>{
-          directiveRepository.getActiveTechniqueLibrary match {
+          directiveRepository.getFullDirectiveLibrary() match {
             case eb:EmptyBox =>
               val f = eb ?~! "Error when trying to get the root category of Active Techniques"
               logger.error(f.messageChain)
@@ -263,9 +264,13 @@ class RuleEditForm(
               }
               <span class="error">An error occured when trying to get information from the database. Please contact your administrator of retry latter.</span>
             case Full(root) =>
-              <ul>{ activeTechniqueCategoryToJsTreeNode(
-                  root
-                ).toXml
+              <ul>{
+                DisplayDirectiveTree.displayTree(
+                    directiveLib = root
+                  , onClickCategory = None
+                  , onClickTechnique = None
+                  , onClickDirective = None
+                )
               }</ul>
           }
         }</div> } &
@@ -546,192 +551,6 @@ class RuleEditForm(
   * Utilitary methods for JS
   ********************************************/
 
-
-
-
-  /**
-   * Transform ActiveTechniqueCategory into category JsTree nodes in User Library:
-   * - contains
-   *   - other user categories
-   *   - Active Techniques
-
-   */
-  private def activeTechniqueCategoryToJsTreeNode(category:ActiveTechniqueCategory) : JsTreeNode = {
-    /*
-     *converts activeTechniqueId into Option[(JsTreeNode, Option[Technique])]
-     *returns some(something) if the technique has some derivated directives, else returns none
-     * */
-    def activeTechniqueIdToJsTreeNode(id : ActiveTechniqueId) : Option[(JsTreeNode, Option[Technique])] = {
-
-      def activeTechniqueToJsTreeNode(activeTechnique : ActiveTechnique, technique:Technique) : JsTreeNode = {
-
-        //check Directive existence and transform it to a tree node
-        def directiveIdToJsTreeNode(directiveId : DirectiveId) : (JsTreeNode,Option[Directive]) = {
-
-          directiveRepository.getDirective(directiveId) match {
-            case Full(directive) =>  (
-              new JsTreeNode {
-                override def body = {
-                  val tooltipid = Helpers.nextFuncName
-                  <a href="#">
-                    <span class="treeDirective tooltipable" tooltipid={tooltipid}
-                      title={directive.shortDescription}>
-                      {directive.name}
-                    </span>
-                    <div class="tooltipContent" id={tooltipid}>
-                      <h3>{directive.name}</h3>
-                      <div>{directive.shortDescription}</div>
-                    </div>
-                  </a>
-                }
-                override def children = Nil
-                override val attrs = {
-                  ( "rel" -> "directive") ::
-                  ( "id" -> ("jsTree-" + directive.id.value)) ::
-                  ( if(!directive.isEnabled)
-                      ("class" -> "disableTreeNode") :: Nil
-                    else Nil
-                  )
-               }
-              },
-              Some(directive)
-            )
-            case x =>
-              logger.error("Error while fetching node %s: %s".format(directiveId, x.toString))
-              (new JsTreeNode {
-                override def body =
-                  <span class="error">Can not find node {directiveId.value}</span>
-                override def children = Nil
-              },
-              None)
-          }
-        }
-
-        new JsTreeNode {
-          override val attrs = {
-            ( "rel" -> "template") :: Nil :::
-            ( if(!activeTechnique.isEnabled)
-                ("class" -> "disableTreeNode") :: Nil
-              else Nil
-            )
-          }
-          override def body = {
-            val tooltipid = Helpers.nextFuncName
-              <a href="#">
-                <span class="treeActiveTechniqueName tooltipable"
-                  tooltipid={tooltipid} title={technique.description}>
-                  {technique.name}
-                </span>
-                <div class="tooltipContent" id={tooltipid}>
-                <h3>{technique.name}</h3>
-                <div>{technique.description}</div>
-                </div>
-              </a>
-          }
-
-          override def children =
-            activeTechnique.directives
-              .map(x => directiveIdToJsTreeNode(x)).toList
-              .sortWith {
-                case ( (_, None) , _  ) => true
-                case (  _ ,  (_, None)) => false
-                case ( (node1, Some(pi1)), (node2, Some(pi2)) ) =>
-                  treeUtilService.sortPi(pi1,pi2)
-              }
-              .map { case (node, _) => node }
-        }
-      }
-
-      directiveRepository.getActiveTechnique(id) match {
-        case Full(activeTechnique) =>
-          techniqueRepository.getLastTechniqueByName(activeTechnique.techniqueName) match {
-            case Some(refPt) if activeTechnique.directives.size>0 =>
-              Some( activeTechniqueToJsTreeNode(activeTechnique,refPt), Some(refPt))
-            case Some(refPt) if activeTechnique.directives.size==0 => None
-            case None =>
-              Some(new JsTreeNode {
-                override def body =
-                  <span class="error">Can not find node {activeTechnique.techniqueName}</span>
-                override def children = Nil
-              }, None)
-          }
-
-        case x =>
-          logger.error("Error while fetching node %s: %s".format(id, x.toString))
-          Some(new JsTreeNode {
-            override def body = <span class="error">Can not find node {id.value}</span>
-            override def children = Nil
-          }, None)
-        }
-    }
-
-
-    //chech Active Technique category id and transform it to a tree node
-    def activeTechniqueCategoryIdToJsTreeNode(id:ActiveTechniqueCategoryId) :
-      Box[(JsTreeNode,ActiveTechniqueCategory)] = {
-
-      directiveRepository.getActiveTechniqueCategory(id) match {
-        //remove sytem category
-        case Full(cat) => cat.isSystem match {
-          case true => Empty
-          case false => Full((activeTechniqueCategoryToJsTreeNode(cat),cat))
-        }
-        case e:EmptyBox =>
-          val f = e ?~! "Error while fetching for Technique category %s".format(id)
-          logger.error(f.messageChain)
-          f
-      }
-    }
-
-    new JsTreeNode {
-      override def body = {
-        val tooltipid = Helpers.nextFuncName
-        <a href="#">
-          <span class="treeActiveTechniqueCategoryName tooltipable"
-              tooltipid={tooltipid} title={category.description}>
-            {Text(category.name)}
-          </span>
-          <div class="tooltipContent" id={tooltipid}>
-            <h3>{category.name}</h3>
-            <div>{category.description}</div>
-          </div>
-        </a>
-      }
-      override def children = {
-        /*
-         * sortedActiveTechnique contains only techniques that have directives
-         */
-        val sortedActiveTechnique = {
-          category.items
-            .map(x => activeTechniqueIdToJsTreeNode(x)).toList.flatten
-            .sortWith {
-              case ( (_, None) , _ ) => true
-              case ( _ , (_, None) ) => false
-              case ( (node1, Some(refPt1)) , (node2, Some(refPt2)) ) =>
-                treeUtilService.sortPt(refPt1,refPt2)
-            }
-            .map { case (node,_) => node }
-        }
-
-        val sortedCat = {
-          category.children
-            .filter { categoryId =>
-              directiveRepository.containsDirective(categoryId)
-            }
-            .flatMap(x => activeTechniqueCategoryIdToJsTreeNode(x))
-            .toList
-            .sortWith { case ( (node1, cat1) , (node2, cat2) ) =>
-              treeUtilService.sortActiveTechniqueCategory(cat1,cat2)
-            }
-            .map { case (node,_) => node }
-        }
-
-        val res = sortedActiveTechnique ++ sortedCat
-        res
-      }
-      override val attrs = ( "rel" -> "category") :: Nil
-    }
-  }
 
   //////////////// Compliance ////////////////
 

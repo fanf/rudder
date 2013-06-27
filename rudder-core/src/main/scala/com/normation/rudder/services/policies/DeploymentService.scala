@@ -90,7 +90,6 @@ case class TargetNodeConfiguration(
 ) extends HashcodeCaching
 
 
-
 /**
  * The main service which deploy modified rules and
  * their dependencies.
@@ -108,66 +107,66 @@ trait DeploymentService extends Loggable {
   def deploy() : Box[Seq[NodeConfiguration]] = {
     val initialTime = DateTime.now().getMillis
     val rootNodeId = Constants.ROOT_POLICY_SERVER_ID
+
     val result = for {
-      allRules <- findDependantRules() ?~! "Could not find dependant rules"
-      allRulesMap = allRules.map(x => (x.id, x)).toMap
-      allNodeInfos <- getAllNodeInfos ?~! "Could not get Node Infos"
-      directiveLib <- getDirectiveLibrary() ?~! "Could not get the directive library"
-      groupLib <- getGroupLibrary() ?~! "Could not get the group library"
 
-      timeFetchAll = (DateTime.now().getMillis - initialTime)
-      _ = logger.debug("All relevant information fetched in %d millisec, start to build RuleVals".format(timeFetchAll))
+      allRules      <- findDependantRules() ?~! "Could not find dependant rules"
+      allRulesMap   =  allRules.map(x => (x.id, x)).toMap
+      allNodeInfos  <- getAllNodeInfos ?~! "Could not get Node Infos"
+      directiveLib  <- getDirectiveLibrary() ?~! "Could not get the directive library"
+      groupLib      <- getGroupLibrary() ?~! "Could not get the group library"
+      timeFetchAll  =  (DateTime.now().getMillis - initialTime)
+      _             =  logger.debug(s"All relevant information fetched in ${timeFetchAll}ms, start names historization.")
 
-      historizeTime = DateTime.now().getMillis
+      historizeTime =  DateTime.now().getMillis
+      historize     =  historizeData()
+      timeHistorize =  (DateTime.now().getMillis - historizeTime)
+      _             =  logger.debug(s"Historization of name done in ${timeHistorize}ms, start to build RuleVals.")
 
-      historize = historizeData()
-      timeHistorize = (DateTime.now().getMillis - historizeTime)
-      _ = logger.debug("Historization of name done in %d millisec".format(timeHistorize))
-
-      crValTime = DateTime.now().getMillis
+      crValTime   =  DateTime.now().getMillis
       rawRuleVals <- buildRuleVals(allRules, directiveLib, groupLib, allNodeInfos) ?~! "Cannot build Rule vals"
-      timeCrVal = (DateTime.now().getMillis - crValTime)
-      _ = logger.debug("RuleVals built in %d millisec, start to expand their values".format(timeCrVal))
+      timeCrVal   =  (DateTime.now().getMillis - crValTime)
+      _           =  logger.debug(s"RuleVals built in ${timeCrVal}ms, start to expand their values.")
 
-      expandRuleTime = DateTime.now().getMillis
-      ruleVals <- expandRuleVal(rawRuleVals, allNodeInfos, groupLib, directiveLib, allRulesMap)?~! "Cannot expand Rule vals values"
-      timeExpandRule = (DateTime.now().getMillis - expandRuleTime)
-      _ = logger.debug("RuleVals expanded in %d millisec, start to build targetNodeConfiguration".format(timeExpandRule))
+      expandRuleTime =  DateTime.now().getMillis
+      ruleVals       <- expandRuleVal(rawRuleVals, allNodeInfos, groupLib, directiveLib, allRulesMap) ?~! "Cannot expand Rule vals values"
+      timeExpandRule =  (DateTime.now().getMillis - expandRuleTime)
+      _              =  logger.debug(s"RuleVals expanded in ${timeExpandRule}, start to build node's new configuration.")
 
-      targetNodeTime = DateTime.now().getMillis
-      (targetNodeConfigurations, expandedRules) <- buildtargetNodeConfigurations(ruleVals, allNodeInfos, groupLib, directiveLib, allRulesMap) ?~! "Cannot build target configuration node"
-      timeBuildTargetNode = (DateTime.now().getMillis - targetNodeTime)
-      _ = logger.debug("targetNodeConfiguration built in %d millisec, start to update whose needed to be updated.".format(timeBuildTargetNode))
+      targetNodeTime  =  DateTime.now().getMillis
+      (config, rules) <- buildtargetNodeConfigurations(ruleVals, allNodeInfos, groupLib, directiveLib, allRulesMap) ?~! "Cannot build target configuration node"
+      timeBuildConfig =  (DateTime.now().getMillis - targetNodeTime)
+      _               =  logger.debug(s"Node's target onfiguration built in ${timeBuildConfig}, start to update whose needed to be updated.")
 
-      updateConfNodeTime = DateTime.now().getMillis
-      allNodeConfigs <- getAllNodeConfigurations() ?~! "Error when retrieving the current node configuration"
-      onlyExistingNodeConfig <- purgeDeletedNodes(allNodeInfos.map( _.id), allNodeConfigs) ?~! "Can not delete node configuration for non existing nodes"
-      updatedNodeConfigs <- updateTargetNodeConfigurations(targetNodeConfigurations, allNodeConfigs) ?~! "Cannot set target configuration node"
-      timeUpdateRuleVals = (DateTime.now().getMillis - updateConfNodeTime)
-      _ = logger.debug("RuleVals updated in %d millisec, detect changes.".format(timeUpdateRuleVals))
+      updateConfNodeTime =  DateTime.now().getMillis
+      allNodeConfigs     <- getAllNodeConfigurations() ?~! "Error when retrieving the current node configuration"
+      _                  <- purgeDeletedNodes(allNodeInfos.map( _.id), allNodeConfigs) ?~! "Can not delete node configuration for non existing nodes"
+      updatedNodeConfigs <- updateTargetNodeConfigurations(config, allNodeConfigs) ?~! "Cannot set target configuration node"
+      timeUpdateRuleVals =  (DateTime.now().getMillis - updateConfNodeTime)
+      _                  =  logger.debug(s"RuleVals updated in ${timeUpdateRuleVals} millisec, detect changes.")
 
-      beginTime = DateTime.now().getMillis
+      beginTime                =  DateTime.now().getMillis
       //that's the first time we actually write something in repos: new serial for updated rules
       (updatedCrs, deletedCrs) <- detectUpdatesAndIncrementRuleSerial(updatedNodeConfigs.values.toSeq, directiveLib, allRulesMap)?~! "Cannot detect the updates in the NodeConfiguration"
-      timeIncrementRuleSerial = (DateTime.now().getMillis - beginTime)
-      serialedNodes = updateSerialNumber(updatedNodeConfigs, updatedCrs)
+      timeIncrementRuleSerial  =  (DateTime.now().getMillis - beginTime)
+      serialedNodes            =  updateSerialNumber(updatedNodeConfigs, updatedCrs)
       // Update the serial of ruleVals when there were modifications on Rules values
       // replace variables with what is really applied
-      updatedRuleVals = updateRuleVal(expandedRules, updatedCrs)
-      _ = logger.debug("Detected the changes in the NodeConfiguration to trigger change in CR in %d millisec. Update the SN in the nodes".format(timeIncrementRuleSerial))
+      updatedRuleVals          =  updateRuleVal(rules, updatedCrs)
+      _                        = logger.debug(s"Detected the changes in the NodeConfiguration to trigger change in CR in ${timeIncrementRuleSerial}ms, updating the SN in the nodes")
 
 
       writeTime = DateTime.now().getMillis
       //second time we write something in repos: updated node configuration
       writtenNodeConfigs <- writeNodeConfigurations(rootNodeId, serialedNodes) ?~! "Cannot write  configuration node"
       timeWriteNodeConfig = (DateTime.now().getMillis - writeTime)
-      _ = logger.debug("rules deployed in %d millisec, process report information".format(timeWriteNodeConfig))
+      _ = logger.debug(s"rules deployed in ${timeWriteNodeConfig}ms, process report information")
 
       reportTime = DateTime.now().getMillis
       // need to update this part as well
       expectedReports <- setExpectedReports(updatedRuleVals, deletedCrs)  ?~! "Cannot build expected reports"
       timeSetExpectedReport = (DateTime.now().getMillis - reportTime)
-      _ = logger.debug("Reports updated in %d millisec".format(timeSetExpectedReport))
+      _ = logger.debug(s"Reports updated in ${timeSetExpectedReport}ms")
 
     } yield {
       logger.debug("Timing summary:")
@@ -175,7 +174,7 @@ trait DeploymentService extends Loggable {
       logger.debug("Historize names           : %10s ms".format(timeHistorize))
       logger.debug("Build current rule vals   : %10s ms".format(timeCrVal))
       logger.debug("Expand rule parameters    : %10s ms".format(timeExpandRule))
-      logger.debug("Build target configuration: %10s ms".format(timeBuildTargetNode))
+      logger.debug("Build target configuration: %10s ms".format(timeBuildConfig))
       logger.debug("Update rule vals          : %10s ms".format(timeUpdateRuleVals))
       logger.debug("Increment rule serials    : %10s ms".format(timeIncrementRuleSerial))
       logger.debug("Write node configurations : %10s ms".format(timeWriteNodeConfig))
