@@ -72,19 +72,16 @@ object DisplayDirectiveTree extends Loggable {
   def displayTree(
       directiveLib    : FullActiveTechniqueCategory
     , onClickCategory : Option[FullActiveTechniqueCategory => JsCmd]
-    , onClickTechnique: Option[(FullActiveTechnique, FullActiveTechniqueCategory) => JsCmd]
-    , onClickDirective: Option[(Directive, FullActiveTechnique, FullActiveTechniqueCategory) => JsCmd]
+    , onClickTechnique: Option[(FullActiveTechniqueCategory, FullActiveTechnique) => JsCmd]
+    , onClickDirective: Option[(FullActiveTechniqueCategory, FullActiveTechnique, Directive) => JsCmd]
     , keepCategory    : FullActiveTechniqueCategory => Boolean = _ => true
-    , keepTechnique   : FullRuleTargetInfo => Boolean = _ => true
-    , keepDirective   : FullRuleTargetInfo => Boolean = _ => true
+    , keepTechnique   : FullActiveTechnique => Boolean = _ => true
+    , keepDirective   : Directive => Boolean = _ => true
   ) : NodeSeq =  {
 
 
     def displayCategory(
-        category        : FullActiveTechniqueCategory
-      , onClickCategory : Option[FullActiveTechniqueCategory => JsCmd]
-      , onClickTechnique: Option[(FullActiveTechniqueCategory, FullActiveTechnique) => JsCmd]
-      , onClickDirective: Option[(FullActiveTechniqueCategory, FullActiveTechnique, Directive) => JsCmd]
+        category: FullActiveTechniqueCategory
     ) : JsTreeNode = new JsTreeNode {
 
       private[this] val localOnClickTechnique = onClickTechnique.map( _.curried(category) )
@@ -111,40 +108,21 @@ object DisplayDirectiveTree extends Loggable {
         /*
          * sortedActiveTechnique contains only techniques that have directives
          */
-        val sortedActiveTechnique = {
-          category.activeTechniques.collect { case x if(keepCategory(x)) => displayCategory(x, onClickCategory, onClickTechnique, onClickDirective) }
-            .sortWith {
-              case ( (_, None) , _ ) => true
-              case ( _ , (_, None) ) => false
-              case ( (refPt1, refPt2) ) =>
-                treeUtilService.sortPt(refPt1,refPt2)
-            }
-            .map { case (node,_) => node }
-        }
+        val sortedActiveTechnique = (
+          category.activeTechniques
+            .sortBy( _.techniqueName.value )
+            .collect { case x if(keepTechnique(x)) => displayActiveTechnique(x, localOnClickTechnique, localOnClickDirective) }
+        )
 
-        val sortedCat = {
-          category.children
-            .filter { categoryId =>
-              directiveRepository.containsDirective(categoryId)
-            }
-            .flatMap(x => activeTechniqueCategoryIdToJsTreeNode(x))
-            .toList
-            .sortWith { case ( (node1, cat1) , (node2, cat2) ) =>
-              treeUtilService.sortActiveTechniqueCategory(cat1,cat2)
-            }
-            .map { case (node,_) => node }
-        }
+        val sortedCat = (
+          category.subCategories
+            .sortBy( _.name )
+            .collect { case x if(keepCategory(x)) => displayCategory(x) }
+        )
 
-        val res = sortedActiveTechnique ++ sortedCat
-        res
+        sortedActiveTechnique ++ sortedCat
       }
 
-
-      val rel = {
-        if(category.id == groupLib.id) "root-category"
-        else if (category.isSystem)    "system_category"
-        else                           "category"
-      }
 
       override val attrs = ( "rel" -> "category") :: Nil
     }
@@ -152,12 +130,13 @@ object DisplayDirectiveTree extends Loggable {
 
    /////////////////////////////////////////////////////////////////////////////////////////////
 
-    def activeTechniqueToJsTreeNode(
+    def displayActiveTechnique(
         activeTechnique: FullActiveTechnique
-      , onClickNode    : Option[(FullActiveTechnique, FullActiveTechniqueCategory) => JsCmd]
+      , onClickTechnique: Option[FullActiveTechnique => JsCmd]
+      , onClickDirective: Option[FullActiveTechnique => Directive => JsCmd]
     ) : JsTreeNode = new JsTreeNode {
 
-      override def children = Nil
+      private[this] val localOnClickDirective = onClickDirective.map( f => f(activeTechnique) )
 
       override val attrs = (
         ( "rel" -> "template") :: Nil :::
@@ -166,45 +145,40 @@ object DisplayDirectiveTree extends Loggable {
           else Nil
         )
       )
+
+      override def children = {
+        activeTechnique.directives
+          .sortBy( _.name )
+          .map( x => displayDirective(x, localOnClickDirective))
+      }
+
       override def body = {
         val tooltipId = Helpers.nextFuncName
 
-        val xml  = {
-          <span class="treeActiveTechniqueName tooltipable" tooltipid={tooltipid} title={technique.description}>
-            {technique.name}
-          </span>
-          <div class="tooltipContent" id={tooltipId}>
-            <h3>{technique.name}</h3>
-            <div>{technique.description}</div>
-          </div>
+        //display information (name, etc) relative to last technique version
+
+        val xml = activeTechnique.techniques.values.toSeq.sortWith( (x,y) => x.id.version > y.id.version ).headOption match {
+          case Some(technique) =>
+            <span class="treeActiveTechniqueName tooltipable" tooltipid={tooltipId} title={technique.description}>
+              {technique.name}
+            </span>
+            <div class="tooltipContent" id={tooltipId}>
+              <h3>{technique.name}</h3>
+              <div>{technique.description}</div>
+            </div>
+          case None => <span class="error">No technique available for that active technique</span>
         }
 
-        override def children =
-          activeTechnique.directives
-            .map(x => directiveIdToJsTreeNode(x)).toList
-            .sortWith {
-              case ( (_, None) , _  ) => true
-              case (  _ ,  (_, None)) => false
-              case ( (node1, Some(pi1)), (node2, Some(pi2)) ) =>
-                treeUtilService.sortPi(pi1,pi2)
-            }
-            .map { case (node, _) => node }
-        }
-
-        onClickNode match {
-          case None | _ if(targetInfo.isSystem) => <a style="cursor:default">{xml}</a>
-          case Some(f)                          => SHtml.a(() => f(targetInfo), xml)
+        onClickTechnique match {
+          case None | _ if(activeTechnique.isSystem) => <a style="cursor:default">{xml}</a>
+          case Some(f)                               => SHtml.a(() => f(activeTechnique), xml)
         }
       }
-
     }
 
-    displayCategory(groupLib, onClickCategory, onClickTarget).toXml
-  }
-
-    def directiveToJsTreeNode(
+    def displayDirective(
         directive  : Directive
-      , onClickNode: Option[Directive => JsCmd]
+      , onClickDirective: Option[Directive => JsCmd]
     ) : JsTreeNode = new JsTreeNode {
 
       override def children = Nil
@@ -232,38 +206,15 @@ object DisplayDirectiveTree extends Loggable {
                     </div>
         }
 
-        override def children = Nil
-
-        onClickNode match {
+        onClickDirective match {
           case None | _ if(directive.isSystem) => <a style="cursor:default">{xml}</a>
           case Some(f)                         => SHtml.a(() => f(directive), xml)
         }
       }
     }
 
-    displayCategory(directiveLib, onClickCategory, onClickTarget).toXml
-  }
+    displayCategory(directiveLib).toXml
 
-
-
-  //build the tree category, filtering only category with groups
-  def buildTreeKeepingGroupWithNode(
-      groupLib       : FullActiveTechniqueCategory
-    , nodeId         : NodeId
-    , onClickCategory: Option[FullActiveTechniqueCategory => JsCmd] = None
-    , onClickTarget  : Option[(FullRuleTargetInfo, FullActiveTechniqueCategory) => JsCmd] = None
-  ) : NodeSeq = {
-
-    displayTree(
-        groupLib
-      , onClickCategory
-      , onClickTarget
-      , keepCategory   = (cat => cat.allGroups.values.exists( _.nodeGroup.serverList.contains(nodeId)))
-      , keepTargetInfo = (ti => ti match {
-          case FullRuleTargetInfo(FullGroupTarget(_, g), _, _, _, _) => g.serverList.contains(nodeId)
-          case _ => false
-        })
-    )
   }
 
 }
