@@ -58,6 +58,7 @@ import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.FullActiveTechnique
 import com.normation.cfclerk.domain.TechniqueId
+import com.normation.rudder.web.services.DisplayDirectiveTree
 
 /**
  * Snippet for managing the System and Active Technique libraries.
@@ -163,7 +164,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
               <span class="error">An error occured when trying to get information from the database. Please contact your administrator of retry latter.</span>
             case Full(activeTechLib) =>
               <ul>{
-                jsTreeNodeOf_uptCategory(activeTechLib, "jstn_0").toXml
+                DisplayDirectiveTree.displayTree(activeTechLib, None, Some(onClickActiveTechnique), Some(onClickDirective))
               }</ul>
           }
       }</div>
@@ -491,131 +492,22 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
 
   //////////////// display trees ////////////////////////
 
-  /**
-   * Transform ActiveTechniqueCategory into category JsTree nodes in User Library:
-   * - contains
-   *   - other user categories
-   *   - Active Techniques
-   */
-  private[this] def jsTreeNodeOf_uptCategory(category: FullActiveTechniqueCategory, nodeId:String): JsTreeNode = {
-    /*
-     * Transform a Directive into a JsTree node
-     */
-    def jsTreeNodeOf_upt(fullActiveTechnique : FullActiveTechnique) : JsTreeNode = {
-      // for the description and everything, we use the most recent technique
-      // now, actually map activeTechnique to JsTreeNode
-      new JsTreeNode {
-        def onClickNode() : JsCmd = {
-            currentTechnique = Some((fullActiveTechnique, fullActiveTechnique.techniques.keys.toSeq.sorted.head))
-
-            currentDirectiveSettingForm.set(Empty)
-
-            //Update UI
-            Replace(html_techniqueDetails, techniqueDetails.applyAgain) &
-            setRightPanelHeader(false) &
-            Replace(htmlId_policyConf, showDirectiveDetails) &
-            JsRaw("""correctButtons();""")
-        }
-
-        override val attrs = {
-          ( "rel" -> "template") :: Nil :::
-          (if(!fullActiveTechnique.isEnabled) ("class" -> "disableTreeNode") :: Nil else Nil )
-        }
-
-        override def body = {
-          val tooltipid = Helpers.nextFuncName
-          SHtml.a(
-            onClickNode _,
-            <span class="treeActiveTechniqueName tooltipable" title="" tooltipid={tooltipid}>
-              {fullActiveTechnique.techniqueName.value}
-            </span>
-            <div class="tooltipContent" id={tooltipid}>
-              {fullActiveTechnique.newestAvailableTechnique.map( _.description )}
-            </div>)
-        }
-
-        override def children = (
-          fullActiveTechnique.directives
-            .sortWith( treeUtilService.sortPi( _, _ ) )
-            .map { directive => jsTreeNodeOf_directive(fullActiveTechnique,directive) }
-        )
-      }
-    }
-
-    /*
-     * Transform a Directive into a JsTree leaf
-     */
-    def jsTreeNodeOf_directive(fullActiveTechnique: FullActiveTechnique, directive: Directive) : JsTreeNode = {
-      new JsTreeNode {
-         //ajax function that update the bottom
-        def onClickNode() : JsCmd = {
-          displayDirectiveDetails(directive.id)
-        }
-
-        override def body = {
-          val tooltipid = Helpers.nextFuncName
-          val nSeq = {
-            <span class="treeDirective tooltipable" title="" tooltipid={tooltipid}>
-              {directive.name}
-            </span>
-            <div class="tooltipContent" id={tooltipid}>
-              {
-                directive.shortDescription match {
-                  case "" => <i>No description available</i>
-                  case f => {f}
-                }
-              }
-            </div>
-          }
-          SHtml.a(onClickNode _, nSeq)
-        }
-
-        override def children = Nil
-
-        override val attrs = {
-          ( "rel" -> "directive") ::
-          ( "id" -> ("jsTree-"+directive.id.value)) :: Nil :::
-          (if(!directive.isEnabled) ("class" -> "disableTreeNode") :: Nil else Nil )
-        }
-      }
-    }
-
-    /*
-     * Transform a Technique category into a JsTree node
-     */
-    new JsTreeNode {
-      override def body = {
-        val tooltipid = Helpers.nextFuncName
-        ( <a href="#">
-            <span class="treeActiveTechniqueCategoryName tooltipable" title="" tooltipid={tooltipid}>
-              {Text(category.name)}
-            </span>
-          </a>
-          <div class="tooltipContent" id={tooltipid}>
-            {
-              category.description match {
-                case "" => <i>No description available</i>
-                case f => {f}
-              }
-            }
-          </div>
-        )
-      }
-
-      override def children = {
-        category.subCategories
-          .sortWith( treeUtilService.sortFullActiveTechniqueCategory( _,_ ) )
-          .zipWithIndex.map{ case (node, i) =>
-              jsTreeNodeOf_uptCategory(node, nodeId + "_" + i)
-          } ++
-        category.activeTechniques
-          .sortWith( treeUtilService.sortFullActiveTechnique )
-          .map { jsTreeNodeOf_upt(_) }
-      }
-
-      override val attrs = ( "rel" -> "category") :: ( "id" -> nodeId) :: Nil
-    }
+  private[this] def onClickDirective(cat: FullActiveTechniqueCategory, at: FullActiveTechnique,directive: Directive) : JsCmd = {
+    displayDirectiveDetails(directive.id)
   }
+
+  private[this] def onClickActiveTechnique(cat: FullActiveTechniqueCategory, fullActiveTechnique : FullActiveTechnique) : JsCmd = {
+      currentTechnique = Some((fullActiveTechnique, fullActiveTechnique.techniques.keys.toSeq.sorted.head))
+
+      currentDirectiveSettingForm.set(Empty)
+
+      //Update UI
+      Replace(html_techniqueDetails, techniqueDetails.applyAgain) &
+      setRightPanelHeader(false) &
+      Replace(htmlId_policyConf, showDirectiveDetails) &
+      JsRaw("""correctButtons();""")
+  }
+
 }
 
 

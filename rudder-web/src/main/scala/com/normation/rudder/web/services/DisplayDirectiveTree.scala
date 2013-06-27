@@ -82,6 +82,7 @@ object DisplayDirectiveTree extends Loggable {
 
     def displayCategory(
         category: FullActiveTechniqueCategory
+      , nodeId  : String
     ) : JsTreeNode = new JsTreeNode {
 
       private[this] val localOnClickTechnique = onClickTechnique.map( _.curried(category) )
@@ -90,7 +91,7 @@ object DisplayDirectiveTree extends Loggable {
 
       private[this] val tooltipId = Helpers.nextFuncName
       private[this] val xml = (
-        <span class="treeActiveTechniqueCategoryName tooltipable" tooltipid={tooltipId} title={category.description}>
+        <span class="treeActiveTechniqueCategoryName tooltipable" tooltipid={tooltipId} title="">
           {Text(category.name)}
         </span>
         <div class="tooltipContent" id={tooltipId}>
@@ -104,27 +105,23 @@ object DisplayDirectiveTree extends Loggable {
         case Some(f) => SHtml.a({() => f(category)}, xml)
       }
 
-      override def children = {
-        /*
-         * sortedActiveTechnique contains only techniques that have directives
-         */
-        val sortedActiveTechnique = (
-          category.activeTechniques
-            .sortBy( _.techniqueName.value )
-            .collect { case x if(keepTechnique(x)) => displayActiveTechnique(x, localOnClickTechnique, localOnClickDirective) }
-        )
-
-        val sortedCat = (
-          category.subCategories
-            .sortBy( _.name )
-            .collect { case x if(keepCategory(x)) => displayCategory(x) }
-        )
-
-        sortedActiveTechnique ++ sortedCat
-      }
+      override def children = (
+        category.subCategories
+          .sortBy( _.name )
+          .zipWithIndex
+          .collect{ case (node, i) if(keepCategory(node)) =>
+              displayCategory(node, nodeId + "_" + i)
+          }
+        ++
+        category.activeTechniques
+          .sortBy( _.techniqueName.value )
+          .collect { case at if(keepTechnique(at)) =>
+            displayActiveTechnique(at, localOnClickTechnique, localOnClickDirective)
+          }
+      )
 
 
-      override val attrs = ( "rel" -> "category") :: Nil
+      override val attrs = ( "rel" -> "category") :: ( "id" -> nodeId) :: Nil
     }
 
 
@@ -149,7 +146,7 @@ object DisplayDirectiveTree extends Loggable {
       override def children = {
         activeTechnique.directives
           .sortBy( _.name )
-          .map( x => displayDirective(x, localOnClickDirective))
+          .collect { case x if(keepDirective(x)) => displayDirective(x, localOnClickDirective) }
       }
 
       override def body = {
@@ -157,9 +154,9 @@ object DisplayDirectiveTree extends Loggable {
 
         //display information (name, etc) relative to last technique version
 
-        val xml = activeTechnique.techniques.values.toSeq.sortWith( (x,y) => x.id.version > y.id.version ).headOption match {
+        val xml = activeTechnique.newestAvailableTechnique match {
           case Some(technique) =>
-            <span class="treeActiveTechniqueName tooltipable" tooltipid={tooltipId} title={technique.description}>
+            <span class="treeActiveTechniqueName tooltipable" tooltipid={tooltipId} title="">
               {technique.name}
             </span>
             <div class="tooltipContent" id={tooltipId}>
@@ -196,8 +193,7 @@ object DisplayDirectiveTree extends Loggable {
         val tooltipId = Helpers.nextFuncName
 
         val xml  = {
-                    <span class="treeDirective tooltipable" tooltipid={tooltipId}
-                      title={directive.shortDescription}>
+                    <span class="treeDirective tooltipable" tooltipid={tooltipId} title="">
                       {directive.name}
                     </span>
                     <div class="tooltipContent" id={tooltipId}>
@@ -213,7 +209,7 @@ object DisplayDirectiveTree extends Loggable {
       }
     }
 
-    displayCategory(directiveLib).toXml
+    displayCategory(directiveLib, "jstn_0").toXml
 
   }
 
