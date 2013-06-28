@@ -34,47 +34,46 @@
 
 package com.normation.rudder.web.components
 
-import com.normation.rudder.domain.policies._
-import com.normation.rudder.batch.{AsyncDeploymentAgent,AutomaticStartDeployment}
-import com.normation.rudder.repository._
-import com.normation.rudder.domain.policies._
-import net.liftweb.http.js._
-import JsCmds._
-import com.normation.rudder.domain.nodes.{NodeGroup, NodeGroupCategoryId, NodeGroupCategory, NodeGroupId}
-import com.normation.cfclerk.services.TechniqueRepository
-import com.normation.cfclerk.domain.Technique
-import JE._
-import net.liftweb.common._
-import net.liftweb.http._
-import scala.xml._
-import net.liftweb.util._
-import net.liftweb.util.Helpers._
-import com.normation.rudder.web.model._
-import com.normation.utils.StringUuidGenerator
-import com.normation.rudder.domain.eventlog.RudderEventActor
-import com.normation.plugins.{SpringExtendableSnippet,SnippetExtensionKey}
-import net.liftweb.json._
-import com.normation.rudder.domain.eventlog.{
-  DeleteRule,
-  ModifyRule
-}
-import com.normation.rudder.web.services.JsTreeUtilService
-import com.normation.rudder.web.services.UserPropertyService
-import org.joda.time.DateTime
-import com.normation.rudder.authorization._
-import com.normation.rudder.domain.reports.bean._
-import com.normation.rudder.services.reports.ReportingService
-import com.normation.rudder.services.nodes.NodeInfoService
+import scala.xml.NodeSeq
+import scala.xml.Text
 import com.normation.inventory.domain.NodeId
-import com.normation.exceptions.TechnicalException
-import net.liftweb.http.SHtml.BasicElemAttr
-import com.normation.rudder.web.components.popup.CreateOrCloneRulePopup
-import com.normation.eventlog.ModificationId
-import bootstrap.liftweb.RudderConfig
-import com.normation.rudder.web.components.popup.RuleModificationValidationPopup
+import com.normation.plugins.SnippetExtensionKey
+import com.normation.plugins.SpringExtendableSnippet
+import com.normation.rudder.authorization.Edit
+import com.normation.rudder.authorization.Read
+import com.normation.rudder.domain.nodes.NodeGroupId
+import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.domain.policies.FullRuleTargetInfo
+import com.normation.rudder.domain.policies.GroupTarget
+import com.normation.rudder.domain.policies.Rule
+import com.normation.rudder.domain.policies.RuleTarget
+import com.normation.rudder.domain.reports.bean._
 import com.normation.rudder.domain.workflows.ChangeRequestId
-import com.normation.rudder.web.services.DisplayNodeGroupTree
+import com.normation.rudder.repository.FullActiveTechniqueCategory
+import com.normation.rudder.repository.FullNodeGroupCategory
+import com.normation.rudder.web.components.popup.RuleModificationValidationPopup
+import com.normation.rudder.web.model.CurrentUser
+import com.normation.rudder.web.model.FormTracker
+import com.normation.rudder.web.model.WBTextAreaField
+import com.normation.rudder.web.model.WBTextField
 import com.normation.rudder.web.services.DisplayDirectiveTree
+import com.normation.rudder.web.services.DisplayNodeGroupTree
+import bootstrap.liftweb.RudderConfig
+import net.liftweb.common._
+import net.liftweb.http.DispatchSnippet
+import net.liftweb.http.S
+import net.liftweb.http.SHtml
+import net.liftweb.http.SHtml.BasicElemAttr
+import net.liftweb.http.SHtml.ElemAttr.pairToBasic
+import net.liftweb.http.Templates
+import net.liftweb.http.js.JE._
+import net.liftweb.http.js.JsCmd
+import net.liftweb.http.js.JsCmds._
+import net.liftweb.json._
+import net.liftweb.util.ClearClearable
+import net.liftweb.util.Helpers
+import net.liftweb.util.Helpers._
+import com.normation.rudder.domain.nodes.NodeInfo
 
 object RuleEditForm {
 
@@ -144,11 +143,7 @@ class RuleEditForm(
   private[this] val htmlId_EditZone = "editRuleZone"
 
   private[this] val roRuleRepository     = RudderConfig.roRuleRepository
-  private[this] val directiveRepository  = RudderConfig.roDirectiveRepository
-  private[this] val techniqueRepository  = RudderConfig.techniqueRepository
   private[this] val reportingService     = RudderConfig.reportingService
-  private[this] val nodeInfoService      = RudderConfig.nodeInfoService
-  private[this] val treeUtilService      = RudderConfig.jsTreeUtilService
   private[this] val userPropertyService  = RudderConfig.userPropertyService
 
   private[this] val workflowEnabled      = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
@@ -158,6 +153,8 @@ class RuleEditForm(
   private[this] var selectedDirectiveIds = rule.directiveIds
 
   private[this] val getFullNodeGroupLib = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
+  private[this] val getFullDirectiveLib = RudderConfig.roDirectiveRepository.getFullDirectiveLibrary _
+  private[this] val getAllNodeInfos     = RudderConfig.nodeInfoService.getAll _
 
 
   //////////////////////////// public methods ////////////////////////////
@@ -169,50 +166,53 @@ class RuleEditForm(
   )
 
   private[this] def showForm(tab :Int = 0) : NodeSeq = {
+    (getFullNodeGroupLib(), getFullDirectiveLib(), getAllNodeInfos()) match {
+      case (Full(groupLib), Full(directiveLib), Full(nodeInfos)) =>
+        val allNodeInfos = nodeInfos.map( x => (x.id -> x) ).toMap
 
-    val form = {
-      getFullNodeGroupLib() match {
-        case Full(groupLib) =>
+        val form = {
           if(CurrentUser.checkRights(Read("rule"))) {
             val formContent = if (CurrentUser.checkRights(Edit("rule"))) {
-              showCrForm(groupLib)
+              showCrForm(groupLib, directiveLib)
             } else {
               <div>You have no rights to see rules details, please contact your administrator</div>
             }
 
             (
               "#editForm" #> formContent &
-              "#details"  #> showRuleDetails()
+              "#details"  #> showRuleDetails(directiveLib, allNodeInfos)
             ).apply(body)
 
           } else {
             <div>You have no rights to see rules details, please contact your administrator</div>
           }
+        }
 
-        case eb: EmptyBox =>
+        val ruleComplianceTabAjax = SHtml.ajaxCall(JsRaw("'"+rule.id.value+"'"), (v:String) => Replace("details",showRuleDetails(directiveLib, allNodeInfos)))._2.toJsCmd
+
+        form ++
+        Script(
+          OnLoad(JsRaw(
+            s"""$$( "#editRuleZone" ).tabs(); $$( "#editRuleZone" ).tabs('select', ${tab});"""
+          )) &
+          JsRaw(s"""
+            | $$("#editRuleZone").bind( "show", function(event, ui) {
+            | if(ui.panel.id== 'ruleComplianceTab') { ${ruleComplianceTabAjax}; }
+            | });
+            """.stripMargin('|')
+          )
+        )
+
+      case (a, b, c) =>
+        List(a,b,c).collect{ case eb: EmptyBox =>
           val e = eb ?~! "An error happens when trying to get the node group library"
           logger.error(e.messageChain)
           <div class="error">{e.msg}</div>
-      }
+        }
     }
-
-    val ruleComplianceTabAjax = SHtml.ajaxCall(JsRaw("'"+rule.id.value+"'"), (v:String) => Replace("details",showRuleDetails()))._2.toJsCmd
-
-    form ++
-    Script(
-      OnLoad(JsRaw(
-        s"""$$( "#editRuleZone" ).tabs(); $$( "#editRuleZone" ).tabs('select', ${tab});"""
-      )) &
-      JsRaw(s"""
-        | $$("#editRuleZone").bind( "show", function(event, ui) {
-        | if(ui.panel.id== 'ruleComplianceTab') { ${ruleComplianceTabAjax}; }
-        | });
-        """.stripMargin('|')
-      )
-    )
   }
 
-  private[this] def  showRuleDetails() : NodeSeq = {
+  private[this] def  showRuleDetails(directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : NodeSeq = {
     val updatedrule = roRuleRepository.get(rule.id)
     (
       "#details *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
@@ -221,7 +221,7 @@ class RuleEditForm(
       "#shortDescriptionField" #>  <div>{crShortDescription.displayNameHtml.getOrElse("Could not fetch short description")} {updatedrule.map(_.shortDescription).openOr("could not fetch rule short descritption")}</div> &
       "#longDescriptionField" #>  <div>{crLongDescription.displayNameHtml.getOrElse("Could not fetch description")} {updatedrule.map(_.longDescription).openOr("could not fetch rule long description")}</div> &
       "#compliancedetails" #> { updatedrule match {
-        case Full(rule) => showCompliance(rule)
+        case Full(rule) => showCompliance(rule, directiveLib, allNodeInfos)
         case _ => logger.debug("Could not display rule details for rule %s".format(rule.id))
           <div>Could not fetch rule</div>
       }}
@@ -229,7 +229,7 @@ class RuleEditForm(
   }
 
 
-  private[this] def showCrForm(groupLib: FullNodeGroupCategory) : NodeSeq = {
+  private[this] def showCrForm(groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory) : NodeSeq = {
     (
       "#editForm *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       ClearClearable &
@@ -255,24 +255,14 @@ class RuleEditForm(
       "#longDescriptionField" #> crLongDescription.toForm_! &
       "#selectPiField" #> {
         <div id={htmlId_activeTechniquesTree}>{
-          directiveRepository.getFullDirectiveLibrary() match {
-            case eb:EmptyBox =>
-              val f = eb ?~! "Error when trying to get the root category of Active Techniques"
-              logger.error(f.messageChain)
-              f.rootExceptionCause.foreach { ex =>
-                logger.error("Exception causing the error was:" , ex)
-              }
-              <span class="error">An error occured when trying to get information from the database. Please contact your administrator of retry latter.</span>
-            case Full(root) =>
-              <ul>{
-                DisplayDirectiveTree.displayTree(
-                    directiveLib = root
-                  , onClickCategory = None
-                  , onClickTechnique = None
-                  , onClickDirective = None
-                )
-              }</ul>
-          }
+          <ul>{
+            DisplayDirectiveTree.displayTree(
+                directiveLib = directiveLib
+              , onClickCategory = None
+              , onClickTechnique = None
+              , onClickDirective = None
+            )
+          }</ul>
         }</div> } &
       "#selectGroupField" #> {
         <div id={htmlId_groupTree}>
@@ -558,7 +548,7 @@ class RuleEditForm(
    * For each table : the subtable is contained in td : details
    * when + is clicked: it gets the content of td details then process it has a datatable
    */
-  private[this] def showCompliance(rule: Rule) : NodeSeq = {
+  private[this] def showCompliance(rule: Rule, directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : NodeSeq = {
 
     /*
      * That javascript function gather all the data needed to display the details
@@ -624,7 +614,7 @@ class RuleEditForm(
       /*
        * This is the main Javascript function to have cascaded DataTables
        */
-   val ReportsGridClickFunction = """
+    val ReportsGridClickFunction = """
      createTooltip();
      var plusTd = $($('#reportsGrid').dataTable().fnGetNodes());
 
@@ -677,13 +667,13 @@ class RuleEditForm(
              anOpen.splice( i, 1 );
            } );
          }
-   } ) } );""".format(S.contextPath,innerClickJSFunction)
+    } ) } );""".format(S.contextPath,innerClickJSFunction)
 
     /*
      * It displays the report Detail of a Rule
      * It displays each Directive and prepare its components detail
      */
-    def showReportDetail(batch : Box[Option[ExecutionBatch]]) : NodeSeq = {
+    def showReportDetail(batch : Box[Option[ExecutionBatch]], directiveLib: FullActiveTechniqueCategory) : NodeSeq = {
       batch match {
         case e: EmptyBox => <div class="error">Error while fetching report information</div>
         case Full(None) => NodeSeq.Empty
@@ -693,10 +683,10 @@ class RuleEditForm(
           ( "#reportsGrid [class+]" #> "tablewidth" &
             "#reportLine" #> {
               directivesreport.flatMap { directiveStatus =>
-                directiveRepository.getDirective(directiveStatus.directiveId) match {
-                  case Full(directive)  => {
-                    val tech = directiveRepository.getActiveTechnique(directive.id).map(act =>
-                      techniqueRepository.getLastTechniqueByName(act.techniqueName).map(_.name).getOrElse("Unknown technique")).getOrElse("Unknown technique")
+                directiveLib.allDirectives.get(directiveStatus.directiveId) match {
+                  case Some((fullActiveTechnique, directive))  => {
+
+                    val tech = fullActiveTechnique.techniques.get(directive.techniqueVersion).map(_.name).getOrElse("Unknown technique")
                     val techversion = directive.techniqueVersion;
                     val tooltipid = Helpers.nextFuncName
                     val components= showComponentsReports(directiveStatus.components)
@@ -722,8 +712,8 @@ class RuleEditForm(
                       "#severity *" #> buildComplianceChart(directiveStatus)
                     ) (reportsLineXml)
                   }
-                  case x:EmptyBox =>
-                    logger.error( (x?~! "An error occured when trying to load directive %s".format(directiveStatus.directiveId.value)),x)
+                  case None =>
+                    logger.error(s"An error occured when trying to load directive ${directiveStatus.directiveId.value}.")
                     <div class="error">Node with ID "{directiveStatus.directiveId.value}" is invalid</div>
                 }
               }
@@ -756,10 +746,11 @@ class RuleEditForm(
                   """.format(FormatDetailsJSFunction,ReportsGridClickFunction) ) )
       }
     }
-  /*
-   * Display component details of a directive and add its compoenent value details if needed
-   */
-  def showComponentsReports(components : Seq[ComponentRuleStatusReport]) : NodeSeq = {
+
+    /*
+     * Display component details of a directive and add its compoenent value details if needed
+     */
+    def showComponentsReports(components : Seq[ComponentRuleStatusReport]) : NodeSeq = {
     val worstseverity= ReportType.getSeverityFromStatus(ReportType.getWorseType(components.map(_.componentReportType))).replaceAll(" ", "")
     <table id={Helpers.nextFuncName} cellspacing="0" style="display:none" class="noMarginGrid tablewidth">
      <thead>
@@ -794,12 +785,12 @@ class RuleEditForm(
       )  }  }
       </tbody>
     </table>
-  }
+    }
 
-  /*
-   * Display component value details
-   */
-  def showComponentValueReport(values : Seq[ComponentValueRuleStatusReport],directiveSeverity:String) : NodeSeq = {
+    /*
+     * Display component value details
+     */
+    def showComponentValueReport(values : Seq[ComponentValueRuleStatusReport],directiveSeverity:String) : NodeSeq = {
     val worstseverity= ReportType.getSeverityFromStatus(ReportType.getWorseType(values.map(_.cptValueReportType))).replaceAll(" ", "")
     <table id={Helpers.nextFuncName} cellspacing="0" style="display:none" class="noMarginGrid tablewidth ">
       <thead>
@@ -835,9 +826,9 @@ class RuleEditForm(
          ) (componentValueDetails) } }
       </tbody>
     </table>
-  }
+    }
 
-  def reportsGridXml : NodeSeq = {
+    def reportsGridXml : NodeSeq = {
     <table id="reportsGrid" cellspacing="0">
       <thead>
         <tr class="head tablewidth">
@@ -851,18 +842,18 @@ class RuleEditForm(
         <div id="reportLine"/>
       </tbody>
     </table>
-  }
+    }
 
-  def reportsLineXml : NodeSeq = {
+    def reportsLineXml : NodeSeq = {
     <tr class="cursor">
       <td id="directive" class="nestedImg"></td>
       <td id="status" class="firstTd"></td>
       <td name="severity" class="firstTd"><div id="severity" style="text-align:right;"/></td>
       <td id="details" ></td>
     </tr>
-  }
+    }
 
-  def componentDetails : NodeSeq = {
+    def componentDetails : NodeSeq = {
     <tr id="componentLine" class="detailedReportLine severity" >
       <td id="first" class="emptyTd"/>
       <td id="component" ></td>
@@ -870,9 +861,9 @@ class RuleEditForm(
       <td name="severity" class="firstTd"><div id="severity" style="text-align:right;"/></td>
       <td id="details"/>
     </tr>
-  }
+    }
 
-  def componentValueDetails : NodeSeq = {
+    def componentValueDetails : NodeSeq = {
     <tr id="valueLine"  class="detailedReportLine severityClass severity ">
       <td id="first" class="emptyTd"/>
       <td id="componentValue" class="firstTd"></td>
@@ -880,41 +871,42 @@ class RuleEditForm(
       <td name="keySeverity" class="firstTd"><div id="keySeverity" style="text-align:right;"/></td>
       <td/>
     </tr>
-  }
+    }
 
- def buildComplianceChart(rulestatusreport:RuleStatusReport) : NodeSeq = {
+    def buildComplianceChart(rulestatusreport:RuleStatusReport) : NodeSeq = {
     rulestatusreport.computeCompliance match {
       case Some(percent) =>  {
         val text = Text(percent.toString + "%")
         val attr = BasicElemAttr("class","noexpand")
-        SHtml.a({() => showPopup(rulestatusreport)}, text,attr)
+        SHtml.a({() => showPopup(rulestatusreport, directiveLib, allNodeInfos)}, text,attr)
       }
       case None => Text("Not Applied")
     }
-  }
+    }
 
-  def buildComplianceChartForComponent(
+    def buildComplianceChartForComponent(
       ruleStatusReport: ComponentValueRuleStatusReport
-    , values          : Option[Seq[ComponentValueRuleStatusReport]]) : NodeSeq = {
+    , values          : Option[Seq[ComponentValueRuleStatusReport]]
+    ) : NodeSeq = {
     ruleStatusReport.computeCompliance match {
       case Some(percent) =>  {
         val text = Text(percent.toString + "%")
         val attr = BasicElemAttr("class","noexpand")
         values match {
-          case None => SHtml.a({() => showPopup(ruleStatusReport)}, text,attr)
-          case Some(reports) => SHtml.a({() => showPopup(ruleStatusReport, reports)}, text,attr)
+          case None => SHtml.a({() => showPopup(ruleStatusReport, directiveLib, allNodeInfos)}, text,attr)
+          case Some(reports) => SHtml.a({() => showPopup(ruleStatusReport, reports, directiveLib, allNodeInfos)}, text,attr)
         }
       }
       case None => Text("Not Applied")
     }
-  }
+    }
 
-  val batch = reportingService.findImmediateReportsByRule(rule.id)
+    val batch = reportingService.findImmediateReportsByRule(rule.id)
 
-  <div>
-  <hr class="spacer" />
-        {showReportDetail(batch)}
-  </div>++ Script( OnLoad( After( TimeSpan(100), JsRaw("""createTooltip();"""))))
+    <div>
+    <hr class="spacer" />
+        {showReportDetail(batch, directiveLib)}
+    </div>++ Script( OnLoad( After( TimeSpan(100), JsRaw("""createTooltip();"""))))
   }
 
   ///////////////// Compliance detail popup/////////////////////////
@@ -1071,14 +1063,14 @@ class RuleEditForm(
      * Display a summary of every node
      * We only have node hostname, and it status
      */
-  def showSummary(nodeReports: Seq[NodeReport]): NodeSeq = {
+  def showSummary(nodeReports: Seq[NodeReport], allNodeInfos: Map[NodeId, NodeInfo]): NodeSeq = {
     val nodes = nodeReports.map(_.node).distinct
     val nodeStatuses = nodes.map(node => NodeReport(node, ReportType.getWorseType(nodeReports.filter(_.node == node).map(stat => stat.reportType)), nodeReports.filter(_.node == node).flatMap(stat => stat.message).toList))
     nodeStatuses.toList match {
       case Nil => NodeSeq.Empty
       case nodeStatus :: rest =>
-        val nodeReport = nodeInfoService.getNodeInfo(nodeStatus.node) match {
-          case Full(nodeInfo) => {
+        val nodeReport = allNodeInfos.get(nodeStatus.node) match {
+          case Some(nodeInfo) => {
             val tooltipid = Helpers.nextFuncName
             ("#node *" #>
               <a class="noexpand" href={ """/secure/nodeManager/searchNodes#{"nodeId":"%s"}""".format(nodeStatus.node.value) }>
@@ -1089,13 +1081,14 @@ class RuleEditForm(
               "#severity *" #> <center>{ ReportType.getSeverityFromStatus(nodeStatus.reportType) }</center> &
               "#severity [class+]" #> ReportType.getSeverityFromStatus(nodeStatus.reportType).replaceAll(" ", ""))(nodeLineXml)
           }
-          case x: EmptyBox =>
-            logger.error((x ?~! "An error occured when trying to load node %s".format(nodeStatus.node.value)), x)
+          case None =>
+            logger.error("An error occured when trying to load node %s".format(nodeStatus.node.value))
             <div class="error">Node with ID "{ nodeStatus.node.value }" is invalid</div>
         }
-        nodeReport ++ showSummary(rest)
+        nodeReport ++ showSummary(rest, allNodeInfos)
     }
   }
+
   def showMissingReports(reports: Seq[MessageReport], gridId: String, tabid: Int, techniqueName: String, techniqueVersion: String): NodeSeq = {
     def showMissingReport(report: (String, String)): NodeSeq = {
       ("#technique *" #> "%s (%s)".format(techniqueName, techniqueVersion) &
@@ -1141,15 +1134,15 @@ class RuleEditForm(
        *  message : Message to display on top of the dataTable
        *
        */
-  def showReports(reports: Seq[MessageReport], gridId: String, tabid: Int, message: String = ""): NodeSeq = {
+  private[this] def showReports(reports: Seq[MessageReport], gridId: String, tabid: Int, allNodeInfos: Map[NodeId, NodeInfo], message: String = ""): NodeSeq = {
     /*
          * Show report about a node
          * Parameters :
          * nodeId, Seq[componentName,value, unexpandedValue,reportsMessage, reportType)
          */
     def showNodeReport(nodeReport: (NodeId, Seq[(String, String, Option[String], List[String], ReportType)])): NodeSeq = {
-      nodeInfoService.getNodeInfo(nodeReport._1) match {
-        case Full(nodeInfo) => {
+      allNodeInfos.get(nodeReport._1) match {
+        case Some(nodeInfo) => {
           val status = ReportType.getSeverityFromStatus(ReportType.getWorseType(nodeReport._2.map(_._5)))
           ("#node *" #>
             <span class="unfoldable">
@@ -1163,8 +1156,8 @@ class RuleEditForm(
             "#status [class+]" #> status.replaceAll(" ", "") &
             "#details *" #> showComponentReport(nodeReport._2))(reportLineXml)
         }
-        case x: EmptyBox =>
-          logger.error((x ?~! "An error occured when trying to load node %s".format(nodeReport._1.value)), x)
+        case None =>
+          logger.error("An error occured when trying to load node %s".format(nodeReport._1.value))
           <div class="error">Node with ID "{ nodeReport._1.value }" is invalid</div>
       }
     }
@@ -1236,6 +1229,10 @@ class RuleEditForm(
         </tbody>
       </table>
     }
+
+
+    ///// actual code for showReports methods /////
+
     if (reports.size > 0) {
       val nodes = reports.map(_.report.node).distinct
       val datas = nodes.map(node => {
@@ -1404,9 +1401,9 @@ class RuleEditForm(
     }
   }
 
-  def showReportsByType(reports: Seq[ComponentValueRuleStatusReport], directiveId : DirectiveId): NodeSeq = {
-    val tech = directiveRepository.getActiveTechnique(directiveId).map(tech => techniqueRepository.getLastTechniqueByName(tech.techniqueName).map(_.name).getOrElse("Unknown Technique")).getOrElse("Unknown Technique")
-    val techVersion = directiveRepository.getDirective(directiveId).map(_.techniqueVersion.toString).getOrElse("N/A")
+  def showReportsByType(reports: Seq[ComponentValueRuleStatusReport], directiveId : DirectiveId, directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]): NodeSeq = {
+    val optDirective = directiveLib.allDirectives.get(directiveId)
+    val (techName, techVersion) = optDirective.map { case (fat, d) => (fat.techniqueName.value, d.techniqueVersion.toString) }.getOrElse(("Unknown Technique", "N/A"))
     val error = reports.flatMap(report => report.processMessageReport(_.reportType == ErrorReportType))
     val missing = reports.flatMap(report => report.processMessageReport(nreport => nreport.reportType == UnknownReportType & nreport.message.size == 0))
     val unexpected = reports.flatMap(report => report.processMessageReport(nreport => nreport.reportType == UnknownReportType & nreport.message.size != 0))
@@ -1414,15 +1411,17 @@ class RuleEditForm(
     val success = reports.flatMap(report => report.processMessageReport(_.reportType == SuccessReportType))
     val all = reports.flatMap(report => report.processMessageReport(report => true))
 
-    val xml = showReports(all, "report", 0) ++ showMissingReports(missing, "missing", 1, tech, techVersion) ++ showUnexpectedReports(unexpected, "unexpected", 2, tech, techVersion)
-
+    val xml = (
+         showReports(all, "report", 0, allNodeInfos) ++ showMissingReports(missing, "missing", 1, techName, techVersion)
+      ++ showUnexpectedReports(unexpected, "unexpected", 2, techName, techVersion, allNodeInfos)
+    )
     xml
   }
 
-  def showUnexpectedReports(reports: Seq[MessageReport], gridId: String, tabid: Int, techniqueName: String, techniqueVersion: String): NodeSeq = {
+  def showUnexpectedReports(reports: Seq[MessageReport], gridId: String, tabid: Int, techniqueName: String, techniqueVersion: String, allNodeInfos: Map[NodeId, NodeInfo]): NodeSeq = {
     def showUnexpectedReport(report: MessageReport): NodeSeq = {
-      nodeInfoService.getNodeInfo(report.report.node) match {
-        case Full(nodeInfo) => {
+      allNodeInfos.get(report.report.node) match {
+        case Some(nodeInfo) => {
           ("#node *" #>
             <a class="unfoldable" href={ """/secure/nodeManager/searchNodes#{"nodeId":"%s"}""".format(report.report.node.value) }>
               <span class="curspoint noexpand">
@@ -1434,8 +1433,8 @@ class RuleEditForm(
             "#value *" #> report.value &
             "#message *" #> <ul>{ report.report.message.map(msg => <li>{ msg }</li>) }</ul>)(unexpectedLineXml)
         }
-        case x: EmptyBox =>
-          logger.error((x ?~! "An error occured when trying to load node %s".format(report.report.node.value)), x)
+        case None =>
+          logger.error("An error occured when trying to load node %s".format(report.report.node.value))
           <div class="error">Node with ID "{ report.report.node.value }" is invalid</div>
       }
     }
@@ -1468,59 +1467,66 @@ class RuleEditForm(
     } else
       NodeSeq.Empty
   }
-  private[this] def createPopup(directiveByNode: RuleStatusReport) : NodeSeq = {
+
+  private[this] def directiveName(id:DirectiveId, directiveLib: FullActiveTechniqueCategory) = directiveLib.allDirectives.get(id).map( _._2.name ).getOrElse("can't find directive name")
+
+  private[this] def createPopup(directiveByNode: RuleStatusReport, directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : NodeSeq = {
+
     (
-      "#innerContent" #> { val xml = directiveByNode match {
-       case d:DirectiveRuleStatusReport =>
-         val directive = directiveRepository.getDirective(d.directiveId)
-         <div>
-           <ul>
-             <li> <b>Rule:</b> {rule.name}</li>
-             <li><b>Directive:</b> {directive.map(_.name).getOrElse("can't find directive name")}</li>
-           </ul>
-         </div>
-       case c:ComponentRuleStatusReport =>
-         val directive = directiveRepository.getDirective(c.directiveid)
-         <div>
-           <ul>
-             <li> <b>Rule:</b> {rule.name}</li>
-             <li><b>Directive:</b> {directive.map(_.name).getOrElse("can't find directive name")}</li>
-             <li><b>Component:</b> {c.component}</li>
-           </ul>
-         </div>
-       case ComponentValueRuleStatusReport(directiveId,component,value,unexpanded,_,_) =>
-         val directive = directiveRepository.getDirective(directiveId)
-         <div>
-           <ul>
-             <li> <b>Rule:</b> {rule.name}</li>
-             <li><b>Directive:</b> {directive.map(_.name).getOrElse("can't find directive name")}</li>
-             <li><b>Component:</b> {component}</li>
-             <li><b>Value:</b> {value}</li>
-           </ul>
-         </div>
-       }
-      val (reports, directiveId) = getComponentValueRule(directiveByNode)
-      val tab = showReportsByType(reports, directiveId)
-         xml++tab}
+      "#innerContent" #> {
+        val xml = directiveByNode match {
+          case d:DirectiveRuleStatusReport =>
+            <div>
+              <ul>
+                <li> <b>Rule:</b> {rule.name}</li>
+                <li><b>Directive:</b> {directiveName(d.directiveId, directiveLib)}</li>
+              </ul>
+            </div>
+          case c:ComponentRuleStatusReport =>
+            <div>
+              <ul>
+                <li> <b>Rule:</b> {rule.name}</li>
+                <li><b>Directive:</b> {directiveName(c.directiveid, directiveLib)}</li>
+                <li><b>Component:</b> {c.component}</li>
+              </ul>
+            </div>
+          case ComponentValueRuleStatusReport(directiveId,component,value,unexpanded,_,_) =>
+            <div>
+              <ul>
+                <li> <b>Rule:</b> {rule.name}</li>
+                <li><b>Directive:</b> {directiveName(directiveId, directiveLib)}</li>
+                <li><b>Component:</b> {component}</li>
+                <li><b>Value:</b> {value}</li>
+              </ul>
+            </div>
+          }
+        val (reports, directiveId) = getComponentValueRule(directiveByNode)
+        val tab = showReportsByType(reports, directiveId, directiveLib, allNodeInfos)
+
+        xml++tab
+      }
     ).apply(popupXml)
   }
 
   private[this] def createPopup(
-    componentStatus: ComponentValueRuleStatusReport, cptStatusReports: Seq[ComponentValueRuleStatusReport]): NodeSeq = {
+      componentStatus : ComponentValueRuleStatusReport
+    , cptStatusReports: Seq[ComponentValueRuleStatusReport]
+    , directiveLib    : FullActiveTechniqueCategory
+    , allNodeInfos    : Map[NodeId, NodeInfo]
+  ): NodeSeq = {
     (
       "#innerContent" #> {
-        val directive = directiveRepository.getDirective(componentStatus.directiveid)
         val xml = <div>
                     <ul>
                       <li><b>Rule:</b> { rule.name }</li>
-                      <li><b>Directive:</b> { directive.map(_.name).getOrElse("can't find directive name") }</li>
+                      <li><b>Directive:</b> { directiveName(componentStatus.directiveid, directiveLib) }</li>
                       <li><b>Component:</b> { componentStatus.component }</li>
                       <li><b>Value:</b> { componentStatus.unexpandedComponentValue.getOrElse(componentStatus.componentValue) }</li>
                     </ul>
                   </div>
         val tab = getComponentValueRule(cptStatusReports) match {
           case e: EmptyBox => <div class="error">Could not retrieve information from reporting</div>
-          case Full((reports, directiveId)) => showReportsByType(reports, directiveId)
+          case Full((reports, directiveId)) => showReportsByType(reports, directiveId, directiveLib, allNodeInfos)
         }
         xml ++ tab
       }).apply(popupXml)
@@ -1553,8 +1559,8 @@ class RuleEditForm(
   /**
    * Create the popup
    */
-  private[this] def showPopup(directiveStatus: RuleStatusReport) : JsCmd = {
-    val popupHtml = createPopup(directiveStatus)
+  private[this] def showPopup(directiveStatus: RuleStatusReport, directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : JsCmd = {
+    val popupHtml = createPopup(directiveStatus, directiveLib, allNodeInfos)
     SetHtml(htmlId_reportsPopup, popupHtml) & OnLoad(
         JsRaw("""
             $('.dataTables_filter input').attr("placeholder", "Search");
@@ -1570,8 +1576,11 @@ class RuleEditForm(
    */
   private[this] def showPopup(
       componentStatus : ComponentValueRuleStatusReport
-    , cptStatusReports: Seq[ComponentValueRuleStatusReport]) : JsCmd = {
-    val popupHtml = createPopup(componentStatus, cptStatusReports)
+    , cptStatusReports: Seq[ComponentValueRuleStatusReport]
+    , directiveLib    : FullActiveTechniqueCategory
+    , allNodeInfos    : Map[NodeId, NodeInfo]
+  ) : JsCmd = {
+    val popupHtml = createPopup(componentStatus, cptStatusReports, directiveLib, allNodeInfos)
     SetHtml(htmlId_reportsPopup, popupHtml) & OnLoad(
         JsRaw("""
             $('.dataTables_filter input').attr("placeholder", "Search");

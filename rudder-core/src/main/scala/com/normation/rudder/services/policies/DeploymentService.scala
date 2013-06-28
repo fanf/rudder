@@ -34,48 +34,37 @@
 
 package com.normation.rudder.services.policies
 
-import com.normation.rudder.domain.reports.RuleExpectedReports
-import com.normation.rudder.domain.servers.NodeConfiguration
-import com.normation.rudder.services.nodes.NodeInfoService
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.cfclerk.domain.VariableSpec
-import com.normation.cfclerk.domain.Variable
-import com.normation.cfclerk.services.TechniqueRepository
-import com.normation.rudder.repository.RoRuleRepository
-import net.liftweb.common._
-import com.normation.rudder.domain.policies._
-import com.normation.inventory.domain.NodeId
-import com.normation.utils.Control.{sequence, pipeline}
-import com.normation.rudder.services.nodes.NodeInfoService
-import com.normation.rudder.services.servers.NodeConfigurationService
-import com.normation.rudder.services.reports.ReportingService
-import com.normation.cfclerk.domain.Cf3PolicyDraft
-import com.normation.rudder.services.servers.NodeConfigurationChangeDetectService
 import org.joda.time.DateTime
-import com.normation.rudder.repository.jdbc.HistorizationJdbcRepository
-import com.normation.rudder.domain.nodes.NodeGroup
-import com.normation.rudder.domain.nodes.NodeGroupId
-import com.normation.rudder.services.eventlog.HistorizationService
-import com.normation.utils.HashcodeCaching
+
 import com.normation.cfclerk.domain.TechniqueName
-import com.normation.rudder.repository.WoRuleRepository
+import com.normation.cfclerk.domain.Variable
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.Constants
-import com.normation.rudder.domain.servers.NodeConfiguration
-import com.normation.rudder.domain.servers.NodeConfiguration
-import com.normation.rudder.repository.FullActiveTechniqueCategory
-import com.normation.rudder.repository.FullNodeGroupCategory
-import com.normation.rudder.repository.RoNodeGroupRepository
-import com.normation.rudder.repository.FullNodeGroupCategory
-import com.normation.rudder.repository.FullNodeGroupCategory
-import com.normation.rudder.repository.FullActiveTechniqueCategory
-import com.normation.rudder.repository.FullActiveTechniqueCategory
-import com.normation.rudder.repository.FullNodeGroupCategory
-import com.normation.rudder.repository.RoNodeGroupRepository
-import com.normation.rudder.repository.RoDirectiveRepository
-import com.normation.rudder.repository.FullActiveTechniqueCategory
-import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.policies.AppliedStatus
+import com.normation.rudder.domain.policies.ExpandedRuleVal
+import com.normation.rudder.domain.policies.PolicyDraft
+import com.normation.rudder.domain.policies.Rule
+import com.normation.rudder.domain.policies.RuleId
+import com.normation.rudder.domain.policies.RuleVal
+import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
+import com.normation.rudder.domain.reports.RuleExpectedReports
+import com.normation.rudder.domain.servers.NodeConfiguration
+import com.normation.rudder.repository.FullActiveTechniqueCategory
+import com.normation.rudder.repository.FullNodeGroupCategory
+import com.normation.rudder.repository.RoDirectiveRepository
+import com.normation.rudder.repository.RoNodeGroupRepository
+import com.normation.rudder.repository.RoRuleRepository
+import com.normation.rudder.repository.WoRuleRepository
+import com.normation.rudder.services.eventlog.HistorizationService
+import com.normation.rudder.services.nodes.NodeInfoService
+import com.normation.rudder.services.reports.ReportingService
+import com.normation.rudder.services.servers.NodeConfigurationChangeDetectService
+import com.normation.rudder.services.servers.NodeConfigurationService
+import com.normation.utils.Control._
+import com.normation.utils.HashcodeCaching
+
+import net.liftweb.common._
 
 /**
  * TODO: ca devrait être un "target node configuration", ie
