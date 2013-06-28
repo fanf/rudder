@@ -474,9 +474,7 @@ object RudderConfig extends Loggable {
     directiveSerialisation,
     nodeGroupSerialisation,
     activeTechniqueSerialisation)
-  private[this] lazy val pathComputer = new PathComputerImpl(
-    ldapNodeConfigurationRepository,
-    RUDDER_DIR_BACKUP)
+  private[this] lazy val pathComputer = new PathComputerImpl(RUDDER_DIR_BACKUP)
   private[this] lazy val baseUrlService: GetBaseUrlService = new DefaultBaseUrlService(BASE_URL)
 
   /*
@@ -824,13 +822,8 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val psMngtService: PolicyServerManagementService = new PolicyServerManagementServiceImpl(
     roLdapDirectiveRepository, woLdapDirectiveRepository, asyncDeploymentAgentImpl)
-  private[this] lazy val historizationService = new HistorizationServiceImpl(
-    historizationJdbcRepository,
-    nodeInfoServiceImpl,
-    roLdapNodeGroupRepository,
-    roLdapDirectiveRepository,
-    techniqueRepositoryImpl,
-    roLdapRuleRepository)
+  private[this] lazy val historizationService = new HistorizationServiceImpl(historizationJdbcRepository)
+
   private[this] lazy val asyncDeploymentAgentImpl: AsyncDeploymentAgent = {
     val agent = new AsyncDeploymentAgent(new DeploymentServiceImpl(
           roLdapRuleRepository,

@@ -167,8 +167,9 @@ object DisplayDirectiveTree extends Loggable {
         }
 
         onClickTechnique match {
-          case None | _ if(activeTechnique.isSystem) => <a style="cursor:default">{xml}</a>
-          case Some(f)                               => SHtml.a(() => f(activeTechnique), xml)
+          case None                           => <a style="cursor:default">{xml}</a>
+          case _ if(activeTechnique.isSystem) => <a style="cursor:default">{xml}</a>
+          case Some(f)                        => SHtml.a(() => f(activeTechnique), xml)
         }
       }
     }
@@ -203,8 +204,9 @@ object DisplayDirectiveTree extends Loggable {
         }
 
         onClickDirective match {
-          case None | _ if(directive.isSystem) => <a style="cursor:default">{xml}</a>
-          case Some(f)                         => SHtml.a(() => f(directive), xml)
+          case None                     => <a style="cursor:default">{xml}</a>
+          case _ if(directive.isSystem) => <a style="cursor:default">{xml}</a>
+          case Some(f)                  => SHtml.a(() => f(directive), xml)
         }
       }
     }

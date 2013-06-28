@@ -370,9 +370,9 @@ class EventListDisplayer(
     }
   }
 
-  def displayDetails(event:EventLog,changeRequestId:Option[ChangeRequestId], gridname: String) = {
+  def displayDetails(event:EventLog,changeRequestId:Option[ChangeRequestId], gridname: String): NodeSeq = {
 
-    val groupLib = nodeGroupRepository.getFullGroupLibrary().open_!
+    val groupLib = nodeGroupRepository.getFullGroupLibrary().openOr(return <div class="error">System error when trying to get the group library</div>)
 
     val generatedByChangeRequest =
       changeRequestId match {
@@ -1045,35 +1045,6 @@ class EventListDisplayer(
         , ("to ^*" #> "X" & "* *" #> ( (x:NodeSeq) => x))(xml)
       )
 
-  private[this] def groupNodeSeqLink(id: NodeGroupId): NodeSeq = {
-    nodeGroupRepository.getNodeGroup(id) match {
-      case t: EmptyBox =>
-        <span>Group (Rudder ID: {id.value.toUpperCase})</span>
-      case Full((nodeGroup, _)) =>
-        <span>Group "<a href={groupLink(id)}>{nodeGroup.name}</a>" (Rudder ID: {id.value.toUpperCase})</span>
-    }
-  }
-
-  private[this] def groupTargetDetails(targets: Set[RuleTarget]): NodeSeq = {
-    val res = targets.toSeq match {
-      case Seq() => NodeSeq.Empty
-      case t =>
-        targets
-        .toSeq
-        .map { target =>
-          target match {
-            case GroupTarget(id@NodeGroupId(g)) =>
-              groupNodeSeqLink(id)
-            case x =>
-              <span>{Text("Special group (" + x.toString + ")")}</span>
-          }
-        }
-        .reduceLeft[NodeSeq]((a,b) => a ++ <span class="groupSeparator" /> ++ b)
-    }
-    (
-      ".groupSeparator" #> ", "
-    ).apply(res)
-  }
 
   private[this] def nodeNodeSeqLink(id: NodeId): NodeSeq = {
     nodeInfoService.getNodeInfo(id) match {

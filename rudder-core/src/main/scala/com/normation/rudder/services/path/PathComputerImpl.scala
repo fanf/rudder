@@ -54,8 +54,7 @@ import com.normation.exceptions.BusinessException
  *
  */
 class PathComputerImpl(
-            nodeConfigurationRepository : NodeConfigurationRepository
-         ,  backupFolder        : String // /var/rudder/backup/
+  backupFolder: String // /var/rudder/backup/
 ) extends PathComputer with Loggable {
 
 

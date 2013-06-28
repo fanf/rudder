@@ -154,8 +154,9 @@ object DisplayNodeGroupTree extends Loggable {
         }
 
         onClickNode match {
-          case None | _ if(targetInfo.isSystem) => <a style="cursor:default">{xml}</a>
-          case Some(f)                          => SHtml.a(() => f(targetInfo), xml)
+          case None                      => <a style="cursor:default">{xml}</a>
+          case _ if(targetInfo.isSystem) => <a style="cursor:default">{xml}</a>
+          case Some(f)                   => SHtml.a(() => f(targetInfo), xml)
         }
       }
 

@@ -119,7 +119,7 @@ trait DeploymentService extends Loggable {
       _             =  logger.debug(s"All relevant information fetched in ${timeFetchAll}ms, start names historization.")
 
       historizeTime =  DateTime.now().getMillis
-      historize     =  historizeData()
+      historize     <- historizeData(allRules, directiveLib, groupLib, allNodeInfos)
       timeHistorize =  (DateTime.now().getMillis - historizeTime)
       _             =  logger.debug(s"Historization of name done in ${timeHistorize}ms, start to build RuleVals.")
 
@@ -295,7 +295,7 @@ trait DeploymentService extends Loggable {
   /**
    * Store groups and directive in the database
    */
-  def historizeData() : Unit
+  def historizeData(rules:Seq[Rule], directiveLib: FullActiveTechniqueCategory, groupLib: FullNodeGroupCategory, allNodeInfos: Set[NodeInfo]) : Box[Unit]
 
 }
 
@@ -721,12 +721,15 @@ trait DeploymentService_setExpectedReports extends DeploymentService {
 trait DeploymentService_historization extends DeploymentService {
   def historizationService : HistorizationService
 
-  def historizeData() : Unit = {
-    historizationService.updateNodes()
-    historizationService.updateGroups()
-    historizationService.updatePINames()
-    historizationService.updatesRuleNames()
-    () // unit is expected
+  def historizeData(rules:Seq[Rule], directiveLib: FullActiveTechniqueCategory, groupLib: FullNodeGroupCategory, allNodeInfos: Set[NodeInfo]) : Box[Unit] = {
+    for {
+      _ <- historizationService.updateNodes(allNodeInfos)
+      _ <- historizationService.updateGroups(groupLib)
+      _ <- historizationService.updateDirectiveNames(directiveLib)
+      _ <- historizationService.updatesRuleNames(rules)
+    } yield {
+      () // unit is expected
+    }
   }
 
 
