@@ -1,0 +1,142 @@
+<lift:surround with="menu/menu-administration" at="content">
+
+<head>
+  <title>Rudder - API Settings</title>
+
+  <script type="text/javascript" src="/javascript/angular/angular.js"/>
+
+  <script type="text/javascript">
+  //<![CDATA[
+    function AccountCtrl($scope) {
+     
+      $scope.accounts = [
+                          {"id":"script 1", "description":"plop", "token":"foo123", "isEnabled":false}
+                        , {"id":"script 2", "description":"plop", "token":"foo123", "isEnabled":true }
+                        ]
+      $scope.accountDisabled = function(isEnabled) {
+        if(isEnabled) return "";
+        else return "[DISABLED]";
+      }
+    }
+  // ]]>
+  </script>
+
+</head>
+<div class="portlet" ng-app="" >
+  <div class="portlet-header">API Settings</div>
+  <div class="portlet-content">
+
+    <div class="intro">
+      <div>
+        <p>Configure API related properties, like allowed accounts.</p>
+      </div>
+    </div>
+
+    <a href="/rudder-doc">Test if it is redirect to rudder-doc ?</a>
+    
+    <div class="inner-portlet">
+      <div class="inner-portlet-header">Configure allowed accounts</div>
+      <div class="portlet-content">
+
+        <div class="intro">
+          <div>
+            <p>
+              Configure accounts allowed to connect to Rudder API.
+            </p>
+            <p>
+              An account is composed of an ID, used to identify its action (for example in event logs), 
+              an authentication token which is the secret that will allows it to use Rudder APIs, and 
+              a description to explain what is the intent of that accounts. 
+            </p>
+          </div>
+        </div>
+
+        <hr class="spacer" />
+
+        <div class="deca" ng-controller="AccountCtrl">
+            
+          <div ng-repeat="account in accounts">
+              <form ng-submit="saveAccount()" name="editAccount{{$index}}">
+                <h2>{{account.id}} {{accountDisabled(account.isEnabled)}}</h2>
+                
+                <textarea rows="5" ng-model="account.description" />
+                
+                <div style="font-family: monospace;">{{account.token}}</div>
+                
+                <input type="submit" 
+                       class="btn-primary" 
+                       value="Save" 
+                       ng-show="editAccount{{$index}}.$dirty"
+                /> 
+              </form>
+            </div>
+            
+            <button type="submit" value="Delete account" />
+            <button type="submit" value="Revoke account" /> 
+            <button  type="submit" value="Regenerate Token" />
+            
+             
+          </div>
+          </div>
+        </div>
+      </div>
+  
+  
+  <div id="newAccountPopup" class="nodisplay">
+    <div id="newAccountContainer">
+    <div id="paramForm">
+      <div class="simplemodal-title">
+        <h1 id="title">Create a new REST API authentication token</h1>
+        <hr/>
+      </div>
+      <div class="simplemodal-content">
+        <div class="notifications">Here comes validation messages</div>
+        <hr class="spacer"/>
+        <div class="name">[input for principal's ID]</div>>
+        <hr class="spacer"/>
+        <div class="description">[a description]</div>
+        <hr class="spacer" />
+      </div>
+      <div class="simplemodal-bottom">
+        <hr/>
+        <div class="popupButton">
+          <span>
+            <button class="simplemodal-close" onClick="$.modal.close();">Cancel</button>
+            <button id="save">Delete</button>
+          </span>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+  
+  <div id="deletionPopup" class="nodisplay">
+    <div id="deletionPopupContainer">
+     <div class="simplemodal-title">
+       <h1 id="title">Delete API Token</h1>
+       <hr/>
+     </div>
+     <div class="simplemodal-content">
+       <div>
+         <img src="/images/icWarn.png" alt="Warning!" height="32" width="32" class="warnicon"/>
+         <h2 id="areYouSure">You are about to delete a REST API token. All script using that authentication 
+         method won't be able to connect to Rudder REST API anymore.</h2>
+       </div>
+       <br />
+       <hr class="spacer" />
+     </div>
+     <div class="simplemodal-bottom">
+       <hr/>
+       <div class="popupButton">
+         <span>
+           <button class="simplemodal-close" onClick="$.modal.close();">Cancel</button>
+           <button id="dialogRemoveButton">Delete</button>
+         </span>
+       </div>
+     </div>
+    </div>
+  </div>
+   
+</div>
+</lift:surround>
+

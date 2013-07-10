@@ -233,11 +233,18 @@ class Boot extends Loggable {
             >> LocGroup("administrationGroup")
             >> TestAccess ( () => userIsAllowed("/secure/administration/policyServerManagement",Write("administration")) )
 
+<<<<<<< HEAD
 
         , Menu("TechniqueLibraryManagement", <span>Techniques</span>) /
             "secure" / "administration" / "techniqueLibraryManagement"
             >> LocGroup("administrationGroup")
             >> TestAccess( () => userIsAllowed("/secure/index",Read("technique") ) )
+=======
+        , Menu("apiManagement", <span>API Accounts</span>) /
+            "secure" / "administration" / "apiManagement"
+            >> LocGroup("administrationGroup")
+            >> TestAccess ( () => userIsAllowed("/secure/administration/policyServerManagement",Write("administration")) )
+>>>>>>> 8f4c533... First walk with Angular
       )
 
 
