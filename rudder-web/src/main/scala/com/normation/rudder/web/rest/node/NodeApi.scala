@@ -34,10 +34,11 @@
 
 package com.normation.rudder.web.rest.node
 
-import net.liftweb.http.rest.RestHelper
-import net.liftweb.common._
+import net.liftweb.common.Box
+import net.liftweb.common.Loggable
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
+import net.liftweb.http.rest.RestHelper
 
 class LatestNodeAPI (
     latestApi : NodeAPI

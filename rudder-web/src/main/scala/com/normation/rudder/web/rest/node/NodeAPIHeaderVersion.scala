@@ -34,16 +34,16 @@
 
 package com.normation.rudder.web.rest.node
 
-import com.normation.rudder.web.services.rest.RestExtractorService
-import com.normation.rudder.web.rest.RestUtils._
+import com.normation.inventory.domain.NodeId
+import com.normation.rudder.web.rest.RestUtils.notValidVersionResponse
+import com.normation.rudder.web.rest.rule.RuleAPI
+
+import net.liftweb.common.Box
+import net.liftweb.common.Full
+import net.liftweb.common.Loggable
+import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.http.rest.RestHelper
-import net.liftweb.common._
-import net.liftweb.http.LiftResponse
-import com.normation.rudder.web.rest.RestError
-import com.normation.rudder.web.rest.rule.RuleAPI
-import com.normation.rudder.web.rest.node.service.NodeApiService1_0
-import com.normation.inventory.domain.NodeId
 
 class NodeAPIHeaderVersion (
     apiV1_0              : NodeApiService1_0

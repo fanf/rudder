@@ -34,14 +34,14 @@
 
 package com.normation.rudder.web.rest.group
 
-import net.liftweb.http.rest.RestHelper
-import net.liftweb.common._
-import net.liftweb.http.LiftResponse
-import net.liftweb.http.Req
-import com.normation.rudder.domain.policies.DirectiveId
-import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.domain.nodes.NodeGroup
 import com.normation.rudder.domain.queries.Query
+
+import net.liftweb.common.Box
+import net.liftweb.common.Loggable
+import net.liftweb.http.LiftResponse
+import net.liftweb.http.Req
+import net.liftweb.http.rest.RestHelper
 
 class LatestGroupAPI (
     latestApi : GroupAPI

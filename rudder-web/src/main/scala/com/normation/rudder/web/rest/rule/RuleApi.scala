@@ -34,13 +34,15 @@
 
 package com.normation.rudder.web.rest.rule
 
-import net.liftweb.http.rest.RestHelper
-import net.liftweb.common._
+import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.domain.policies.Rule
+import com.normation.rudder.domain.policies.RuleTarget
+
+import net.liftweb.common.Box
+import net.liftweb.common.Loggable
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
-import com.normation.rudder.domain.policies.DirectiveId
-import com.normation.rudder.domain.policies.RuleTarget
-import com.normation.rudder.domain.policies.Rule
+import net.liftweb.http.rest.RestHelper
 
 class LatestRuleAPI (
     latestApi : RuleAPI
@@ -60,7 +62,7 @@ case class RestRule(
     , longDescription  : Option[String] = None
     , directives       : Option[Set[DirectiveId]] = None
     , targets          : Option[Set[RuleTarget]] = None
-    , enabled        : Option[Boolean]     = None
+    , enabled          : Option[Boolean]     = None
   ) {
 
     val onlyName = name.isDefined           &&

@@ -34,14 +34,14 @@
 
 package com.normation.rudder.web.rest.directive
 
-import net.liftweb.http.rest.RestHelper
-import net.liftweb.common._
+import com.normation.cfclerk.domain.TechniqueVersion
+import com.normation.rudder.domain.policies.Directive
+
+import net.liftweb.common.Box
+import net.liftweb.common.Loggable
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
-import com.normation.rudder.domain.policies.Directive
-import com.normation.cfclerk.domain.TechniqueVersion
-import com.normation.cfclerk.domain.Technique
-import com.normation.rudder.domain.policies.ActiveTechnique
+import net.liftweb.http.rest.RestHelper
 
 class LatestDirectiveAPI (
     latestApi : DirectiveAPI

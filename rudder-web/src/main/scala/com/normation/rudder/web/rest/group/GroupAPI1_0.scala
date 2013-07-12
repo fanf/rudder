@@ -35,14 +35,13 @@
 package com.normation.rudder.web.rest.group
 
 import com.normation.rudder.repository.RoNodeGroupRepository
-import com.normation.rudder.web.services.rest.RestExtractorService
-import com.normation.rudder.web.rest.group.service.GroupApiService1_0
-import com.normation.rudder.web.rest.RestUtils._
+import com.normation.rudder.web.rest.RestExtractorService
+
+import net.liftweb.common.Box
+import net.liftweb.common.Loggable
+import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.http.rest.RestHelper
-import net.liftweb.common._
-import net.liftweb.http.LiftResponse
-import com.normation.rudder.web.rest.RestError
 
 class GroupAPI1_0 (
     readGroup     : RoNodeGroupRepository

@@ -32,31 +32,34 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.web.rest.node.service
+package com.normation.rudder.web.rest.node
 
-import com.normation.rudder.services.servers.NewNodeManager
-import com.normation.rudder.services.nodes.NodeInfoService
-import com.normation.rudder.services.servers.RemoveNodeService
-import com.normation.utils.StringUuidGenerator
-import com.normation.rudder.batch.AsyncDeploymentAgent
-import net.liftweb.common.Loggable
-import com.normation.rudder.domain.nodes.NodeInfo
-import net.liftweb.json.JValue
-import net.liftweb.http.Req
-import com.normation.rudder.web.rest.RestUtils._
-import com.normation.rudder.web.services.rest.RestExtractorService
-import net.liftweb.common.Full
-import net.liftweb.common.EmptyBox
-import net.liftweb.json.JsonDSL._
-import net.liftweb.json.JArray
-import com.normation.rudder.web.rest.RestError
-import com.normation.rudder.domain.servers.Srv
-import com.normation.inventory.domain.NodeId
-import com.normation.eventlog.ModificationId
-import com.normation.utils.Control._
-import net.liftweb.common.Box
 import com.normation.eventlog.EventActor
-import net.liftweb.common.Failure
+import com.normation.eventlog.ModificationId
+import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.servers.Srv
+import com.normation.rudder.services.nodes.NodeInfoService
+import com.normation.rudder.services.servers.NewNodeManager
+import com.normation.rudder.services.servers.RemoveNodeService
+import com.normation.rudder.web.rest.RestUtils.getActor
+import com.normation.rudder.web.rest.RestUtils.toJsonError
+import com.normation.rudder.web.rest.RestUtils.toJsonResponse
+import com.normation.rudder.web.rest.RestExtractorService
+import com.normation.utils.Control._
+import com.normation.utils.StringUuidGenerator
+
+import net.liftweb.common.Box.box2Iterable
+import net.liftweb.common.EmptyBox
+import net.liftweb.common.Full
+import net.liftweb.common.Loggable
+import net.liftweb.http.Req
+import net.liftweb.json.JArray
+import net.liftweb.json.JValue
+import net.liftweb.json.JsonDSL.jobject2assoc
+import net.liftweb.json.JsonDSL.pair2Assoc
+import net.liftweb.json.JsonDSL.pair2jvalue
+import net.liftweb.json.JsonDSL.string2jvalue
 
 
 class NodeApiService1_0 (

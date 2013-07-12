@@ -32,32 +32,41 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.web.rest.directive.service
+package com.normation.rudder.web.rest.directive
 
+import com.normation.cfclerk.domain.Technique
+import com.normation.eventlog.EventActor
+import com.normation.eventlog.ModificationId
+import com.normation.rudder.batch.AsyncDeploymentAgent
+import com.normation.rudder.batch.AutomaticStartDeployment
+import com.normation.rudder.domain.RudderLDAPConstants
+import com.normation.rudder.domain.policies.ActiveTechnique
+import com.normation.rudder.domain.policies.ChangeRequestDirectiveDiff
+import com.normation.rudder.domain.policies.DeleteDirectiveDiff
+import com.normation.rudder.domain.policies.Directive
+import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.domain.policies.ModifyToDirectiveDiff
+import com.normation.rudder.domain.policies.SectionVal
+import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.WoDirectiveRepository
-import com.normation.utils.StringUuidGenerator
-import com.normation.rudder.services.workflows._
-import com.normation.rudder.batch.AsyncDeploymentAgent
-import com.normation.rudder.web.services.rest.RestExtractorService
-import com.normation.rudder.domain.policies._
-import com.normation.eventlog.EventActor
-import net.liftweb.common._
-import com.normation.rudder.web.rest.RestUtils._
-import net.liftweb.json._
-import net.liftweb.json.JsonDSL._
-import com.normation.rudder.web.rest._
-import net.liftweb.http.Req
-import com.normation.rudder.batch.AutomaticStartDeployment
-import com.normation.eventlog.ModificationId
-import com.normation.cfclerk.domain.Technique
-import net.liftweb.common.Box.box2Iterable
-import com.normation.rudder.web.rest.directive._
-import com.normation.rudder.web.services.DirectiveEditorService
-import com.normation.rudder.domain.RudderLDAPConstants
-import com.normation.utils.Control._
+import com.normation.rudder.services.workflows.ChangeRequestService
+import com.normation.rudder.services.workflows.WorkflowService
 import com.normation.rudder.web.model.DirectiveEditor
-import com.normation.rudder.domain.workflows.ChangeRequestId
+import com.normation.rudder.web.rest.RestUtils
+import com.normation.rudder.web.rest.RestUtils.getActor
+import com.normation.rudder.web.rest.RestUtils.toJsonError
+import com.normation.rudder.web.rest.RestUtils.toJsonResponse
+import com.normation.rudder.web.services.DirectiveEditorService
+import com.normation.rudder.web.rest.RestExtractorService
+import com.normation.utils.Control._
+import com.normation.utils.StringUuidGenerator
+
+import net.liftweb.common._
+import net.liftweb.http.Req
+import net.liftweb.json.JArray
+import net.liftweb.json.JValue
+import net.liftweb.json.JsonDSL._
 
 case class DirectiveAPIService1_0 (
     readDirective        : RoDirectiveRepository
@@ -354,6 +363,32 @@ case class DirectiveAPIService1_0 (
 
   def toJSON (technique:Technique, activeTechnique:ActiveTechnique , directive : Directive, crId: Option[ChangeRequestId] = None): JValue = {
 
+    def directiveToJSON(sv:SectionVal, sectionName:String = SectionVal.ROOT_SECTION_NAME): JValue = {
+      import net.liftweb.json.JsonDSL._
+
+      val variables = sv.variables.toSeq.sortBy(_._1).map { case (variable,value) =>
+            ("var" ->
+                ("name" -> variable)
+              ~ ("value" -> value)
+            )
+      }
+
+      val section =
+          for {
+            (sectionName, sectionIterations) <- sv.sections.toSeq.sortBy(_._1)
+            sectionValue                     <- sectionIterations
+          } yield {
+            directiveToJSON(sectionValue,sectionName)
+          }
+
+      ("section" ->
+          ("name" -> sectionName)
+        ~ ("vars" ->  (if (variables.isEmpty) None else Some(variables)))
+        ~ ("sections" -> (if (section.isEmpty) None else Some(section)))
+      )
+    }
+
+
     ("changeRequestId" -> crId.map(_.value.toString)) ~
     ("id" -> directive.id.value) ~
     ("displayName" -> directive.name) ~
@@ -361,7 +396,7 @@ case class DirectiveAPIService1_0 (
     ("longDescription" -> directive.longDescription) ~
     ("techniqueName" -> technique.id.name.value) ~
     ("techniqueVersion" -> directive.techniqueVersion.toString) ~
-    ("parameters" -> SectionVal.toJSON(SectionVal.directiveValToSectionVal(technique.rootSection, directive.parameters)) )~
+    ("parameters" -> directiveToJSON(SectionVal.directiveValToSectionVal(technique.rootSection, directive.parameters)) )~
     ("priority" -> directive.priority) ~
     ("isEnabled" -> directive.isEnabled ) ~
     ("isSystem" -> directive.isSystem )

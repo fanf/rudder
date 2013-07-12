@@ -32,7 +32,7 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.web.services.rest
+package com.normation.rudder.web.rest
 
 import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
@@ -51,10 +51,10 @@ import com.normation.rudder.repository.RoRuleRepository
 import com.normation.rudder.services.queries.CmdbQueryParser
 import com.normation.rudder.web.rest.directive.RestDirective
 import com.normation.rudder.web.rest.group.RestGroup
-import com.normation.rudder.web.rest.node.service.AcceptNode
-import com.normation.rudder.web.rest.node.service.DeleteNode
-import com.normation.rudder.web.rest.node.service.NodeStatusAction
-import com.normation.rudder.web.rest.node.service.RefuseNode
+import com.normation.rudder.web.rest.node.AcceptNode
+import com.normation.rudder.web.rest.node.DeleteNode
+import com.normation.rudder.web.rest.node.NodeStatusAction
+import com.normation.rudder.web.rest.node.RefuseNode
 import com.normation.rudder.web.rest.rule.RestRule
 import com.normation.rudder.web.services.ReasonBehavior.Disabled
 import com.normation.rudder.web.services.ReasonBehavior.Mandatory
