@@ -125,7 +125,7 @@ object RudderLDAPConstants extends Loggable {
   val OC_TARGET_RULE_WITH_CF3POLICYDRAFT = "targetDirectiveNodeConfiguration"
   val OC_NODE_CONFIGURATION = "nodeConfiguration" //actually a node configuration, not a "rudder server"
 
-  val OC_API_ACCOUNT = "apiPrincipal"
+  val OC_API_ACCOUNT = "apiAccount"
 
   OC += (OC_SPECIAL_TARGET,
     must = Set(A_RULE_TARGET, A_NAME),

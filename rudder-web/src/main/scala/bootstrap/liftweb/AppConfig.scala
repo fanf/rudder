@@ -118,11 +118,11 @@ import com.normation.rudder.services.workflows.WorkflowService
 import com.normation.rudder.services.user.PersonIdentService
 import com.normation.rudder.services.workflows.TwoValidationStepsWorkflowServiceImpl
 import com.normation.rudder.web.rest.RestExtractorService
-import com.normation.rudder.web.rest.rule.service.RuleApiService1_0
+import com.normation.rudder.web.rest.rule.RuleApiService1_0
 import com.normation.rudder.web.rest.rule._
 import com.normation.rudder.web.rest.directive._
 import com.normation.rudder.web.rest.directive.DirectiveAPIService1_0
-import com.normation.rudder.web.rest.group.service.GroupApiService1_0
+import com.normation.rudder.web.rest.group.GroupApiService1_0
 import com.normation.rudder.web.rest.group._
 import com.normation.rudder.web.rest.node.NodeApiService1_0
 import com.normation.rudder.web.rest.node._
@@ -131,6 +131,7 @@ import com.normation.rudder.api.RoLDAPApiAccountRepository
 import com.normation.rudder.api.WoApiAccountRepository
 import com.normation.rudder.api.RoApiAccountRepository
 import com.normation.rudder.api.WoLDAPApiAccountRepository
+import com.normation.rudder.api.TokenGeneratorImpl
 
 /**
  * Define a resource for configuration.
@@ -414,11 +415,14 @@ object RudderConfig extends Loggable {
       , userPropertyService
     )
 
+  val tokenGenerator = new TokenGeneratorImpl(32)
+
   val restDeploy = new RestDeploy(asyncDeploymentAgentImpl, uuidGen)
   val restDyngroupReload = new RestDyngroupReload(dyngroupUpdaterBatch)
   val restTechniqueReload = new RestTechniqueReload(techniqueRepositoryImpl, uuidGen)
   val restArchiving = new RestArchiving(itemArchiveManagerImpl,personIdentServiceImpl, uuidGen)
   val restGetGitCommitAsZip = new RestGetGitCommitAsZip(gitRepo)
+  val restAuth = new RestAuth(roApiAccountRepository,woApiAccountRepository,restExtractorService,tokenGenerator)
 
   val ruleApiService1_0 =
     new RuleApiService1_0(
