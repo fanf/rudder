@@ -152,20 +152,24 @@ object SectionVal {
 
     val variables = sv.variables.toSeq.sortBy(_._1).map { case (variable,value) =>
           ("var" ->
-          ("name" -> variable) ~
-          ("value" -> value))
+              ("name" -> variable)
+            ~ ("value" -> value)
+          )
     }
 
-    val section =  for {
+    val section =
+        for {
           (sectionName, sectionIterations) <- sv.sections.toSeq.sortBy(_._1)
-          sectionValue <- sectionIterations
-        } yield this.toJSON(sectionValue,sectionName)
+          sectionValue 			        <- sectionIterations
+        } yield {
+          this.toJSON(sectionValue,sectionName)
+        }
 
     ("section" ->
-        ("name" -> sectionName) ~
-        ("vars" ->  (if (variables.isEmpty) None else Some(variables))) ~
-        ("sections" -> (if (section.isEmpty) None else Some(section)))
-      )
+        ("name" -> sectionName)
+      ~ ("vars" ->  (if (variables.isEmpty) None else Some(variables)))
+      ~ ("sections" -> (if (section.isEmpty) None else Some(section)))
+    )
   }
 
   def directiveValToSectionVal(rootSection:SectionSpec, allValues:Map[String,Seq[String]]) : SectionVal = {

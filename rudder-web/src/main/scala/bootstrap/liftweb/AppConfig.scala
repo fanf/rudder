@@ -401,7 +401,6 @@ object RudderConfig extends Loggable {
       , roDirectiveRepository
       , roNodeGroupRepository
       , techniqueRepository
-      , ruleTargetService
       , queryParser
       , userPropertyService
     )
