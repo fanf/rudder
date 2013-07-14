@@ -111,7 +111,7 @@ import com.normation.rudder.migration.EventLogMigration_10_2
 @Configuration
 @Import(Array(classOf[PropertyPlaceholderConfig], classOf[AppConfigAuth]))
 class AppConfig extends Loggable {
-  
+
   @Value("${ldap.host}")
   var SERVER = ""
 
@@ -151,17 +151,17 @@ class AppConfig extends Loggable {
   var UPLOAD_ROOT_DIRECTORY = ""
 
   @Value("${base.url}")
-  var BASE_URL = "" 
-    
+  var BASE_URL = ""
+
   @Value("${rudder.dir.backup}")
   var backupFolder = ""
-    
+
   @Value("${rudder.dir.dependencies}")
   var toolsFolder = ""
-    
+
   @Value("${rudder.dir.uploaded.file.sharing}")
   var sharesFolder = ""
-    
+
   @Value("${rudder.dir.lock}")
   var lockFolder = ""
 
@@ -195,56 +195,56 @@ class AppConfig extends Loggable {
 
   @Value("${rudder.dir.gitRoot}")
   var gitRoot = ""
-    
+
   @Value("${rudder.dir.techniques}")
   var policyPackages = ""
 
   @Value("${rudder.batch.dyngroup.updateInterval}")
   var dyngroupUpdateInterval = 60 //one hour
-  
+
   @Value("${rudder.batch.techniqueLibrary.updateInterval}")
   var ptlibUpdateInterval = 60 * 5 //five minutes
 
   @Value("${rudder.techniqueLibrary.git.refs.path}")
   var ptRefsPath = ""
-    
+
   @Value("${rudder.autoArchiveItems}")
   var autoArchiveItems : Boolean = true
 
   @Value("${rudder.autoDeployOnModification}")
   var autoDeployOnModification : Boolean = true
-  
+
   @Value("${rudder.ui.changeMessage.enabled}")
   var reasonFieldEnabled = false
-  
+
   @Value("${rudder.ui.changeMessage.mandatory}")
   var reasonFieldMandatory = false
-  
+
   @Value("${rudder.ui.changeMessage.explanation}")
   var reasonFieldExplanation = "Please enter a message explaining the reason for this change."
-    
+
   @Value("${rudder.syslog.port}")
   var syslogPort : Int = 514
-  
+
   val licensesConfiguration = "licenses.xml"
   val logentries = "logentries.xml"
 
   val prettyPrinter = new PrettyPrinter(120, 2)
 
-  
+
   val userLibraryDirectoryName = "directives"
-    
+
   val groupLibraryDirectoryName = "groups"
-  
+
   val rulesDirectoryName = "rules"
-    
+
   @Bean
   def userPropertyService = {
-    val opt = new ReasonsMessageInfo(reasonFieldEnabled, reasonFieldMandatory, 
+    val opt = new ReasonsMessageInfo(reasonFieldEnabled, reasonFieldMandatory,
         reasonFieldExplanation)
     new UserPropertyServiceImpl(opt)
   }
-    
+
   // metadata.xml parser
   @Bean
   def techniqueParser = {
@@ -268,38 +268,38 @@ class AppConfig extends Loggable {
   def ldapNodeConfigurationRepository = new LDAPNodeConfigurationRepository(ldap, rudderDit, ldapNodeConfigurationMapper)
 
   ///// items serializer - service that transforms items to XML /////
-  
-  @Bean 
-  def ruleSerialisation: RuleSerialisation = 
+
+  @Bean
+  def ruleSerialisation: RuleSerialisation =
     new RuleSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
 
-  @Bean 
-  def activeTechniqueCategorySerialisation: ActiveTechniqueCategorySerialisation = 
+  @Bean
+  def activeTechniqueCategorySerialisation: ActiveTechniqueCategorySerialisation =
     new ActiveTechniqueCategorySerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
 
-  @Bean 
-  def activeTechniqueSerialisation: ActiveTechniqueSerialisation = 
+  @Bean
+  def activeTechniqueSerialisation: ActiveTechniqueSerialisation =
     new ActiveTechniqueSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
-  
-  @Bean 
-  def directiveSerialisation: DirectiveSerialisation = 
+
+  @Bean
+  def directiveSerialisation: DirectiveSerialisation =
     new DirectiveSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
 
-  @Bean 
-  def nodeGroupCategorySerialisation: NodeGroupCategorySerialisation = 
+  @Bean
+  def nodeGroupCategorySerialisation: NodeGroupCategorySerialisation =
     new NodeGroupCategorySerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
 
-  @Bean 
-  def nodeGroupSerialisation: NodeGroupSerialisation = 
+  @Bean
+  def nodeGroupSerialisation: NodeGroupSerialisation =
     new NodeGroupSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
-  
+
   @Bean
   def deploymentStatusSerialisation : DeploymentStatusSerialisation =
     new DeploymentStatusSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
-  
-  
+
+
   ///// items archivers - services that allows to transform items to XML and save then on a Git FS /////
-  
+
   @Bean
   def gitRuleArchiver: GitRuleArchiver = new GitRuleArchiverImpl(
       gitRepo
@@ -308,7 +308,7 @@ class AppConfig extends Loggable {
     , rulesDirectoryName
     , prettyPrinter
   )
-  
+
   @Bean
   def gitActiveTechniqueCategoryArchiver: GitActiveTechniqueCategoryArchiver = new GitActiveTechniqueCategoryArchiverImpl(
       gitRepo
@@ -317,7 +317,7 @@ class AppConfig extends Loggable {
     , userLibraryDirectoryName
     , prettyPrinter
   )
-  
+
   @Bean
   def gitActiveTechniqueArchiver: GitActiveTechniqueArchiverImpl = new GitActiveTechniqueArchiverImpl(
       gitRepo
@@ -326,7 +326,7 @@ class AppConfig extends Loggable {
     , userLibraryDirectoryName
     , prettyPrinter
   )
-  
+
   @Bean
   def gitDirectiveArchiver: GitDirectiveArchiver = new GitDirectiveArchiverImpl(
       gitRepo
@@ -335,7 +335,7 @@ class AppConfig extends Loggable {
     , userLibraryDirectoryName
     , prettyPrinter
   )
-  
+
   @Bean
   def gitNodeGroupCategoryArchiver: GitNodeGroupCategoryArchiver = new GitNodeGroupCategoryArchiverImpl(
       gitRepo
@@ -344,7 +344,7 @@ class AppConfig extends Loggable {
     , groupLibraryDirectoryName
     , prettyPrinter
   )
-    
+
   @Bean
   def gitNodeGroupArchiver: GitNodeGroupArchiver = new GitNodeGroupArchiverImpl(
       gitRepo
@@ -353,7 +353,7 @@ class AppConfig extends Loggable {
     , groupLibraryDirectoryName
     , prettyPrinter
   )
-  
+
   @Bean
   def itemArchiveManager = new ItemArchiveManagerImpl(
       ldapRuleRepository
@@ -374,16 +374,16 @@ class AppConfig extends Loggable {
     , logService
     , asyncDeploymentAgent
   )
-  
+
   ///// end /////
-  
+
   @Bean
   def eventLogFactory = new EventLogFactoryImpl(
     ruleSerialisation,
-    directiveSerialisation, 
-    nodeGroupSerialisation, 
+    directiveSerialisation,
+    nodeGroupSerialisation,
     activeTechniqueSerialisation)
-  
+
   @Bean
   def logRepository = new EventLogJdbcRepository(jdbcTemplate,eventLogFactory)
 
@@ -403,7 +403,7 @@ class AppConfig extends Loggable {
 
   @Bean
   def gitRepo = new GitRepositoryProviderImpl(gitRoot)
-  
+
   @Bean
   def gitRevisionProvider = new LDAPGitRevisionProvider(ldap, rudderDit, gitRepo, ptRefsPath)
 
@@ -466,7 +466,7 @@ class AppConfig extends Loggable {
   @Bean def techniqueAcceptationDatetimeUpdater: TechniquesLibraryUpdateNotification =
     new TechniqueAcceptationDatetimeUpdater("UpdatePTAcceptationDatetime", ldapActiveTechniqueRepository)
 
-  
+
   @Bean
   def techniqueRepository = {
     val service = new TechniqueRepositoryImpl(
@@ -488,7 +488,7 @@ class AppConfig extends Loggable {
   def licenseService: NovaLicenseService = new NovaLicenseServiceImpl(licenseRepository, ldapNodeConfigurationRepository, licensesFolder)
 
   @Bean
-  def reportingService: ReportingService = new ReportingServiceImpl(ruleTargetService, 
+  def reportingService: ReportingService = new ReportingServiceImpl(ruleTargetService,
       configurationExpectedRepo, reportsRepository, techniqueRepository)
 
   @Bean
@@ -555,7 +555,7 @@ class AppConfig extends Loggable {
   ////////// LDAP Processing related thing //////////
   /*
    * For now, we don't want to query server other
-   * than the accepted ones. 
+   * than the accepted ones.
    */
   @Bean
   def ditQueryData = new DitQueryData(acceptedNodesDit)
@@ -624,7 +624,7 @@ class AppConfig extends Loggable {
     ldapNodeGroupRepository,
     ldapNodeConfigurationRepository,
     AcceptedInventory)
-  
+
   @Bean
   def acceptHostnameAndIp: UnitAcceptInventory = new AcceptHostnameAndIp(
     "accept_new_server:check_hostname_unicity",
@@ -640,7 +640,7 @@ class AppConfig extends Loggable {
     ldapNodeGroupRepository,
     dynGroupService,
     PendingInventory)
-  
+
   @Bean
   def historizeNodeStateOnChoice: UnitAcceptInventory with UnitRefuseInventory = new HistorizeNodeStateOnChoice(
       "accept_or_refuse_new_node:historize_inventory"
@@ -694,7 +694,7 @@ class AppConfig extends Loggable {
     )
     agent
   }
-  
+
   @Bean
   def newNodeManager: NewNodeManager =
     new NewNodeManagerImpl(
@@ -724,22 +724,22 @@ class AppConfig extends Loggable {
 
   @Bean
   def serverGrid = new NodeGrid(ldapFullInventoryRepository)
-  
+
   @Bean
   def srvGrid = new SrvGrid
 
   @Bean
   def eventListDisplayer = new EventListDisplayer(eventLogDetailsService, logRepository, ldapNodeGroupRepository, ldapDirectiveRepository, nodeInfoService)
-  
+
   @Bean
   def fileManager = new FileManager(UPLOAD_ROOT_DIRECTORY)
 
   @Bean
   def databaseManager = new DatabaseManagerImpl(reportsRepository)
-  
+
   @Bean
   def softwareInventoryDAO: ReadOnlySoftwareDAO = new ReadOnlySoftwareDAOImpl(inventoryDitService, ldap, inventoryMapper)
-  
+
   @Bean
   def serverSummaryService = new NodeSummaryServiceImpl(inventoryDitService, inventoryMapper, ldap)
 
@@ -750,21 +750,21 @@ class AppConfig extends Loggable {
   @Bean
   def serverPolicyDiffService = new NodeConfigurationDiffService
 
-  @Bean 
+  @Bean
   def ldapDiffMapper = new LDAPDiffMapper(ldapEntityMapper, queryParser)
 
-  
+
   @Bean //trivial definition of the person ident service
   def personIdentService = new TrivialPersonIdentService
-  
+
   ////////////// MUTEX FOR LDAP REPOS //////////////
-  
+
   val uptLibReadWriteMutex = ScalaLock.java2ScalaRWLock(new java.util.concurrent.locks.ReentrantReadWriteLock(true))
-  
+
   val groupLibReadWriteMutex = ScalaLock.java2ScalaRWLock(new java.util.concurrent.locks.ReentrantReadWriteLock(true))
-  
+
   val nodeReadWriteMutex = ScalaLock.java2ScalaRWLock(new java.util.concurrent.locks.ReentrantReadWriteLock(true))
-  
+
   @Bean
   def ldapActiveTechniqueCategoryRepository:LDAPActiveTechniqueCategoryRepository = new LDAPActiveTechniqueCategoryRepository(
       rudderDit, ldap, ldapEntityMapper
@@ -773,7 +773,7 @@ class AppConfig extends Loggable {
     , autoArchiveItems
     , uptLibReadWriteMutex
   )
-  
+
   @Bean
   def ldapActiveTechniqueRepository = new LDAPActiveTechniqueRepository(
       rudderDit, ldap, ldapEntityMapper
@@ -786,10 +786,10 @@ class AppConfig extends Loggable {
     , autoArchiveItems
     , uptLibReadWriteMutex
   )
-  
+
   @Bean
   def ldapDirectiveRepository = {
-    
+
     val repo = new LDAPDirectiveRepository(
         rudderDit, ldap, ldapEntityMapper, ldapDiffMapper
       , ldapActiveTechniqueRepository
@@ -799,7 +799,7 @@ class AppConfig extends Loggable {
       , autoArchiveItems
       , uptLibReadWriteMutex
     )
-  
+
     gitActiveTechniqueArchiver.uptModificationCallback += new UpdatePiOnActiveTechniqueEvent(
         gitDirectiveArchiver
       , techniqueRepository
@@ -808,7 +808,7 @@ class AppConfig extends Loggable {
 
     repo
   }
-  
+
   @Bean
   def ldapRuleRepository: RuleRepository = new LDAPRuleRepository(
     rudderDit, nodeDit, ldap, ldapEntityMapper, ldapDiffMapper,
@@ -827,7 +827,7 @@ class AppConfig extends Loggable {
     , autoArchiveItems
     , groupLibReadWriteMutex
   )
-  
+
   @Bean
   def ldapNodeGroupRepository = new LDAPNodeGroupRepository(
       rudderDit, ldap, ldapEntityMapper
@@ -841,30 +841,30 @@ class AppConfig extends Loggable {
     , groupLibReadWriteMutex
   )
 
-  @Bean 
+  @Bean
   def activeTechniqueCategoryUnserialisation = new ActiveTechniqueCategoryUnserialisationImpl
 
   @Bean
   def activeTechniqueUnserialisation = new ActiveTechniqueUnserialisationImpl
-  
+
   @Bean
   def directiveUnserialisation = new DirectiveUnserialisationImpl
-  
+
   @Bean
   def nodeGroupCategoryUnserialisation = new NodeGroupCategoryUnserialisationImpl
-    
+
   @Bean
   def nodeGroupUnserialisation = new NodeGroupUnserialisationImpl(queryParser)
-  
+
   @Bean
   def ruleUnserialisation = new RuleUnserialisationImpl
- 
+
   @Bean
   def deploymentStatusUnserialisation = new DeploymentStatusUnserialisationImpl
 
   @Bean
   def entityMigration = new DefaultXmlEventLogMigration(xmlMigration_10_2, xmlMigration_2_3)
-  
+
   @Bean
   def parseRules : ParseRules = new GitParseRules(
       ruleUnserialisation
@@ -872,7 +872,7 @@ class AppConfig extends Loggable {
     , entityMigration
     , rulesDirectoryName
   )
-  
+
   @Bean
   def ParseActiveTechniqueLibrary : ParseActiveTechniqueLibrary = new GitParseActiveTechniqueLibrary(
       activeTechniqueCategoryUnserialisation
@@ -882,7 +882,7 @@ class AppConfig extends Loggable {
     , entityMigration
     , userLibraryDirectoryName
   )
-  
+
   @Bean
   def importTechniqueLibrary : ImportTechniqueLibrary = new ImportTechniqueLibraryImpl(
      rudderDit
@@ -890,7 +890,7 @@ class AppConfig extends Loggable {
    , ldapEntityMapper
    , uptLibReadWriteMutex
   )
-  
+
   @Bean
   def parseGroupLibrary : ParseGroupLibrary = new GitParseGroupLibrary(
       nodeGroupCategoryUnserialisation
@@ -899,7 +899,7 @@ class AppConfig extends Loggable {
     , entityMigration
     , groupLibraryDirectoryName
   )
-  
+
   @Bean
   def importGroupLibrary : ImportGroupLibrary = new ImportGroupLibraryImpl(
      rudderDit
@@ -907,8 +907,8 @@ class AppConfig extends Loggable {
    , ldapEntityMapper
    , groupLibReadWriteMutex
   )
-  
-  @Bean 
+
+  @Bean
   def eventLogDetailsService : EventLogDetailsService = new EventLogDetailsServiceImpl(
       queryParser
     , new DirectiveUnserialisationImpl
@@ -917,7 +917,7 @@ class AppConfig extends Loggable {
     , new ActiveTechniqueUnserialisationImpl
     , new DeploymentStatusUnserialisationImpl
   )
-  
+
   @Bean
   def nodeInfoService: NodeInfoService = new NodeInfoServiceImpl(nodeDit, rudderDit, acceptedNodesDit, ldap, ldapEntityMapper)
 
@@ -954,7 +954,7 @@ class AppConfig extends Loggable {
 
   @Bean
   def categoryHierarchyDisplayer: CategoryHierarchyDisplayer = new com.normation.rudder.web.services.CategoryHierarchyDisplayer(ldapNodeGroupCategoryRepository)
-  
+
   @Bean
   def dyngroupUpdaterBatch: UpdateDynamicGroups = new UpdateDynamicGroups(
       dynGroupService
@@ -969,7 +969,7 @@ class AppConfig extends Loggable {
     , asyncDeploymentAgent
     , ptlibUpdateInterval
   )
-  
+
   @Bean
   def userSessionLogEvent = new UserSessionLogEvent(logRepository)
 
@@ -989,32 +989,32 @@ class AppConfig extends Loggable {
       , ldapFullInventoryRepository
       , logRepository
       , nodeReadWriteMutex)
-  
+
   /**
    * Event log migration
    */
-  
+
   @Bean
   def xmlMigration_2_3 = new XmlMigration_2_3()
-  
+
   @Bean
   def xmlMigration_10_2 = new XmlMigration_10_2()
-  
+
   @Bean
   def eventLogsMigration_10_2 = new EventLogsMigration_10_2(
       jdbcTemplate      = jdbcTemplate
     , eventLogMigration = new EventLogMigration_10_2(xmlMigration_10_2)
     , errorLogger       = MigrationLogger(2).defaultErrorLogger
     , successLogger     = MigrationLogger(2).defaultSuccessLogger
-    , batchSize         = 1000      
+    , batchSize         = 1000
    )
-  
+
   @Bean
   def eventLogsMigration_10_2_Management = new ControlEventLogsMigration_10_2(
       migrationEventLogRepository = new MigrationEventLogRepository(squerylDatasourceProvider)
     , eventLogsMigration_10_2
   )
-  
+
   @Bean
   def eventLogsMigration_2_3 = new EventLogsMigration_2_3(
       jdbcTemplate      = jdbcTemplate
@@ -1022,9 +1022,9 @@ class AppConfig extends Loggable {
     , eventLogsMigration_10_2 = eventLogsMigration_10_2
     , errorLogger       = MigrationLogger(3).defaultErrorLogger
     , successLogger     = MigrationLogger(3).defaultSuccessLogger
-    , batchSize         = 1000      
+    , batchSize         = 1000
    )
-  
+
   @Bean
   def eventLogsMigration_2_3_Management = new ControlEventLogsMigration_2_3(
           migrationEventLogRepository = new MigrationEventLogRepository(squerylDatasourceProvider)
@@ -1047,29 +1047,30 @@ class AppConfig extends Loggable {
         ldapActiveTechniqueCategoryRepository, ldapActiveTechniqueRepository) //new CheckDirectiveBusinessRules()
     , new CheckMigrationEventLog2_3(eventLogsMigration_2_3_Management)
     , new CheckInitXmlExport(itemArchiveManager, personIdentService)
+    , new CheckDotInGenericCFEngineVariableDef(ldapDirectiveRepository)
   )
 
-  
+
   //////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////// REST ///////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
-  
+
 
   @Bean
   def restDeploy = new RestDeploy(asyncDeploymentAgent)
 
   @Bean
   def restDyngroup = new RestDyngroupReload(dyngroupUpdaterBatch)
-  
+
   @Bean
   def restDptLibReload = new RestTechniqueReload(techniqueRepository)
-  
+
   @Bean
   def restArchiving = new RestArchiving(itemArchiveManager,personIdentService)
-  
+
   @Bean
   def restZipArchiving = new RestGetGitCommitAsZip(gitRepo)
-  
+
   //////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////// Directive Editor and web fields //////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////
