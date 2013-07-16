@@ -12,15 +12,19 @@ import org.joda.time.DateTime
 import com.normation.rudder.web.components.DateFormaterService
 import com.normation.rudder.api._
 
-class RestAuth (
+class RestApiAccounts (
     readApi        : RoApiAccountRepository
   , writeApi       : WoApiAccountRepository
   , restExtractor  : RestExtractorService
   , tokenGenerator : TokenGenerator
 ) extends RestHelper with Loggable {
 
+  //used in ApiAccounts snippet to get the context path
+  //of that service
+  val relativePath = "secure" :: "apiaccounts" :: Nil
+
   serve {
-    case Get("auth" :: Nil, req) =>
+    case Get("secure" :: "apiaccounts" :: Nil, req) =>
       readApi.getAll() match {
         case Full(accountMap) =>
           val accounts = ("accounts" -> JArray(accountMap.values.toList.map(toJson(_))))
@@ -31,7 +35,7 @@ class RestAuth (
       }
 
 
-    case "auth" :: Nil JsonPut body -> req =>
+    case "secure" :: "apiaccounts" :: Nil JsonPut body -> req =>
       req.json match {
         case Full(json) =>
         restExtractor.extractApiAccountFromJSON(json) match {
@@ -58,7 +62,7 @@ class RestAuth (
       }
 
 
-    case "auth" :: token :: Nil JsonPost body -> req =>
+    case "secure" :: "apiaccounts" :: token :: Nil JsonPost body -> req =>
       val apiToken = ApiToken(token)
       req.json match {
         case Full(json) =>
@@ -89,7 +93,7 @@ class RestAuth (
       }
 
 
-    case Delete("auth" :: token :: Nil, req) =>
+    case Delete("secure" :: "apiaccounts" :: token :: Nil, req) =>
       val apiToken = ApiToken(token)
       readApi.getByToken(apiToken) match {
         case Full(Some(account)) =>
@@ -108,7 +112,7 @@ class RestAuth (
           toJsonError(None,s"Could not delete account with token $token cause : ${(eb ?~ "could not get account").msg}")("deleteAccount",true)
       }
 
-    case Post("auth" :: token :: "regenerate" :: Nil, req) =>
+    case Post("secure" :: "apiaccounts" :: token :: "regenerate" :: Nil, req) =>
       val apiToken = ApiToken(token)
       readApi.getByToken(apiToken) match {
         case Full(Some(account)) =>
