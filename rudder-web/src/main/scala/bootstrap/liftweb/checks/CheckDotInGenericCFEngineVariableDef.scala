@@ -33,18 +33,16 @@
 */
 package bootstrap.liftweb.checks
 
-import bootstrap.liftweb._
-import net.liftweb.common._
 import org.slf4j.LoggerFactory
-import net.liftweb.common.Logger
-import net.liftweb.common.Failure
-import com.normation.rudder.repository.DirectiveRepository
-import com.normation.rudder.domain.logger.MigrationLogger
+
+import com.normation.rudder.domain.eventlog.RudderEventActor
 import com.normation.rudder.domain.policies.Directive
-import com.normation.utils.Control.sequence
-import com.normation.utils.StringUuidGenerator
-import com.normation.rudder.domain.eventlog._
 import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.repository.DirectiveRepository
+import com.normation.utils.Control._
+
+import bootstrap.liftweb.BootstrapChecks
+import net.liftweb.common._
 
 /**
  * See http://www.rudder-project.org/redmine/issues/3642
@@ -85,7 +83,7 @@ class CheckDotInGenericCFEngineVariableDef (
           case eb:EmptyBox =>
             val f = (eb ?~! "Can not check if there are variable name with a dot in them in the directives based on genericCFEngineVariableDefinition")
             logger.defaultErrorLogger(f)
-          case Full(matchedDefinition) if  matchedDefinition.size == 0 =>
+          case Full(matchedDefinition) if( matchedDefinition.size == 0 ) =>
             logger.info("No variable name with dot defined in the generic CFEngine Variable Definition, skipping")
 
           case Full(matchedDefinition) =>
@@ -114,11 +112,11 @@ class CheckDotInGenericCFEngineVariableDef (
         // first, look for all possible variable with a dot in it
         for {
            (technique, activeTechnique, directive) <- directivesWithContext
-           if (technique.name == genericCFEngineVarDef)
-           (key, values) <- directive.parameters.filter
-                    { case (key,values) => (key == parameterName) }.map
-                    { case (key,values) => (key , (values.filter(_.contains(".")))) }
-           if (values.size > 0)
+           if( technique.name == genericCFEngineVarDef )
+           (key, values) <- directive.parameters
+                              .filter { case (key,values) => (key == parameterName) }
+                              .map { case (key,values) => (key , (values.filter(_.contains(".")))) }
+           if( values.size > 0 )
         } yield {
           (directive, values)
         }
@@ -149,29 +147,30 @@ class CheckDotInGenericCFEngineVariableDef (
     // first, we fetch all directives
     for {
       directives        <- repos.getAll(false)
-      matchedDirectives = directives.filter { directive =>
-                    directive.parameters.values.flatten.exists( value => value.matches(regex)) }
+      matchedDirectives =  directives.filter { directive =>
+                             directive.parameters.values.flatten.exists( value => value.matches(regex))
+                           }
       result            <- sequence(matchedDirectives) { directive =>
-            val message = "Replacing dot in the variable %s with an underscore in %s (uuid: %s)".format(variableValue, directive.name, directive.id.value)
-            val log     = logger.info(message)
-            for {
-              activeTechnique   <- repos.getActiveTechnique(directive.id)
-              replacedDirective = replaceInDirective(directive, variableValue)
-              saved             <- repos.saveDirective(activeTechnique.id, replacedDirective, RudderEventActor, Some(message))
-            } yield {
-              saved
-            }
-          }
-      val message = "Replacing dot in the variable %s with an underscore in %s (uuid: %s)".format(variableValue, refDirective.name, refDirective.id.value)
-      val log     = logger.info(message)
-      refTransformedDirective <- for {
-              // I need to fetch each time the reference directive, as it may have several value to undot
-              (_,activeTechnique, directive)   <- repos.getDirectiveWithContext(refDirective.id)
-              replacedDirective                = replaceInGenericVariableDefDirective(directive, variableValue)
-              saved                            <- repos.saveDirective(activeTechnique.id, replacedDirective, RudderEventActor, Some(message))
-      } yield {
-        saved
-      }
+                             val message = "Replacing dot in the variable %s with an underscore in directive %s (uuid: %s)".format(variableValue, directive.name, directive.id.value)
+                             logger.info(message)
+                             for {
+                               activeTechnique   <- repos.getActiveTechnique(directive.id)
+                               replacedDirective =  replaceInDirective(directive, variableValue)
+                               saved             <- repos.saveDirective(activeTechnique.id, replacedDirective, RudderEventActor, Some(message))
+                             } yield {
+                               saved
+                             }
+                           }
+      message           =  "Replacing dot in the variable %s with an underscore in %s (uuid: %s)".format(variableValue, refDirective.name, refDirective.id.value)
+      log               =  logger.info(message)
+      updatedDirective  <- for {
+                             // I need to fetch each time the reference directive, as it may have several value to undot
+                             (_,activeTechnique, directive) <- repos.getDirectiveWithContext(refDirective.id)
+                             replacedDirective              =  replaceInGenericVariableDefDirective(directive, variableValue)
+                             saved                          <- repos.saveDirective(activeTechnique.id, replacedDirective, RudderEventActor, Some(message))
+                           } yield {
+                             saved
+                           }
     } yield {
       refDirective.id
     }
@@ -200,7 +199,6 @@ class CheckDotInGenericCFEngineVariableDef (
         } else {
           (key, values)
         }
-
       }
     )
   }
