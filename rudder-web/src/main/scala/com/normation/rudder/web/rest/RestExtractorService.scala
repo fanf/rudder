@@ -437,8 +437,9 @@ case class RestExtractorService (
       name        <- extractOneValueJson(json, "id")(convertToApiAccountId)
       description <- extractOneValueJson(json, "description")()
       enabled     <- extractJsonBoolean(json, "enabled")
+      oldName     <- extractOneValueJson(json, "oldId")(convertToApiAccountId)
     } yield {
-      RestApiAccount(name,description,enabled)
+      RestApiAccount(name, description, enabled, oldName)
     }
   }
 

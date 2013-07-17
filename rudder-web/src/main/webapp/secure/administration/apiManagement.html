@@ -290,6 +290,7 @@
         var editButton  = $("<button style='width: 80px; margin: 0px 10px;'>Edit</button>")
             editButton.button()
             editButton.click( function() {
+              data.oldId = data.id
               $scope.popupCreation(data,iRow);
             });
           $(nTd).empty();
@@ -366,7 +367,7 @@
      $scope.checkAndSaveAccount = function (account,index,form) {
        if (form.$valid) {
          $scope.saveAccount(account,index)
-           $scope.myNewAccount = undefined;
+         $scope.myNewAccount = undefined;
        }
      }
      $scope.saveAccount = function(account,index) {
