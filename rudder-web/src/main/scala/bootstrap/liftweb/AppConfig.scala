@@ -131,6 +131,7 @@ import com.normation.rudder.migration.EventLogsMigration_3_4
 import com.normation.rudder.migration.EventLogsMigration_3_4
 import com.normation.rudder.web.rest.parameter._
 import com.normation.rudder.appconfig._
+import com.normation.rudder.web.rest.changeRequest._
 
 /**
  * Define a resource for configuration.
@@ -438,6 +439,7 @@ object RudderConfig extends Loggable {
       , techniqueRepository
       , queryParser
       , userPropertyService
+      , workflowService
     )
 
   val tokenGenerator = new TokenGeneratorImpl(32)
@@ -448,6 +450,7 @@ object RudderConfig extends Loggable {
   val restArchiving = new RestArchiving(itemArchiveManagerImpl,personIdentServiceImpl, uuidGen)
   val restGetGitCommitAsZip = new RestGetGitCommitAsZip(gitRepo)
   val restApiAccounts = new RestApiAccounts(roApiAccountRepository,woApiAccountRepository,restExtractorService,tokenGenerator, uuidGen)
+  val restDataSerializer = RestDataSerializerImpl(techniqueRepository,diffService)
 
   val ruleApiService2 =
     new RuleApiService2(
@@ -459,6 +462,7 @@ object RudderConfig extends Loggable {
       , workflowService
       , restExtractorService
       , configService.rudder_workflow_enabled
+      , restDataSerializer
     )
 
   val ruleApi2 =
@@ -466,6 +470,11 @@ object RudderConfig extends Loggable {
         roRuleRepository
       , restExtractorService
       , ruleApiService2
+    )
+
+  val ruleApi3 =
+    new RuleAPI3 (
+        ruleApi2
     )
 
   val latestRuleApi = new LatestRuleAPI (ruleApi2)
@@ -489,6 +498,7 @@ object RudderConfig extends Loggable {
       , restExtractorService
       , configService.rudder_workflow_enabled
       , directiveEditorService
+      , restDataSerializer
     )
 
   val directiveApi2 =
@@ -496,6 +506,11 @@ object RudderConfig extends Loggable {
         roDirectiveRepository
       , restExtractorService
       , directiveApiService2
+    )
+
+  val directiveApi3 =
+    new DirectiveAPI3 (
+        directiveApi2
     )
 
   val latestDirectiveApi = new LatestDirectiveAPI (directiveApi2)
@@ -518,6 +533,7 @@ object RudderConfig extends Loggable {
       , restExtractorService
       , queryProcessor
       , configService.rudder_workflow_enabled
+      , restDataSerializer
     )
 
   val groupApi2 =
@@ -525,6 +541,11 @@ object RudderConfig extends Loggable {
         roNodeGroupRepository
       , restExtractorService
       , groupApiService2
+    )
+
+  val groupApi3 =
+    new GroupAPI3 (
+        groupApi2
     )
 
   val latestGroupApi = new LatestGroupAPI (groupApi2)
@@ -536,19 +557,25 @@ object RudderConfig extends Loggable {
       , groupApiService2
     )
 
-    val nodeApiService2 =
+  val nodeApiService2 =
     new NodeApiService2 (
         newNodeManager
       , nodeInfoService
       , removeNodeService
       , uuidGen
       , restExtractorService
+      , restDataSerializer
     )
 
   val nodeApi2 =
     new NodeAPI2 (
         nodeApiService2
       , restExtractorService
+    )
+
+  val nodeApi3 =
+    new NodeAPI3 (
+        nodeApi2
     )
 
   val latestNodeApi = new LatestNodeAPI (nodeApi2)
@@ -568,13 +595,18 @@ object RudderConfig extends Loggable {
       , workflowService
       , restExtractorService
       , configService.rudder_workflow_enabled
+      , restDataSerializer
     )
-
 
   val parameterApi2 =
     new ParameterAPI2 (
         restExtractorService
       , parameterApiService2
+    )
+
+  val parameterApi3 =
+    new ParameterAPI3 (
+        parameterApi2
     )
 
   val latestParameterApi = new LatestParameterAPI (parameterApi2)
@@ -591,6 +623,37 @@ object RudderConfig extends Loggable {
       , new LdapConfigRepository(rudderDit, rwLdap, ldapEntityMapper)
       , asyncWorkflowInfo
   )
+
+
+  val changeRequestApiService3 =
+    new ChangeRequestAPIService3 (
+        roChangeRequestRepository
+      , woChangeRequestRepository
+      , roWorkflowRepository
+      , woWorkflowRepository
+      , techniqueRepository
+      , changeRequestService
+      , workflowService
+      , commitAndDeployChangeRequest
+      , restExtractorService
+      , restDataSerializer
+      , configService.rudder_workflow_enabled
+    )
+
+
+  val changeRequestApi3 =
+    new ChangeRequestAPI3 (
+        restExtractorService
+      , changeRequestApiService3
+    )
+
+  val latestChangeRequestApi = new LatestChangeRequestAPI (changeRequestApi3)
+
+  val genericChangeRequestApi =
+    new ChangeRequestAPIHeaderVersion (
+        restExtractorService
+      , changeRequestApiService3
+    )
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////

@@ -79,6 +79,9 @@ trait WorkflowService {
    */
   def startWorkflow(changeRequestId: ChangeRequestId, actor:EventActor, reason: Option[String]) : Box[WorkflowNodeId]
 
+  def openSteps : List[WorkflowNodeId]
+  def closedSteps : List[WorkflowNodeId]
+
   def stepsValue :List[WorkflowNodeId]
 
   def findNextSteps(
@@ -109,6 +112,10 @@ class EitherWorkflowService(cond: () => Box[Boolean], whenTrue: WorkflowService,
 
   def startWorkflow(changeRequestId: ChangeRequestId, actor:EventActor, reason: Option[String]) : Box[WorkflowNodeId] =
     if(cond().getOrElse(false)) whenTrue.startWorkflow(changeRequestId, actor, reason) else whenFalse.startWorkflow(changeRequestId, actor, reason)
+  def openSteps :List[WorkflowNodeId] =
+    if(cond().getOrElse(false)) whenTrue.openSteps else whenFalse.openSteps
+  def closedSteps :List[WorkflowNodeId] =
+    if(cond().getOrElse(false)) whenTrue.closedSteps else whenFalse.closedSteps
   def stepsValue :List[WorkflowNodeId] =
     if(cond().getOrElse(false)) whenTrue.stepsValue else whenFalse.stepsValue
   def findNextSteps(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean) : WorkflowAction =
@@ -160,6 +167,8 @@ class NoWorkflowServiceImpl(
 
   def findStep(changeRequestId: ChangeRequestId) : Box[WorkflowNodeId] = Failure("No state when no workflow")
 
+  val openSteps : List[WorkflowNodeId] = List()
+  val closedSteps : List[WorkflowNodeId] = List()
   val stepsValue :List[WorkflowNodeId] = List()
 
   def startWorkflow(changeRequestId: ChangeRequestId, actor:EventActor, reason: Option[String]) : Box[WorkflowNodeId] = {
@@ -219,10 +228,12 @@ class TwoValidationStepsWorkflowServiceImpl(
     val id = WorkflowNodeId("Cancelled")
   }
 
-  private[this] val steps:List[WorkflowNode] = List(Validation,Deployment,Deployed,Cancelled)
+  val steps:List[WorkflowNode] = List(Validation,Deployment,Deployed,Cancelled)
 
   def getItemsInStep(stepId: WorkflowNodeId) : Box[Seq[ChangeRequestId]] = roWorkflowRepo.getAllByState(stepId)
 
+  val openSteps : List[WorkflowNodeId] = List(Validation.id,Deployment.id)
+  val closedSteps : List[WorkflowNodeId] = List(Cancelled.id,Deployed.id)
   val stepsValue = steps.map(_.id)
 
   def findNextSteps(
@@ -373,3 +384,5 @@ class TwoValidationStepsWorkflowServiceImpl(
 
 
 }
+
+
