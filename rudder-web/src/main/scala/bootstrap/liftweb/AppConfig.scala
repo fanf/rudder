@@ -589,6 +589,7 @@ object RudderConfig extends Loggable {
     new LDAPBasedConfigService(
         config
       , new LdapConfigRepository(rudderDit, rwLdap, ldapEntityMapper)
+      , asyncWorkflowInfo
   )
 
   //////////////////////////////////////////////////////////////////////////////////////////

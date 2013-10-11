@@ -226,7 +226,7 @@ class Boot extends Loggable {
         "secure" / "administration" / "index" >> TestAccess ( ()
             => userIsAllowed("/secure/index",Write("administration")) ) submenus (
 
-          Menu("policyServerManagement", <span>Policy Server</span>) /
+          Menu("policyServerManagement", <span>Settings</span>) /
             "secure" / "administration" / "policyServerManagement"
             >> LocGroup("administrationGroup")
             >> TestAccess ( () => userIsAllowed("/secure/index",Write("administration")) )

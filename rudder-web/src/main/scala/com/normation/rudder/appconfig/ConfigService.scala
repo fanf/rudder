@@ -40,6 +40,8 @@ import com.normation.rudder.domain.parameters.GlobalParameter
 import com.normation.rudder.domain.parameters.GlobalParameter
 import com.normation.rudder.domain.parameters.ParameterName
 import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.batch.AsyncWorkflowInfo
+import com.normation.rudder.services.workflows.WorkflowUpdate
 
 /**
  * A service that Read mutable (runtime) configuration properties
@@ -118,7 +120,7 @@ class ExampleConfigService(defaultConfig: Config) extends ReadConfigService with
  * At start-up, read information from the default config.
  * They will be used has default value is none is stored in LDAP.
  */
-class LDAPBasedConfigService(defaultConfig: Config, repos: ConfigRepository) extends ReadConfigService with UpdateConfigService {
+class LDAPBasedConfigService(defaultConfig: Config, repos: ConfigRepository, workflowUpdate : AsyncWorkflowInfo) extends ReadConfigService with UpdateConfigService {
 
   /*
    *  Correct implementation use a macro in place of all the
@@ -167,7 +169,10 @@ class LDAPBasedConfigService(defaultConfig: Config, repos: ConfigRepository) ext
   def rudder_workflow_enabled() = get("rudder_workflow_enabled")
   def rudder_workflow_self_validation() = get("rudder_workflow_self_validation")
   def rudder_workflow_self_deployment() = get("rudder_workflow_self_deployment")
-  def set_rudder_workflow_enabled(value: Boolean): Box[Unit] = save("rudder_workflow_enabled", value)
+  def set_rudder_workflow_enabled(value: Boolean): Box[Unit] = {
+    save("rudder_workflow_enabled", value)
+    Full(workflowUpdate ! WorkflowUpdate)
+  }
   def set_rudder_workflow_self_validation(value: Boolean): Box[Unit] = save("rudder_workflow_self_validation", value)
   def set_rudder_workflow_self_deployment(value: Boolean): Box[Unit] = save("rudder_workflow_self_deployment", value)
 }
