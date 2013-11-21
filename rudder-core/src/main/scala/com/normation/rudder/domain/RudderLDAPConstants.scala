@@ -63,6 +63,8 @@ object RudderLDAPConstants extends Loggable {
   val A_LAST_UPDATE_DATE = "lastUpdateTimestamp"
   val A_DIRECTIVE_VARIABLES = "directiveVariable"
   val A_WRITTEN_DATE = "writtenTimestamp"
+  val A_RULE_CATEGORY = "category"
+
   /*
    * Last time an active technique was
    * accepted in the active technique library (either the

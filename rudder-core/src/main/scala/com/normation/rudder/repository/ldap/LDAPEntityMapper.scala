@@ -472,10 +472,12 @@ class LDAPEntityMapper(
 
     if(e.isA(OC_RULE)) {
       for {
-        id     <- e(A_RULE_UUID) ?~!
-                  "Missing required attribute %s in entry %s".format(A_RULE_UUID, e)
-        serial <- e.getAsInt(A_SERIAL) ?~!
-                  "Missing required attribute %s in entry %s".format(A_SERIAL, e)
+        id       <- e(A_RULE_UUID) ?~!
+                    "Missing required attribute %s in entry %s".format(A_RULE_UUID, e)
+        serial   <- e.getAsInt(A_SERIAL) ?~!
+                    "Missing required attribute %s in entry %s".format(A_SERIAL, e)
+        category <- e(A_RULE_CATEGORY) ?~!
+                    "Missing required attribute %s in entry %s".format(A_SERIAL, e)
       } yield {
         val targets = for {
           target <- e.valuesFor(A_RULE_TARGET)
@@ -493,8 +495,16 @@ class LDAPEntityMapper(
         val isSystem = e.getAsBoolean(A_IS_SYSTEM).getOrElse(false)
 
         Rule(
-            RuleId(id), name, serial, targets, directiveIds,
-            shortDescription, longDescription, isEnabled, isSystem
+            RuleId(id)
+          , name
+          , serial
+          , RuleCategoryId(category)
+          , targets
+          , directiveIds
+          , shortDescription
+          , longDescription
+          , isEnabled
+          , isSystem
         )
       }
     } else {

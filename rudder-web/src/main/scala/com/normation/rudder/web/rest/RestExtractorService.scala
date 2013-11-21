@@ -184,6 +184,10 @@ case class RestExtractorService (
   private[this] def convertToNodeGroupCategoryId (value:String) : Box[NodeGroupCategoryId] = {
     readGroup.getGroupCategory(NodeGroupCategoryId(value)).map(_.id) ?~ s"Directive '$value' not found"
   }
+  private[this] def convertToRuleCategoryId (value:String) : Box[RuleCategoryId] = {
+  Full(RuleCategoryId(value))
+  //Call to   readRule.getRuleCategory(NodeGroupCategoryId(value)).map(_.id) ?~ s"Directive '$value' not found"
+  }
 
   private[this] def convertToRuleTarget (value:String) : Box[RuleTarget] = {
       RuleTarget.unser(value) match {
@@ -425,13 +429,14 @@ case class RestExtractorService (
 
     for {
       name             <- extractOneValue(params,"displayName")(convertToMinimalSizeString(3))
+      category         <- extractOneValue(params, "category")(convertToRuleCategoryId)
       shortDescription <- extractOneValue(params,"shortDescription")()
       longDescription  <- extractOneValue(params,"longDescription")()
       enabled          <- extractOneValue(params,"enabled")( convertToBoolean)
       directives       <- extractList(params,"directives")( convertListToDirectiveId)
       targets          <- extractList(params,"targets")(convertListToRuleTarget)
     } yield {
-      RestRule(name,shortDescription,longDescription,directives,targets,enabled)
+      RestRule(name,category,shortDescription,longDescription,directives,targets,enabled)
     }
   }
 
@@ -475,13 +480,14 @@ case class RestExtractorService (
   def extractRuleFromJSON (json : JValue) : Box[RestRule] = {
     for {
       name             <- extractOneValueJson(json, "displayName")(convertToMinimalSizeString(3))
+      category         <- extractOneValueJson(json, "category")(convertToRuleCategoryId)
       shortDescription <- extractOneValueJson(json, "shortDescription")()
       longDescription  <- extractOneValueJson(json, "longDescription")()
       directives       <- extractJsonList(json, "directives")(convertListToDirectiveId)
       targets          <- extractJsonList(json, "targets")(convertListToRuleTarget)
       enabled          <- extractJsonBoolean(json,"enabled")
     } yield {
-      RestRule(name,shortDescription,longDescription,directives,targets,enabled)
+      RestRule(name,category,shortDescription,longDescription,directives,targets,enabled)
     }
   }
 

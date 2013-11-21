@@ -33,35 +33,31 @@
 */
 
 package com.normation.rudder.domain.policies
+
 import com.normation.utils.HashcodeCaching
 
-case class RuleId(value:String) extends HashcodeCaching
+/**
+ * The Id for the server group category
+ */
+case class RuleCategoryId(value:String) extends HashcodeCaching
 
-case class SerialedRuleId(ruleId : RuleId, serial : Int) extends HashcodeCaching
 
 /**
- * A rule is a binding between a set of directives
- * and some target (group of node, etc) on which applying
- * these directives.
- *
- * A rule may be stored in a pending state, for
- * example if it is not fully initialized.
- * In that case, it *MUST* be considered desactivated, whatever
- * the isEnabledField say.
+ * A rule category is quite similar to a Technique category :
+ * an id
+ * a name
+ * a description
+ * some subcategories
+ * some items
  */
-case class Rule(
-    id              : RuleId
-  , name            : String
-  , serial          : Int
-  , category        : RuleCategoryId
-    //is not mandatory, but if not present, rule is disabled
-  , targets         : Set[RuleTarget] = Set()
-    //is not mandatory, but if not present, rule is disabled
-  , directiveIds    : Set[DirectiveId] = Set()
-  , shortDescription: String = ""
-  , longDescription : String = ""
-  , isEnabledStatus : Boolean = false
-  , isSystem        : Boolean = false
-) extends HashcodeCaching {
-  def isEnabled = isEnabledStatus & !targets.isEmpty & !directiveIds.isEmpty
+case class RuleCategory(
+    id          : RuleCategoryId
+  , name        : String
+  , description : String
+  , children    : List[RuleCategoryId]
+  , items       : List[RuleId]
+  , isSystem    : Boolean = false
+
+) {
+
 }
