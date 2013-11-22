@@ -476,8 +476,8 @@ class LDAPEntityMapper(
                     "Missing required attribute %s in entry %s".format(A_RULE_UUID, e)
         serial   <- e.getAsInt(A_SERIAL) ?~!
                     "Missing required attribute %s in entry %s".format(A_SERIAL, e)
-        category <- e(A_RULE_CATEGORY) ?~!
-                    "Missing required attribute %s in entry %s".format(A_SERIAL, e)
+        category = e(A_RULE_CATEGORY).getOrElse("TODO")// ?~!
+                    //"Missing required attribute %s in entry %s".format(A_SERIAL, e)
       } yield {
         val targets = for {
           target <- e.valuesFor(A_RULE_TARGET)
