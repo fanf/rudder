@@ -28,8 +28,8 @@ var buildReferenceTechniqueTree = function(id,  initially_select, appContext) {
             },
             "valid_children" : [ "category", "template" ],
             "select_node" : function(e) {
-        	  this.toggle_node(e);
-        	  return false;
+              this.toggle_node(e);
+              return false;
             },
             "start_drag" : false
           },
@@ -58,11 +58,11 @@ var buildReferenceTechniqueTree = function(id,  initially_select, appContext) {
         "drag_target" : false
       },
       "themes" : { 
-    	  "theme" : "rudder",
-    	  "url" : appContext+"/javascript/jstree/themes/rudder/style.css"
+          "theme" : "rudder",
+          "url" : appContext+"/javascript/jstree/themes/rudder/style.css"
       },
       "plugins" : [ "themes", "html_data", "ui", "types", "dnd", "crrm", "search" ]
-    })   
+    })
 }
 
 /*
@@ -239,13 +239,13 @@ var buildDirectiveTree = function(id, initially_select , appContext) {
  * Rule category tree
  */
 var buildRuleCategoryTree = function(id, initially_select , appContext) {
-  $(id).jstree({ 
-      "core" : { 
+  $(id).jstree({
+      "core" : {
       "animation" : 0,
       "html_titles" : true,
       "initially_open" : [ "jstn_0" ]
       },
-     "ui" : { 
+     "ui" : {
         "select_limit" : 1,
         "initially_select" : [initially_select]
       },
@@ -257,8 +257,8 @@ var buildRuleCategoryTree = function(id, initially_select , appContext) {
         "valid_children" : [ "category" ],
           "types" : {
             "category" : {
-              "icon" : { 
-                "image" : appContext+"/images/tree/folder_16x16.png" 
+              "icon" : {
+                "image" : appContext+"/images/tree/folder_16x16.png"
               },
               "valid_children" : [ "category" ],
               "select_node" : function(e) {
@@ -275,15 +275,16 @@ var buildRuleCategoryTree = function(id, initially_select , appContext) {
         "case_insensitive" : true,
         "show_only_matches": true
       },
-      "themes" : { 
+      "themes" : {
     	  "theme" : "rudder",
     	  "url" : appContext+"/javascript/jstree/themes/rudder/style.css"
       },
-      "plugins" : [ "themes", "html_data", "ui", "types", "search" ]      
+      "plugins" : [ "themes", "html_data", "ui", "types", "search" ]
+  }).bind("loaded.jstree", function (event, data) {
+      // you get two params - event & data - check the core docs for a detailed description
+      $(this).jstree("open_all");
   })
-  
   $(id).removeClass('nodisplay');
-
 }
 
 

@@ -19,14 +19,14 @@
     </div>
     <hr class="spacer"/>
     <div >
-      <div class="inner-portlet" style="float:left; margin-top:40px; min-width:150px; width:30%; border-right: 1px #656565 solid; height:500px">
-        <div class="inner-portlet-header" style="font-family:monospace; color: #999; border:0;'">Categories</div>
+      <div class="inner-portlet" style="float:left; margin-top:40px; min-width:150px; width:30%; overflow: auto">
+        <div class="inner-portlet-header" style="font-family:monospace; color: #999; border:0; letter-spacing:1px;'">Categories</div>
           <div class="inner-portlet-content" id="categoryTreeParent">
             <lift:configuration.RuleManagement.viewCategories />
           </div>
       </div>
-      <div class="inner-portlet" style="float:left; min-width:300px; width:60%; margin-top:40px;">
-        <div class="inner-portlet-header" style="font-family:monospace; color: #999; border:0;'" id="categoryDisplay">Rules</div>
+      <div class="inner-portlet" style="float:left; min-width:300px; width:60%; border-left: 1px #656565 solid; margin-top:40px; padding-left:40px;">
+        <div class="inner-portlet-header" style="font-family:monospace; color: #999; border:0; letter-spacing:1px;'" id="categoryDisplay">Rules</div>
         <div class="inner-portlet-content">
           <lift:configuration.RuleManagement.viewRules />
         </div>

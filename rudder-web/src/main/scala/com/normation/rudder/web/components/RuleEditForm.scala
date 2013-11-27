@@ -150,6 +150,7 @@ class RuleEditForm(
   private[this] val roCategoryRepository = RudderConfig.roRuleCategoryRepository
   private[this] val reportingService     = RudderConfig.reportingService
   private[this] val userPropertyService  = RudderConfig.userPropertyService
+  private[this] val categoryService      = RudderConfig.ruleCategoryService
 
   private[this] val roChangeRequestRepo  = RudderConfig.roChangeRequestRepository
   private[this] val categoryHierarchyDisplayer = RudderConfig.categoryHierarchyDisplayer
@@ -222,6 +223,7 @@ class RuleEditForm(
     (
       "#details *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       "#nameField" #>    <div>{crName.displayNameHtml.getOrElse("Could not fetch rule name")} {updatedrule.map(_.name).openOr("could not fetch rule name")} </div> &
+      "#categoryField" #> <div> {category.displayNameHtml.getOrElse("Could not fetch rule category")} {updatedrule.flatMap(c => categoryService.fqdn(c.category)).openOr("could not fetch rule category")}</div> &
       "#rudderID" #> {rule.id.value.toUpperCase} &
       "#shortDescriptionField" #>  <div>{crShortDescription.displayNameHtml.getOrElse("Could not fetch short description")} {updatedrule.map(_.shortDescription).openOr("could not fetch rule short descritption")}</div> &
       "#longDescriptionField" #>  <div>{crLongDescription.displayNameHtml.getOrElse("Could not fetch description")} {updatedrule.map(_.longDescription).openOr("could not fetch rule long description")}</div> &
@@ -436,8 +438,7 @@ class RuleEditForm(
   private[this] val crLongDescription = {
     new WBTextAreaField("Description", rule.longDescription.toString) {
       override def setFilter = notNull _ :: trim _ :: Nil
-      override def inputField = super.inputField  %
-        ("style" -> "height:10em")
+      override def className = "twoCol"
     }
   }
 
@@ -447,7 +448,7 @@ class RuleEditForm(
       , categoryHierarchyDisplayer.getRuleCategoryHierarchy(roCategoryRepository.getRootCategory.get, None).map { case (id, name) => (id.value -> name)}
       , rule.category.value
     ) {
-    override def className = "rudderBaseFieldSelectClassName"
+    override def className = "twoCol"
   }
 
   private[this] val formTracker = new FormTracker(List(crName, crShortDescription, crLongDescription))

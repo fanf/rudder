@@ -584,4 +584,19 @@ function makeDiff(beforeId,afterId,resultId) {
   result.append(fragment);
 }
 
-
+function filterTableInclude(tableId, filter, include) {
+  if (typeof filter === 'undefined') {
+    return;
+  } else {
+    if (typeof include === 'undefined') {
+      $(tableId).dataTable().fnFilter(filter,1,true,false,true );
+    } else {
+      if (include) {
+        $(tableId).dataTable().fnFilter(filter,1,true,false,true );
+      } else {
+        var finalFilter = "^"+filter+"$";
+        $(tableId).dataTable().fnFilter(finalFilter,1,true,false,true );
+      }
+    }
+  }
+}

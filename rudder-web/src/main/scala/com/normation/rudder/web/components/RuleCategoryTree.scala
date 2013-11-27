@@ -98,7 +98,7 @@ class RuleCategoryTree(
     override def body = {
 
       val xml = {
-           <span class="treeActiveTechniqueCategoryName tooltipable" tooltipid={category.id.value}  title={category.description}>
+           <span class="treeRuleCategoryName tooltipable" tooltipid={category.id.value} title={category.description}>
              {category.name}
            </span>
          <div class="tooltipContent" id={category.id.value}>
@@ -106,7 +106,16 @@ class RuleCategoryTree(
            <div>{category.description}</div>
          </div>
       }
-       SHtml.a(() =>  SetHtml("categoryDisplay",Text(ruleCategoryService.fqdn(category.id).getOrElse("Error"))), xml)
+       SHtml.a(() => ruleCategoryService.fqdn(category.id) match {
+         case Full(fqdn) =>
+           val escaped = Utility.escape(fqdn)
+           JsRaw(s"""
+               filter='${escaped}';
+               filterTableInclude('#grid_rules_grid_zone',filter,include);
+           """) & SetHtml("categoryDisplay",Text(fqdn))
+         case e: EmptyBox => //Display an error, for now, nothing
+           Noop
+       }, xml)
     }
     override def children = category.childs.map(categoryNode(_))
 

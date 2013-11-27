@@ -2539,7 +2539,7 @@ tr.unfoldable {
   font-size:0.95em; 
 }
 
-.treeActiveTechniqueName , .treeActiveTechniqueCategoryName , .treeGroupCategoryName {
+.treeActiveTechniqueName , .treeActiveTechniqueCategoryName , .treeGroupCategoryName, .treeRuleCategoryName {
   font-weight: bold;
 }
 

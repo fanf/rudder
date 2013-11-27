@@ -130,7 +130,6 @@ class RuleGrid(
     rulesGrid(getAllNodeInfos(), getFullNodeGroupLib(), getFullDirectiveLib(), popup, linkCompliancePopup)
   }
 
-
   def rulesGrid(
       allNodeInfos: Box[Set[NodeInfo]]
     , groupLib    : Box[FullNodeGroupCategory]
@@ -174,10 +173,10 @@ class RuleGrid(
         "aaSorting": [[ 0, "asc" ]],
         "aoColumns": [${ if(showCheckboxColumn) """
           { "sWidth": "30px" },""" else "" }
-          { "sWidth": "95px" },
-          { "sWidth": "60px"  },
-          { "sWidth": "120px" },
-          { "sWidth": "60px"  }${ if(!popup) """,
+          { "sWidth": "90px" },
+          { "sWidth": "120px"  },
+          { "sWidth": "60px" },
+          { "sWidth": "40px"  }${ if(!popup) """,
           { "sWidth": "20px", "bSortable" : false }""" else "" }
         ],
         "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>'

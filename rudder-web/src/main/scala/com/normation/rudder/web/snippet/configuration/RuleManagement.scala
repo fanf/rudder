@@ -145,6 +145,8 @@ class RuleManagement extends DispatchSnippet with SpringExtendableSnippet[RuleMa
       <script type="text/javascript" src="/javascript/rudder/tree.js" id="tree"></script>
       {Script(
         JsRaw("""
+var include = true;
+var filter = "Rules";
 $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disabled";
         function updateTips( t ) {
           tips
@@ -206,13 +208,19 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
         Some(detailsCallbackLink(workflowEnabled, changeMsgEnabled)),
         showCheckboxColumn = false
     )
+    def includeSubCategory = {
+      SHtml.ajaxCheckbox(true, value => JsRaw(s"""include=${value};
+          filterTableInclude('#grid_rules_grid_zone',filter,include); """), ("id","includeCheckbox"))
+
+    }
 
             <div id={htmlId_viewAll}>
-            <lift:authz role="rule_write">
               <div id="actions_zone">
-                {SHtml.ajaxButton("Add a new rule", () => showPopup(None, workflowEnabled, changeMsgEnabled), ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
+                <lift:authz role="rule_write">
+                {SHtml.ajaxButton("New Rule", () => showPopup(None, workflowEnabled, changeMsgEnabled), ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
+                </lift:authz>
+                <span style="margin-left:50px;">{includeSubCategory} <span style="margin-left:10px;"> Include Rules from subcategories</span></span>
               </div>
-            </lift:authz>
              {ruleGrid.rulesGridWithUpdatedInfo() }
            </div>
 
