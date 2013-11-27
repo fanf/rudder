@@ -60,6 +60,7 @@ import com.normation.rudder.api.ApiAccountName
 import com.normation.rudder.domain.workflows._
 import com.normation.rudder.web.rest.changeRequest.APIChangeRequestInfo
 import com.normation.rudder.services.workflows.WorkflowService
+import com.normation.rudder.rule.category.RuleCategoryId
 
 case class RestExtractorService (
     readRule             : RoRuleRepository

@@ -42,7 +42,7 @@ import net.liftweb.common.Loggable
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.http.rest.RestHelper
-import com.normation.rudder.domain.policies.RuleCategoryId
+import com.normation.rudder.rule.category.RuleCategoryId
 
 class LatestRuleAPI (
     latestApi : RuleAPI

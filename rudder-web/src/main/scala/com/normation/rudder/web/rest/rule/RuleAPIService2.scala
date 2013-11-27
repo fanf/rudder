@@ -64,7 +64,7 @@ import net.liftweb.json.JValue
 import net.liftweb.json.JsonDSL._
 import com.normation.rudder.web.rest.RestDataSerializer
 import com.normation.rudder.domain.nodes.NodeGroupCategory
-import com.normation.rudder.domain.policies.RuleCategoryId
+import com.normation.rudder.rule.category.RuleCategoryId
 
 case class RuleApiService2 (
     readRule             : RoRuleRepository
