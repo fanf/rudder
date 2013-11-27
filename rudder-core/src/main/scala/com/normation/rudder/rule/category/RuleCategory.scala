@@ -59,26 +59,6 @@ case class RuleCategory(
   , name        : String
   , description : String
   , childs      : List[RuleCategory]
-  , items       : List[RuleId]
   , isSystem    : Boolean = false
-  , parent      : Option[RuleCategory]
-) {
-  def fqdnOfChild(child:RuleCategoryId) : Box[String] = {
-    if (id == child) {
-      Full(name)
-    } else {
-      childs.map(_.fqdnOfChild(child)).filter{
-        case Full(_) => true
-        case _ => false
-        } match {
-          case Nil => Failure("not found :(")
-          case Full(fqdn) :: Nil => Full(s"${name} >> ${fqdn}")
-          case list if list.size > 1 => Failure("too many answer")
-        }
-    }
+)
 
-
-  }
-
-
-}

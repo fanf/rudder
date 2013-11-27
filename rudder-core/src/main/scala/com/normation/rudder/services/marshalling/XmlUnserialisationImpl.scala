@@ -86,6 +86,7 @@ import scala.util.{Failure => Catch}
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.parameters._
 import com.normation.rudder.api._
+import com.normation.rudder.rule.category.RuleCategoryId
 
 case class XmlUnserializerImpl (
     rule        : RuleUnserialisation

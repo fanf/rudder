@@ -36,10 +36,14 @@ package com.normation.rudder.rule.category
 
 import net.liftweb.common.Box
 import net.liftweb.common.Full
+import com.normation.eventlog.ModificationId
+import com.normation.eventlog.EventActor
 
 trait RoRuleCategoryRepository {
 
   def get(id: RuleCategoryId) : Box[RuleCategory]
+
+  def getParents(id:RuleCategoryId) : Box[List[RuleCategory]]
 
   def getRootCategory : Box[RuleCategory]
 
@@ -47,57 +51,33 @@ trait RoRuleCategoryRepository {
 
 trait WoRuleCategoryRepository {
 
-  def create(category:RuleCategory, container:RuleCategoryId) : Box[RuleCategory]
+  def create(
+      that   : RuleCategory
+    , into   : RuleCategoryId
+    , modId  : ModificationId
+    , actor  : EventActor
+    , reason : Option[String]
+  ) : Box[RuleCategory]
 
-  def update(category:RuleCategory) : Box[RuleCategory]
+  def update(category:RuleCategory    , modId  : ModificationId
+    , actor  : EventActor
+    , reason : Option[String]
+  ) : Box[RuleCategory]
 
-  def delete(category:RuleCategory) : Box[RuleCategory]
+  def updateAndMove(
+      that   : RuleCategory
+    , into   : RuleCategoryId
+    , modId  : ModificationId
+    , actor  : EventActor
+    , reason : Option[String]
+  ) : Box[RuleCategory]
 
-
-}
-
-object MemoryRuleCategoryRepository extends RoRuleCategoryRepository with WoRuleCategoryRepository {
-
-  val initRoot = RuleCategory (
-    RuleCategoryId("root")
-  , "Rules"
-  , ""
-  , Nil
-  , Nil
-  , true
-  , None
-  )
-
-
-
-  var repo = Map((initRoot.id,initRoot))
-
-
-  def get(id: RuleCategoryId) : Box[RuleCategory] = repo.get(id)
-
-  def getRootCategory : Box[RuleCategory] = repo.get(initRoot.id)
-
-
-  def create(category:RuleCategory, container:RuleCategoryId) : Box[RuleCategory] = {
-    repo += ((category.id,category))
-    val parent : RuleCategory = repo.getOrElse(container, getRootCategory.get)
-    val updated = parent.copy(childs = category :: parent.childs)
-    repo = repo.updated(parent.id, updated)
-    Full(category)
-  }
-
-  def update(category:RuleCategory) : Box[RuleCategory] = {
-
-    repo = repo.updated(category.id, category)
-    Full(category)
-  }
-
-  def delete(category:RuleCategory) : Box[RuleCategory] = {
-    repo = repo.filterKeys(_ != category.id)
-    Full(category)
-  }
-
-
+  def delete(category:RuleCategoryId    , modId  : ModificationId
+    , actor  : EventActor
+    , reason : Option[String]
+    , checkEmpty:Boolean = true
+  ) : Box[RuleCategoryId]
 
 
 }
+

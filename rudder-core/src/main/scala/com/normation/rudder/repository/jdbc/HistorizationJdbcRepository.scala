@@ -57,7 +57,7 @@ import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.policies.RuleCategoryId
+import com.normation.rudder.rule.category.RuleCategoryId
 
 
 class HistorizationJdbcRepository(squerylConnectionProvider : SquerylConnectionProvider)  extends HistorizationRepository with  Loggable {
@@ -462,7 +462,7 @@ case class SerializedRules(
     @Column("ruleid")           ruleId           : String
   , @Column("serial")           serial           : Int
   , @Column("name")             name             : String
-  , @Column("category")         category         : String
+ // , @Column("category")         category         : String
   , @Column("shortdescription") shortDescription : String
   , @Column("longdescription")  longDescription  : String
   , @Column("isenabled")        isEnabledStatus  : Boolean
@@ -499,7 +499,7 @@ object SerializedRules {
         RuleId(rule.ruleId)
       , rule.name
       , rule.serial
-      , RuleCategoryId(rule.category)
+      , RuleCategoryId("TODO")
       , ruleTargets.map(x => new GroupTarget(new NodeGroupId(x.groupId))).toSet
       , directives.map(x => new DirectiveId(x.directiveId)).toSet
       , rule.shortDescription
@@ -515,7 +515,7 @@ object SerializedRules {
         rule.id.value
       , rule.serial
       , rule.name
-      , rule.category.value
+   //   , rule.category.value
       , rule.shortDescription
       , rule.longDescription
       , rule.isEnabledStatus
