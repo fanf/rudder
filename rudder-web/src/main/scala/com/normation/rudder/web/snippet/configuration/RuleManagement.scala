@@ -60,6 +60,10 @@ import com.normation.rudder.repository._
 import com.normation.utils.StringUuidGenerator
 import com.normation.plugins.{SpringExtendableSnippet,SnippetExtensionKey}
 import bootstrap.liftweb.RudderConfig
+import com.normation.rudder.web.components.RuleCategoryTree
+import com.normation.rudder.rule.category._
+import com.normation.eventlog.ModificationId
+import com.normation.rudder.web.model.CurrentUser
 
 /**
  * Snippet for managing Rules.
@@ -70,8 +74,10 @@ import bootstrap.liftweb.RudderConfig
 class RuleManagement extends DispatchSnippet with SpringExtendableSnippet[RuleManagement] with Loggable {
   import RuleManagement._
 
-  private[this] val ruleRepository    = RudderConfig.roRuleRepository
-  private[this] val uuidGen           = RudderConfig.stringUuidGenerator
+  private[this] val ruleRepository       = RudderConfig.roRuleRepository
+  private[this] val roCategoryRepository = RudderConfig.roRuleCategoryRepository
+  private[this] val woCategoryRepository = RudderConfig.woRuleCategoryRepository
+  private[this] val uuidGen              = RudderConfig.stringUuidGenerator
 
   //the popup component
   private[this] val creationPopup = new LocalSnippet[CreateOrCloneRulePopup]
@@ -88,6 +94,7 @@ class RuleManagement extends DispatchSnippet with SpringExtendableSnippet[RuleMa
                 "head" -> { _:NodeSeq => head(workflowEnabled, changeMsgEnabled) }
               , "editRule" -> { _:NodeSeq => editRule(workflowEnabled, changeMsgEnabled) }
               , "viewRules" -> { _:NodeSeq => viewRules(workflowEnabled, changeMsgEnabled) }
+              , "viewCategories" -> { _:NodeSeq => viewCategories}
             )
           case  eb: EmptyBox =>
             val e = eb ?~! "Error when getting Rudder application configuration for change message activation"
@@ -162,6 +169,34 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
       ) }
     </head>
     }
+  }
+
+    def viewCategories : NodeSeq = {
+    val ruleGrid = new RuleCategoryTree(
+        "categoryTree"
+    )
+      def AddNewCategory() = {
+      val index = randomInt(1000)
+      val newCat = RuleCategory (
+          RuleCategoryId(uuidGen.newUuid)
+        , s"Category-$index"
+        , s"this is category $index"
+        , Nil
+      )
+      val root = roCategoryRepository.getRootCategory.get
+      woCategoryRepository.create(newCat, root.id,ModificationId(uuidGen.newUuid),CurrentUser.getActor,None)
+      SetHtml("categoryTreeParent",viewCategories)
+    }
+     <div>
+                <lift:authz role="rule_write">
+              <div id="actions_zone">
+                {SHtml.ajaxButton("New Category", () => AddNewCategory(), ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
+              </div>
+            </lift:authz>
+             <div class="dataTables_wrapper" id="categoryTree">
+             {ruleGrid.tree}
+             </div>
+     </div>
   }
 
   def viewRules(workflowEnabled: Boolean, changeMsgEnabled : Boolean) : NodeSeq = {

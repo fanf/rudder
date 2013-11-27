@@ -63,12 +63,19 @@ import com.normation.eventlog.ModificationId
 import bootstrap.liftweb.RudderConfig
 
 
+
 object RuleGrid {
   def staticInit =
     <head>
       <script type="text/javascript" language="javascript" src="/javascript/datatables/js/jquery.dataTables.js"></script>
       <style type="text/css">
         #actions_zone , .dataTables_length , .dataTables_filter {{ display: inline-block; }}
+        .greenCompliance {{ background-color: #CCFFCC }}
+        .orangeCompliance  {{ background-color: #FFBB66 }}
+        .redCompliance  {{ background-color: #FF6655 }}
+        .noCompliance   {{ background-color:#BBAAAA; }}
+        .applyingCompliance {{ background-color:#CCCCCC; }}
+        .compliance {{ text-align: center; }}
       </style>
     </head>
 }
@@ -88,6 +95,9 @@ class RuleGrid(
   private[this] val reportingService = RudderConfig.reportingService
   private[this] val getAllNodeInfos  = RudderConfig.nodeInfoService.getAll _
   private[this] val techniqueRepository = RudderConfig.techniqueRepository
+  private[this] val categoryRepository  = RudderConfig.roRuleCategoryRepository
+  private[this] val categoryService     = RudderConfig.ruleCategoryService
+
 
   //used to error tempering
   private[this] val woRuleRepository    = RudderConfig.woRuleRepository
@@ -308,7 +318,7 @@ class RuleGrid(
             if(popup) <a href={"""/secure/configurationManager/ruleManagement#{"ruleId":"%s"}""".format(line.rule.id.value)}>{detailsLink(line.rule, line.rule.name)}</a> else detailsLink(line.rule, line.rule.name)
           }</td>
           <td>{ // Category
-            line.rule.category.value
+            categoryService.fqdn(line.rule.category).getOrElse("Error")
           }</td>
 
           <td><b>{ // EFFECTIVE STATUS
@@ -341,9 +351,9 @@ class RuleGrid(
                  <div class="tooltipContent" id={line.rule.id.value}><h3>Reason(s)</h3><div>{why}</div></div>
             }
           }</b></td>
-          <td style="text-align:right;">{ //  COMPLIANCE
+          { //  COMPLIANCE
             buildComplianceChart(line.compliance, line.rule, linkCompliancePopup, nodes)
-          }</td>
+          }
           { if (!popup)
             <td class="parametersTd">{ //  RULE PARAMETERS
               detailsCallbackLink match {
@@ -371,12 +381,12 @@ class RuleGrid(
             if(popup) <a href={"""/secure/configurationManager/ruleManagement#{"ruleId":"%s"}""".format(line.rule.id.value)}>{detailsLink(line.rule, line.rule.name)}</a> else detailsLink(line.rule, line.rule.name)
           }</td>
           <td>{ // Category
-            line.rule.category.value
+            categoryService.fqdn(line.rule.category).map(_.name).getOrElse("Error")
           }</td>
           <td>{ // DEPLOYMENT STATUS
             "N/A"
           }</td>
-          <td style="text-align:right;">{ //  COMPLIANCE
+          <td class="compliance noCompliance">{ //  COMPLIANCE
             "N/A"
           }</td>{
             //detail and parameter only if not in a pop-up
@@ -430,16 +440,24 @@ class RuleGrid(
   }
 
   private[this] def buildComplianceChart(level:Option[ComplianceLevel], rule: Rule, linkCompliancePopup:Boolean, allNodes: Set[NodeInfo]) : NodeSeq = {
-    level match {
-      case None => Text("N/A")
-      case Some(Applying) => Text("Applying")
-      case Some(NoAnswer) => Text("No answer")
-      case Some(Compliance(percent)) =>  {
-        val text = Text(percent.toString + "%")
-        if(linkCompliancePopup) SHtml.a({() => showPopup(rule, allNodes)}, text)
-        else text
+
+    val (complianceClass,content) =
+      level match {
+        case None => ("noCompliance",Text("N/A"))
+        case Some(Applying) => ("applyingCompliance",Text("Applying"))
+        case Some(NoAnswer) => ("noCompliance",Text("No answer"))
+        case Some(Compliance(percent)) =>
+          val complianceClass =  if (percent <= 10 ) "redCompliance"
+            else if(percent >= 90) "greenCompliance"
+              else "orangeCompliance"
+          val text = Text(percent.toString + "%")
+          val res = if(linkCompliancePopup)
+            SHtml.a({() => showPopup(rule, allNodes)}, text)
+          else text
+          (complianceClass,res)
       }
-    }
+    ("td [class+]" #> complianceClass&
+     "td *+" #> content ) apply <td class="compliance"/>
   }
 
 /*********************************************

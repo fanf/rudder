@@ -75,6 +75,8 @@ import net.liftweb.util.Helpers
 import net.liftweb.util.Helpers._
 import com.normation.rudder.domain.nodes.NodeInfo
 import org.joda.time.DateTime
+import com.normation.rudder.web.model.WBSelectField
+import com.normation.rudder.rule.category.RuleCategoryId
 
 object RuleEditForm {
 
@@ -145,10 +147,12 @@ class RuleEditForm(
   private[this] val htmlId_EditZone = "editRuleZone"
 
   private[this] val roRuleRepository     = RudderConfig.roRuleRepository
+  private[this] val roCategoryRepository = RudderConfig.roRuleCategoryRepository
   private[this] val reportingService     = RudderConfig.reportingService
   private[this] val userPropertyService  = RudderConfig.userPropertyService
 
   private[this] val roChangeRequestRepo  = RudderConfig.roChangeRequestRepository
+  private[this] val categoryHierarchyDisplayer = RudderConfig.categoryHierarchyDisplayer
 
   private[this] var selectedTargets = rule.targets
   private[this] var selectedDirectiveIds = rule.directiveIds
@@ -252,6 +256,7 @@ class RuleEditForm(
                     , ("type", "button")
       ) &
       "#nameField" #> crName.toForm_! &
+      "#categoryField" #>   category.toForm_! &
       "#shortDescriptionField" #> crShortDescription.toForm_! &
       "#longDescriptionField" #> crLongDescription.toForm_! &
       "#selectPiField" #> {
@@ -436,6 +441,15 @@ class RuleEditForm(
     }
   }
 
+  private[this] val category =
+    new WBSelectField(
+        "Rule category"
+      , categoryHierarchyDisplayer.getRuleCategoryHierarchy(roCategoryRepository.getRootCategory.get, None).map { case (id, name) => (id.value -> name)}
+      , rule.category.value
+    ) {
+    override def className = "rudderBaseFieldSelectClassName"
+  }
+
   private[this] val formTracker = new FormTracker(List(crName, crShortDescription, crLongDescription))
 
   private[this] def error(msg:String) = <span class="error">{msg}</span>
@@ -450,7 +464,8 @@ class RuleEditForm(
         longDescription = crLongDescription.is,
         targets = selectedTargets,
         directiveIds = selectedDirectiveIds,
-        isEnabledStatus = rule.isEnabledStatus
+        isEnabledStatus = rule.isEnabledStatus,
+        category = RuleCategoryId(category.is)
       )
        if (newCr == rule) {
           onNothingToDo()
