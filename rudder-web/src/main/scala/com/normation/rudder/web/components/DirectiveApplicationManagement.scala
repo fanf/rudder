@@ -78,7 +78,7 @@ object DirectiveApplicationResult {
 }
 
 
-class DirectiveApplicationManagement (
+case class DirectiveApplicationManagement (
     directive : Directive
 ) extends Loggable {
 
@@ -144,8 +144,8 @@ class DirectiveApplicationManagement (
 
   def checkRule(id : RuleId, status: Boolean) = {
     def checkRule(id : RuleId, status: Boolean /*maybe need a class to declare status ? */, category : CategoryId) : DirectiveApplicationResult = {
-
-      val rules = currentApplyingRules(category)
+      logger.info(s"check for $id, in $category")
+      val rules = currentApplyingRules.get(category).getOrElse(Nil)
       val (newApplication,isComplete) =  if (status) {
         val result = (id :: rules).sortBy(_.value)
         val completeRules = rulesByCategory(category).sortBy(_.value)
@@ -167,8 +167,10 @@ class DirectiveApplicationManagement (
 
     }
 
-    checkRule(id, status, rulesMap(id).category)
-
+    val res = checkRule(id, status, rulesMap(id).category)
+    logger.info(res)
+    logger.error(checkRulesToUpdate)
+    res
 
   }
 
