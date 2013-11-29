@@ -147,6 +147,7 @@ class RuleManagement extends DispatchSnippet with SpringExtendableSnippet[RuleMa
         JsRaw("""
 var include = true;
 var filter = "Rules";
+var column = 1;
 $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disabled";
         function updateTips( t ) {
           tips
@@ -195,8 +196,11 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
                 {SHtml.ajaxButton("New Category", () => AddNewCategory(), ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
               </div>
             </lift:authz>
+            <br/>
+            <div style="overflow:auto; margin-top:10px; max-height:300px;border: 1px #999 ridge">
              <div class="dataTables_wrapper" id="categoryTree">
              {ruleGrid.tree}
+             </div>
              </div>
      </div>
   }
@@ -210,16 +214,16 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
     )
     def includeSubCategory = {
       SHtml.ajaxCheckbox(true, value => JsRaw(s"""include=${value};
-          filterTableInclude('#grid_rules_grid_zone',filter,include); """), ("id","includeCheckbox"))
+          filterTableInclude('#grid_rules_grid_zone',filter,include); """), ("id","includeCheckbox"), ("style", "float:left"))
 
     }
 
             <div id={htmlId_viewAll}>
               <div id="actions_zone">
                 <lift:authz role="rule_write">
-                {SHtml.ajaxButton("New Rule", () => showPopup(None, workflowEnabled, changeMsgEnabled), ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
+                {SHtml.ajaxButton("New Rule", () => showPopup(None, workflowEnabled, changeMsgEnabled), ("class" -> "newRule"), ("style", "float:left")) ++ Script(OnLoad(JsRaw("correctButtons();")))}
                 </lift:authz>
-                <span style="margin-left:50px;">{includeSubCategory} <span style="margin-left:10px;"> Include Rules from subcategories</span></span>
+                <span style="float:left; margin:10px 50px;">{includeSubCategory} <span style="margin-left:10px;float:left;"> Display Rules from subcategories</span></span>
               </div>
              {ruleGrid.rulesGridWithUpdatedInfo() }
            </div>

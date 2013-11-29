@@ -48,6 +48,9 @@ import com.normation.rudder.repository._
 import com.normation.rudder.services.policies._
 import bootstrap.liftweb.RudderConfig
 import com.normation.rudder.rule.category._
+import net.liftweb.json._
+import com.normation.eventlog.ModificationId
+import com.normation.rudder.web.model.CurrentUser
 
 /**
  * A component to display a tree based on a
@@ -58,29 +61,95 @@ import com.normation.rudder.rule.category._
  *
  */
 class RuleCategoryTree(
-  htmlId_activeTechniquesTree:String
+  htmlId_RuleCategoryTree:String
 ) extends DispatchSnippet with Loggable {
 
-  //find Technique
-  val ruleCategoryRepository = RudderConfig.roRuleCategoryRepository
-  val ruleCategoryService    = RudderConfig.ruleCategoryService
-
+  private[this] val roRuleCategoryRepository   = RudderConfig.roRuleCategoryRepository
+  private[this] val woRuleCategoryRepository = RudderConfig.woRuleCategoryRepository
+  private[this] val ruleCategoryService      = RudderConfig.ruleCategoryService
+  private[this] val uuidGen              = RudderConfig.stringUuidGenerator
   def dispatch = {
     case "tree" => { _ => tree }
+  }
+
+  private[this] def refreshTree() : JsCmd =  {
+    SetHtml(htmlId_RuleCategoryTree, tree()) &
+    OnLoad(After(TimeSpan(50), JsRaw("""createTooltip();""")))
+  }
+
+  private[this] def moveCategory(arg: String) : JsCmd = {
+    //parse arg, which have to  be json object with sourceGroupId, destCatId
+    try {
+      (for {
+         JObject(child) <- JsonParser.parse(arg)
+         JField("sourceCatId", JString(sourceCatId)) <- child
+         JField("destCatId", JString(destCatId)) <- child
+       } yield {
+         (RuleCategoryId(sourceCatId), RuleCategoryId(destCatId))
+       }) match {
+        case (sourceCatId, destCatId) :: Nil =>
+          (for {
+            category <- roRuleCategoryRepository.get(sourceCatId)//Box(lib.allCategories.get(NodeGroupCategoryId(sourceCatId))) ?~! "Error while trying to find category with requested id %s".format(sourceCatId)
+
+            result <- woRuleCategoryRepository.updateAndMove(
+                          category
+                        , destCatId
+                        , ModificationId(uuidGen.newUuid)
+                        , CurrentUser.getActor
+                        , reason = None
+                      ) ?~! s"Error while trying to move category with requested id '${sourceCatId}' to category id '${destCatId}'"
+          } yield {
+            (category.id.value, result)
+          }) match {
+            case Full((id,res)) =>
+            /*  refreshGroupLib
+              (
+                  refreshTree(htmlTreeNodeId(id), workflowEnabled)
+                & OnLoad(JsRaw("""setTimeout(function() { $("[catid=%s]").effect("highlight", {}, 2000);}, 100)""".format(sourceCatId)))
+                & refreshRightPanel(CategoryForm(res), workflowEnabled)
+
+              )*/ refreshTree & OnLoad(JsRaw(s"""setTimeout(function() { $$("[id=${sourceCatId}]").effect("highlight", {}, 2000);}, 100)"""))
+            case f:Failure => Alert(f.messageChain + "\nPlease reload the page")
+            case Empty => Alert("Error while trying to move category with requested id '%s' to category id '%s'\nPlease reload the page.".format(sourceCatId,destCatId))
+          }
+        case _ => Alert("Error while trying to move group: bad client parameters")
+      }
+    } catch {
+      case e:Exception => Alert("Error while trying to move group")
+    }
   }
 
 
   def tree() : NodeSeq = {
 
     (for {
-      root <-  ruleCategoryRepository.getRootCategory
+      root <-  roRuleCategoryRepository.getRootCategory
     } yield {
       categoryNode(root)
     }) match {
 
       case Full(treeNode) =>
         {<ul>{treeNode.toXml}</ul>} ++ Script(OnLoad(JsRaw(
-          s"""buildRuleCategoryTree('#${htmlId_activeTechniquesTree}','${ruleCategoryRepository.getRootCategory.map(_.id.value).getOrElse("")}','${S.contextPath}'); createTooltip();"""
+          s"""buildRuleCategoryTree('#${htmlId_RuleCategoryTree}','${roRuleCategoryRepository.getRootCategory.map(_.id.value).getOrElse("")}','${S.contextPath}');
+        $$('#${htmlId_RuleCategoryTree}').bind("move_node.jstree", function (e,data) {
+          var sourceCatId = $$(data.rslt.o).attr("id");
+          var destCatId = $$(data.rslt.np).attr("id");
+          if( destCatId ) {
+            if( sourceCatId ) {
+              var arg = JSON.stringify({ 'sourceCatId' : sourceCatId, 'destCatId' : destCatId });
+              ${SHtml.ajaxCall(JsVar("arg"), moveCategory _ )._2.toJsCmd};
+            } else {
+              alert("Can not move that kind of object");
+              $$.jstree.rollback(data.rlbk);
+            }
+          } else {
+            alert("Can not move to something else than a category");
+            $$.jstree.rollback(data.rlbk);
+          }
+        });
+
+
+          createTooltip();"""
       )))
       case e:EmptyBox =>
         val msg = "Can not build tree of Rule categories"
@@ -96,17 +165,43 @@ class RuleCategoryTree(
   private[this] def categoryNode(category : RuleCategory) : JsTreeNode = new JsTreeNode {
     override val attrs = ( "rel" -> "category" ) :: ("id", category.id.value) :: Nil
     override def body = {
-
+      def img(source:String,alt:String) = <img src={"/images/"+source} alt={alt} height="12" width="12" class="iconscala" style="margin:0 3px;height:auto" />
+      val tooltipId = Helpers.nextFuncName
       val xml = {
-           <span class="treeRuleCategoryName tooltipable" tooltipid={category.id.value} title={category.description}>
+           <span class="treeRuleCategoryName tooltipable" tooltipid={tooltipId} title="">
              {category.name}
+             <span id={"actions"+category.id.value} class="categoryAction">
+               { SHtml.ajaxButton(img("icPen.png","Edit"),() => Noop, ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;")) ++
+                 SHtml.ajaxButton(img("icfail.png","Delete"),() => Noop, ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;"))}
+             </span>
            </span>
-         <div class="tooltipContent" id={category.id.value}>
+         <div class="tooltipContent" id={tooltipId}>
            <h3>{category.name}</h3>
            <div>{category.description}</div>
-         </div>
+         </div> ++ Script{JsRaw {s"""
+           $$('#${"actions"+category.id.value}').hide();
+
+           $$('#${category.id.value}').mouseover( function(e) {
+           e.stopPropagation();
+
+           $$('#${"actions"+category.id.value}').show();
+           $$('#${category.id.value} a:first').addClass("treeOver jstree-hovered");
+         });
+
+
+           $$('#${category.id.value}').hover( function(e) {
+           $$('.categoryAction').hide();
+           $$('.treeOver').removeClass("treeOver jstree-hovered");
+           $$('#${"actions"+category.id.value}').show();
+           $$('#${category.id.value} a:first').addClass("treeOver jstree-hovered");
+           }, function(e) {
+           $$('.treeOver').removeClass("treeOver jstree-hovered");
+           $$('#${"actions"+category.id.value}').hide();
+           } );
+           """
+         }}
       }
-       SHtml.a(() => ruleCategoryService.fqdn(category.id) match {
+       SHtml.a(() => ruleCategoryService.fqdn(category.id,true) match {
          case Full(fqdn) =>
            val escaped = Utility.escape(fqdn)
            JsRaw(s"""

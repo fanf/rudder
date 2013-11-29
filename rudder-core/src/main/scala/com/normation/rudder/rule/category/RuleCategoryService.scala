@@ -40,10 +40,20 @@ class RuleCategoryService(
   roRuleCategoryService : RoRuleCategoryRepository
 ) {
 
+  def fqdn(id:RuleCategoryId,rootInCaps : Boolean = false) : Box[String] = {
 
-    def fqdn(id:RuleCategoryId) : Box[String] = {
-     roRuleCategoryService.getParents(id).map(_.map(_.name).mkString(" >> "))
+    for {
+    parents <- roRuleCategoryService.getParents(id)
+    } yield {
+      (for {
+        parent <- parents
+      } yield {
+      if (rootInCaps && (parent.id.value == "rootRuleCategory")) {
+        parent.name.toUpperCase
+      } else {
+        parent.name
+      }}).mkString(" ➤ ")
     }
-
+  }
 
 }

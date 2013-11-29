@@ -204,24 +204,10 @@
       	  </div>
 		</div>
 		<div class="tabContent" id="directiveRulesTab">
-		 <div class="tabblabla">
-    <div >
-      <div class="inner-portlet" style="float:left; margin-top:40px; min-width:150px; width:30%; overflow: auto">
-        <div class="inner-portlet-header" style="font-family:monospace; color: #999; border:0; letter-spacing:1px;'">Categories</div>
-          <div class="inner-portlet-content" id="categoryTreeParent">
-            <lift:configuration.RuleManagement.viewCategories />
-          </div>
-      </div>
-      <div class="inner-portlet" style="float:left; min-width:300px; width:60%; border-left: 1px #656565 solid; margin-top:40px; padding-left:40px;">
-        <div class="inner-portlet-header" style="font-family:monospace; color: #999; border:0; letter-spacing:1px;'" id="categoryDisplay">Rules</div>
-        <div class="inner-portlet-content">
-          <lift:configuration.RuleManagement.viewRules />
-        </div>
-      </div>
-    </div>
-      	  </div>
-		</div>
-		
+		 <div class="tabblabla" id="ruleDisplayer">
+     	 </div>
+		 </div>
+
 	</div>
 	<div id="confirmUpdateActionDialog" class="nodisplay"/>
 	<lift:authz role="directive_edit">

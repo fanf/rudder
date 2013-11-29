@@ -241,7 +241,7 @@ var buildDirectiveTree = function(id, initially_select , appContext) {
 var buildRuleCategoryTree = function(id, initially_select , appContext) {
   $(id).jstree({
       "core" : {
-      "animation" : 0,
+      "animation" : 300,
       "html_titles" : true,
       "initially_open" : [ "jstn_0" ]
       },
@@ -262,8 +262,7 @@ var buildRuleCategoryTree = function(id, initially_select , appContext) {
               },
               "valid_children" : [ "category" ],
               "select_node" : function(e) {
-            	  this.toggle_node(e);
-            	  return false;
+            	  return true;
               }
             },
             "default" : {
@@ -275,11 +274,15 @@ var buildRuleCategoryTree = function(id, initially_select , appContext) {
         "case_insensitive" : true,
         "show_only_matches": true
       },
+      "dnd" : {
+          "drop_target" : false,
+          "drag_target" : false
+        },
       "themes" : {
     	  "theme" : "rudder",
     	  "url" : appContext+"/javascript/jstree/themes/rudder/style.css"
       },
-      "plugins" : [ "themes", "html_data", "ui", "types", "search" ]
+      "plugins" : [ "themes", "html_data", "ui", "types", "search", "dnd" ]
   }).bind("loaded.jstree", function (event, data) {
       // you get two params - event & data - check the core docs for a detailed description
       $(this).jstree("open_all");

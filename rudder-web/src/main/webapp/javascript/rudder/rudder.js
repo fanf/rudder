@@ -79,6 +79,23 @@ function createTooltip() {
   });
 }
 
+function createTooltiptr() {
+	  $("tr.tooltipable").tooltip({
+				show: {
+					effect: "none",
+	                delay: 100
+	            },
+				content: function() {
+			      return $("#"+$(this).attr("tooltipid")).html();
+			    },
+			    position: { 
+			      my: "left top+15",
+			      at: "right top",
+			      collision: "flipfit" 
+			    }
+	  });
+	}
+
 /* popups */
 
 /*
@@ -588,14 +605,16 @@ function filterTableInclude(tableId, filter, include) {
   if (typeof filter === 'undefined') {
     return;
   } else {
+	  var finalFilter = "^"+filter+"$";
+	  var includeFilter = finalFilter +"|^"+filter+" ➤";
     if (typeof include === 'undefined') {
-      $(tableId).dataTable().fnFilter(filter,1,true,false,true );
+      $(tableId).dataTable().fnFilter(includeFilter ,column,true,false,true );
     } else {
       if (include) {
-        $(tableId).dataTable().fnFilter(filter,1,true,false,true );
+        $(tableId).dataTable().fnFilter(includeFilter,column,true,false,true );
       } else {
-        var finalFilter = "^"+filter+"$";
-        $(tableId).dataTable().fnFilter(finalFilter,1,true,false,true );
+        
+        $(tableId).dataTable().fnFilter(finalFilter,column,true,false,true );
       }
     }
   }
