@@ -2533,8 +2533,8 @@ tr.unfoldable {
  * Trees
 ************************************/
 
-#categoryTree.jstree-rudder a.treeOver {
-	padding: 1px 2px 5px 1px;
+#categoryTree.jstree-rudder a {
+  vertical-align: middle;
 }
 
 .treefilternodecursor{

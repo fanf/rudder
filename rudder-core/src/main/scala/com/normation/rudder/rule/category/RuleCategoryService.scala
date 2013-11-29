@@ -43,16 +43,30 @@ class RuleCategoryService(
   def fqdn(id:RuleCategoryId,rootInCaps : Boolean = false) : Box[String] = {
 
     for {
+    root  <- roRuleCategoryService.getRootCategory
+    short <- shortFqdn(id)
+    } yield {
+      if (rootInCaps ) {
+        root.name.toUpperCase
+      } else {
+        root.name
+      } + " » " + short
+    }
+  }
+
+  def shortFqdn(id:RuleCategoryId) : Box[String] = {
+
+    for {
     parents <- roRuleCategoryService.getParents(id)
     } yield {
       (for {
         parent <- parents
       } yield {
-      if (rootInCaps && (parent.id.value == "rootRuleCategory")) {
-        parent.name.toUpperCase
+      if (parent.id.value == "rootRuleCategory") {
+        ""
       } else {
         parent.name
-      }}).mkString(" » ")
+      }}).tail.mkString(" » ")
     }
   }
 

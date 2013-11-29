@@ -198,7 +198,7 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
             </lift:authz>
             <br/>
             <div style="overflow:auto; margin-top:10px; max-height:300px;border: 1px #999 ridge">
-             <div class="dataTables_wrapper" id="categoryTree">
+             <div id="categoryTree">
              {ruleGrid.tree}
              </div>
              </div>

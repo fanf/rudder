@@ -159,14 +159,16 @@ class RuleCategoryTree(
   private[this] def categoryNode(category : RuleCategory) : JsTreeNode = new JsTreeNode {
     override val attrs = ( "rel" -> "category" ) :: ("id", category.id.value) :: Nil
     override def body = {
-      def img(source:String,alt:String) = <img src={"/images/"+source} alt={alt} height="12" width="12" class="iconscala" style=" margin-top: 0px; margin-bottom:0px; margin-left: 3px;height:auto" />
+      def img(source:String,alt:String) = <img src={"/images/"+source} alt={alt} height="14" width="14" class="iconscala" style=" margin: 0 5px 0 0;float:none;" />
       val tooltipId = Helpers.nextFuncName
       val xml = {
            <span class="treeRuleCategoryName tooltipable" tooltipid={tooltipId} title="">
              {category.name}
+
              <span id={"actions"+category.id.value} class="categoryAction">
-               { SHtml.a(() => Noop, img("icPen.png","Edit"), ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;")) ++
-                 SHtml.a(() => Noop, img("icfail.png","Delete"), ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;"))}
+               {if(category.id.value!="rootRuleCategory")  SHtml.span(img("icPen.png","Edit"),Noop, ("style","margin:0 5px;max-height:20px; max-width:20px;")) ++
+                 SHtml.span(img("icfail.png","Delete"),Noop, ("style","margin:0 5px;max-height:20px; max-width:20px;"))
+                 else NodeSeq.Empty}
              </span>
            </span>
          <div class="tooltipContent" id={tooltipId}>
@@ -195,7 +197,7 @@ class RuleCategoryTree(
            """
          }}
       }
-       SHtml.a(() => ruleCategoryService.fqdn(category.id,true) match {
+       SHtml.a(() => ruleCategoryService.shortFqdn(category.id) match {
          case Full(fqdn) =>
            val escaped = Utility.escape(fqdn)
            JsRaw(s"""

@@ -334,7 +334,7 @@ class RuleGrid(
             if(popup) <a href={"""/secure/configurationManager/ruleManagement#{"ruleId":"%s"}""".format(line.rule.id.value)}>{detailsLink(line.rule, line.rule.name)}</a> else detailsLink(line.rule, line.rule.name)
           }</td>
           <td>{ // Category
-            categoryService.fqdn(line.rule.category).getOrElse("Error")
+            categoryService.shortFqdn(line.rule.category).getOrElse("Error")
           }</td>
 
           <td><b>{ // EFFECTIVE STATUS
@@ -397,7 +397,7 @@ class RuleGrid(
             if(popup) <a href={"""/secure/configurationManager/ruleManagement#{"ruleId":"%s"}""".format(line.rule.id.value)}>{detailsLink(line.rule, line.rule.name)}</a> else detailsLink(line.rule, line.rule.name)
           }</td>
           <td>{ // Category
-            categoryService.fqdn(line.rule.category).map(_.name).getOrElse("Error")
+            categoryService.shortFqdn(line.rule.category).map(_.name).getOrElse("Error")
           }</td>
           <td>{ // DEPLOYMENT STATUS
             "N/A"
