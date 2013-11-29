@@ -52,7 +52,7 @@ class RuleCategoryService(
         parent.name.toUpperCase
       } else {
         parent.name
-      }}).mkString(" ➤ ")
+      }}).mkString(" » ")
     }
   }
 

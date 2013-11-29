@@ -74,7 +74,7 @@ class RuleCategoryTree(
 
   private[this] def refreshTree() : JsCmd =  {
     SetHtml(htmlId_RuleCategoryTree, tree()) &
-    OnLoad(After(TimeSpan(50), JsRaw("""createTooltip();""")))
+    OnLoad(After(TimeSpan(50), JsRaw("""createTooltip();correctButtons();""")))
   }
 
   private[this] def moveCategory(arg: String) : JsCmd = {
@@ -102,13 +102,7 @@ class RuleCategoryTree(
             (category.id.value, result)
           }) match {
             case Full((id,res)) =>
-            /*  refreshGroupLib
-              (
-                  refreshTree(htmlTreeNodeId(id), workflowEnabled)
-                & OnLoad(JsRaw("""setTimeout(function() { $("[catid=%s]").effect("highlight", {}, 2000);}, 100)""".format(sourceCatId)))
-                & refreshRightPanel(CategoryForm(res), workflowEnabled)
-
-              )*/ refreshTree & OnLoad(JsRaw(s"""setTimeout(function() { $$("[id=${sourceCatId}]").effect("highlight", {}, 2000);}, 100)"""))
+              refreshTree
             case f:Failure => Alert(f.messageChain + "\nPlease reload the page")
             case Empty => Alert("Error while trying to move category with requested id '%s' to category id '%s'\nPlease reload the page.".format(sourceCatId,destCatId))
           }
@@ -165,14 +159,14 @@ class RuleCategoryTree(
   private[this] def categoryNode(category : RuleCategory) : JsTreeNode = new JsTreeNode {
     override val attrs = ( "rel" -> "category" ) :: ("id", category.id.value) :: Nil
     override def body = {
-      def img(source:String,alt:String) = <img src={"/images/"+source} alt={alt} height="12" width="12" class="iconscala" style="margin:0 3px;height:auto" />
+      def img(source:String,alt:String) = <img src={"/images/"+source} alt={alt} height="12" width="12" class="iconscala" style=" margin-top: 0px; margin-bottom:0px; margin-left: 3px;height:auto" />
       val tooltipId = Helpers.nextFuncName
       val xml = {
            <span class="treeRuleCategoryName tooltipable" tooltipid={tooltipId} title="">
              {category.name}
              <span id={"actions"+category.id.value} class="categoryAction">
-               { SHtml.ajaxButton(img("icPen.png","Edit"),() => Noop, ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;")) ++
-                 SHtml.ajaxButton(img("icfail.png","Delete"),() => Noop, ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;"))}
+               { SHtml.a(() => Noop, img("icPen.png","Edit"), ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;")) ++
+                 SHtml.a(() => Noop, img("icfail.png","Delete"), ("class", "smallButton"), ("style","margin:0 5px;max-height:20px; max-width:20px;"))}
              </span>
            </span>
          <div class="tooltipContent" id={tooltipId}>

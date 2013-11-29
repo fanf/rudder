@@ -81,11 +81,12 @@ object RuleGrid {
 }
 
 class RuleGrid(
-    htmlId_rulesGridZone : String,
-    rules : Seq[Rule],
-    //JS callback to call when clicking on a line
-    detailsCallbackLink : Option[(Rule,String) => JsCmd],
-    showCheckboxColumn:Boolean = true
+    htmlId_rulesGridZone : String
+  , rules : Seq[Rule]
+   //JS callback to call when clicking on a line
+  , detailsCallbackLink : Option[(Rule,String) => JsCmd]
+  , showCheckboxColumn:Boolean = true
+  , directiveApplication : Option[DirectiveApplicationManagement] = None
 ) extends DispatchSnippet with Loggable {
 
   private[this] val getFullNodeGroupLib = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
@@ -310,6 +311,7 @@ class RuleGrid(
         l match {
       case line:OKLine =>
         val tooltipId = Helpers.nextFuncName
+
         <div>{
         if(line.rule.shortDescription.size > 0){
 
@@ -322,7 +324,9 @@ class RuleGrid(
         }
         <tr tooltipid={tooltipId} class="tooltipable" title="">
           { // CHECKBOX
-            if(showCheckboxColumn) <td><input type="checkbox" name={line.rule.id.value} /></td> else NodeSeq.Empty
+            if(showCheckboxColumn) <td>{
+              val isApplying = directiveApplication.map(d => line.rule.directiveIds.contains(d.directive.id)).getOrElse(false)
+              SHtml.ajaxCheckbox(isApplying, value => directiveApplication.foreach(_.checkRule(line.rule.id, value)))}</td> else NodeSeq.Empty
           }
           <td>
          { // NAME
@@ -462,10 +466,10 @@ class RuleGrid(
           val complianceClass =  if (percent <= 10 ) "redCompliance"
             else if(percent >= 90) "greenCompliance"
               else "orangeCompliance"
-          val text = Text(percent.toString + "%")
+          val text = percent.toString + "%"
           val res = if(linkCompliancePopup)
-            SHtml.a({() => showPopup(rule, allNodes)}, text)
-          else text
+            detailsLink(rule, text)
+          else Text(text)
           (complianceClass,res)
       }
     ("td [class+]" #> complianceClass&
@@ -555,47 +559,7 @@ class RuleGrid(
     </div>
   </div>
   }
-
-  private[this] def showPopup(rule: Rule, allNodes: Set[NodeInfo]) : JsCmd = {
-    val popupHtml = createPopup(rule, allNodes)
-    SetHtml(htmlId_reportsPopup, popupHtml) &
-      JsRaw("""
-        var #table_var#;
-        /* Formating function for row details */
-        function fnFormatDetails ( id ) {
-          var sOut = '<div id="'+id+'" class="reportDetailsGroup"/>';
-          return sOut;
-        }
-      """.replaceAll("#table_var#",jsVarNameForId(tableId_reportsPopup))
-    ) & OnLoad(
-        JsRaw("""
-          /* Event handler function */
-          #table_var# = $('#%1$s').dataTable({
-            "asStripeClasses": [ 'color1', 'color2' ],
-            "bAutoWidth": false,
-            "bFilter" : true,
-            "bPaginate" : true,
-            "bLengthChange": true,
-            "sPaginationType": "full_numbers",
-            "bJQueryUI": true,
-            "oLanguage": {
-              "sSearch": ""
-            },
-            "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>',
-            "aaSorting": [[ 0, "asc" ]],
-            "aoColumns": [
-              { "sWidth": "200px" },
-              { "sWidth": "300px" }
-            ]
-          });
-            moveFilterAndFullPaginateArea('#%1$s');""".format( tableId_reportsPopup).replaceAll("#table_var#",jsVarNameForId(tableId_reportsPopup))
-        ) //&  initJsCallBack(tableId)
-    ) &
-    JsRaw( s""" createPopup("${htmlId_modalReportsPopup}")""")
-  }
-
 }
-
 sealed trait ComplianceLevel
 
 

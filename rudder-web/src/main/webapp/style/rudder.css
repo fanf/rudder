@@ -2013,6 +2013,8 @@ color: #FF0000 !important;
 .smallButton {
   width: 40px !important;
   height: 22px !important;
+  font-size : 11px !important;
+  font-weight:100 !important;
 }
 
 .smallButton span {

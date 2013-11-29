@@ -606,7 +606,7 @@ function filterTableInclude(tableId, filter, include) {
     return;
   } else {
 	  var finalFilter = "^"+filter+"$";
-	  var includeFilter = finalFilter +"|^"+filter+" ➤";
+	  var includeFilter = finalFilter +"|^"+filter+" »";
     if (typeof include === 'undefined') {
       $(tableId).dataTable().fnFilter(includeFilter ,column,true,false,true );
     } else {
