@@ -35,6 +35,7 @@
 package com.normation.rudder.domain.policies
 
 import com.normation.utils.HashcodeCaching
+import com.normation.rudder.rule.category.RuleCategoryId
 
 
 /**
@@ -56,6 +57,7 @@ final case class ModifyRuleDiff(
     id                  : RuleId
   , name                : String // keep the name around to be able to display it as it was at that time
   , modName             : Option[SimpleDiff[String]] = None
+  , modCategory         : Option[SimpleDiff[RuleCategoryId]] = None
   , modSerial           : Option[SimpleDiff[Int]] = None
   , modTarget           : Option[SimpleDiff[Set[RuleTarget]]] = None
   , modDirectiveIds     : Option[SimpleDiff[Set[DirectiveId]]] = None
