@@ -109,6 +109,7 @@ class RuleGrid(
   private[this] val htmlId_rulesGridId = "grid_" + htmlId_rulesGridZone
   private[this] val htmlId_reportsPopup = "popup_" + htmlId_rulesGridZone
   private[this] val htmlId_modalReportsPopup = "modal_" + htmlId_rulesGridZone
+  private[this] val htmlId_rulesGridWrapper = htmlId_rulesGridId + "_wrapper"
   private[this] val tableId_reportsPopup = "popupReportsGrid"
 
 
@@ -184,6 +185,8 @@ class RuleGrid(
       });
       $$('.dataTables_filter input').attr("placeholder", "Search");
       createTooltip();
+          createTooltiptr();
+          $$('#${htmlId_rulesGridWrapper}').css("margin","10px 0px 0px 0px");
           """
 
 
@@ -216,6 +219,7 @@ class RuleGrid(
       JsRaw( """var openMultiPiPopup = function(popupid) {
           createPopup(popupid);
           createTooltip();
+          createTooltiptr();
      }""") &
  OnLoad(JsRaw(onLoad)))
 
@@ -311,18 +315,19 @@ class RuleGrid(
         l match {
       case line:OKLine =>
         val tooltipId = Helpers.nextFuncName
-
-        <div>{
-        if(line.rule.shortDescription.size > 0){
-
-
-         <div class="tooltipContent" id={tooltipId}>
-           <h3>{line.rule.name}</h3>
-           <div>{line.rule.shortDescription}</div>
-         </div>
+        val descriptionTooltip = {
+          if(line.rule.shortDescription.size > 0){
+            <div class="tooltipContent" id={tooltipId}>
+              <h3>{line.rule.name}</h3>
+              <div>{line.rule.shortDescription}</div>
+            </div>
+           } else {
+             NodeSeq.Empty
            }
         }
-        <tr tooltipid={tooltipId} class="tooltipable" title="">
+
+        descriptionTooltip ++
+        <tr tooltipid={tooltipId} class="tooltipabletr" title="">
           { // CHECKBOX
             if(showCheckboxColumn) <td>{
               val isApplying = directiveApplication.map(d => line.rule.directiveIds.contains(d.directive.id)).getOrElse(false)
@@ -338,9 +343,6 @@ class RuleGrid(
           }</td>
 
           <td><b>{ // EFFECTIVE STATUS
-            /*          <td>{ // OWN STATUS
-            if (line.rule.isEnabledStatus) "Enabled" else "Disabled"
-          }</td>*/
             line.applicationStatus match {
               case FullyApplied => Text("In application")
               case PartiallyApplied(seq) =>
@@ -383,7 +385,6 @@ class RuleGrid(
             else NodeSeq.Empty
           }
         </tr>
-          </div>
       case line:ErrorLine =>
         <tr class="error">
 
