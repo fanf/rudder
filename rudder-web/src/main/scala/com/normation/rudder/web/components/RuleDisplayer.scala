@@ -74,6 +74,7 @@ class RuleDisplayer (
   def viewCategories : NodeSeq = {
     val ruleGrid = new RuleCategoryTree(
         "categoryTree"
+      , directive
     )
       def AddNewCategory() = {
       val index = randomInt(1000)

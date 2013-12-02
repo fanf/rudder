@@ -329,9 +329,18 @@ class RuleGrid(
         descriptionTooltip ++
         <tr tooltipid={tooltipId} class="tooltipabletr" title="">
           { // CHECKBOX
-            if(showCheckboxColumn) <td>{
-              val isApplying = directiveApplication.map(d => line.rule.directiveIds.contains(d.directive.id)).getOrElse(false)
-              SHtml.ajaxCheckbox(isApplying, value => directiveApplication.foreach(_.checkRule(line.rule.id, value)))}</td> else NodeSeq.Empty
+            directiveApplication match {
+              case Some(directiveApplication) => <td>{
+              val isApplying = line.rule.directiveIds.contains(directiveApplication.directive.id)
+              SHtml.ajaxCheckbox(isApplying, value => directiveApplication.checkRule(line.rule.id, value) match {
+                case DirectiveApplicationResult(rules,completeCategories,indeterminate) => JsRaw(s"""
+                    ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",false); """).mkString("\n")}
+                    ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${value}); """).mkString("\n")}
+                    ${indeterminate.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",true); """).mkString("\n")}
+                  """)
+              }, ("id",line.rule.id.value+"Checkbox"))
+              }</td>
+              case None => NodeSeq.Empty}
           }
           <td>
          { // NAME

@@ -61,7 +61,8 @@ import com.normation.rudder.web.model.CurrentUser
  *
  */
 class RuleCategoryTree(
-  htmlId_RuleCategoryTree:String
+    htmlId_RuleCategoryTree : String
+  , directive : Option[DirectiveApplicationManagement]
 ) extends DispatchSnippet with Loggable {
 
   private[this] val roRuleCategoryRepository   = RudderConfig.roRuleCategoryRepository
@@ -76,6 +77,8 @@ class RuleCategoryTree(
     SetHtml(htmlId_RuleCategoryTree, tree()) &
     OnLoad(After(TimeSpan(50), JsRaw("""createTooltip();correctButtons();""")))
   }
+
+  private[this] val isDirectiveApplication = directive.isDefined
 
   private[this] def moveCategory(arg: String) : JsCmd = {
     //parse arg, which have to  be json object with sourceGroupId, destCatId
@@ -154,12 +157,42 @@ class RuleCategoryTree(
   }
 
 
+
   private[this] def categoryNode(category : RuleCategory) : JsTreeNode = new JsTreeNode {
     override val attrs = ( "rel" -> "category" ) :: ("id", category.id.value) :: Nil
 
     override def body = {
       def img(source:String,alt:String) = <img src={"/images/"+source} alt={alt} height="12" width="12" class="iconscala" style=" margin: 0 10px 0 0;float:none;" />
       val tooltipId = Helpers.nextFuncName
+
+
+      val applyCheckBox = {
+        directive match {
+          case Some(directiveApplication) =>
+            def check(status:Boolean) : JsCmd = {
+             directiveApplication.checkCategory(category.id, status) match {
+                case DirectiveApplicationResult(rules,completeCategories,indeterminate) =>
+                  logger.error(completeCategories)
+                  logger.info(indeterminate)
+              After(TimeSpan(50),JsRaw(s"""
+                    $$('#${category.id.value + "Checkbox"}').prop("indeterminate",false);
+                    ${rules.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${status}); """).mkString("\n")}
+                    ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",false); """).mkString("\n")}
+                    ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${status}); """).mkString("\n")}
+                    ${indeterminate.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",true); """).mkString("\n")}
+                  """))
+            } }
+            logger.info(s"""${directiveApplication.isIndeterminate(category.id)}""")
+            SHtml.ajaxCheckbox(directiveApplication.categoryStatus(category.id), check _, ("id",category.id.value + "Checkbox"))++
+            Script(
+                OnLoad(
+                    After(TimeSpan(50), JsRaw(s"""
+                        $$('#${category.id.value + "Checkbox"}').click(function (e) { e.stopPropagation(); })
+                        $$('#${category.id.value + "Checkbox"}').prop("indeterminate",${directiveApplication.isIndeterminate(category.id)});"""))))
+          case None => NodeSeq.Empty
+        }
+      }
+
       val actionButtons = {
         if(category.id.value!="rootRuleCategory") {
 
@@ -172,8 +205,9 @@ class RuleCategoryTree(
         }
       }
       val xml = {
+
         <span id={category.id.value+"Name"} class="treeRuleCategoryName tooltipable" tooltipid={tooltipId} title="" style="float:left">
-          {category.name}
+          {applyCheckBox}{category.name}
 
 
                  </span> ++
@@ -222,7 +256,7 @@ class RuleCategoryTree(
            Noop
        }, xml)
     }
-    override def children = category.childs.map(categoryNode(_))
+    override def children = category.childs.filter(c => directive.map(_.emptyCategory(c.id)).getOrElse(true)).map(categoryNode(_))
 
 
   }

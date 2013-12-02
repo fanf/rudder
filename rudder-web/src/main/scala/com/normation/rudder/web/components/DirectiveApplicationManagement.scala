@@ -71,9 +71,12 @@ object DirectiveApplicationResult {
     )
   }
 
-  // Must not be empty :(
   def merge( results : List[DirectiveApplicationResult]) = {
-    (results.tail :\ results.head) (mergeOne)
+    results match {
+      case Nil => DirectiveApplicationResult(Nil,Nil,Nil)
+      case head :: Nil => head
+      case _ => (results.tail :\ results.head) (mergeOne)
+    }
   }
 }
 
@@ -103,13 +106,13 @@ case class DirectiveApplicationManagement (
       (cat.childs :\ map) (mapCategories) + (cat.id -> cat.childs.map(_.id))
     }
 
-    mapCategories(rootCategory)
+    mapCategories(rootCategory).withDefaultValue(Nil)
   }
 
   val parentCategories = {
     categories.flatMap{case (parent,childs) => childs.map( (_ -> parent) )}
   }
-
+  logger.info(parentCategories)
   def completeMapping (baseMap : Map[CategoryId,List[RuleId]]) : Map[CategoryId,List[RuleId]] = {
     def toApply(category:CategoryId,rules:List[RuleId], map: Map[CategoryId,List[RuleId]])  : Map[CategoryId,List[RuleId]] = {
       val updatedMap = map.updated(category, (map.get(category).getOrElse(Nil) ++ rules).distinct)
@@ -122,14 +125,14 @@ case class DirectiveApplicationManagement (
     (baseMap :\ baseMap) {case ((cat,rules),map) => toApply(cat, rules, map)}
 
   }
-  val rulesByCategory = completeMapping(rules.groupBy(_.category).mapValues(_.map(_.id)))
+  val rulesByCategory = completeMapping(rules.groupBy(_.category).mapValues(_.map(_.id))).withDefaultValue(Nil)
 
   logger.error(rulesByCategory)
-  val applyingRulesbyCategory = completeMapping(applyingRules.groupBy(_.category).mapValues(_.map(_.id)))
+  val applyingRulesbyCategory = completeMapping(applyingRules.groupBy(_.category).mapValues(_.map(_.id))).withDefaultValue(Nil)
   logger.info(applyingRulesbyCategory)
   val rulesMap= rules.groupBy(_.id).mapValues(_.head)
 
-  private[this] var currentApplyingRules = applyingRulesbyCategory
+  private[this] var currentApplyingRules = applyingRulesbyCategory.withDefaultValue(Nil)
 
   def checkRulesToUpdate = {
     val current = currentApplyingRules.values.toList.flatten
@@ -159,7 +162,7 @@ case class DirectiveApplicationManagement (
 
 
       parentCategories.get(category) match {
-        case None => DirectiveApplicationResult(id)
+        case None => DirectiveApplicationResult(id).addCategory(isComplete, category)
         case Some(parent) =>
           val result = checkRule(id, status, parent)
           result.addCategory(isComplete, category)
@@ -174,6 +177,24 @@ case class DirectiveApplicationManagement (
 
   }
 
+  def categoryStatus (id : CategoryId) = {
+    val currentApplication = currentApplyingRules.get(id).getOrElse(Nil)
+    val completeApplication  = rulesByCategory(id)
+    currentApplication.size > 0 && currentApplication == completeApplication
+  }
+
+  def isIndeterminate (id : CategoryId) = {
+    val currentApplication = currentApplyingRules.get(id).getOrElse(Nil)
+    val completeApplication  = rulesByCategory(id)
+    currentApplication.size > 0 && currentApplication != completeApplication
+  }
+
+  def emptyCategory (id : CategoryId) = {
+    val currentApplication = rulesByCategory.get(id).getOrElse(Nil)
+    currentApplication.size > 0
+  }
+
+
   def checkCategory (id : CategoryId, status:Boolean) = {
     val currentApplication = currentApplyingRules(id)
     val completeApplication  = rulesByCategory(id)
@@ -183,7 +204,7 @@ case class DirectiveApplicationManagement (
     } else {
       completeApplication.intersect(currentApplication)
     }
-
+    logger.error(rulesToCheck)
     val applications = rulesToCheck.map(checkRule(_, status))
 
     DirectiveApplicationResult.merge(applications)
