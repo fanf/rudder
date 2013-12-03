@@ -63,6 +63,7 @@ import com.normation.rudder.web.model.CurrentUser
 class RuleCategoryTree(
     htmlId_RuleCategoryTree : String
   , directive : Option[DirectiveApplicationManagement]
+  , check : () => JsCmd
 ) extends DispatchSnippet with Loggable {
 
   private[this] val roRuleCategoryRepository   = RudderConfig.roRuleCategoryRepository
@@ -166,6 +167,48 @@ class RuleCategoryTree(
       val tooltipId = Helpers.nextFuncName
 
 
+      // To handle correctly overflow with floating hidden elements, we need to compute the size of the container first
+      val manageWidth ={
+        // No need to compute actionWidth if directive is application
+        val actionWidth =
+          if (isDirectiveApplication) {
+            s"$$('#${"actions"+category.id.value}').width()"
+          } else {
+            " 0"
+          }
+        s"""
+           var widthSpanName = $$('#${category.id.value+"Name"}').width();
+           var widthActions  = ${actionWidth};
+           // Add size of jstree element (icons, ...) static for now, need a way to compute it ...
+           var jstreeElems = 40;
+           $$('#${category.id.value}').width(widthActions + widthSpanName + jstreeElems);"""
+      }
+
+      val jsInitFunction = Script(JsRaw (s"""
+           ${manageWidth}
+           $$('#${"actions"+category.id.value}').hide();
+
+           $$('#${category.id.value}').mouseover( function(e) {
+           e.stopPropagation();
+           $$("#treeParent").focus();
+           $$('#${"actions"+category.id.value}').show();
+           $$('#${category.id.value} a:first').addClass("treeOver jstree-hovered");
+         });
+
+
+           $$('#${category.id.value}').hover( function(e) {
+           $$('.categoryAction').hide();
+           $$("#treeParent").focus();
+           $$('.treeOver').removeClass("treeOver jstree-hovered");
+           $$('#${"actions"+category.id.value}').show();
+           $$('#${category.id.value} a:first').addClass("treeOver jstree-hovered");
+           }, function(e) {
+           $$('.treeOver').removeClass("treeOver jstree-hovered");
+           $$('#${"actions"+category.id.value}').hide();
+           } );
+           """
+         ))
+
       val applyCheckBox = {
         directive match {
           case Some(directiveApplication) =>
@@ -182,8 +225,7 @@ class RuleCategoryTree(
                     ${indeterminate.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",true); """).mkString("\n")}
                   """))
             } }
-            logger.info(s"""${directiveApplication.isIndeterminate(category.id)}""")
-            SHtml.ajaxCheckbox(directiveApplication.categoryStatus(category.id), check _, ("id",category.id.value + "Checkbox"))++
+            SHtml.ajaxCheckbox(directiveApplication.categoryStatus(category.id), check _, ("id",category.id.value + "Checkbox"), ("style","margin : 2px 5px 0px 2px;"))++
             Script(
                 OnLoad(
                     After(TimeSpan(50), JsRaw(s"""
@@ -194,7 +236,7 @@ class RuleCategoryTree(
       }
 
       val actionButtons = {
-        if(category.id.value!="rootRuleCategory") {
+        if(!isDirectiveApplication && category.id.value!="rootRuleCategory") {
 
         <span id={"actions"+category.id.value} class="categoryAction" style="float:left; padding-top:2px;padding-left:10px">{
           SHtml.span(img("icPen.png","Edit")     ,Noop) ++
@@ -215,43 +257,15 @@ class RuleCategoryTree(
         <div class="tooltipContent" id={tooltipId}>
           <h3>{category.name}</h3>
           <div>{category.description}</div>
-        </div> ++  (if(category.id.value!="rootRuleCategory") { Script{JsRaw {s"""
-           var widthSpanName = $$('#${category.id.value+"Name"}').width();
-           var widthActions  = $$('#${"actions"+category.id.value}').width();
-           var pos = $$('#${"actions"+category.id.value}').position().left;
-           // Add size of jstree element (icons, ...)
-           $$('#${category.id.value}').width(widthActions + widthSpanName + 40);
-           $$('#${"actions"+category.id.value}').hide();
-
-           $$('#${category.id.value}').mouseover( function(e) {
-           e.stopPropagation();
-
-           $$('#${"actions"+category.id.value}').show();
-           $$("#treeParent").focus();
-           $$('#${category.id.value} a:first').addClass("treeOver jstree-hovered");
-         });
-
-
-           $$('#${category.id.value}').hover( function(e) {
-           $$('.categoryAction').hide();
-           $$('.treeOver').removeClass("treeOver jstree-hovered");
-           $$('#${"actions"+category.id.value}').show();
-           $$("#treeParent").focus();
-           $$('#${category.id.value} a:first').addClass("treeOver jstree-hovered");
-           }, function(e) {
-           $$('.treeOver').removeClass("treeOver jstree-hovered");
-           $$('#${"actions"+category.id.value}').hide();
-           } );
-           """
-         }} } else {NodeSeq.Empty})
+        </div> ++  (if(category.id.value!="rootRuleCategory") {jsInitFunction  } else {NodeSeq.Empty})
       }
        SHtml.a(() => ruleCategoryService.bothFqdn(category.id,true) match {
          case Full((long,short)) =>
            val escaped = Utility.escape(short)
-           JsRaw(s"""
+          JsRaw(s"""
                filter='${escaped}';
                filterTableInclude('#grid_rules_grid_zone',filter,include);
-           """) & SetHtml("categoryDisplay",Text(long))
+           """) & SetHtml("categoryDisplay",Text(long)) &  check()
          case e: EmptyBox => //Display an error, for now, nothing
            Noop
        }, xml)

@@ -51,6 +51,7 @@ import com.normation.eventlog.ModificationId
 import com.normation.rudder.web.model.CurrentUser
 import com.normation.rudder.rule.category._
 import com.normation.rudder.domain.policies.Rule
+import com.normation.rudder.domain.policies.RuleId
 
 
 class RuleDisplayer (
@@ -75,6 +76,7 @@ class RuleDisplayer (
     val ruleGrid = new RuleCategoryTree(
         "categoryTree"
       , directive
+      , (() =>  check)
     )
       def AddNewCategory() = {
       val index = randomInt(1000)
@@ -109,11 +111,25 @@ class RuleDisplayer (
      </div>
   }
 
+  def check() = {
+    def action(ruleId : RuleId, status:Boolean) = {
+      JsRaw(s"""$$('#${ruleId.value}Checkbox').prop("checked",${status}); """)
+    }
+
+    directive match {
+      case Some(d) => d.checkRules match {case (toCheck,toUncheck) => (toCheck.map(r => action(r.id,true)) ++ toUncheck.map(r => action(r.id,false)) :\ Noop){ _ & _}}
+      case None    => Noop
+    }
+  }
+
+
   def viewRules : NodeSeq = {
+
+    val rules = ruleRepository.getAll().openOr(Seq())
     val ruleGrid = {
       new RuleGrid(
           "rules_grid_zone"
-        , ruleRepository.getAll().openOr(Seq())
+        , rules
         , Some(detailsCallbackLink)
         , directive.isDefined
         , directive
@@ -122,12 +138,14 @@ class RuleDisplayer (
     def includeSubCategory = {
       SHtml.ajaxCheckbox(
           true
-        , value => JsRaw(s"""
+        , value =>  JsRaw(s"""
           include=${value};
-          filterTableInclude('#grid_rules_grid_zone',filter,include); """)
+          filterTableInclude('#grid_rules_grid_zone',filter,include); """) & check()
         , ("id","includeCheckbox")
       )
     }
+
+
 
     def actionButton = {
       if (directive.isDefined) {

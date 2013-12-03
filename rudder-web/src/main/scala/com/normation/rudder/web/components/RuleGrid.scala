@@ -172,7 +172,7 @@ class RuleGrid(
           "sZeroRecords": "No matching rules!",
           "sSearch": ""
         },
-        "aaSorting": [[ 0, "asc" ]],
+        "aaSorting": [[ ${ if (showCheckboxColumn) 1 else 0}, "asc" ]],
         "aoColumns": [${ if(showCheckboxColumn) """
           { "sWidth": "30px" , "bSortable" : false},""" else "" }
           { "sWidth": "90px" },

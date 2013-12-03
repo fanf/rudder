@@ -64,11 +64,11 @@ object DirectiveApplicationResult {
   }
 
   def mergeOne(that : DirectiveApplicationResult, into : DirectiveApplicationResult) = {
-    DirectiveApplicationResult (
-        (that.rules ++ into.rules).distinct
-      , (that.completeCategory ++ into.completeCategory).distinct
-      , (that.incompleteCategory ++ into.incompleteCategory).distinct
-    )
+    val newRules      = (that.rules ++ into.rules).distinct
+    val newComplete   = (that.completeCategory ++ into.completeCategory).distinct
+    // Filter complete from incomplete so there is no conflict (actions are building to end up with complete status, so if complete stauts is achieved in some there is no icomplete possibility)
+    val newIncomplete = (that.incompleteCategory ++ into.incompleteCategory).distinct.diff(newComplete)
+    DirectiveApplicationResult (newRules, newComplete, newIncomplete)
   }
 
   def merge( results : List[DirectiveApplicationResult]) = {
@@ -177,6 +177,21 @@ case class DirectiveApplicationManagement (
 
   }
 
+  def ruleStatus(rule: Rule) = {
+    currentApplyingRules.get(rule.category).getOrElse(Nil).contains(rule.id)
+  }
+  def ruleStatus(ruleId : RuleId) : Box[Boolean] = {
+    rulesMap.get(ruleId) match {
+      case Some(rule) => Full(ruleStatus(rule))
+      case None       => Failure(s"Could not get Rule with id ${ruleId.value} from directive application.")
+    }
+  }
+
+  def checkRules = {
+    rules.partition(ruleStatus)
+  }
+
+
   def categoryStatus (id : CategoryId) = {
     val currentApplication = currentApplyingRules.get(id).getOrElse(Nil)
     val completeApplication  = rulesByCategory(id)
@@ -198,15 +213,16 @@ case class DirectiveApplicationManagement (
   def checkCategory (id : CategoryId, status:Boolean) = {
     val currentApplication = currentApplyingRules(id)
     val completeApplication  = rulesByCategory(id)
-
+    logger.info(s"category $id is currently applying ${currentApplication.size} rules and completeApplication contains ${completeApplication.size} ")
     val rulesToCheck = if (status) {
       completeApplication.diff(currentApplication)
     } else {
       completeApplication.intersect(currentApplication)
     }
-    logger.error(rulesToCheck)
+    logger.error(s"there is ${rulesToCheck.size} to ${if (status) "check" else "uncheck" }")
     val applications = rulesToCheck.map(checkRule(_, status))
-
+    logger.error(s"final applications for category $id:")
+    applications.foreach(logger.error(_))
     DirectiveApplicationResult.merge(applications)
   }
 
