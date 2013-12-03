@@ -171,7 +171,7 @@ class RuleCategoryTree(
       val manageWidth ={
         // No need to compute actionWidth if directive is application
         val actionWidth =
-          if (isDirectiveApplication) {
+          if (!isDirectiveApplication) {
             s"$$('#${"actions"+category.id.value}').width()"
           } else {
             " 0"
