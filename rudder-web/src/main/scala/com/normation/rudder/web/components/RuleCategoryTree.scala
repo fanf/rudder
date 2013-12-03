@@ -62,8 +62,9 @@ import com.normation.rudder.web.model.CurrentUser
  */
 class RuleCategoryTree(
     htmlId_RuleCategoryTree : String
-  , directive : Option[DirectiveApplicationManagement]
-  , check : () => JsCmd
+  , rootCategory            : RuleCategory
+  , directive               : Option[DirectiveApplicationManagement]
+  , check                   : () => JsCmd
 ) extends DispatchSnippet with Loggable {
 
   private[this] val roRuleCategoryRepository   = RudderConfig.roRuleCategoryRepository
@@ -120,41 +121,32 @@ class RuleCategoryTree(
 
   def tree() : NodeSeq = {
 
-    (for {
-      root <-  roRuleCategoryRepository.getRootCategory
-    } yield {
-      categoryNode(root)
-    }) match {
-
-      case Full(treeNode) =>
-        {<ul>{treeNode.toXml}</ul>} ++ Script(OnLoad(JsRaw(
-          s"""buildRuleCategoryTree('#${htmlId_RuleCategoryTree}','${roRuleCategoryRepository.getRootCategory.map(_.id.value).getOrElse("")}','${S.contextPath}');
-        $$('#${htmlId_RuleCategoryTree}').bind("move_node.jstree", function (e,data) {
-          var sourceCatId = $$(data.rslt.o).attr("id");
-          var destCatId = $$(data.rslt.np).attr("id");
-          if( destCatId ) {
-            if( sourceCatId ) {
-              var arg = JSON.stringify({ 'sourceCatId' : sourceCatId, 'destCatId' : destCatId });
-              ${SHtml.ajaxCall(JsVar("arg"), moveCategory _ )._2.toJsCmd};
+    val treeFun = if (isDirectiveApplication) "buildRuleCategoryTreeNoDnD" else "buildRuleCategoryTree"
+    <ul>{
+      categoryNode(rootCategory).toXml}
+  </ul> ++
+    Script(
+      OnLoad(
+        JsRaw(s"""
+          ${treeFun}('#${htmlId_RuleCategoryTree}','${rootCategory.id.value}','${S.contextPath}');
+          $$('#${htmlId_RuleCategoryTree}').bind("move_node.jstree", function (e,data) {
+            var sourceCatId = $$(data.rslt.o).attr("id");
+            var destCatId = $$(data.rslt.np).attr("id");
+            if( destCatId ) {
+              if( sourceCatId ) {
+                var arg = JSON.stringify({ 'sourceCatId' : sourceCatId, 'destCatId' : destCatId });
+                ${SHtml.ajaxCall(JsVar("arg"), moveCategory _ )._2.toJsCmd};
+              } else {
+                alert("Can not move that kind of object");
+                $$.jstree.rollback(data.rlbk);
+              }
             } else {
-              alert("Can not move that kind of object");
+              alert("Can not move to something else than a category");
               $$.jstree.rollback(data.rlbk);
             }
-          } else {
-            alert("Can not move to something else than a category");
-            $$.jstree.rollback(data.rlbk);
-          }
-        });
+          });
           createTooltip();"""
-      )))
-      case e:EmptyBox =>
-        val msg = "Can not build tree of Rule categories"
-        logger.error(msg,e)
-        (new JsTreeNode {
-          override def body = <span class="error">Can not find dependencies. <span class="errorDetails">{(e ?~! msg).messageChain}</span></span>
-          override def children = Nil
-        }).toXml
-    }
+    ) ) )
   }
 
 
@@ -215,22 +207,24 @@ class RuleCategoryTree(
             def check(status:Boolean) : JsCmd = {
              directiveApplication.checkCategory(category.id, status) match {
                 case DirectiveApplicationResult(rules,completeCategories,indeterminate) =>
-                  logger.error(completeCategories)
-                  logger.info(indeterminate)
-              After(TimeSpan(50),JsRaw(s"""
-                    $$('#${category.id.value + "Checkbox"}').prop("indeterminate",false);
-                    ${rules.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${status}); """).mkString("\n")}
-                    ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",false); """).mkString("\n")}
-                    ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${status}); """).mkString("\n")}
-                    ${indeterminate.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",true); """).mkString("\n")}
-                  """))
-            } }
-            SHtml.ajaxCheckbox(directiveApplication.categoryStatus(category.id), check _, ("id",category.id.value + "Checkbox"), ("style","margin : 2px 5px 0px 2px;"))++
-            Script(
-                OnLoad(
-                    After(TimeSpan(50), JsRaw(s"""
-                        $$('#${category.id.value + "Checkbox"}').click(function (e) { e.stopPropagation(); })
-                        $$('#${category.id.value + "Checkbox"}').prop("indeterminate",${directiveApplication.isIndeterminate(category.id)});"""))))
+                  After(
+                      TimeSpan(50)
+                    , JsRaw(s"""
+                        $$('#${category.id.value + "Checkbox"}').prop("indeterminate",false);
+                        ${rules.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${status}); """).mkString("\n")}
+                        ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",false); """).mkString("\n")}
+                        ${completeCategories.map(c => s"""$$('#${c.value}Checkbox').prop("checked",${status}); """).mkString("\n")}
+                        ${indeterminate.map(c => s"""$$('#${c.value}Checkbox').prop("indeterminate",true); """).mkString("\n")}
+                      """)
+                  )
+              } }
+
+            SHtml.ajaxCheckbox(directiveApplication.isCompletecategory(category.id), check _, ("id",category.id.value + "Checkbox"), ("style","margin : 2px 5px 0px 2px;"))++
+            Script(OnLoad(After(
+                TimeSpan(50)
+              , JsRaw(s"""
+                  $$('#${category.id.value + "Checkbox"}').click(function (e) { e.stopPropagation(); })
+                  $$('#${category.id.value + "Checkbox"}').prop("indeterminate",${directiveApplication.isIndeterminateCategory(category.id)});"""))))
           case None => NodeSeq.Empty
         }
       }
@@ -247,17 +241,20 @@ class RuleCategoryTree(
         }
       }
       val xml = {
-
         <span id={category.id.value+"Name"} class="treeRuleCategoryName tooltipable" tooltipid={tooltipId} title="" style="float:left">
           {applyCheckBox}{category.name}
-
-
-                 </span> ++
-                     {actionButtons} ++
+        </span> ++
+        {actionButtons} ++
         <div class="tooltipContent" id={tooltipId}>
           <h3>{category.name}</h3>
           <div>{category.description}</div>
-        </div> ++  (if(category.id.value!="rootRuleCategory") {jsInitFunction  } else {NodeSeq.Empty})
+        </div> ++
+        ( if (category.id.value!="rootRuleCategory") {
+            jsInitFunction
+          } else {
+            NodeSeq.Empty
+          }
+        )
       }
        SHtml.a(() => ruleCategoryService.bothFqdn(category.id,true) match {
          case Full((long,short)) =>
@@ -270,10 +267,8 @@ class RuleCategoryTree(
            Noop
        }, xml)
     }
-    override def children = category.childs.filter(c => directive.map(_.emptyCategory(c.id)).getOrElse(true)).map(categoryNode(_))
 
+    override def children = category.childs.filter(c => directive.map(_.isEmptyCategory(c.id)).getOrElse(true)).map(categoryNode(_))
 
   }
-
-
 }

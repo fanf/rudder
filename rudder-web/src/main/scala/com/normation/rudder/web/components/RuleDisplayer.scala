@@ -72,9 +72,12 @@ class RuleDisplayer (
     case "display" => { _ => NodeSeq.Empty }
   }
 
+
   def viewCategories : NodeSeq = {
+    val root = directive.map(_.rootCategory).getOrElse(roCategoryRepository.getRootCategory.get)
     val ruleGrid = new RuleCategoryTree(
         "categoryTree"
+      , root
       , directive
       , (() =>  check)
     )
@@ -86,7 +89,7 @@ class RuleDisplayer (
         , s"this is category $index"
         , Nil
       )
-      val root = roCategoryRepository.getRootCategory.get
+
       woCategoryRepository.create(newCat, root.id,ModificationId(uuidGen.newUuid),CurrentUser.getActor,None)
       SetHtml("categoryTreeParent",viewCategories)
     }
@@ -125,7 +128,7 @@ class RuleDisplayer (
 
   def viewRules : NodeSeq = {
 
-    val rules = ruleRepository.getAll().openOr(Seq())
+    val rules = directive.map(_.rules).getOrElse(ruleRepository.getAll().openOr(Seq()))
     val ruleGrid = {
       new RuleGrid(
           "rules_grid_zone"
@@ -149,7 +152,7 @@ class RuleDisplayer (
 
     def actionButton = {
       if (directive.isDefined) {
-          SHtml.ajaxButton("Select All", () => Noop, ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))
+          SHtml.ajaxButton("Select All", () => ruleGrid.selectAllVisibleRules(true)) ++ Script(OnLoad(JsRaw("correctButtons();")))
       } else {
         SHtml.ajaxButton("New Rule", () => showPopup, ("class" -> "newRule")) ++ Script(OnLoad(JsRaw("correctButtons();")))
       }
