@@ -462,52 +462,40 @@ class DirectiveEditForm(
 
     val popup = {
       // if it's not a creation and we have workflow, then we redirect to the CR
-
-
-      if (!isADirectiveCreation) {
-
-        val (successCallback, failureCallback) = {
-          if(workflowEnabled) {
-            (
-                (crId: ChangeRequestId) => onSuccessCallback(Right(crId))
-              , (xml: NodeSeq) => JsRaw("$.modal.close();") & onFailure
-            )
-          } else {
-            val success = {
-              if (action == "delete") {
-                val nSeq = <div id={ htmlId_policyConf }>Directive successfully deleted</div>
-                (_: ChangeRequestId) => JsRaw("$.modal.close();") & onRemoveSuccessCallBack() & SetHtml(htmlId_policyConf, nSeq) &
-                successPopup(NodeSeq.Empty)
-              } else {
-                (_: ChangeRequestId)  => JsRaw("$.modal.close();") & successPopup(NodeSeq.Empty) & onSuccessCallback(Left(newDirective))
-              }
+      val (successCallback, failureCallback) = {
+        if(workflowEnabled) {
+          (
+              (crId: ChangeRequestId) => onSuccessCallback(Right(crId))
+            , (xml: NodeSeq) => JsRaw("$.modal.close();") & onFailure
+          )
+        } else {
+          val success = {
+            if (action == ModificationValidationPopup.Delete) {
+              val nSeq = <div id={ htmlId_policyConf }>Directive successfully deleted</div>
+              (_: ChangeRequestId) => JsRaw("$.modal.close();") & onRemoveSuccessCallBack() & SetHtml(htmlId_policyConf, nSeq) &
+              successPopup(NodeSeq.Empty)
+            } else {
+              (_: ChangeRequestId)  => JsRaw("$.modal.close();") & successPopup(NodeSeq.Empty) & onSuccessCallback(Left(newDirective))
             }
-
-            (
-                success
-              , (xml: NodeSeq) => JsRaw("$.modal.close();") & onFailure
-            )
           }
-        }
 
-        new ModificationValidationPopup(
-            Left(technique.id.name,activeTechnique.id, rootSection, newDirective, optOriginal, baseRules, updatedRules)
-          , action
-          , workflowEnabled
-          , successCallback
-          , failureCallback
-          , parentFormTracker = formTracker
-        )
-      } else {
-        new ModificationValidationPopup(
-            Left(technique.id.name,activeTechnique.id, rootSection, newDirective, optOriginal, baseRules, updatedRules)
-          , action
-          , workflowEnabled
-          , onCreateSuccessCallBack = ( result => onSuccessCallback(result) & successPopup(NodeSeq.Empty))
-          , onCreateFailureCallBack = onFailure
-          , parentFormTracker = formTracker
-        )
+          (
+              success
+            , (xml: NodeSeq) => JsRaw("$.modal.close();") & onFailure
+          )
+        }
       }
+
+      new ModificationValidationPopup(
+          Left(technique.id.name,activeTechnique.id, rootSection, newDirective, optOriginal, baseRules, updatedRules)
+        , action
+        , workflowEnabled
+        , onSuccessCallback = successCallback
+        , onFailureCallback = failureCallback
+        , onCreateSuccessCallBack = ( result => onSuccessCallback(result) & successPopup(NodeSeq.Empty))
+        , onCreateFailureCallBack = onFailure
+        , parentFormTracker = formTracker
+      )
     }
 
     popup.popupWarningMessages match {

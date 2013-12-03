@@ -185,7 +185,18 @@ final case object CreateAndModRules extends Action { val displayName: String = "
     case CreateSolo =>
       <div><h2>Are you sure you want to create this {item}?</h2></div>
     case CreateAndModRules =>
-      <div><h2>Are you sure you want to create this {item}?</h2></div>
+      <div>
+         <img src="/images/icDetails.png" alt="Details" height="20" width="22" class="icon"/>
+         <h2>Are you sure that you want to create this {item}?</h2>
+         <br />
+         <div id="directiveDisabled" class="nodisplay">
+           <img src="/images/icWarn.png" alt="Warning!" height="32" width="32" class="warnicon"/>
+           <b>Warning:</b> This {item} is currently disabled. Your changes will not take effect until it is enabled.
+         </div>
+         <div  id="dialogDisableWarning">
+           Updating this {item} will have an impact on the following Rules which apply it.
+         </div>
+      </div>
   }
 }
 
@@ -313,7 +324,7 @@ class ModificationValidationPopup(
           <img src="/images/ic_ChangeRequest.jpg" alt="Warning!" height="32" width="32" style="margin-top: 4px;" class="warnicon"/>
           <h2>Workflows are enabled in Rudder, your change has to be validated in a Change request</h2>
           <br />
-          {if(directiveCreation) <h3>The directive will be directly created, only other changes have to be validated.</h3> else NodeSeq.Empty}
+          {if(directiveCreation) <h3>The directive will be directly created, only rule changes have to been validated.</h3> else NodeSeq.Empty}
         </div>
 
     val (buttonName, classForButton, titleWorkflow) = (workflowEnabled, action) match {
@@ -481,10 +492,12 @@ class ModificationValidationPopup(
   ) : Box[ChangeRequestNodeGroupDiff] = {
     initialState match {
       case None =>
-        if ((action=="save") || (action == "create"))
-          Full(AddNodeGroupDiff(group))
-        else
-          Failure(s"Action ${action} is not possible on a new group")
+        action match {
+          case Save | CreateSolo | CreateAndModRules =>
+            Full(AddNodeGroupDiff(group))
+          case _ =>
+            Failure(s"Action ${action} is not possible on a new group")
+        }
       case Some(d) =>
         action match {
           case Delete => Full(DeleteNodeGroupDiff(group))
@@ -582,17 +595,13 @@ class ModificationValidationPopup(
   }
 
   def onSubmit() : JsCmd = {
-
-
     if(formTracker.hasErrors) {
       onFailure
     } else {
       // we create a CR only if we are not creating
       action match {
-        case CreateSolo =>
-          saveChangeRequest()
-        case _ =>
-          // if creation or clone, we create everything immediately
+        case CreateSolo | CreateAndModRules =>
+          // if creation or clone, we create directive immediately and deploy if needed
           item match {
             case Left((techniqueName, activeTechniqueId, oldRootSection, directive, optOriginal, baseRules, remRules)) =>
               saveAndDeployDirective(directive, activeTechniqueId, crReasons.map( _.get ))
@@ -603,6 +612,8 @@ class ModificationValidationPopup(
               formTracker.addFormError(Text("System error: feature missing"))
               onFailure
           }
+        case _ =>
+          saveChangeRequest()
       }
     }
   }
