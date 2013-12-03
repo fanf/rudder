@@ -65,7 +65,6 @@ final case class ModifyRuleDiff(
   , modreasons          : Option[SimpleDiff[String]] = None
   , modIsActivatedStatus: Option[SimpleDiff[Boolean]] = None
   , modIsSystem         : Option[SimpleDiff[Boolean]] = None
-  , modCategory         : Option[SimpleDiff[RuleCategoryId]] = None
 ) extends RuleDiff with HashcodeCaching
 
 final case class ModifyToRuleDiff(
