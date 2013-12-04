@@ -344,7 +344,7 @@ class RuleGrid(
           }
           compliance match {
             case e:EmptyBox => ErrorLine(rule, trackerVariables, targetsInfo)
-            case Full(value) =>  OKLine(rule, value, applicationStatus, seq, targets)
+            case Full(value) => ErrorLine(rule, trackerVariables, targetsInfo) //OKLine(rule, value, applicationStatus, seq, targets)
           }
         case (x,y) =>
           //the Rule has some error, try to disactivate it
@@ -473,12 +473,9 @@ class RuleGrid(
           }</td>
           <td class="compliance noCompliance">{ //  COMPLIANCE
             "N/A"
-          }</td>{
-            //detail and parameter only if not in a pop-up
-            val detailsAndParam = if(popup) {
-              NodeSeq.Empty
-            } else {
-          <td class="parametersTd">{
+          }</td>
+          { if (!popup)
+            <td class="parametersTd">{ //  RULE PARAMETERS
               detailsCallbackLink match {
                 case None => Text("No parameters")
                 case Some(callback) =>
@@ -486,13 +483,12 @@ class RuleGrid(
                       "Edit"
                     , () =>  callback(line.rule,"showEditForm")
                     , ("class", "smallButton")
-                   )
-               }
-          }</td>
+                  )
+                }
+              }
+            </td>
+            else NodeSeq.Empty
             }
-
-
-          }
         </tr>
       } }
     }
