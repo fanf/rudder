@@ -35,7 +35,6 @@
 package com.normation.rudder.services.policies
 
 import net.liftweb.common._
-import com.normation.rudder.domain.servers.NodeConfiguration
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.io.FileUtils
 import java.io.File
@@ -53,14 +52,14 @@ trait TemplateWriter extends Loggable {
    * Write the promises of all the nodes
    * @param updateBatch : the container for the server to be updated
    */
-  def writePromisesForMachines(configuration: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
+  def writePromisesForMachines(configuration: Map[NodeId, TargetNodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, TargetNodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
 
-  def writeLicense(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
-    logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.id);
+  def writeLicense(nodeConfiguration : TargetNodeConfiguration, newMachineFolder:String) : Unit = {
+    logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.nodeInfo.id);
     nodeConfiguration.isPolicyServer match {
-      case true =>  copyLicenseFile(nodeConfiguration.id, newMachineFolder)
+      case true =>  copyLicenseFile(nodeConfiguration.nodeInfo.id, newMachineFolder)
 
-      case false => copyLicenseFile(NodeId(nodeConfiguration.targetMinimalNodeConfig.policyServerId), newMachineFolder)
+      case false => copyLicenseFile(nodeConfiguration.nodeInfo.policyServerId, newMachineFolder)
     }
   }
 

@@ -112,24 +112,24 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * It no longer change the status of the nodeconfiguration
    * @param updateBatch : the container for the server to be updated
    */
-  override def writePromisesForMachines(configurations: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
+  override def writePromisesForMachines(configurations: Map[NodeId, TargetNodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, TargetNodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
     // A buffer of node, promisefolder, newfolder, backupfolder
-    val folders = collection.mutable.Buffer[(NodeConfiguration, String, String, String)]()
+    val folders = collection.mutable.Buffer[(TargetNodeConfiguration, String, String, String)]()
     // Writing the policy
     for (node <- configurations.values) {
-      if (node.targetRulePolicyDrafts.size == 0) {
-        logger.error("Could not write the promises for server %s : No policy found on server".format(node.id))
+      if (node.identifiableCFCPIs.size == 0) {
+        logger.error("Could not write the promises for server %s : No policy found on server".format(node.nodeInfo.id))
         throw new Exception("Could not write the promises : no policy on machine " + node)
       }
-      if (node.targetMinimalNodeConfig.agentsName.size < 1) {
-        val msg = "Can not write promises for a node without any agent specified. Node id: %s".format(node.id)
+      if (node.nodeInfo.agentsName.size < 1) {
+        val msg = "Can not write promises for a node without any agent specified. Node id: %s".format(node.nodeInfo.id)
         logger.error(msg)
         throw new RuntimeException(msg)
       }
 
-      val (baseNodePath, backupNodePath) = pathComputer.computeBaseNodePath(node.id, rootNodeId, allNodeConfigs) match {
+      val (baseNodePath, backupNodePath) = pathComputer.computeBaseNodePath(node.nodeInfo.id, rootNodeId, allNodeConfigs) match {
         case Full(x) => x
-        case e:EmptyBox => return (e ?~! s"Error when computing the path for node ${node.id.value}")
+        case e:EmptyBox => return (e ?~! s"Error when computing the path for node ${node.nodeInfo.id.value}")
       }
 
       prepareRulesForAgents(baseNodePath, backupNodePath, node, rootNodeId) match {
@@ -140,7 +140,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
 
     }
 
-    tryo(movePromisesToFinalPosition(folders.map((x) => PromisesFinalMoveInfo(x._1.id.value, x._2, x._3, x._4))))
+    tryo(movePromisesToFinalPosition(folders.map((x) => PromisesFinalMoveInfo(x._1.nodeInfo.id.value, x._2, x._3, x._4))))
 
   }
 
@@ -153,11 +153,11 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * @param cause
    * @return : a Set of node, base folder, new folder, backup folder (don't want to return duplicate)
    */
-  private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: NodeConfiguration, rootNodeConfigurationId:NodeId): Box[Set[(NodeConfiguration, String, String, String)]] = {
+  private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: TargetNodeConfiguration, rootNodeConfigurationId:NodeId): Box[Set[(TargetNodeConfiguration, String, String, String)]] = {
 
-    val folders = collection.mutable.Set[(NodeConfiguration, String, String, String)]()
+    val folders = collection.mutable.Set[(TargetNodeConfiguration, String, String, String)]()
 
-    for (agentType <- node.targetMinimalNodeConfig.agentsName) {
+    for (agentType <- node.nodeInfo.agentsName) {
       var varNova = SystemVariable(systemVariableSpecService.get("NOVA"), Seq())
       var varCommunity = SystemVariable(systemVariableSpecService.get("COMMUNITY"), Seq())
 
@@ -167,23 +167,23 @@ class RudderCf3PromisesFileWriterServiceImpl(
         case x => return Failure("Unrecognized agent type: %s. Known values are: %s".format(x, AgentType.allValues))
       }
 
-      val systemVariables = node.targetSystemVariables + (varNova.spec.name -> varNova) + (varCommunity.spec.name -> varCommunity)
+      val systemVariables = node.nodeContext + (varNova.spec.name -> varNova) + (varCommunity.spec.name -> varCommunity)
 
-      val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = if(rootNodeConfigurationId == node.id) {
+      val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = if(rootNodeConfigurationId == node.nodeInfo.id) {
         (pathComputer.getRootPath(agentType), pathComputer.getRootPath(agentType) + newPostfix, pathComputer.getRootPath(agentType) + backupPostfix, pathComputer.getRootPath(agentType) + newPostfix)
       } else {
         (baseNodePath, baseNodePath + newPostfix, backupNodePath, baseNodePath + newPostfix + "/rules" + agentType.toRulesPath()) // we'll want to move the root folders
       }
 
-      val container = NodeConfiguration.toContainer(newNodeRulePath, node)
+      val container = node.toContainer(newNodeRulePath)
 
       val tmls = prepareCf3PromisesFileTemplate(container, systemVariables.toMap)
 
-      logger.debug("Prepared the tml for the node %s".format(node.id))
+      logger.debug("Prepared the tml for the node %s".format(node.nodeInfo.id))
 
       logger.debug("Preparing reporting information from meta technique")
       val csv = prepareReportingDataForMetaTechnique(container)
-      
+
       // write the promises of the current machine
       for { (activeTechniqueId, preparedTemplate) <- tmls } {
         writePromisesFiles(preparedTemplate.templatesToCopy , preparedTemplate.environmentVariables , newNodeRulePath, csv)

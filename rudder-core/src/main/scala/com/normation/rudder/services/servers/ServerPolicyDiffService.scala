@@ -34,37 +34,37 @@
 
 package com.normation.rudder.services.servers
 
-import com.normation.rudder.domain.servers.{ModifiedPolicy,ModifiedVariable,DeletedPolicy,AddedPolicy,NodeConfigurationDiff,NodeConfiguration}
+import com.normation.rudder.domain.servers._
 
-class NodeConfigurationDiffService {
-
-
-  def getDiff(server:NodeConfiguration) : Seq[NodeConfigurationDiff] = {
-    val buffer = scala.collection.mutable.Buffer[NodeConfigurationDiff]()
-    val cps = server.currentRulePolicyDrafts.map( _.draftId).toSet
-    val tps = server.targetRulePolicyDrafts.map( _.draftId).toSet
-    //added
-    buffer ++= (tps -- cps).map(AddedPolicy(_))
-    //deleted
-    buffer ++= (cps -- tps) map(DeletedPolicy(_))
-    //check for modified
-    for( cpId <- (cps & tps) ) {
-      val modVars = scala.collection.mutable.Buffer[ModifiedVariable]()
-      val errorMessage = s"Try to find a policy draft with id ${cpId.value} in current draft for node configuration ${server.id}"
-      val oldInstanceVars = server.currentRulePolicyDrafts.find( _.draftId == cpId).getOrElse(throw new IllegalArgumentException(errorMessage)).cf3PolicyDraft.getVariables
-      val newInstanceVars = server.targetRulePolicyDrafts. find( _.draftId == cpId).getOrElse(throw new IllegalArgumentException(errorMessage)).cf3PolicyDraft.getVariables
-      for {
-        key <- oldInstanceVars.keySet ++ newInstanceVars.keySet
-        oldVar <- oldInstanceVars.get(key)
-        newVar <- newInstanceVars.get(key)
-        // manage addedd/deleted vars
-        if(oldVar.values.toList != newVar.values.toList)
-      } {
-        modVars += ModifiedVariable(oldVar,newVar.values)
-      }
-      if(modVars.nonEmpty) buffer += ModifiedPolicy(cpId,modVars.toList)
-    }
-
-    buffer.toSeq
-  }
-}
+//class NodeConfigurationDiffService {
+//
+//
+//  def getDiff(server:NodeConfiguration) : Seq[NodeConfigurationDiff] = {
+//    val buffer = scala.collection.mutable.Buffer[NodeConfigurationDiff]()
+//    val cps = server.currentRulePolicyDrafts.map( _.draftId).toSet
+//    val tps = server.targetRulePolicyDrafts.map( _.draftId).toSet
+//    //added
+//    buffer ++= (tps -- cps).map(AddedPolicy(_))
+//    //deleted
+//    buffer ++= (cps -- tps) map(DeletedPolicy(_))
+//    //check for modified
+//    for( cpId <- (cps & tps) ) {
+//      val modVars = scala.collection.mutable.Buffer[ModifiedVariable]()
+//      val errorMessage = s"Try to find a policy draft with id ${cpId.value} in current draft for node configuration ${server.id}"
+//      val oldInstanceVars = server.currentRulePolicyDrafts.find( _.draftId == cpId).getOrElse(throw new IllegalArgumentException(errorMessage)).cf3PolicyDraft.getVariables
+//      val newInstanceVars = server.targetRulePolicyDrafts. find( _.draftId == cpId).getOrElse(throw new IllegalArgumentException(errorMessage)).cf3PolicyDraft.getVariables
+//      for {
+//        key <- oldInstanceVars.keySet ++ newInstanceVars.keySet
+//        oldVar <- oldInstanceVars.get(key)
+//        newVar <- newInstanceVars.get(key)
+//        // manage addedd/deleted vars
+//        if(oldVar.values.toList != newVar.values.toList)
+//      } {
+//        modVars += ModifiedVariable(oldVar,newVar.values)
+//      }
+//      if(modVars.nonEmpty) buffer += ModifiedPolicy(cpId,modVars.toList)
+//    }
+//
+//    buffer.toSeq
+//  }
+//}

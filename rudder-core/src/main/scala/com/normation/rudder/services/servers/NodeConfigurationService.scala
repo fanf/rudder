@@ -47,7 +47,7 @@ trait NodeConfigurationService {
   /**
    * Get all NodeConfigurations
    */
-  def getAllNodeConfigurations() : Box[Map[NodeId, NodeConfiguration]]
+  //def getAllNodeConfigurations() : Box[Map[NodeId, NodeConfiguration]]
 
   /**
    * Update a node configuration using a targetNodeConfiguration :
@@ -56,7 +56,7 @@ trait NodeConfigurationService {
    * @param target
    * @return
    */
-  def updateNodeConfiguration(target : TargetNodeConfiguration, allNodeConfiguration: Map[NodeId, NodeConfiguration]) : Box[Map[NodeId, NodeConfiguration]]
+  def updateNodeConfiguration(target : TargetNodeConfiguration, allNodeConfiguration: Map[NodeId, TargetNodeConfiguration]) : Box[Map[NodeId, TargetNodeConfiguration]]
 
 
   /**
@@ -80,7 +80,7 @@ trait NodeConfigurationService {
    * Return the list of updated node configuration (and so nodes
    * for which promises where written).
    */
-  def writeTemplateForUpdatedNodeConfigurations(rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]]
+  def writeTemplateForUpdatedNodeConfigurations(rootNodeId: NodeId,  nodesToUpdate: Set[NodeId], allNodeConfigs: Map[NodeId, TargetNodeConfiguration]) : Box[Seq[TargetNodeConfiguration]] = ???
 
   ///// pure methods /////
 
@@ -88,16 +88,16 @@ trait NodeConfigurationService {
    * Find the NodeConfigurations having the policy name listed (it's policy name, not instance).
    * We are looking in TARGET rule policy draft containing technique with given name
    */
-  def getNodeConfigurationsMatchingPolicy(techniqueId : TechniqueId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Seq[NodeConfiguration] = {
-    allNodeConfigs.values.toSeq.filterNot( _.findDirectiveByTechnique(techniqueId).isEmpty )
-  }
+//  def getNodeConfigurationsMatchingPolicy(techniqueId : TechniqueId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Seq[NodeConfiguration] = {
+//    allNodeConfigs.values.toSeq.filterNot( _.findDirectiveByTechnique(techniqueId).isEmpty )
+//  }
 
   /**
    * Find the NodeConfigurations having the directive named (it's the directiveId)
    * We are looking for CURRENT rule policy draft
    */
-  def getNodeConfigurationsMatchingDirective(cf3PolicyDraftId : Cf3PolicyDraftId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Seq[NodeConfiguration] = {
-    allNodeConfigs.values.toSeq.filter( _.currentRulePolicyDrafts.exists(x => x.draftId == cf3PolicyDraftId) )
-  }
+//  def getNodeConfigurationsMatchingDirective(cf3PolicyDraftId : Cf3PolicyDraftId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Seq[NodeConfiguration] = {
+//    allNodeConfigs.values.toSeq.filter( _.currentRulePolicyDrafts.exists(x => x.draftId == cf3PolicyDraftId) )
+//  }
 
 }

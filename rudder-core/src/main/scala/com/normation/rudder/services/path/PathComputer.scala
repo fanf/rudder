@@ -34,10 +34,10 @@
 
 package com.normation.rudder.services.path
 
-import com.normation.rudder.domain.servers.NodeConfiguration
 import com.normation.inventory.domain.AgentType
 import com.normation.inventory.domain.NodeId
 import net.liftweb.common.Box
+import com.normation.rudder.services.policies.TargetNodeConfiguration
 
 /**
  * Utilitary tool to compute the path of a server promises (and others information) on the rootMachine
@@ -55,7 +55,7 @@ trait PathComputer {
    * @param searchedNode : the server we search
    * @return
    */
-  def computeBaseNodePath(searchedNodeId : NodeId, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[((String, String))]
+  def computeBaseNodePath(searchedNodeId : NodeId, rootNodeId: NodeId, allNodeConfigs:Map[NodeId, TargetNodeConfiguration]): Box[((String, String))]
 
   /**
    * Return the path of the promises for the root (we directly write its promises in its path)

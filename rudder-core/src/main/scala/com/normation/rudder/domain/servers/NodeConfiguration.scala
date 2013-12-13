@@ -58,7 +58,7 @@ case class MinimalNodeConfig(
   , localAdministratorAccountName: String
 ) extends HashcodeCaching
 
-sealed trait NodeConfiguration extends Loggable {
+sealed trait XXNodeConfiguration extends Loggable {
   def id                        : NodeId
   def currentRulePolicyDrafts   : Seq[RuleWithCf3PolicyDraft]
   def targetRulePolicyDrafts    : Seq[RuleWithCf3PolicyDraft]
@@ -76,7 +76,7 @@ sealed trait NodeConfiguration extends Loggable {
    * @param policy
    * @return
    */
-  def addDirective(ruleWithCf3PolicyDraft : RuleWithCf3PolicyDraft) : Box[NodeConfiguration]= {
+  def addDirective(ruleWithCf3PolicyDraft : RuleWithCf3PolicyDraft) : Box[XXNodeConfiguration]= {
     targetRulePolicyDrafts.find( _.draftId == ruleWithCf3PolicyDraft.draftId) match {
       case None =>
         val map =  targetRulePolicyDrafts.map { rcf3 =>
@@ -93,7 +93,7 @@ sealed trait NodeConfiguration extends Loggable {
     }
   }
 
-  def setSerial(rules : Seq[(RuleId,Int)]) : NodeConfiguration = {
+  def setSerial(rules : Seq[(RuleId,Int)]) : XXNodeConfiguration = {
     val newRulePolicyDrafts =  collection.mutable.Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft]()
         targetRulePolicyDrafts.foreach { ruleWithCf3PolicyDraft =>
             newRulePolicyDrafts += ( ruleWithCf3PolicyDraft.draftId ->ruleWithCf3PolicyDraft.copy()) }
@@ -107,19 +107,19 @@ sealed trait NodeConfiguration extends Loggable {
     copySetTargetRulePolicyDrafts(newRulePolicyDrafts.values.toSeq)
   }
 
-  def copySetTargetRulePolicyDrafts(policies: Seq[RuleWithCf3PolicyDraft]): NodeConfiguration
+  def copySetTargetRulePolicyDrafts(policies: Seq[RuleWithCf3PolicyDraft]): XXNodeConfiguration
 
   /**
    * Called when we have written the promises, to say that the current configuration is indeed the target one
-   * @return the commmited NodeConfiguration
+   * @return the commmited XXNodeConfiguration
    */
-  def commitModification() : NodeConfiguration
+  def commitModification() : XXNodeConfiguration
 
    /**
    * Called when we want to rollback modification, to say that the target configuration is the current one
-   * @return the rolled back NodeConfiguration
+   * @return the rolled back XXNodeConfiguration
    */
-  def rollbackModification() : NodeConfiguration
+  def rollbackModification() : XXNodeConfiguration
 
 
   /**
@@ -187,8 +187,8 @@ sealed trait NodeConfiguration extends Loggable {
 }
 
 
-object NodeConfiguration {
-  def toContainer(outPath : String, node: NodeConfiguration) : Cf3PolicyDraftContainer = {
+object XXNodeConfiguration {
+  def toContainer(outPath : String, node: XXNodeConfiguration) : Cf3PolicyDraftContainer = {
     val container = new Cf3PolicyDraftContainer(
         outPath
       , node.targetParameters.map(x => ParameterEntry(x.name.value, x.value)).toSet
@@ -216,7 +216,7 @@ final case class RootNodeConfiguration(
   , targetSystemVariables    : Map[String, Variable]
   , currentParameters        : Set[ParameterForConfiguration]
   , targetParameters         : Set[ParameterForConfiguration]
-) extends NodeConfiguration with HashcodeCaching {
+) extends XXNodeConfiguration with HashcodeCaching {
 
   def copySetTargetRulePolicyDrafts(policies: Seq[RuleWithCf3PolicyDraft]): RootNodeConfiguration = {
     this.copy(targetRulePolicyDrafts = policies)
@@ -265,7 +265,7 @@ final case class SimpleNodeConfiguration(
   , targetSystemVariables    : Map[String, Variable]
   , currentParameters        : Set[ParameterForConfiguration]
   , targetParameters         : Set[ParameterForConfiguration]
-) extends NodeConfiguration with HashcodeCaching {
+) extends XXNodeConfiguration with HashcodeCaching {
 
 
   def copySetTargetRulePolicyDrafts(policies: Seq[RuleWithCf3PolicyDraft]): SimpleNodeConfiguration = {

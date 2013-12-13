@@ -42,9 +42,6 @@ import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.rudder.domain.servers.MinimalNodeConfig
-import com.normation.rudder.domain.servers.NodeConfiguration
-import com.normation.rudder.domain.servers.RootNodeConfiguration
-import com.normation.rudder.domain.servers.SimpleNodeConfiguration
 import com.normation.rudder.exceptions.TechniqueException
 import com.normation.rudder.repository.NodeConfigurationRepository
 import com.normation.rudder.services.policies.TargetNodeConfiguration
@@ -60,7 +57,7 @@ import net.liftweb.common.ParamFailure
 
 /**
  * Implementation of the Node Configuration service
- * It manages the NodeConfiguration content (the cache of the deployed conf)
+ * It manages the TargetNodeConfiguration content (the cache of the deployed conf)
  *
  * That implementation is not thread safe at all, and all call to its
  * methods should be made in the context of an actor
@@ -77,125 +74,9 @@ class NodeConfigurationServiceImpl(
    * Find all servers
    * @return
    */
-  def getAllNodeConfigurations() : Box[Map[NodeId, NodeConfiguration]] = repository.getAll()
-
-  /**
-   * Update a node configuration using a targetNodeConfiguration :
-   * update the directives and the node context, as well as the agentsName
-   * (well, every fields actually)
-   * @param target
-   * @return
-   */
-  def updateNodeConfiguration(target: TargetNodeConfiguration, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Map[NodeId, NodeConfiguration]] = {
-    //create a new node configuration based on "target" datas
-    def createNodeConfiguration() : NodeConfiguration = {
-      //we need to decide if it's a root node config or a simple one
-      if(target.nodeInfo.isPolicyServer) {
-          new RootNodeConfiguration(
-            target.nodeInfo.id,
-            Seq(),
-            Seq(),
-            true,
-            // when creating a nodeconfiguration, there is no current
-            currentMinimalNodeConfig = new MinimalNodeConfig(
-                "", "", Seq(), "", ""
-            ),
-            targetMinimalNodeConfig = new MinimalNodeConfig(
-                target.nodeInfo.name ,
-                target.nodeInfo.hostname,
-                target.nodeInfo.agentsName,
-                target.nodeInfo.policyServerId.value,
-                target.nodeInfo.localAdministratorAccountName
-            ),
-            None,
-            Map(),
-            target.nodeContext,
-            Set(),
-            target.parameters
-          )
-      } else {
-          new SimpleNodeConfiguration(
-            target.nodeInfo.id,
-            Seq(),
-            Seq(),
-            false,
-            // when creating a nodeconfiguration, there is no current
-            currentMinimalNodeConfig = new MinimalNodeConfig(
-                "", "", Seq(), "", ""
-            ),
-            targetMinimalNodeConfig = new MinimalNodeConfig(
-                target.nodeInfo.name ,
-                target.nodeInfo.hostname,
-                target.nodeInfo.agentsName,
-                target.nodeInfo.policyServerId.value,
-                target.nodeInfo.localAdministratorAccountName
-            ),
-            None,
-            Map(),
-            target.nodeContext,
-            Set(),
-            target.parameters
-          )
-      }
-    }
-
-    logger.debug("Updating node configuration %s".format(target.nodeInfo.id.value) )
-    if (target.identifiableCFCPIs.size == 0) {
-      logger.warn(s"Cannot create server ${target.nodeInfo.id.value} without policy")
-      return ParamFailure[Seq[RuleWithCf3PolicyDraft]]("Cannot create a server without policies", Full(new TechniqueException("Cannot create a server without any policies")), Empty, target.identifiableCFCPIs)
-    }
-
-    val directives = deduplicateUniqueDirectives(target.identifiableCFCPIs)
-
-    /*
-     * Try to find the node configuration. If none are found (or one is found but
-     * mapping lead to an error, create a new one.
-     */
-    val nodeConfiguration = allNodeConfigs.get(target.nodeInfo.id) match {
-
-      case None => //create configuration for that node
-        createNodeConfiguration()
-
-      case Some(node : SimpleNodeConfiguration) =>
-        //update nodeconfiguration
-        //server.id  = target.nodeInfo.id.value //not mutable TODO: use it in the constructor
-
-        node.copy(
-            targetRulePolicyDrafts = Seq[RuleWithCf3PolicyDraft](),
-            targetMinimalNodeConfig = new MinimalNodeConfig(
-                target.nodeInfo.name ,
-                target.nodeInfo.hostname ,
-                target.nodeInfo.agentsName ,
-                target.nodeInfo.policyServerId.value,
-                target.nodeInfo.localAdministratorAccountName
-                ),
-            targetSystemVariables = target.nodeContext,
-            targetParameters = target.parameters
-
-        )
+  def getAllNodeConfigurations() : Box[Map[NodeId, TargetNodeConfiguration]] = repository.getAll()
 
 
-      case Some(rootServer : RootNodeConfiguration) =>
-        rootServer.copy(
-            targetRulePolicyDrafts = Seq[RuleWithCf3PolicyDraft](),
-            targetMinimalNodeConfig = new MinimalNodeConfig(
-                target.nodeInfo.name ,
-                target.nodeInfo.hostname ,
-                target.nodeInfo.agentsName ,
-                target.nodeInfo.policyServerId.value,
-                target.nodeInfo.localAdministratorAccountName
-                ),
-            targetSystemVariables = target.nodeContext,
-            targetParameters = target.parameters
-         )
-    }
-
-    for {
-      finalConfig <- addDirectives(nodeConfiguration, directives) ?~! "Error when adding policies for node configuration %s".format(target.nodeInfo.id.value)
-    } yield {
-      allNodeConfigs + (finalConfig.id -> finalConfig)
-    }
-  }
 
   /**
    * Delete a node by its id
@@ -208,17 +89,14 @@ class NodeConfigurationServiceImpl(
   def deleteAllNodeConfigurations() : Box[Set[NodeId]] = repository.deleteAllNodeConfigurations
 
   /**
-   * Write the templates of the updated servers
-   * All the updated servers must be written
-   * If the input parameters contains server that does not need to be updated, they won't be
-   * @param ids : the id of the updated server
+   * Write templates for ALL
    */
-  def writeTemplateForUpdatedNodeConfigurations(rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]] = {
-    val updatedNodeConfigurations = allNodeConfigs.filter( _._2.isModified )
+  def writeTemplateForUpdatedNodeConfigurations(rootNodeId: NodeId, nodesToUpdate: Set[NodeId], allNodeConfigs: Map[NodeId, TargetNodeConfiguration]) : Box[Seq[TargetNodeConfiguration]] = {
+    val updatedNodeConfigurations = allNodeConfigs.filter(x =>  nodesToUpdate.contains(x._2.nodeInfo.id) )
 
     for ((_, node) <- updatedNodeConfigurations) {
-      if (node.targetRulePolicyDrafts.size == 0) {
-        logger.warn(s"Can't write a server without policy ${node.id.value}")
+      if (node.identifiableCFCPIs.size == 0) {
+        logger.warn(s"Can't write a server without policy ${node.nodeInfo.id.value}")
         return Failure("Can't write a server without policy " + node, Full(throw new TechniqueException("Can't write a server without policy ")), Empty)
       }
     }
@@ -237,7 +115,7 @@ class NodeConfigurationServiceImpl(
 
     val writeTime = DateTime.now().getMillis
 
-    val savedNodes = repository.saveMultipleNodeConfigurations(updatedNodeConfigurations.values.map(x => x.commitModification).toSeq)
+    val savedNodes = repository.saveMultipleNodeConfigurations(updatedNodeConfigurations.values.toSeq)
     logger.debug("Written in ldap the node configuration caches in %d millisec".format((DateTime.now().getMillis - writeTime)))
     savedNodes
   }
@@ -274,7 +152,7 @@ class NodeConfigurationServiceImpl(
    * Adding a directive to a node, without saving anything
    * (this is not hyper sexy)
    */
-  private def addDirectives(node:NodeConfiguration, directives :  Seq[RuleWithCf3PolicyDraft]) : Box[NodeConfiguration] = {
+  private def addDirectives(node:TargetNodeConfiguration, directives :  Seq[RuleWithCf3PolicyDraft]) : Box[TargetNodeConfiguration] = {
 
     var modifiedNode = node
 
@@ -300,7 +178,7 @@ class NodeConfigurationServiceImpl(
           return ParamFailure[RuleWithCf3PolicyDraft]("Duplicate unique technique", Full(new TechniqueException("Duplicate unique policy " +directive.cf3PolicyDraft.technique.id)), Empty, directive)
         }
         modifiedNode.addDirective(directive) match {
-          case Full(updatedNode : NodeConfiguration) =>
+          case Full(updatedNode : TargetNodeConfiguration) =>
             modifiedNode = updatedNode
           case f:EmptyBox => return f
         }

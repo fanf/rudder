@@ -35,13 +35,11 @@
 package com.normation.rudder.services.servers
 
 import org.joda.time.DateTime
-
 import com.normation.cfclerk.domain.Cf3PolicyDraftId
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.domain.Variable
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
-import com.normation.rudder.domain.servers.NodeConfiguration
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.RoDirectiveRepository
 import net.liftweb.common.Loggable
@@ -52,6 +50,10 @@ import net.liftweb.common.Full
 import com.normation.rudder.domain.parameters.Parameter
 import com.normation.rudder.domain.parameters.GlobalParameter
 import com.normation.rudder.services.policies.ParameterForConfiguration
+import com.normation.rudder.services.policies.TargetNodeConfiguration
+import com.normation.rudder.services.policies.TargetNodeConfiguration
+import com.normation.rudder.services.policies.TargetNodeConfiguration
+import com.normation.inventory.domain.NodeId
 
 
 /**
@@ -59,18 +61,22 @@ import com.normation.rudder.services.policies.ParameterForConfiguration
  */
 trait NodeConfigurationChangeDetectService {
 
-  def detectChangeInNode(node : NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId]
+  def detectChangeInNode(node : TargetNodeConfiguration, target: TargetNodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId]
 
-  def detectChangeInNodes(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
-    nodes.flatMap(node => detectChangeInNode(node, directiveLib)).toSet
-  }
+  def detectChangeInNodes(nodes : Seq[TargetNodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId]
 
 }
 
 
 class NodeConfigurationChangeDetectServiceImpl() extends NodeConfigurationChangeDetectService with Loggable {
 
+  def detectChangeInNodes(nodes : Seq[TargetNodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId]  = {
+    //todo: get the list of existing node configuration to compare to
 
+    val existing : Map[NodeId, TargetNodeConfiguration] = ???
+
+    nodes.flatMap{ x => detectChangeInNode(existing(x.nodeInfo.id), x, directiveLib)}.toSet
+  }
 
   /**
    * Return true if the variables are differents
@@ -113,29 +119,29 @@ class NodeConfigurationChangeDetectServiceImpl() extends NodeConfigurationChange
     currentParameters != targetParameters
   }
 
-  override def detectChangeInNode(node : NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
-    logger.debug("Checking changes in node %s".format( node.id) )
+  override def detectChangeInNode(current : TargetNodeConfiguration, target: TargetNodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
+    logger.debug("Checking changes in node %s".format( current.nodeInfo.id) )
 
     // First case : a change in the minimalnodeconfig is a change of all CRs
-    if (node.currentMinimalNodeConfig != node.targetMinimalNodeConfig) {
-      logger.trace("A change in the minimal configuration of node %s".format( node.id) )
-      node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
+    if (current.nodeInfo != target.nodeInfo) {
+      logger.trace("A change in the minimal configuration of node %s".format( current.nodeInfo.id) )
+      current.identifiableCFCPIs.map(_.ruleId).toSet ++ target.identifiableCFCPIs.map(_.ruleId).toSet
 
     // Second case : a change in the system variable is a change of all CRs
-    } else if (detectChangeInSystemVar(node.currentSystemVariables, node.targetSystemVariables)) {
-      logger.trace("A change in the system variable node %s".format( node.id) )
-      node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
+    } else if (detectChangeInSystemVar(current.nodeContext, target.nodeContext)) {
+      logger.trace("A change in the system variable node %s".format( current.nodeInfo.id) )
+      current.identifiableCFCPIs.map(_.ruleId).toSet ++ target.identifiableCFCPIs.map(_.ruleId).toSet
 
     // Third case : a change in the parameters is a change of all CRs
-    } else if (detectChangeInParameters(node.currentParameters, node.targetParameters)) {
-      logger.trace("A change in the parameters for node %s".format( node.id ) )
-      node.currentRulePolicyDrafts.map(_.ruleId).toSet ++ node.targetRulePolicyDrafts.map(_.ruleId).toSet
+    } else if (detectChangeInParameters(current.parameters, target.parameters)) {
+      logger.trace("A change in the parameters for node %s".format( current.nodeInfo.id ) )
+      current.identifiableCFCPIs.map(_.ruleId).toSet ++ target.identifiableCFCPIs.map(_.ruleId).toSet
     } else {
 
       val mySet = scala.collection.mutable.Set[RuleId]()
 
-      val currents = node.currentRulePolicyDrafts
-      val targets  = node.targetRulePolicyDrafts
+      val currents = current.identifiableCFCPIs
+      val targets  = target.identifiableCFCPIs
       // Other case :
       // Added or modified directive
       for (target <- targets) {
@@ -166,7 +172,7 @@ class NodeConfigurationChangeDetectServiceImpl() extends NodeConfigurationChange
 
       mySet ++= currents.filter(x => directiveLib.allTechniques.get(x.cf3PolicyDraft.technique.id) match {
         case Some((_, Some(acceptationDate))) =>
-          node.writtenDate match {
+          current.writtenDate match {
             case Some(writtenDate) => acceptationDate.isAfter(writtenDate)
             case None => true
           }

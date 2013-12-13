@@ -38,7 +38,6 @@ package com.normation.rudder.batch
 import net.liftweb.common._
 import net.liftweb.actor._
 import org.joda.time._
-import com.normation.rudder.domain.servers.NodeConfiguration
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.services.policies.DeploymentService
 import net.liftweb.http.ListenerManager
@@ -55,6 +54,7 @@ import com.normation.eventlog.ModificationId
 import com.normation.eventlog.ModificationId
 import com.normation.eventlog.ModificationId
 import com.normation.eventlog.ModificationId
+import com.normation.rudder.services.policies.TargetNodeConfiguration
 
 //ask for a new deployment - automatic deployment !
 //actor: the actor who asked for the deployment
@@ -84,7 +84,7 @@ sealed trait CurrentDeploymentStatus
 //noting was done for now
 final case object NoStatus extends CurrentDeploymentStatus with HashcodeCaching
 //last status - success or error
-final case class SuccessStatus(id:Long, started: DateTime, ended:DateTime, configuration:Map[NodeId,NodeConfiguration]) extends CurrentDeploymentStatus with HashcodeCaching
+final case class SuccessStatus(id:Long, started: DateTime, ended:DateTime, configuration:Map[NodeId, TargetNodeConfiguration]) extends CurrentDeploymentStatus with HashcodeCaching
 final case class ErrorStatus(id:Long, started: DateTime, ended:DateTime, failure:Failure) extends CurrentDeploymentStatus with HashcodeCaching
 
 
@@ -112,7 +112,7 @@ final class AsyncDeploymentAgent(
     , modId  : ModificationId
     , start  : DateTime
     , end    : DateTime
-    , results: Box[Map[NodeId, NodeConfiguration]]
+    , results: Box[Map[NodeId, TargetNodeConfiguration]]
     , actor  : EventActor
     , eventLogId: Int) extends HashcodeCaching
   //message from manager to deployment agent
@@ -316,7 +316,7 @@ final class AsyncDeploymentAgent(
         logger.trace("Deployer Agent: start a new deployment")
         try {
           val result = deploymentService.deploy().map { nodeConfs =>
-            nodeConfs.map { conf => (conf.id, conf) }.toMap
+            nodeConfs.map { conf => (conf.nodeInfo.id, conf) }.toMap
           }
           result match {
             case Full(_) => // nothing to report
