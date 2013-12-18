@@ -37,7 +37,6 @@ package com.normation.rudder.services.licenses
 import com.normation.inventory.domain.NodeId
 import net.liftweb.common._
 import com.normation.rudder.exceptions.NotFoundException
-import com.normation.rudder.repository.NodeConfigurationRepository
 import com.normation.rudder.domain.licenses.NovaLicense
 import com.normation.rudder.repository.LicenseRepository
 import org.joda.time.DateTime
@@ -48,7 +47,6 @@ import com.normation.exceptions.BusinessException
 
 class NovaLicenseServiceImpl(
     licenseRepository           : LicenseRepository
-  , nodeConfigurationRepository : NodeConfigurationRepository
   , licensesPath                : String
 )  extends NovaLicenseService {
 

@@ -71,7 +71,6 @@ import com.normation.inventory.domain.NodeId
 class RudderCf3PromisesFileWriterServiceImpl(
   techniqueRepository: TechniqueRepository,
   pathComputer: PathComputer,
-  val nodeConfigurationRepository: NodeConfigurationRepository,
   nodeInfoService: NodeInfoService,
   val licenseRepository: LicenseRepository,
   reportingService: ReportingService,

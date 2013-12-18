@@ -43,7 +43,6 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.rudder.domain.servers.MinimalNodeConfig
 import com.normation.rudder.exceptions.TechniqueException
-import com.normation.rudder.repository.NodeConfigurationRepository
 import com.normation.rudder.services.policies.TargetNodeConfiguration
 import com.normation.rudder.services.policies.TemplateWriter
 
@@ -66,7 +65,6 @@ import net.liftweb.common.ParamFailure
  */
 class NodeConfigurationServiceImpl(
     policyTranslator    : TemplateWriter
-  , repository          : NodeConfigurationRepository
   , techniqueRepository : TechniqueRepository
 ) extends NodeConfigurationService with Loggable {
 
@@ -120,69 +118,4 @@ class NodeConfigurationServiceImpl(
     savedNodes
   }
 
-
-/*********************** Privates methods, utilitary methods ****************************************/
-
-  /**
-   * Deduplicate directive, in an ordered seq by priority
-   * Unique technique are kept by priority order, (a 0 has more priority than 50)
-   * @param directives
-   * @return
-   */
-  private def deduplicateUniqueDirectives(directives: Seq[RuleWithCf3PolicyDraft]) : Seq[RuleWithCf3PolicyDraft] = {
-    val resultingDirectives = ArrayBuffer[RuleWithCf3PolicyDraft]();
-
-    for (directiveToAdd <- directives.sortBy(x => x.cf3PolicyDraft.priority)) {
-      //Prior to add it, must check that it is not unique and not already present
-      val technique = directiveToAdd.cf3PolicyDraft.technique
-      if (technique.isMultiInstance)
-         resultingDirectives += directiveToAdd
-      else {
-        // if it is unique, add it only a same one is not already there
-        if (resultingDirectives.filter(x => x.cf3PolicyDraft.technique.id == directiveToAdd.cf3PolicyDraft.technique.id).size == 0)
-           resultingDirectives += directiveToAdd
-        else
-           logger.warn("Ignoring less prioritized unique directive %s ".format(directiveToAdd))
-      }
-    }
-    resultingDirectives
-  }
-
-  /**
-   * Adding a directive to a node, without saving anything
-   * (this is not hyper sexy)
-   */
-  private def addDirectives(node:TargetNodeConfiguration, directives :  Seq[RuleWithCf3PolicyDraft]) : Box[TargetNodeConfiguration] = {
-
-    var modifiedNode = node
-
-    for (directive <- directives) {
-        // check the legit character of the policy
-        if (modifiedNode.targetRulePolicyDrafts.find( _.draftId == directive.draftId) != None) {
-          logger.warn(s"Cannot add a directive with the same id than an already existing one ${directive.draftId}")
-          return ParamFailure[RuleWithCf3PolicyDraft](
-              "Duplicate directive",
-              Full(new TechniqueException("Duplicate directive " + directive.draftId)),
-              Empty,
-              directive)
-        }
-
-
-        val technique = directive.cf3PolicyDraft.technique
-
-        // Check that the directive can be multiinstances
-        // to check that, either make sure that it is multiinstance, or that it is not
-        // multiinstance and that there are no existing directives based on it
-        if (modifiedNode.findDirectiveByTechnique(directive.cf3PolicyDraft.technique.id).filter(x => technique.isMultiInstance==false).size>0) {
-          logger.warn(s"Cannot add a directive from the same non duplicable technique ${directive.cf3PolicyDraft.technique.id} than an already existing one")
-          return ParamFailure[RuleWithCf3PolicyDraft]("Duplicate unique technique", Full(new TechniqueException("Duplicate unique policy " +directive.cf3PolicyDraft.technique.id)), Empty, directive)
-        }
-        modifiedNode.addDirective(directive) match {
-          case Full(updatedNode : TargetNodeConfiguration) =>
-            modifiedNode = updatedNode
-          case f:EmptyBox => return f
-        }
-    }
-    Full(modifiedNode)
-  }
 }
