@@ -41,6 +41,7 @@ import com.normation.cfclerk.domain.{Cf3PolicyDraftId,TechniqueId}
 import com.normation.rudder.services.policies.TargetNodeConfiguration
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.{Rule,RuleId}
+import com.normation.rudder.services.policies.TargetNodeConfiguration
 
 trait NodeConfigurationService {
 
@@ -82,22 +83,90 @@ trait NodeConfigurationService {
    */
   def writeTemplateForUpdatedNodeConfigurations(rootNodeId: NodeId,  nodesToUpdate: Set[NodeId], allNodeConfigs: Map[NodeId, TargetNodeConfiguration]) : Box[Seq[TargetNodeConfiguration]] = ???
 
+
+  /**
+   * A method that normalize directives on a node configuration.
+   * It should alway been called before writing promises.
+   */
+  def normalize(nodeConfig: TargetNodeConfiguration): Box[TargetNodeConfiguration] = {
+    private def deduplicateUniqueDirectives(directives: Seq[RuleWithCf3PolicyDraft]) : Seq[RuleWithCf3PolicyDraft] = {
+      val resultingDirectives = ArrayBuffer[RuleWithCf3PolicyDraft]();
+
+      for (directiveToAdd <- directives.sortBy(x => x.cf3PolicyDraft.priority)) {
+        //Prior to add it, must check that it is not unique and not already present
+        val technique = directiveToAdd.cf3PolicyDraft.technique
+        if (technique.isMultiInstance)
+           resultingDirectives += directiveToAdd
+        else {
+          // if it is unique, add it only a same one is not already there
+          if (resultingDirectives.filter(x => x.cf3PolicyDraft.technique.id == directiveToAdd.cf3PolicyDraft.technique.id).size == 0)
+             resultingDirectives += directiveToAdd
+          else
+             logger.warn("Ignoring less prioritized unique directive %s ".format(directiveToAdd))
+        }
+      }
+      resultingDirectives
+    }
+
+    /**
+     * Adding a directive to a node, without saving anything
+     * (this is not hyper sexy)
+     */
+    private def addDirectives(node:NodeConfiguration, directives :  Seq[RuleWithCf3PolicyDraft]) : Box[NodeConfiguration] = {
+
+      var modifiedNode = node
+
+      for (directive <- directives) {
+          // check the legit character of the policy
+          if (modifiedNode.targetRulePolicyDrafts.find( _.draftId == directive.draftId) != None) {
+            logger.warn(s"Cannot add a directive with the same id than an already existing one ${directive.draftId}")
+            return ParamFailure[RuleWithCf3PolicyDraft](
+                "Duplicate directive",
+                Full(new TechniqueException("Duplicate directive " + directive.draftId)),
+                Empty,
+                directive)
+          }
+
+
+          val technique = directive.cf3PolicyDraft.technique
+
+          // Check that the directive can be multiinstances
+          // to check that, either make sure that it is multiinstance, or that it is not
+          // multiinstance and that there are no existing directives based on it
+          if (modifiedNode.findDirectiveByTechnique(directive.cf3PolicyDraft.technique.id).filter(x => technique.isMultiInstance==false).size>0) {
+            logger.warn(s"Cannot add a directive from the same non duplicable technique ${directive.cf3PolicyDraft.technique.id} than an already existing one")
+            return ParamFailure[RuleWithCf3PolicyDraft]("Duplicate unique technique", Full(new TechniqueException("Duplicate unique policy " +directive.cf3PolicyDraft.technique.id)), Empty, directive)
+          }
+          modifiedNode.addDirective(directive) match {
+            case Full(updatedNode : NodeConfiguration) =>
+              modifiedNode = updatedNode
+            case f:EmptyBox => return f
+          }
+      }
+      Full(modifiedNode)
+    }
+
+
+    val directives = deduplicateUniqueDirectives(nodeConfig.identifiableCFCPIs.values)
+
+  }
+
   ///// pure methods /////
 
   /**
    * Find the NodeConfigurations having the policy name listed (it's policy name, not instance).
    * We are looking in TARGET rule policy draft containing technique with given name
    */
-//  def getNodeConfigurationsMatchingPolicy(techniqueId : TechniqueId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Seq[NodeConfiguration] = {
-//    allNodeConfigs.values.toSeq.filterNot( _.findDirectiveByTechnique(techniqueId).isEmpty )
-//  }
+  def getNodeConfigurationsMatchingPolicy(techniqueId : TechniqueId, allNodeConfigs:Map[NodeId, TargetNodeConfiguration]) : Seq[TargetNodeConfiguration] = {
+    allNodeConfigs.values.toSeq.filterNot( _.findDirectiveByTechnique(techniqueId).isEmpty )
+  }
 
   /**
    * Find the NodeConfigurations having the directive named (it's the directiveId)
    * We are looking for CURRENT rule policy draft
    */
-//  def getNodeConfigurationsMatchingDirective(cf3PolicyDraftId : Cf3PolicyDraftId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Seq[NodeConfiguration] = {
-//    allNodeConfigs.values.toSeq.filter( _.currentRulePolicyDrafts.exists(x => x.draftId == cf3PolicyDraftId) )
-//  }
+  def getNodeConfigurationsMatchingDirective(cf3PolicyDraftId : Cf3PolicyDraftId, allNodeConfigs: Map[NodeId, TargetNodeConfiguration]) : Seq[TargetNodeConfiguration] = {
+    allNodeConfigs.values.toSeq.filter( _.identifiableCFCPIs.exists(x => x.draftId == cf3PolicyDraftId) )
+  }
 
 }

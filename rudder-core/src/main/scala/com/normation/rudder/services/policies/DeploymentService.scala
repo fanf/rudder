@@ -69,6 +69,8 @@ import com.normation.rudder.domain.parameters.ParameterName
 import com.normation.rudder.domain.parameters.GlobalParameter
 import com.normation.cfclerk.domain.Cf3PolicyDraftContainer
 import com.normation.cfclerk.domain.ParameterEntry
+import com.normation.cfclerk.domain.TechniqueId
+import com.normation.cfclerk.domain.Cf3PolicyDraftId
 
 /**
  * TODO: ca devrait être un "target node configuration", ie
@@ -106,6 +108,13 @@ case class TargetNodeConfiguration(
     )
     identifiableCFCPIs.foreach (x =>  container.add(x.cf3PolicyDraft))
     container
+  }
+
+  def findDirectiveByTechnique(techniqueId : TechniqueId): Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
+    identifiableCFCPIs.filter(x =>
+      x.cf3PolicyDraft.technique.id.name.value.equalsIgnoreCase(techniqueId.name.value) &&
+      x.cf3PolicyDraft.technique.id.version == techniqueId.version
+    ).map(x => (x.draftId , x)).toMap
   }
 }
 
