@@ -76,7 +76,6 @@ import com.normation.rudder.repository.xml._
 import com.normation.rudder.repository.jdbc._
 import com.normation.rudder.repository._
 import net.liftweb.common.Loggable
-import com.normation.rudder.services.servers.NodeConfigurationChangeDetectServiceImpl
 import org.apache.commons.dbcp.BasicDataSource
 import com.normation.rudder.services.eventlog.HistorizationServiceImpl
 import com.normation.rudder.services.policies.DeployOnTechniqueCallback
@@ -137,6 +136,7 @@ import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.appconfig._
 import com.normation.rudder.rule.category._
 import com.normation.rudder.rule.category.GitRuleCategoryArchiverImpl
+import com.normation.rudder.services.policies.nodeconfig._
 
 /**
  * Define a resource for configuration.
@@ -953,7 +953,6 @@ object RudderConfig extends Loggable {
     , diffRepos
     , PendingInventory
   )
-  private[this] lazy val nodeConfigurationChangeDetectService = new NodeConfigurationChangeDetectServiceImpl()
   private[this] lazy val nodeGridImpl = new NodeGrid(ldapFullInventoryRepository)
 
   private[this] lazy val modificationService = new ModificationService(logRepository,gitModificationRepository,itemArchiveManagerImpl,uuidGen)
@@ -964,11 +963,11 @@ object RudderConfig extends Loggable {
   private[this] lazy val nodeSummaryServiceImpl = new NodeSummaryServiceImpl(inventoryDitService, inventoryMapper, roLdap)
   private[this] lazy val diffRepos: InventoryHistoryLogRepository =
     new InventoryHistoryLogRepository(HISTORY_INVENTORIES_ROOTDIR, new FullInventoryFileMarshalling(fullInventoryFromLdapEntries, inventoryMapper))
-  private[this] lazy val serverPolicyDiffService = new NodeConfigurationDiffService
+//  private[this] lazy val serverPolicyDiffService = new NodeConfigurationDiffService
 
   private[this] lazy val personIdentServiceImpl = new TrivialPersonIdentService
-  private[this] lazy val ldapNodeConfigurationMapper = new LDAPNodeConfigurationMapper(rudderDitImpl, acceptedNodesDitImpl, systemVariableSpecService, techniqueRepositoryImpl, variableBuilderService, rwLdap)
-  private[this] lazy val ldapNodeConfigurationRepository = new LDAPNodeConfigurationRepository(rwLdap, rudderDitImpl, ldapNodeConfigurationMapper)
+//  private[this] lazy val ldapNodeConfigurationMapper = new LDAPNodeConfigurationMapper(rudderDitImpl, acceptedNodesDitImpl, systemVariableSpecService, techniqueRepositoryImpl, variableBuilderService, rwLdap)
+//  private[this] lazy val ldapNodeConfigurationRepository = new LDAPNodeConfigurationRepository(rwLdap, rudderDitImpl, ldapNodeConfigurationMapper)
 
   private[this] lazy val roParameterServiceImpl = new RoParameterServiceImpl(roLDAPParameterRepository)
   private[this] lazy val woParameterServiceImpl = new WoParameterServiceImpl(roParameterServiceImpl, woLDAPParameterRepository, asyncDeploymentAgentImpl)
@@ -1173,7 +1172,6 @@ object RudderConfig extends Loggable {
   private[this] lazy val rudderCf3PromisesFileWriterService = new RudderCf3PromisesFileWriterServiceImpl(
     techniqueRepositoryImpl,
     pathComputer,
-    ldapNodeConfigurationRepository,
     nodeInfoServiceImpl,
     licenseRepository,
     reportingServiceImpl,
@@ -1213,7 +1211,6 @@ object RudderConfig extends Loggable {
           systemVariableService,
           nodeConfigurationServiceImpl,
           nodeInfoServiceImpl,
-          nodeConfigurationChangeDetectService,
           reportingServiceImpl,
           historizationService,
           roNodeGroupRepository,
@@ -1250,10 +1247,11 @@ object RudderConfig extends Loggable {
       Nil
   )
   private[this] lazy val nodeConfigurationServiceImpl: NodeConfigurationService = new NodeConfigurationServiceImpl(
-    rudderCf3PromisesFileWriterService,
-    ldapNodeConfigurationRepository,
-    techniqueRepositoryImpl)
-  private[this] lazy val licenseService: NovaLicenseService = new NovaLicenseServiceImpl(licenseRepository, ldapNodeConfigurationRepository, RUDDER_DIR_LICENSESFOLDER)
+      rudderCf3PromisesFileWriterService
+    , new LdapNodeConfigurationCacheRepository(rudderDit, rwLdap)
+    , new NodeConfigurationLoggerImpl()
+  )
+//  private[this] lazy val licenseService: NovaLicenseService = new NovaLicenseServiceImpl(licenseRepository, ldapNodeConfigurationRepository, RUDDER_DIR_LICENSESFOLDER)
   private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(configurationExpectedRepo, reportsRepositoryImpl, techniqueRepositoryImpl, new ComputeCardinalityOfDirectiveVal())
   private[this] lazy val configurationExpectedRepo = new com.normation.rudder.repository.jdbc.RuleExpectedReportsJdbcRepository(jdbcTemplate)
   private[this] lazy val reportsRepositoryImpl = new com.normation.rudder.repository.jdbc.ReportsJdbcRepository(jdbcTemplate)
@@ -1392,7 +1390,6 @@ object RudderConfig extends Loggable {
       , ldapEntityMapper
       , roLdapNodeGroupRepository
       , woLdapNodeGroupRepository
-      , nodeConfigurationServiceImpl
       , nodeInfoServiceImpl
       , ldapFullInventoryRepository
       , logRepository
@@ -1463,7 +1460,6 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val allChecks = new SequentialImmediateBootStrapChecks(
       new CheckDIT(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl, rudderDitImpl, rwLdap)
-    , new CheckRootNodeUnicity(ldapNodeConfigurationRepository, nodeInfoServiceImpl)
     , new CheckSystemDirectives(rudderDitImpl, roLdapRuleRepository)
     , new CheckInitUserTemplateLibrary(
         rudderDitImpl, rwLdap, techniqueRepositoryImpl,

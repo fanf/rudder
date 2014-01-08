@@ -154,6 +154,8 @@ class RudderCf3PromisesFileWriterServiceImpl(
    */
   private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: TargetNodeConfiguration, rootNodeConfigurationId:NodeId): Box[Set[(TargetNodeConfiguration, String, String, String)]] = {
 
+    logger.debug(s"Writting promises for node '${node.nodeInfo.hostname}' (${node.nodeInfo.id.value})")
+
     val folders = collection.mutable.Set[(TargetNodeConfiguration, String, String, String)]()
 
     for (agentType <- node.nodeInfo.agentsName) {
@@ -178,9 +180,9 @@ class RudderCf3PromisesFileWriterServiceImpl(
 
       val tmls = prepareCf3PromisesFileTemplate(container, systemVariables.toMap)
 
-      logger.debug("Prepared the tml for the node %s".format(node.nodeInfo.id))
+      logger.trace(s"Templates for node ${node.nodeInfo.id.value} prepared")
 
-      logger.debug("Preparing reporting information from meta technique")
+      logger.trace("Preparing reporting information from meta technique")
       val csv = prepareReportingDataForMetaTechnique(container)
 
       // write the promises of the current machine
@@ -200,7 +202,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
           val now = System.currentTimeMillis
           val res = executeCfPromise(agentType, newNodeRulePath)
           val spent = System.currentTimeMillis - now
-          logger.debug("Timing cf-promise for %s: %sms (%ss)".format(newNodeRulePath, spent, spent / 1000))
+          logger.debug(s"Execute cf-promise for '${newNodeRulePath}': ${spent}ms (${spent/1000}s)")
           res
         } else {
           executeCfPromise(agentType, newNodeRulePath)

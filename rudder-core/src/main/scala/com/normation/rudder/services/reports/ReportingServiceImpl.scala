@@ -98,15 +98,15 @@ class ReportingServiceImpl(
 
         case Some(serial) if ((serial == newSerial)&&(configs.size > 0)) =>
             // no change if same serial and some config appliable
-            logger.debug("Same serial %s for ruleId %s, and configs presents".format(serial, ruleId))
+            logger.debug(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed and configs presents: nothing to do")
             currentConfigurationsToRemove.remove(ruleId)
 
         case Some(serial) if ((serial == newSerial)&&(configs.size == 0)) => // same serial, but no targets
             // if there is not target, then it need to be closed
-          logger.debug("Same serial, and no configs present")
+          logger.debug(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed BUT configs not presents: update expectation")
 
         case Some(serial) => // not the same serial
-          logger.debug("Not same serial")
+          logger.debug(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was changed: update expectation")
             confToCreate += conf
             confToClose += ruleId
 

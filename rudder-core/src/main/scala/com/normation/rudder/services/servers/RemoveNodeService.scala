@@ -52,7 +52,6 @@ class RemoveNodeServiceImpl(
     , ldapEntityMapper          : LDAPEntityMapper
     , roNodeGroupRepository     : RoNodeGroupRepository
     , woNodeGroupRepository     : WoNodeGroupRepository
-    , nodeConfigurationService  : NodeConfigurationService
     , nodeInfoService           : NodeInfoService
     , fullNodeRepo              : LDAPFullInventoryRepository
     , actionLogger              : EventLogRepository
@@ -131,14 +130,6 @@ class RemoveNodeServiceImpl(
    /**
    * Delete all node cnfiguration
    */
-  private def deleteAllNodesConfiguration() : Box[Unit]= {
-    logger.debug("Trying to clear all Nodes Configuration")
-    for {
-      result  <-  nodeConfigurationService.deleteAllNodeConfigurations()
-    } yield {
-      () // unit is expected
-    }
-  }
 
   /**
    * Look for the groups containing this node in their nodes list, and remove the node

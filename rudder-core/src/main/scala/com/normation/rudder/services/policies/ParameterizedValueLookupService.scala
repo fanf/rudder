@@ -441,16 +441,16 @@ trait ParameterizedValueLookupService_lookupRuleParameterization extends Paramet
     , allRules: Map[RuleId, Rule]
   ) : Box[Seq[Variable]] = {
      sequence(variables) { variable =>
-       logger.debug("Processing variable : %s".format(variable))
+       logger.trace("Processing variable : %s".format(variable))
        (sequence(variable.values) { value => value match {
            case CrParametrization(CrTargetParametrization(targetConfigRuleId, targetAccessorName)) =>
-             logger.debug("Processing rule's parameterized value on target: %s".format(value))
+             logger.trace("Processing rule's parameterized value on target: %s".format(value))
              lookupTargetParameter(variable.spec, RuleId(targetConfigRuleId), targetAccessorName, allNodeInfos, groupLib, allRules)
            case CrParametrization(CrVarParametrization(targetConfigRuleId, varAccessorName)) =>
-             logger.debug("Processing rule's parameterized value on variable: %s".format(value))
+             logger.trace("Processing rule's parameterized value on variable: %s".format(value))
              lookupVariableParameter(variable.spec, RuleId(targetConfigRuleId), varAccessorName, directiveLib, allRules)
            case CrParametrization(BadParametrization(name)) =>
-             logger.debug("Ignoring parameterized value (can not handle such parameter): %s".format(value))
+             logger.trace("Ignoring parameterized value (can not handle such parameter): %s".format(value))
              Full(Seq(value))
            case _ =>  //nothing to do
              Full(Seq(value))
@@ -459,7 +459,7 @@ trait ParameterizedValueLookupService_lookupRuleParameterization extends Paramet
        //note: the resulting Seq[values] may be longer after replacement that before
        ).map { seq =>
          val flat = seq.flatten
-         logger.debug(s"Setted variable values are: ${Variable.format(variable.spec.name, flat)}")
+         logger.trace(s"Setted variable values are: ${Variable.format(variable.spec.name, flat)}")
          Variable.matchCopy(variable, flat)
        }
      }
