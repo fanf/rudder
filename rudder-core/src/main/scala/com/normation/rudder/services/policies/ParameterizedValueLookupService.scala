@@ -55,6 +55,7 @@ import com.normation.rudder.domain.parameters.Parameter
 import com.normation.rudder.domain.parameters.ParameterName
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+import com.normation.rudder.services.policies.nodeconfig.ParameterForConfiguration
 
 /**
  * A service that handle parameterized value of
@@ -141,7 +142,7 @@ trait ParameterizedValueLookupService {
    *
    * nodeId: obviously, the node id
    * variables: the variables on which paremeter will be replaced
-   * parameters: parameters from TargetNodeConfiguration for that node
+   * parameters: parameters from NodeConfiguration for that node
    *
    */
   def lookupNodeParameterization(nodeId: NodeId, variables:Seq[Variable], parameters:Set[ParameterForConfiguration], allNodes:Set[NodeInfo]) : Box[Seq[Variable]]

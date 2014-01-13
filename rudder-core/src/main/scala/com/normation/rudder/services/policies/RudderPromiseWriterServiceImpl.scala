@@ -67,6 +67,8 @@ import net.liftweb.util.Helpers.tryo
 import com.normation.cfclerk.services.SystemVariableSpecService
 import scala.sys.process.ProcessLogger
 import com.normation.inventory.domain.NodeId
+import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
+import com.normation.rudder.services.policies.PathComputer
 
 class RudderCf3PromisesFileWriterServiceImpl(
   techniqueRepository: TechniqueRepository,
@@ -111,9 +113,9 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * It no longer change the status of the nodeconfiguration
    * @param updateBatch : the container for the server to be updated
    */
-  override def writePromisesForMachines(configurations: Map[NodeId, TargetNodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, TargetNodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
+  override def writePromisesForMachines(configurations: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
     // A buffer of node, promisefolder, newfolder, backupfolder
-    val folders = collection.mutable.Buffer[(TargetNodeConfiguration, String, String, String)]()
+    val folders = collection.mutable.Buffer[(NodeConfiguration, String, String, String)]()
     // Writing the policy
     for (node <- configurations.values) {
       if (node.identifiableCFCPIs.size == 0) {
@@ -152,11 +154,11 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * @param cause
    * @return : a Set of node, base folder, new folder, backup folder (don't want to return duplicate)
    */
-  private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: TargetNodeConfiguration, rootNodeConfigurationId:NodeId): Box[Set[(TargetNodeConfiguration, String, String, String)]] = {
+  private[this] def prepareRulesForAgents(baseNodePath: String, backupNodePath: String, node: NodeConfiguration, rootNodeConfigurationId:NodeId): Box[Set[(NodeConfiguration, String, String, String)]] = {
 
     logger.debug(s"Writting promises for node '${node.nodeInfo.hostname}' (${node.nodeInfo.id.value})")
 
-    val folders = collection.mutable.Set[(TargetNodeConfiguration, String, String, String)]()
+    val folders = collection.mutable.Set[(NodeConfiguration, String, String, String)]()
 
     for (agentType <- node.nodeInfo.agentsName) {
       var varNova = SystemVariable(systemVariableSpecService.get("NOVA"), Seq())

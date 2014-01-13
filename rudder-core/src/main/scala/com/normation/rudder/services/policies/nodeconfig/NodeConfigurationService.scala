@@ -36,12 +36,9 @@ package com.normation.rudder.services.policies.nodeconfig
 
 import com.normation.rudder.domain.servers._
 import net.liftweb.common.Box
-import com.normation.rudder.services.policies.TargetNodeConfiguration
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.services.policies.TargetNodeConfiguration
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.services.policies.TargetNodeConfiguration
 
 trait NodeConfigurationService {
 
@@ -51,15 +48,15 @@ trait NodeConfigurationService {
   //def getAllNodeConfigurations() : Box[Map[NodeId, NodeConfiguration]]
 
   /**
-   * Update a node configuration using a targetNodeConfiguration :
+   * Update a node configuration using a NodeConfiguration :
    * update the directives and the node context, as well as the agentsName
    *
    * Return the map of all node config, with the
    */
-  def sanitize(targets : Seq[TargetNodeConfiguration]): Box[Map[NodeId, TargetNodeConfiguration]]
+  def sanitize(targets : Seq[NodeConfiguration]): Box[Map[NodeId, NodeConfiguration]]
 
 
-  def detectChangeInNodes(nodes : Seq[TargetNodeConfiguration], directiveLib: FullActiveTechniqueCategory): Set[RuleId]
+  def detectChangeInNodes(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory): Set[RuleId]
 
 
   /**
@@ -82,19 +79,19 @@ trait NodeConfigurationService {
   /**
    * Cache these node configurations.
    */
-  def cacheNodeConfiguration(nodeConfigurations: Set[TargetNodeConfiguration]): Box[Set[NodeId]]
+  def cacheNodeConfiguration(nodeConfigurations: Set[NodeConfiguration]): Box[Set[NodeId]]
 
   /**
    * Write the templates of ALL the given node configuration.
    * Select them carrefully!
    */
-  def writeTemplate(rootNodeId: NodeId,  allNodeConfigs: Map[NodeId, TargetNodeConfiguration]): Box[Seq[TargetNodeConfiguration]]
+  def writeTemplate(rootNodeId: NodeId,  allNodeConfigs: Map[NodeId, NodeConfiguration]): Box[Seq[NodeConfiguration]]
 
   /**
    * Look what are the node configuration to write
    */
-  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, TargetNodeConfiguration]): Box[Map[NodeId, TargetNodeConfiguration]]
+  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration]): Box[Map[NodeId, NodeConfiguration]]
 
-  def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: TargetNodeConfiguration, directiveLib: FullActiveTechniqueCategory): Set[RuleId]
+  def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory): Set[RuleId]
 
 }

@@ -45,17 +45,10 @@ import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.rudder.exceptions.TechniqueException
 import com.normation.rudder.repository.FullActiveTechniqueCategory
-import com.normation.rudder.services.policies.TargetNodeConfiguration
 import com.normation.rudder.services.policies.TemplateWriter
 import com.normation.utils.Control._
 
-import net.liftweb.common.Box
-import net.liftweb.common.Empty
-import net.liftweb.common.EmptyBox
-import net.liftweb.common.Failure
-import net.liftweb.common.Full
-import net.liftweb.common.Loggable
-import net.liftweb.common.ParamFailure
+import net.liftweb.common._
 import net.liftweb.json.NoTypeHints
 import net.liftweb.json.Serialization
 import net.liftweb.json.Serialization.writePretty
@@ -63,131 +56,12 @@ import net.liftweb.json.Serialization.writePretty
 
 
 /**
- * Implementation of the Node Configuration service
- * It manages the TargetNodeConfiguration content (the cache of the deployed conf)
- *
- * That implementation is not thread safe at all, and all call to its
- * methods should be made in the context of an actor
- * (deployment service and it's actor model is a good example)
- *
+ * A class implementing the logic about node configuration change.
+ * Extracted from NodeConfigurationServiceImpl to make it testable.
  */
-class NodeConfigurationServiceImpl(
-    policyTranslator    : TemplateWriter
-  , repository          : NodeConfigurationCacheRepository
-  , logNodeConfig       : NodeConfigurationLogger
-) extends NodeConfigurationService with Loggable {
+class DetectChangeInNodeConfiguration extends Loggable {
 
-  //delegate to repository for nodeconfig persistence
-  def deleteNodeConfigurations(nodeIds:Set[NodeId]) :  Box[Set[NodeId]] = repository.deleteNodeConfigurations(nodeIds)
-  def deleteAllNodeConfigurations() : Box[Unit] = repository.deleteAllNodeConfigurations
-  def onlyKeepNodeConfiguration(nodeIds:Set[NodeId]) : Box[Set[NodeId]] = repository.onlyKeepNodeConfiguration(nodeIds)
-  def cacheNodeConfiguration(nodeConfigurations: Set[TargetNodeConfiguration]): Box[Set[NodeId]] = repository.save(nodeConfigurations.map(x => NodeConfigurationCache(x)))
-
-  def sanitize(targets : Seq[TargetNodeConfiguration]) : Box[Map[NodeId, TargetNodeConfiguration]] = {
-
-    /**
-     * Sanitize directive to the node configuration, returning a new node configuration with
-     * updated directives.
-     *
-     * That method check that:
-     * - that the directive added is not already in the targetNodeConfiguration (why ?)
-     * - that there is at most one directive for each "unique" technique
-     */
-    def sanitizeOne(nodeConfig: TargetNodeConfiguration) : Box[TargetNodeConfiguration] = {
-
-      val emptyConfig: Box[Seq[RuleWithCf3PolicyDraft]] = Full(Seq())
-
-      val newConfig = (emptyConfig/:nodeConfig.identifiableCFCPIs) { case (current, toAdd) =>
-
-        current match {
-          case eb:EmptyBox => eb
-          case Full(seq) =>
-            if(seq.exists( _.draftId == toAdd.draftId )) {
-              /*
-               * Why do we do that and not just keep the last (or first) inserted for a
-               * given draft id ?
-               */
-              ParamFailure[RuleWithCf3PolicyDraft](
-                  "Duplicate directive",
-                  Full(new TechniqueException("Duplicate directive " + toAdd.draftId)),
-                  Empty,
-                  toAdd)
-            } else if(!toAdd.cf3PolicyDraft.technique.isMultiInstance) {
-
-              val withSameTechnique = (seq :+ toAdd).filter( _.cf3PolicyDraft.technique.id == toAdd.cf3PolicyDraft.technique.id).sortBy( _.cf3PolicyDraft.priority )
-              //we know that the size is at least one, so keep the head, and log discard tails
-
-              withSameTechnique.tail.foreach { x =>
-                logger.debug(s"Unicity check: discard policy draft with id '${x.cf3PolicyDraft.id.value}' on node '${nodeConfig.nodeInfo.id.value}' (based on Technique with the 'unique' attribute set, and more priorised directive exists)")
-              }
-
-              Full(seq :+ withSameTechnique.head)
-
-            } else {
-              Full(seq :+ toAdd)
-            }
-        }
-      }
-      newConfig.map(x => nodeConfig.copy(identifiableCFCPIs = x))
-    }
-
-
-    for {
-      sanitized <- sequence(targets) { sanitizeOne(_) }
-    } yield {
-      sanitized.map(c => (c.nodeInfo.id, c)).toMap
-    }
-
-  }
-
-  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, TargetNodeConfiguration]): Box[Map[NodeId, TargetNodeConfiguration]] = {
-    repository.getAll.map { oldConfigCache =>
-      val newConfigCache = nodeConfigurations.map{ case (_, conf) => NodeConfigurationCache(conf) }
-      val oldConfigCache = repository.getAll.openOrThrowException("TODO: change that!!!!!")
-
-      val (updatedConfig, notUpdatedConfig) = newConfigCache.toSeq.partition{ p =>
-        oldConfigCache.get(p.id) match {
-          case None => true
-          case Some(e) => e != p
-        }
-      }
-
-      if(notUpdatedConfig.size > 0) {
-        logger.debug(s"Not updating non-modified node configuration: [${notUpdatedConfig.map( _.id.value).mkString(", ")}]")
-      }
-
-      if(updatedConfig.size == 0) {
-        logger.info("No node configuration was updated, no promises to write")
-        Map()
-      } else {
-        val nodeToKeep = updatedConfig.map( _.id ).toSet
-        logger.info(s"Configuration of following nodes were updated, their promises are going to be written: [${updatedConfig.map(_.id.value).mkString(", ")}]")
-        nodeConfigurations.filterKeys(id => nodeToKeep.contains(id))
-      }
-    }
-  }
-
-  /**
-   * Write templates for node configuration that changed since the last write.
-   *
-   */
-  def writeTemplate(rootNodeId: NodeId, nodeConfigs: Map[NodeId, TargetNodeConfiguration]) : Box[Seq[TargetNodeConfiguration]] = {
-    policyTranslator.writePromisesForMachines(nodeConfigs, rootNodeId, nodeConfigs).map(_ => nodeConfigs.values.toSeq )
-  }
-
-
-  override def detectChangeInNodes(nodes : Seq[TargetNodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId]  = {
-    //todo: get the list of existing node configuration to compare to
-
-    val existing : Map[NodeId, NodeConfigurationCache] = repository.getAll.openOrThrowException("TODO CHANGE THAT").toMap
-
-    nodes.flatMap{ x =>
-      detectChangeInNode(existing.get(x.nodeInfo.id), x, directiveLib)
-    }.toSet
-  }
-
-
-  override def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: TargetNodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
+  override def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
     /*
      * Check if a policy draft (Cf3PolicyDraft) has a technique updated more recently
      * than the given date.
@@ -284,4 +158,138 @@ class NodeConfigurationServiceImpl(
         }
     }
   }
+
+}
+
+
+
+/**
+ * Implementation of the Node Configuration service
+ * It manages the NodeConfiguration content (the cache of the deployed conf)
+ *
+ * That implementation is not thread safe at all, and all call to its
+ * methods should be made in the context of an actor
+ * (deployment service and it's actor model is a good example)
+ *
+ */
+class NodeConfigurationServiceImpl(
+    policyTranslator    : TemplateWriter
+  , repository          : NodeConfigurationCacheRepository
+  , logNodeConfig       : NodeConfigurationLogger
+) extends NodeConfigurationService with Loggable {
+
+  private[this] val detect = new DetectChangeInNodeConfiguration()
+
+  //delegate to repository for nodeconfig persistence
+  def deleteNodeConfigurations(nodeIds:Set[NodeId]) :  Box[Set[NodeId]] = repository.deleteNodeConfigurations(nodeIds)
+  def deleteAllNodeConfigurations() : Box[Unit] = repository.deleteAllNodeConfigurations
+  def onlyKeepNodeConfiguration(nodeIds:Set[NodeId]) : Box[Set[NodeId]] = repository.onlyKeepNodeConfiguration(nodeIds)
+  def cacheNodeConfiguration(nodeConfigurations: Set[NodeConfiguration]): Box[Set[NodeId]] = repository.save(nodeConfigurations.map(x => NodeConfigurationCache(x)))
+
+  def sanitize(targets : Seq[NodeConfiguration]) : Box[Map[NodeId, NodeConfiguration]] = {
+
+    /**
+     * Sanitize directive to the node configuration, returning a new node configuration with
+     * updated directives.
+     *
+     * That method check that:
+     * - that the directive added is not already in the NodeConfiguration (why ?)
+     * - that there is at most one directive for each "unique" technique
+     */
+    def sanitizeOne(nodeConfig: NodeConfiguration) : Box[NodeConfiguration] = {
+
+      val emptyConfig: Box[Seq[RuleWithCf3PolicyDraft]] = Full(Seq())
+
+      val newConfig = (emptyConfig/:nodeConfig.identifiableCFCPIs) { case (current, toAdd) =>
+
+        current match {
+          case eb:EmptyBox => eb
+          case Full(seq) =>
+            if(seq.exists( _.draftId == toAdd.draftId )) {
+              /*
+               * Why do we do that and not just keep the last (or first) inserted for a
+               * given draft id ?
+               */
+              ParamFailure[RuleWithCf3PolicyDraft](
+                  "Duplicate directive",
+                  Full(new TechniqueException("Duplicate directive " + toAdd.draftId)),
+                  Empty,
+                  toAdd)
+            } else if(!toAdd.cf3PolicyDraft.technique.isMultiInstance) {
+
+              val withSameTechnique = (seq :+ toAdd).filter( _.cf3PolicyDraft.technique.id == toAdd.cf3PolicyDraft.technique.id).sortBy( _.cf3PolicyDraft.priority )
+              //we know that the size is at least one, so keep the head, and log discard tails
+
+              withSameTechnique.tail.foreach { x =>
+                logger.debug(s"Unicity check: discard policy draft with id '${x.cf3PolicyDraft.id.value}' on node '${nodeConfig.nodeInfo.id.value}' (based on Technique with the 'unique' attribute set, and more priorised directive exists)")
+              }
+
+              Full(seq :+ withSameTechnique.head)
+
+            } else {
+              Full(seq :+ toAdd)
+            }
+        }
+      }
+      newConfig.map(x => nodeConfig.copy(identifiableCFCPIs = x))
+    }
+
+
+    for {
+      sanitized <- sequence(targets) { sanitizeOne(_) }
+    } yield {
+      sanitized.map(c => (c.nodeInfo.id, c)).toMap
+    }
+
+  }
+
+  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration]): Box[Map[NodeId, NodeConfiguration]] = {
+    repository.getAll.map { oldConfigCache =>
+      val newConfigCache = nodeConfigurations.map{ case (_, conf) => NodeConfigurationCache(conf) }
+      val oldConfigCache = repository.getAll.openOrThrowException("TODO: change that!!!!!")
+
+      val (updatedConfig, notUpdatedConfig) = newConfigCache.toSeq.partition{ p =>
+        oldConfigCache.get(p.id) match {
+          case None => true
+          case Some(e) => e != p
+        }
+      }
+
+      if(notUpdatedConfig.size > 0) {
+        logger.debug(s"Not updating non-modified node configuration: [${notUpdatedConfig.map( _.id.value).mkString(", ")}]")
+      }
+
+      if(updatedConfig.size == 0) {
+        logger.info("No node configuration was updated, no promises to write")
+        Map()
+      } else {
+        val nodeToKeep = updatedConfig.map( _.id ).toSet
+        logger.info(s"Configuration of following nodes were updated, their promises are going to be written: [${updatedConfig.map(_.id.value).mkString(", ")}]")
+        nodeConfigurations.filterKeys(id => nodeToKeep.contains(id))
+      }
+    }
+  }
+
+  /**
+   * Write templates for node configuration that changed since the last write.
+   *
+   */
+  def writeTemplate(rootNodeId: NodeId, nodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]] = {
+    policyTranslator.writePromisesForMachines(nodeConfigs, rootNodeId, nodeConfigs).map(_ => nodeConfigs.values.toSeq )
+  }
+
+
+  override def detectChangeInNodes(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId]  = {
+    //todo: get the list of existing node configuration to compare to
+
+    val existing : Map[NodeId, NodeConfigurationCache] = repository.getAll.openOrThrowException("TODO CHANGE THAT").toMap
+
+    nodes.flatMap{ x =>
+      detectChangeInNode(existing.get(x.nodeInfo.id), x, directiveLib)
+    }.toSet
+  }
+
+
+  override def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] =
+    detect.detectChangeInNode(currentOpt, targetConfig, directiveLib)
 }

@@ -42,6 +42,7 @@ import java.io.IOException
 import com.normation.rudder.repository.LicenseRepository
 import com.normation.cfclerk.domain.PromisesFinalMoveInfo
 import com.normation.inventory.domain.NodeId
+import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
 
 trait TemplateWriter extends Loggable {
   def licenseRepository : LicenseRepository
@@ -52,9 +53,9 @@ trait TemplateWriter extends Loggable {
    * Write the promises of all the nodes
    * @param updateBatch : the container for the server to be updated
    */
-  def writePromisesForMachines(configuration: Map[NodeId, TargetNodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, TargetNodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
+  def writePromisesForMachines(configuration: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
 
-  def writeLicense(nodeConfiguration : TargetNodeConfiguration, newMachineFolder:String) : Unit = {
+  def writeLicense(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
     logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.nodeInfo.id);
     nodeConfiguration.isPolicyServer match {
       case true =>  copyLicenseFile(nodeConfiguration.nodeInfo.id, newMachineFolder)

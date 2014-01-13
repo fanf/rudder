@@ -40,7 +40,7 @@ import java.io.PrintWriter
 import org.joda.time.DateTime
 
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.services.policies.TargetNodeConfiguration
+import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
 import com.normation.utils.Control._
 
 import net.liftweb.common._
@@ -52,7 +52,7 @@ import net.liftweb.json.Serialization.writePretty
 
 trait NodeConfigurationLogger {
 
-  def log(nodeConfiguration: Seq[TargetNodeConfiguration]): Box[Set[NodeId]]
+  def log(nodeConfiguration: Seq[NodeConfiguration]): Box[Set[NodeId]]
 
 }
 
@@ -72,7 +72,7 @@ class NodeConfigurationLoggerImpl extends NodeConfigurationLogger with Loggable 
     }
   }
 
-  def log(nodeConfiguration: Seq[TargetNodeConfiguration]): Box[Set[NodeId]] = {
+  def log(nodeConfiguration: Seq[NodeConfiguration]): Box[Set[NodeId]] = {
     import net.liftweb.json._
     import net.liftweb.json.Serialization.writePretty
     implicit val formats = Serialization.formats(NoTypeHints)

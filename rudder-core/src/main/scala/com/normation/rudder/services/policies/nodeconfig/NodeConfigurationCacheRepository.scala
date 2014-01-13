@@ -36,7 +36,7 @@ package com.normation.rudder.services.policies.nodeconfig
 
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.cfclerk.domain.Cf3PolicyDraftId
-import com.normation.rudder.services.policies.TargetNodeConfiguration
+import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.inventory.domain.NodeId
 import net.liftweb.common.Box
@@ -58,7 +58,6 @@ case class PolicyCache(
 )
 
 case class NodeConfigurationCache(
-
     id: NodeId
   , writtenDate: Option[DateTime]
   , nodeInfoCache: Int
@@ -70,7 +69,7 @@ case class NodeConfigurationCache(
 
 object NodeConfigurationCache {
 
-  def apply(nodeConfig: TargetNodeConfiguration): NodeConfigurationCache = {
+  def apply(nodeConfig: NodeConfiguration): NodeConfigurationCache = {
 
     /*for node info, only consider:
      * name, hostname, agentsName, policyServerId, localAdministratorAccountName
