@@ -1444,7 +1444,7 @@ object RudderConfig extends Loggable {
                                         , new ChangeRequestMigration_4_5(xmlMigration_4_5)
                                       )
                                     )
-    , previousMigrationController = Some(eventLogsMigration_2_3_Management)
+    , previousMigrationController = Some(controlXmlFileFormatMigration_3_4)
   )
 
 
