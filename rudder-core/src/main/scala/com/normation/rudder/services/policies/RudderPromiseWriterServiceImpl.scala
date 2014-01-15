@@ -68,7 +68,6 @@ import com.normation.cfclerk.services.SystemVariableSpecService
 import scala.sys.process.ProcessLogger
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
-import com.normation.rudder.services.policies.PathComputer
 
 class RudderCf3PromisesFileWriterServiceImpl(
   techniqueRepository: TechniqueRepository,
@@ -118,7 +117,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
     val folders = collection.mutable.Buffer[(NodeConfiguration, String, String, String)]()
     // Writing the policy
     for (node <- configurations.values) {
-      if (node.identifiableCFCPIs.size == 0) {
+      if (node.policyDrafts.size == 0) {
         logger.error("Could not write the promises for server %s : No policy found on server".format(node.nodeInfo.id))
         throw new Exception("Could not write the promises : no policy on machine " + node)
       }

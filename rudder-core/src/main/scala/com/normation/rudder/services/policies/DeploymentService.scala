@@ -66,6 +66,7 @@ import com.normation.utils.HashcodeCaching
 import net.liftweb.common._
 import com.normation.rudder.services.policies.nodeconfig.ParameterForConfiguration
 import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
+import com.normation.rudder.services.policies.nodeconfig.NodeConfigurationCache
 
 
 
@@ -129,7 +130,10 @@ trait DeploymentService extends Loggable {
 
       beginTime                =  DateTime.now().getMillis
       //that's the first time we actually write something in repos: new serial for updated rules
-      (updatedCrs, deletedCrs) <- detectUpdatesAndIncrementRuleSerial(sanitizedNodeConfig.values.toSeq, directiveLib, allRulesMap)?~! "Cannot detect the updates in the NodeConfiguration"
+
+
+      nodeConfigCache          <- getNodeConfigurationCache()
+      (updatedCrs, deletedCrs) <- detectUpdatesAndIncrementRuleSerial(sanitizedNodeConfig.values.toSeq, nodeConfigCache, directiveLib, allRulesMap)?~! "Cannot detect the updates in the NodeConfiguration"
       timeIncrementRuleSerial  =  (DateTime.now().getMillis - beginTime)
       serialedNodes            =  updateSerialNumber(sanitizedNodeConfig, updatedCrs.toMap)
       // Update the serial of ruleVals when there were modifications on Rules values
@@ -137,10 +141,9 @@ trait DeploymentService extends Loggable {
       updatedRuleVals          =  updateRuleVal(rules, updatedCrs)
       _                        = logger.debug(s"Check node configuration updates leading to rules serial number updates and updating serial number in ${timeIncrementRuleSerial}ms")
 
-
       writeTime = DateTime.now().getMillis
       //second time we write something in repos: updated node configuration
-      writtenNodeConfigs <- writeNodeConfigurations(rootNodeId, serialedNodes) ?~! "Cannot write configuration node"
+      writtenNodeConfigs <- writeNodeConfigurations(rootNodeId, serialedNodes, nodeConfigCache) ?~! "Cannot write configuration node"
       timeWriteNodeConfig = (DateTime.now().getMillis - writeTime)
       _ = logger.debug(s"rules deployed in ${timeWriteNodeConfig}ms, process report information")
 
@@ -236,13 +239,19 @@ trait DeploymentService extends Loggable {
    */
   def forgetOtherNodeConfigurationState(keep: Set[NodeId]) : Box[Set[NodeId]]
 
+
+  /**
+   * Get the actual cached values for NodeConfiguration
+   */
+  def getNodeConfigurationCache(): Box[Map[NodeId, NodeConfigurationCache]]
+
   /**
    * Detect changes in the NodeConfiguration, to trigger an increment in the related CR
    * The CR are updated in the LDAP
    * Must have all the NodeConfiguration in nodes
    * Returns two seq : the updated rule, and the deleted rule
    */
-  def detectUpdatesAndIncrementRuleSerial(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory, rules: Map[RuleId, Rule]) : Box[(Seq[(RuleId,Int)], Seq[RuleId])]
+  def detectUpdatesAndIncrementRuleSerial(nodes : Seq[NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache], directiveLib: FullActiveTechniqueCategory, rules: Map[RuleId, Rule]) : Box[(Seq[(RuleId,Int)], Seq[RuleId])]
 
   /**
    * Set all the serial number when needed (a change in CR)
@@ -256,7 +265,7 @@ trait DeploymentService extends Loggable {
    * Else, promises are generated;
    * Return the list of configuration successfully written.
    */
-  def writeNodeConfigurations(rootNodeId: NodeId, allNodeConfig: Map[NodeId, NodeConfiguration]) : Box[Set[NodeConfiguration]]
+  def writeNodeConfigurations(rootNodeId: NodeId, allNodeConfig: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]) : Box[Set[NodeConfiguration]]
 
 
   /**
@@ -444,7 +453,7 @@ trait DeploymentService_buildNodeConfigurations extends DeploymentService with L
   ) {
     val identifiablePolicyDrafts = scala.collection.mutable.Buffer[PolicyDraft]()
 
-    def immutable = NodeConfiguration(nodeInfo, identifiablePolicyDrafts.toSeq.map(_.toRuleWithCf3PolicyDraft), nodeContext, parameters, isRoot, writtenDate)
+    def immutable = NodeConfiguration(nodeInfo, identifiablePolicyDrafts.toSeq.map(_.toRuleWithCf3PolicyDraft), nodeContext, parameters, writtenDate, isRoot)
   }
 
 
@@ -656,15 +665,17 @@ trait DeploymentService_updateAndWriteRule extends DeploymentService {
     nodeConfigurationService.onlyKeepNodeConfiguration(keep)
   }
 
+  def getNodeConfigurationCache(): Box[Map[NodeId, NodeConfigurationCache]] = nodeConfigurationService.getNodeConfigurationCache()
+
 
   /**
    * Detect changes in rules and update their serial
    * Returns two seq : the updated rules, and the deleted rules
    */
-  def detectUpdatesAndIncrementRuleSerial(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory, allRules: Map[RuleId, Rule]) : Box[(Seq[(RuleId,Int)], Seq[RuleId])] = {
+  def detectUpdatesAndIncrementRuleSerial(nodes : Seq[NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache], directiveLib: FullActiveTechniqueCategory, allRules: Map[RuleId, Rule]) : Box[(Seq[(RuleId,Int)], Seq[RuleId])] = {
     val firstElt = (Seq[(RuleId,Int)](), Seq[RuleId]())
     // First, fetch the updated CRs (which are either updated or deleted)
-    (( Full(firstElt) )/:(nodeConfigurationService.detectChangeInNodes(nodes, directiveLib)) ) { case (Full((updated, deleted)), ruleId) => {
+    (( Full(firstElt) )/:(nodeConfigurationService.detectChangeInNodes(nodes, cache, directiveLib)) ) { case (Full((updated, deleted)), ruleId) => {
       allRules.get(ruleId) match {
         case Some(rule) =>
           woRuleRepo.incrementSerial(rule.id) match {
@@ -694,17 +705,17 @@ trait DeploymentService_updateAndWriteRule extends DeploymentService {
    * Else, promises are generated;
    * Return the list of configuration successfully written.
    */
-  def writeNodeConfigurations(rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Set[NodeConfiguration]] = {
+  def writeNodeConfigurations(rootNodeId: NodeId, allNodeConfigs: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]) : Box[Set[NodeConfiguration]] = {
     /*
      * Several steps heres:
-     * - get the cache node configurations values
      * - look what node configuration are updated (based on their cache ?)
      * - write these node configuration
      * - update caches
      */
+    val updated = nodeConfigurationService.selectUpdatedNodeConfiguration(allNodeConfigs, cache)
+    val fsWrite0   =  DateTime.now.getMillis
+
     for {
-      updated    <- nodeConfigurationService.selectUpdatedNodeConfiguration(allNodeConfigs)
-      fsWrite0   =  DateTime.now.getMillis
       written    <- nodeConfigurationService.writeTemplate(rootNodeId, updated)
       ldapWrite0 =  DateTime.now.getMillis
       fsWrite1   =  (ldapWrite0 - fsWrite0)

@@ -43,9 +43,9 @@ import com.normation.rudder.domain.policies.RuleId
 trait NodeConfigurationService {
 
   /**
-   * Get all NodeConfigurations
+   * Get all NodeConfigurations cache
    */
-  //def getAllNodeConfigurations() : Box[Map[NodeId, NodeConfiguration]]
+  def getNodeConfigurationCache(): Box[Map[NodeId, NodeConfigurationCache]]
 
   /**
    * Update a node configuration using a NodeConfiguration :
@@ -56,7 +56,7 @@ trait NodeConfigurationService {
   def sanitize(targets : Seq[NodeConfiguration]): Box[Map[NodeId, NodeConfiguration]]
 
 
-  def detectChangeInNodes(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory): Set[RuleId]
+  def detectChangeInNodes(nodes : Seq[NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache], directiveLib: FullActiveTechniqueCategory): Set[RuleId]
 
 
   /**
@@ -90,7 +90,7 @@ trait NodeConfigurationService {
   /**
    * Look what are the node configuration to write
    */
-  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration]): Box[Map[NodeId, NodeConfiguration]]
+  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]): Map[NodeId, NodeConfiguration]
 
   def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory): Set[RuleId]
 

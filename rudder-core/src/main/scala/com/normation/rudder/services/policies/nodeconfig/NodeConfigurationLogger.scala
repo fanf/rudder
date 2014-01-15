@@ -40,7 +40,6 @@ import java.io.PrintWriter
 import org.joda.time.DateTime
 
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
 import com.normation.utils.Control._
 
 import net.liftweb.common._
@@ -56,11 +55,19 @@ trait NodeConfigurationLogger {
 
 }
 
-class NodeConfigurationLoggerImpl extends NodeConfigurationLogger with Loggable {
+/**
+ * A node configuration logger that allows to log node configuration in
+ * some place on the FS if a given file is present.
+ *
+ * Writing node configuration in the FS may be rather long.
+ */
+class NodeConfigurationLoggerImpl(
+    //where to write node config logs
+    path         : String
+  , doLogFileName: String
+) extends NodeConfigurationLogger with Loggable {
 
   import java.io.File
-
-  val path = "/tmp/rudder/nodeConfiguration"
 
   {
     val p = new File(path)
@@ -89,7 +96,7 @@ class NodeConfigurationLoggerImpl extends NodeConfigurationLogger with Loggable 
       }
     }
 
-    val doLogFile = new File(path, "log")
+    val doLogFile = new File(path, doLogFileName)
     if(doLogFile.exists) {
       for {
         logTime <- writeIn(new File(path, "lastWritenTime")) { printWriter =>

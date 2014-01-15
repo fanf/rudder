@@ -87,7 +87,7 @@ object NodeConfigurationCache {
     }
 
     val policyCacheValue = {
-      nodeConfig.identifiableCFCPIs.map { case r@RuleWithCf3PolicyDraft(ruleId, draft) =>
+      nodeConfig.policyDrafts.map { case r@RuleWithCf3PolicyDraft(ruleId, draft) =>
         PolicyCache(ruleId, draft.id, r.hashCode)
       }.toSet
     }

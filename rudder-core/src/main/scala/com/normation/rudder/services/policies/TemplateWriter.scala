@@ -57,7 +57,7 @@ trait TemplateWriter extends Loggable {
 
   def writeLicense(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
     logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.nodeInfo.id);
-    nodeConfiguration.isPolicyServer match {
+    nodeConfiguration.nodeInfo.isPolicyServer match {
       case true =>  copyLicenseFile(nodeConfiguration.nodeInfo.id, newMachineFolder)
 
       case false => copyLicenseFile(nodeConfiguration.nodeInfo.policyServerId, newMachineFolder)

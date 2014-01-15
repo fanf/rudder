@@ -61,13 +61,13 @@ case object ParameterForConfiguration {
 }
 
 case class NodeConfiguration(
-    nodeInfo          : NodeInfo
-  , identifiableCFCPIs: Seq[RuleWithCf3PolicyDraft]
+    nodeInfo    : NodeInfo
+  , policyDrafts: Seq[RuleWithCf3PolicyDraft]
     //environment variable for that server
-  , nodeContext       : Map[String, Variable]
-  , parameters        : Set[ParameterForConfiguration]
-  , writtenDate       : Option[DateTime] = None
-  , isRootServer      : Boolean = false
+  , nodeContext : Map[String, Variable]
+  , parameters  : Set[ParameterForConfiguration]
+  , writtenDate : Option[DateTime] = None
+  , isRootServer: Boolean = false
 ) extends HashcodeCaching with Loggable {
 
   /**
@@ -77,12 +77,12 @@ case class NodeConfiguration(
    */
   def setSerial(rules : Map[RuleId,Int]) : NodeConfiguration = {
 
-    val newRuleWithCf3PolicyDrafts = this.identifiableCFCPIs.map { r =>
+    val newRuleWithCf3PolicyDrafts = this.policyDrafts.map { r =>
       val s = rules.getOrElse(r.ruleId, r.cf3PolicyDraft.serial)
       r.copy(cf3PolicyDraft = r.cf3PolicyDraft.copy(serial = s))
     }
 
-    this.copy(identifiableCFCPIs = newRuleWithCf3PolicyDrafts)
+    this.copy(policyDrafts = newRuleWithCf3PolicyDrafts)
   }
 
 
@@ -91,12 +91,12 @@ case class NodeConfiguration(
         outPath
       , parameters.map(x => ParameterEntry(x.name.value, x.value)).toSet
     )
-    identifiableCFCPIs.foreach (x =>  container.add(x.cf3PolicyDraft))
+    policyDrafts.foreach (x =>  container.add(x.cf3PolicyDraft))
     container
   }
 
   def findDirectiveByTechnique(techniqueId : TechniqueId): Map[Cf3PolicyDraftId, RuleWithCf3PolicyDraft] = {
-    identifiableCFCPIs.filter(x =>
+    policyDrafts.filter(x =>
       x.cf3PolicyDraft.technique.id.name.value.equalsIgnoreCase(techniqueId.name.value) &&
       x.cf3PolicyDraft.technique.id.version == techniqueId.version
     ).map(x => (x.draftId , x)).toMap

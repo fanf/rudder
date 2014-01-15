@@ -61,7 +61,7 @@ import net.liftweb.json.Serialization.writePretty
  */
 class DetectChangeInNodeConfiguration extends Loggable {
 
-  override def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
+  def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
     /*
      * Check if a policy draft (Cf3PolicyDraft) has a technique updated more recently
      * than the given date.
@@ -92,7 +92,7 @@ class DetectChangeInNodeConfiguration extends Loggable {
       case None =>
         //what do we do if we don't have a cache for the node ? All the target rules are "changes" ?
         logger.trace("No node configuration cache availabe")
-        targetConfig.identifiableCFCPIs.map( _.ruleId ).toSet
+        targetConfig.policyDrafts.map( _.ruleId ).toSet
       case Some(current) =>
 
         val target = NodeConfigurationCache(targetConfig)
@@ -146,7 +146,7 @@ class DetectChangeInNodeConfiguration extends Loggable {
           }) ++ {
             //we also have to add all Rule ID for a draft whose technique has been accepted since last cache generation
             //(because we need to write template again)
-            val ids = (targetConfig.identifiableCFCPIs.collect {
+            val ids = (targetConfig.policyDrafts.collect {
               case RuleWithCf3PolicyDraft(ruleId, draft) if(wasUpdatedSince(draft, current.writtenDate, directiveLib)) => ruleId
             }).toSet
 
@@ -185,6 +185,7 @@ class NodeConfigurationServiceImpl(
   def deleteAllNodeConfigurations() : Box[Unit] = repository.deleteAllNodeConfigurations
   def onlyKeepNodeConfiguration(nodeIds:Set[NodeId]) : Box[Set[NodeId]] = repository.onlyKeepNodeConfiguration(nodeIds)
   def cacheNodeConfiguration(nodeConfigurations: Set[NodeConfiguration]): Box[Set[NodeId]] = repository.save(nodeConfigurations.map(x => NodeConfigurationCache(x)))
+  def getNodeConfigurationCache(): Box[Map[NodeId, NodeConfigurationCache]] = repository.getAll
 
   def sanitize(targets : Seq[NodeConfiguration]) : Box[Map[NodeId, NodeConfiguration]] = {
 
@@ -200,7 +201,7 @@ class NodeConfigurationServiceImpl(
 
       val emptyConfig: Box[Seq[RuleWithCf3PolicyDraft]] = Full(Seq())
 
-      val newConfig = (emptyConfig/:nodeConfig.identifiableCFCPIs) { case (current, toAdd) =>
+      val newConfig = (emptyConfig/:nodeConfig.policyDrafts) { case (current, toAdd) =>
 
         current match {
           case eb:EmptyBox => eb
@@ -231,7 +232,7 @@ class NodeConfigurationServiceImpl(
             }
         }
       }
-      newConfig.map(x => nodeConfig.copy(identifiableCFCPIs = x))
+      newConfig.map(x => nodeConfig.copy(policyDrafts = x))
     }
 
 
@@ -243,30 +244,27 @@ class NodeConfigurationServiceImpl(
 
   }
 
-  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration]): Box[Map[NodeId, NodeConfiguration]] = {
-    repository.getAll.map { oldConfigCache =>
-      val newConfigCache = nodeConfigurations.map{ case (_, conf) => NodeConfigurationCache(conf) }
-      val oldConfigCache = repository.getAll.openOrThrowException("TODO: change that!!!!!")
+  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]): Map[NodeId, NodeConfiguration] = {
+    val newConfigCache = nodeConfigurations.map{ case (_, conf) => NodeConfigurationCache(conf) }
 
-      val (updatedConfig, notUpdatedConfig) = newConfigCache.toSeq.partition{ p =>
-        oldConfigCache.get(p.id) match {
-          case None => true
-          case Some(e) => e != p
-        }
+    val (updatedConfig, notUpdatedConfig) = newConfigCache.toSeq.partition{ p =>
+      cache.get(p.id) match {
+        case None => true
+        case Some(e) => e != p
       }
+    }
 
-      if(notUpdatedConfig.size > 0) {
-        logger.debug(s"Not updating non-modified node configuration: [${notUpdatedConfig.map( _.id.value).mkString(", ")}]")
-      }
+    if(notUpdatedConfig.size > 0) {
+      logger.debug(s"Not updating non-modified node configuration: [${notUpdatedConfig.map( _.id.value).mkString(", ")}]")
+    }
 
-      if(updatedConfig.size == 0) {
-        logger.info("No node configuration was updated, no promises to write")
-        Map()
-      } else {
-        val nodeToKeep = updatedConfig.map( _.id ).toSet
-        logger.info(s"Configuration of following nodes were updated, their promises are going to be written: [${updatedConfig.map(_.id.value).mkString(", ")}]")
-        nodeConfigurations.filterKeys(id => nodeToKeep.contains(id))
-      }
+    if(updatedConfig.size == 0) {
+      logger.info("No node configuration was updated, no promises to write")
+      Map()
+    } else {
+      val nodeToKeep = updatedConfig.map( _.id ).toSet
+      logger.info(s"Configuration of following nodes were updated, their promises are going to be written: [${updatedConfig.map(_.id.value).mkString(", ")}]")
+      nodeConfigurations.filterKeys(id => nodeToKeep.contains(id))
     }
   }
 
@@ -279,13 +277,9 @@ class NodeConfigurationServiceImpl(
   }
 
 
-  override def detectChangeInNodes(nodes : Seq[NodeConfiguration], directiveLib: FullActiveTechniqueCategory) : Set[RuleId]  = {
-    //todo: get the list of existing node configuration to compare to
-
-    val existing : Map[NodeId, NodeConfigurationCache] = repository.getAll.openOrThrowException("TODO CHANGE THAT").toMap
-
+  override def detectChangeInNodes(nodes : Seq[NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache], directiveLib: FullActiveTechniqueCategory) : Set[RuleId] = {
     nodes.flatMap{ x =>
-      detectChangeInNode(existing.get(x.nodeInfo.id), x, directiveLib)
+      detectChangeInNode(cache.get(x.nodeInfo.id), x, directiveLib)
     }.toSet
   }
 
