@@ -253,6 +253,7 @@ object RudderConfig extends Loggable {
   //used in spring security "applicationContext-security.xml", be careful if you change its name
   val RUDDER_REST_ALLOWNONAUTHENTICATEDUSER = config.getBoolean("rudder.rest.allowNonAuthenticatedUser")
 
+  val RUDDER_DEBUG_NODE_CONFIGURATION_PATH = config.getString("rudder.debug.nodeconfiguration.path")
 
   val licensesConfiguration = "licenses.xml"
   val logentries = "logentries.xml"
@@ -1249,7 +1250,10 @@ object RudderConfig extends Loggable {
   private[this] lazy val nodeConfigurationServiceImpl: NodeConfigurationService = new NodeConfigurationServiceImpl(
       rudderCf3PromisesFileWriterService
     , new LdapNodeConfigurationCacheRepository(rudderDit, rwLdap)
-    , new NodeConfigurationLoggerImpl()
+    , new NodeConfigurationLoggerImpl(
+          RUDDER_DEBUG_NODE_CONFIGURATION_PATH
+        , "doLog"
+      )
   )
 //  private[this] lazy val licenseService: NovaLicenseService = new NovaLicenseServiceImpl(licenseRepository, ldapNodeConfigurationRepository, RUDDER_DIR_LICENSESFOLDER)
   private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(configurationExpectedRepo, reportsRepositoryImpl, techniqueRepositoryImpl, new ComputeCardinalityOfDirectiveVal())

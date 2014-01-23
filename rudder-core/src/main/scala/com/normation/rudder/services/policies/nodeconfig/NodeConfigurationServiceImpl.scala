@@ -273,7 +273,19 @@ class NodeConfigurationServiceImpl(
    *
    */
   def writeTemplate(rootNodeId: NodeId, nodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]] = {
+    //debug - but don't fails for debugging !
+    logNodeConfig.log(nodeConfigs.values.toSeq) match {
+      case eb:EmptyBox =>
+        val e = eb ?~! "Error when trying to write node configurations for debugging"
+        logger.error(e)
+        e.rootExceptionCause.foreach { ex =>
+          logger.error("Root exception cause was:", ex)
+        }
+      case _ => //nothing to do
+    }
+
     policyTranslator.writePromisesForMachines(nodeConfigs, rootNodeId, nodeConfigs).map(_ => nodeConfigs.values.toSeq )
+
   }
 
 
