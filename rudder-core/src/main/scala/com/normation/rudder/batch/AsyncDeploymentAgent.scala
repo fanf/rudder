@@ -103,7 +103,7 @@ final class AsyncDeploymentAgent(
 
   deploymentManager =>
 
-  val timeFormat = "yyyy/MM/dd HH:mm:ss"
+  val timeFormat = "yyyy-MM-dd HH:mm:ss"
 
   //message from the deployment agent to the manager
   private[this] sealed case class DeploymentResult(
@@ -261,7 +261,7 @@ final class AsyncDeploymentAgent(
           )))
 
         case Full(nodeIds) =>
-          logger.info("Successful deployment %s [%s - %s]".format(id, startTime.toString(timeFormat), endTime.toString(timeFormat)))
+          logger.info(s"Successful policy generation '${id}' [strarted ${startTime.toString(timeFormat)} - eneded ${endTime.toString(timeFormat)}]")
           lastFinishedDeployement = SuccessStatus(id, startTime, endTime, nodeIds)
           eventLogger.repository.saveEventLog(modId, SuccessfulDeployment(EventLogDetails(
               modificationId = None

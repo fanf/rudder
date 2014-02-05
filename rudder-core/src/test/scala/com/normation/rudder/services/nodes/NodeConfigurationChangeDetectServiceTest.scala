@@ -35,13 +35,10 @@
 package com.normation.rudder.services.nodes
 
 import scala.collection.immutable.SortedMap
-
 import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
-
 import org.joda.time.DateTime
-
 import com.normation.cfclerk.domain._
 import com.normation.inventory.domain.COMMUNITY_AGENT
 import com.normation.inventory.domain.NodeId
@@ -52,6 +49,7 @@ import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.rudder.repository.FullActiveTechnique
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.services.policies.nodeconfig._
+import com.normation.rudder.domain.policies.DirectiveId
 
 
 
@@ -96,26 +94,24 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
 
   private val simplePolicy = RuleWithCf3PolicyDraft(
       RuleId("ruleId")
-    , Cf3PolicyDraft(
-          Cf3PolicyDraftId("cfcId")
-        , newTechnique(TechniqueId(TechniqueName("ppId"), TechniqueVersion("1.0")))
-        , Map()
-        , TrackerVariableSpec().toVariable()
-        , priority = 0
-        , serial = 0
-      ) // no variable
+    , DirectiveId("dir")
+    , newTechnique(TechniqueId(TechniqueName("ppId"), TechniqueVersion("1.0")))
+    , Map()
+    , TrackerVariableSpec().toVariable()
+    , priority = 0
+    , serial = 0
+    // no variable
   )
 
   private val policyVaredOne = RuleWithCf3PolicyDraft(
       RuleId("ruleId1")
-    , Cf3PolicyDraft(
-          Cf3PolicyDraftId("cfcId1")
-        , newTechnique(TechniqueId(TechniqueName("ppId1"), TechniqueVersion("1.0")))
-        , Map("one" -> InputVariable(InputVariableSpec("one", ""), Seq("one")))
-        , TrackerVariableSpec().toVariable()
-        , priority = 0
-        , serial = 0
-      )  // one variable
+    , DirectiveId("dir1")
+    , newTechnique(TechniqueId(TechniqueName("ppId1"), TechniqueVersion("1.0")))
+    , Map("one" -> InputVariable(InputVariableSpec("one", ""), Seq("one")))
+    , TrackerVariableSpec().toVariable()
+    , priority = 0
+    , serial = 0
+    // one variable
   )
 
   private val policyOtherVaredOne = policyVaredOne.copy(
@@ -154,15 +150,15 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
 
   val emptyNodeConfig = NodeConfiguration(
     nodeInfo    = nodeInfo
-  , policyDrafts= Seq[RuleWithCf3PolicyDraft]()
+  , policyDrafts= Set[RuleWithCf3PolicyDraft]()
   , nodeContext = Map[String, Variable]()
   , parameters  = Set[ParameterForConfiguration]()
   , writtenDate = None
   , isRootServer= false
   )
 
-  val simpleNodeConfig = emptyNodeConfig.copy( policyDrafts = Seq(simplePolicy))
-  val complexeNodeConfig = emptyNodeConfig.copy( policyDrafts = Seq(policyVaredOne))
+  val simpleNodeConfig = emptyNodeConfig.copy( policyDrafts = Set(simplePolicy))
+  val complexeNodeConfig = emptyNodeConfig.copy( policyDrafts = Set(policyVaredOne))
 
   ////////////////////////// test //////////////////////////
 
@@ -217,7 +213,7 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
     "have a change if a variable is not equal" in {
       service.detectChangeInNode(
           Some(NodeConfigurationCache(complexeNodeConfig))
-        , complexeNodeConfig.copy(policyDrafts = Seq(policyOtherVaredOne))
+        , complexeNodeConfig.copy(policyDrafts = Set(policyOtherVaredOne))
         , directiveLib
       ) === Set(new RuleId("ruleId1"))
     }
@@ -225,7 +221,7 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
     "have a change if serial is not equals (but same variable)" in {
       service.detectChangeInNode(
           Some(NodeConfigurationCache(complexeNodeConfig))
-        , complexeNodeConfig.copy(policyDrafts = Seq(nextPolicyVaredOne))
+        , complexeNodeConfig.copy(policyDrafts = Set(nextPolicyVaredOne))
         , directiveLib
       ) === Set(new RuleId("ruleId1"))
 
@@ -244,7 +240,7 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
           Some(NodeConfigurationCache(complexeNodeConfig))
         , complexeNodeConfig.copy(
               nodeInfo = nodeInfo2
-            , policyDrafts = Seq(nextPolicyVaredOne)
+            , policyDrafts = Set(nextPolicyVaredOne)
           )
         , directiveLib
       ) === Set(new RuleId("ruleId1"))

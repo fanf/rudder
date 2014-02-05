@@ -112,11 +112,11 @@ class RudderCf3PromisesFileWriterServiceImpl(
    * It no longer change the status of the nodeconfiguration
    * @param updateBatch : the container for the server to be updated
    */
-  override def writePromisesForMachines(configurations: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
+  override def writePromisesForMachines(configToWrite: Set[NodeId], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]): Box[Seq[PromisesFinalMoveInfo]] = {
     // A buffer of node, promisefolder, newfolder, backupfolder
     val folders = collection.mutable.Buffer[(NodeConfiguration, String, String, String)]()
     // Writing the policy
-    for (node <- configurations.values) {
+    for (node <- allNodeConfigs.filterKeys(configToWrite.contains(_)).values.toSeq) {
       if (node.policyDrafts.size == 0) {
         logger.error("Could not write the promises for server %s : No policy found on server".format(node.nodeInfo.id))
         throw new Exception("Could not write the promises : no policy on machine " + node)
@@ -203,7 +203,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
           val now = System.currentTimeMillis
           val res = executeCfPromise(agentType, newNodeRulePath)
           val spent = System.currentTimeMillis - now
-          logger.debug(s"Execute cf-promise for '${newNodeRulePath}': ${spent}ms (${spent/1000}s)")
+          logger.debug(s"` Execute cf-promise for '${newNodeRulePath}': ${spent}ms (${spent/1000}s)")
           res
         } else {
           executeCfPromise(agentType, newNodeRulePath)

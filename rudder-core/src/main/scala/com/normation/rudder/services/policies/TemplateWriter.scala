@@ -53,7 +53,7 @@ trait TemplateWriter extends Loggable {
    * Write the promises of all the nodes
    * @param updateBatch : the container for the server to be updated
    */
-  def writePromisesForMachines(configuration: Map[NodeId, NodeConfiguration], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
+  def writePromisesForMachines(configToWrite: Set[NodeId], rootNodeId: NodeId, allNodeConfigs:Map[NodeId, NodeConfiguration]) : Box[Seq[PromisesFinalMoveInfo]]
 
   def writeLicense(nodeConfiguration : NodeConfiguration, newMachineFolder:String) : Unit = {
     logger.debug("Writing licence for nodeConfiguration  " + nodeConfiguration.nodeInfo.id);

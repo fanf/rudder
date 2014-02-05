@@ -47,6 +47,7 @@ import com.normation.utils.HashcodeCaching
 import net.liftweb.common.Loggable
 import com.normation.rudder.domain.parameters.ParameterName
 import com.normation.rudder.domain.parameters.Parameter
+import com.normation.cfclerk.domain.Cf3PolicyDraftId
 
 
 case class ParameterForConfiguration(
@@ -62,7 +63,7 @@ case object ParameterForConfiguration {
 
 case class NodeConfiguration(
     nodeInfo    : NodeInfo
-  , policyDrafts: Seq[RuleWithCf3PolicyDraft]
+  , policyDrafts: Set[RuleWithCf3PolicyDraft]
     //environment variable for that server
   , nodeContext : Map[String, Variable]
   , parameters  : Set[ParameterForConfiguration]
@@ -99,7 +100,7 @@ case class NodeConfiguration(
     policyDrafts.filter(x =>
       x.cf3PolicyDraft.technique.id.name.value.equalsIgnoreCase(techniqueId.name.value) &&
       x.cf3PolicyDraft.technique.id.version == techniqueId.version
-    ).map(x => (x.draftId , x)).toMap
+    ).map(x => (x.draftId, x)).toMap
   }
 
 }

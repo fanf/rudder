@@ -97,8 +97,8 @@ class ReportingServiceImpl(
           confToCreate += conf
 
         case Some((serial, nodeSet)) if ((serial == newSerial)&&(configs.size > 0)) =>
-            // no change if same serial and some config appliable
-            logger.debug(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed and configs presents: nothing to do")
+            // no change if same serial and some config appliable, that's ok, trace level
+            logger.trace(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed and configs presents: nothing to do")
             // must check that their are no differents nodes in the DB than in the new reports
             // it can happen if we delete nodes in some corner case (detectUpdates(nodes) cannot detect it
             if (configs.keySet != nodeSet) {
@@ -318,8 +318,6 @@ class ComputeCardinalityOfDirectiveVal {
               boundingVar, container.trackerVariable.spec.name, container.directiveId.value,variable.values, originalVariables.values ))
           (variable.values, originalVariables.values)
         case (None, Some(originalVariables)) =>
-          logger.warn("Somewhere in the expansion of variables, the bounded variable %s for %s in DirectiveVal %s was lost".format(
-              boundingVar, container.trackerVariable.spec.name, container.directiveId.value))
           (Seq(DEFAULT_COMPONENT_KEY),originalVariables.values) // this is an autobounding policy
         case (Some(variable), None) =>
           logger.warn("Somewhere in the expansion of variables, the bounded variable %s for %s in DirectiveVal %s appeared, but was not originally there".format(
@@ -362,9 +360,12 @@ class ComputeCardinalityOfDirectiveVal {
             }
 
             if(allComponents.size < 1) {
-              logger.debug("Technique '%s' does not define any components, assigning default component with expected report = 1 for Directive %s".format(
+              //that log is outputed one time for each directive for each node using a technique, it's far too
+              //verbose on debug.
+              logger.trace("Technique '%s' does not define any components, assigning default component with expected report = 1 for Directive %s".format(
                 container.technique.id, container.directiveId))
-                val trackingVarCard = getTrackingVariableCardinality
+
+              val trackingVarCard = getTrackingVariableCardinality
               Seq((container.technique.id.name.value, trackingVarCard._1, trackingVarCard._2))
             } else {
               allComponents

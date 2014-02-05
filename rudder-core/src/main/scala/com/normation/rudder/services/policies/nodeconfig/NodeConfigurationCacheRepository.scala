@@ -36,7 +36,6 @@ package com.normation.rudder.services.policies.nodeconfig
 
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.cfclerk.domain.Cf3PolicyDraftId
-import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
 import com.normation.rudder.domain.policies.RuleWithCf3PolicyDraft
 import com.normation.inventory.domain.NodeId
 import net.liftweb.common.Box
@@ -49,6 +48,7 @@ import com.normation.ldap.sdk.RwLDAPConnection
 import com.normation.ldap.sdk.LDAPEntry
 import net.liftweb.common.Failure
 import net.liftweb.common.Loggable
+import com.normation.cfclerk.domain.Variable
 
 
 case class PolicyCache(
@@ -67,11 +67,31 @@ case class NodeConfigurationCache(
 
 )
 
+/*
+ * That object should be a service, no ?
+ */
 object NodeConfigurationCache {
 
   def apply(nodeConfig: NodeConfiguration): NodeConfigurationCache = {
 
-    /*for node info, only consider:
+
+    /*
+     * Compute the hash cash value for a set of variables:
+     * - the order does not matter
+     * - duplicate (same name) variable make no sense, so we remove them
+     * - only the ORDERED values matters
+     *
+     * Also, variable with no values are equivalent to no variable, so we
+     * remove them.
+     */
+    def variablesToHash(variables: Iterable[Variable]): Int = {
+      val z = variables.map( x => (x.spec.name, x.values) ).filterNot( _._2.isEmpty ).toSet
+      z.hashCode
+    }
+
+
+    /*
+     * for node info, only consider:
      * name, hostname, agentsName, policyServerId, localAdministratorAccountName
      */
     val nodeInfoCacheValue = {
@@ -86,10 +106,40 @@ object NodeConfigurationCache {
       )
     }
 
+    /*
+     * For policy draft, we want to check
+     * - technique name / version
+     * - variables
+     * - seriale
+     */
     val policyCacheValue = {
-      nodeConfig.policyDrafts.map { case r@RuleWithCf3PolicyDraft(ruleId, draft) =>
-        PolicyCache(ruleId, draft.id, r.hashCode)
+      nodeConfig.policyDrafts.map { case r:RuleWithCf3PolicyDraft =>
+        PolicyCache(
+            r.ruleId
+          , r.draftId
+          , r.cf3PolicyDraft.serial + r.cf3PolicyDraft.technique.id.hashCode + variablesToHash(r.cf3PolicyDraft.variableMap.values)
+        )
       }.toSet
+    }
+
+    /*
+     * For parameters, do not consider:
+     * - overridable
+     * - description
+     * But as ParameterForConfiguration only has relevant information,
+     * we can simply take the hashcode.
+     * Also, don't depend of the datastructure used, nor
+     * of the order of the variables (so is set is good ?)
+     */
+    val parameterCache: Int = {
+      nodeConfig.parameters.hashCode
+    }
+
+    /*
+     * System variables are variables.
+     */
+    val nodeContextCache: Int = {
+      variablesToHash(nodeConfig.nodeContext.values)
     }
 
     new NodeConfigurationCache(

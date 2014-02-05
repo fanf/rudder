@@ -108,7 +108,7 @@ class PathComputerImpl(
     if (fromNodeId == toNodeId) {
       Full(path)
     } else {
-      for {
+    val res =   for {
         toNode <- Box(allNodeConfig.get(toNodeId)) ?~! s"Missing node with id ${toNodeId.value} when trying to build the promise files path for node ${fromNodeId.value}"
         pid    =  toNode.nodeInfo.policyServerId
         parent <- Box(allNodeConfig.get(pid)) ?~! s"Can not find the parent node (${pid.value}) of node ${toNodeId.value} when trying to build the promise files for node ${fromNodeId.value}"
@@ -128,6 +128,14 @@ class PathComputerImpl(
       } yield {
         result
       }
+
+      res match {
+        case Full(x) => Full(x)
+        case eb =>
+          logger.error("nodes: " + allNodeConfig.keys.map( _.value).mkString("\n", "\n" , "\n"))
+          eb
+      }
+
     }
   }
 }

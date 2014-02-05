@@ -87,11 +87,11 @@ class DetectChangeInNodeConfiguration extends Loggable {
       }
     }
 
-    logger.debug(s"Checking changes in node '${targetConfig.nodeInfo.id.value}'")
+    logger.trace(s"Checking changes in node '${targetConfig.nodeInfo.id.value}'")
     currentOpt match {
       case None =>
         //what do we do if we don't have a cache for the node ? All the target rules are "changes" ?
-        logger.trace("No node configuration cache availabe")
+        logger.trace("`-> No node configuration cache availabe for that node")
         targetConfig.policyDrafts.map( _.ruleId ).toSet
       case Some(current) =>
 
@@ -100,19 +100,18 @@ class DetectChangeInNodeConfiguration extends Loggable {
 
         // First case : a change in the minimalnodeconfig is a change of all CRs
         if (current.nodeInfoCache != target.nodeInfoCache) {
-          logger.trace(s"A change in the minimal configuration of node '${current.id.value}'")
+          logger.trace(s"`-> there was a change in the node inventory information")
           allRuleIds
 
         // Second case : a change in the system variable is a change of all CRs
         } else if(current.nodeContextCache != target.nodeContextCache) {
-          logger.trace(s"A change in the system variable node '${current.id.value}'")
+          logger.trace(s"`-> there was a change in the system variables of the node")
           allRuleIds
 
         // Third case : a change in the parameters is a change of all CRs
         } else if(current.parameterCache != target.parameterCache) {
-          logger.trace(s"A change in the parameters for node '${current.id.value}'")
+          logger.trace(s"`-> there was a change in the parameters of the node")
           allRuleIds
-
         } else {
 
           //check for different policy draft.
@@ -125,8 +124,12 @@ class DetectChangeInNodeConfiguration extends Loggable {
           ((currentDrafts.keySet ++ targetDrafts.keySet).map(id => (currentDrafts.get(id), targetDrafts.get(id))).flatMap {
             case (None, None) => //should not happen
               Set[RuleId]()
-            case (Some(PolicyCache(ruleId, _, _)), None) => Set(ruleId)
-            case (None, Some(PolicyCache(ruleId, _, _))) => Set(ruleId)
+            case (Some(PolicyCache(ruleId, _, _)), None) =>
+              logger.trace(s"`-> rule with ID '${ruleId.value}' was deleted")
+              Set(ruleId)
+            case (None, Some(PolicyCache(ruleId, _, _))) =>
+              logger.trace(s"`-> rule with ID '${ruleId.value}' was added")
+              Set(ruleId)
             case (Some(PolicyCache(r0, d0, c0)), Some(PolicyCache(r1, d1, c1))) =>
               //d1 and d2 are equals by construction, but keep them for future-proofing
               if(d0 == d1) {
@@ -139,7 +142,7 @@ class DetectChangeInNodeConfiguration extends Loggable {
                 ) {
                   Set[RuleId]() //no modification
                 } else {
-                  logger.trace(s"A change in the promise with draft ID '${d0}.value' for rule ID '${r0.value}', '${r1.value}'")
+                  logger.trace(s"`-> there was a change in the promise with draft ID '${d0.value}'")
                   Set(r0,r1)
                 }
               } else Set[RuleId]()
@@ -147,11 +150,11 @@ class DetectChangeInNodeConfiguration extends Loggable {
             //we also have to add all Rule ID for a draft whose technique has been accepted since last cache generation
             //(because we need to write template again)
             val ids = (targetConfig.policyDrafts.collect {
-              case RuleWithCf3PolicyDraft(ruleId, draft) if(wasUpdatedSince(draft, current.writtenDate, directiveLib)) => ruleId
+              case r:RuleWithCf3PolicyDraft if(wasUpdatedSince(r.cf3PolicyDraft, current.writtenDate, directiveLib)) => r.ruleId
             }).toSet
 
             if(ids.nonEmpty) {
-              logger.trace(s"A change in the techniques (technique was updated) for rules ID [${ids.mkString(", ")}]")
+              logger.trace(s"`-> there was a change in the applied techniques (technique was updated) for rules ID [${ids.mkString(", ")}]")
             }
             ids
           }
@@ -194,45 +197,71 @@ class NodeConfigurationServiceImpl(
      * updated directives.
      *
      * That method check that:
-     * - that the directive added is not already in the NodeConfiguration (why ?)
-     * - that there is at most one directive for each "unique" technique
+     * - the directive added is not already in the NodeConfiguration (why ? perhaps a note to dev is better ?)
+     * - there is at most one directive for each "unique" technique
      */
     def sanitizeOne(nodeConfig: NodeConfiguration) : Box[NodeConfiguration] = {
 
-      val emptyConfig: Box[Seq[RuleWithCf3PolicyDraft]] = Full(Seq())
+      //first of all: be sure to keep only one draft for a given draft id
+      val deduplicateDraft = nodeConfig.policyDrafts.groupBy(_.draftId).map { case (draftId, set) =>
+        val main = set.head
+        //compare policy draft
+        //Following parameter are not relevant in that comparison (we compare directive, not rule, here:)
+        if(set.size > 1) {
+          logger.error(s"The draft with id '${draftId.value}' was added several time on node '${nodeConfig.nodeInfo.id.value}' WITH DIFFERENT PARAMETERS VALUE. It's a bug, please report it. Taking one at ramdom for the promise generation.")
+          import net.liftweb.json._
+          implicit val formats = Serialization.formats(NoTypeHints)
+          def r(j:JValue) = if(j == JNothing) "{}" else pretty(render(j))
 
-      val newConfig = (emptyConfig/:nodeConfig.policyDrafts) { case (current, toAdd) =>
-
-        current match {
-          case eb:EmptyBox => eb
-          case Full(seq) =>
-            if(seq.exists( _.draftId == toAdd.draftId )) {
-              /*
-               * Why do we do that and not just keep the last (or first) inserted for a
-               * given draft id ?
-               */
-              ParamFailure[RuleWithCf3PolicyDraft](
-                  "Duplicate directive",
-                  Full(new TechniqueException("Duplicate directive " + toAdd.draftId)),
-                  Empty,
-                  toAdd)
-            } else if(!toAdd.cf3PolicyDraft.technique.isMultiInstance) {
-
-              val withSameTechnique = (seq :+ toAdd).filter( _.cf3PolicyDraft.technique.id == toAdd.cf3PolicyDraft.technique.id).sortBy( _.cf3PolicyDraft.priority )
-              //we know that the size is at least one, so keep the head, and log discard tails
-
-              withSameTechnique.tail.foreach { x =>
-                logger.debug(s"Unicity check: discard policy draft with id '${x.cf3PolicyDraft.id.value}' on node '${nodeConfig.nodeInfo.id.value}' (based on Technique with the 'unique' attribute set, and more priorised directive exists)")
-              }
-
-              Full(seq :+ withSameTechnique.head)
-
-            } else {
-              Full(seq :+ toAdd)
-            }
+          val jmain = Extraction.decompose(main)
+          logger.error("First directivedraft: " + pretty(render(jmain)))
+          set.tail.foreach{ x =>
+            val diff  = jmain.diff(Extraction.decompose(x))
+            logger.error(s"Diff with other draft: \nadded:${r(diff.added)} \nchanged:${r(diff.changed)} \ndeleted:${r(diff.deleted)}")
+          }
         }
+        main
       }
-      newConfig.map(x => nodeConfig.copy(policyDrafts = x))
+
+      //now, we have to case to process:
+      // - directives based on "unique" technique: we must keep only one. And to attempt to get a little stability in
+      //    our generated promises, for a given technique, we will try to always choose the same directive
+      //    (in case of ambiguity)
+      // - other: just add them all!
+
+      val (otherDrafts, uniqueTechniqueBasedDrafts) = deduplicateDraft.partition(_.cf3PolicyDraft.technique.isMultiInstance)
+
+      //sort unique based draft by technique, and then check priority on each groups
+
+      val keptUniqueDraft = uniqueTechniqueBasedDrafts.groupBy(_.cf3PolicyDraft.technique.id).map { case (techniqueId, setDraft) =>
+
+        val withSameTechnique = setDraft.toSeq.sortBy( _.cf3PolicyDraft.priority )
+        //we know that the size is at least one, so keep the head, and log discard tails
+
+        //two part here: discart less priorized directive,
+        //and for same priority, take one at random (the first sorted by rule id, to keep some consistency)
+        //and add a big warning
+
+        val priority = withSameTechnique.head.cf3PolicyDraft.priority
+
+        val lesserPriority = withSameTechnique.dropWhile( _.cf3PolicyDraft.priority == priority)
+
+        //keep the directive with the first (alpha-num) ID - as good as other comparison.
+        val samePriority = withSameTechnique.takeWhile( _.cf3PolicyDraft.priority == priority).sortBy(_.directiveId.value)
+
+        val keep = samePriority.head
+
+        //only one log for all discared draft
+        if(samePriority.size > 1) {
+          logger.warn(s"Unicity check: NON STABLE POLICY ON NODE '${nodeConfig.nodeInfo.hostname}' for mono-instance (unique) technique '${keep.cf3PolicyDraft.technique.id}'. Several directives with same priority '${keep.cf3PolicyDraft.priority}' are applied. Keeping (ruleId@@directiveId) '${keep.draftId.value}', discarding: ${samePriority.tail.map(_.draftId.value).mkString("'", "', ", "'")}")
+        }
+        logger.trace(s"Unicity check: on node '${nodeConfig.nodeInfo.id.value}' for mono-instance (unique) technique '${keep.cf3PolicyDraft.technique.id}': keeping (ruleId@@directiveId) '${keep.draftId.value}', discarding less priorize: ${lesserPriority.map(_.draftId.value).mkString("'", "', ", "'")}")
+
+        keep
+
+      }
+
+      Full(nodeConfig.copy(policyDrafts = (otherDrafts.toSet ++ keptUniqueDraft)))
     }
 
 
@@ -244,7 +273,7 @@ class NodeConfigurationServiceImpl(
 
   }
 
-  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]): Map[NodeId, NodeConfiguration] = {
+  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]): Set[NodeId] = {
     val newConfigCache = nodeConfigurations.map{ case (_, conf) => NodeConfigurationCache(conf) }
 
     val (updatedConfig, notUpdatedConfig) = newConfigCache.toSeq.partition{ p =>
@@ -260,11 +289,11 @@ class NodeConfigurationServiceImpl(
 
     if(updatedConfig.size == 0) {
       logger.info("No node configuration was updated, no promises to write")
-      Map()
+      Set()
     } else {
       val nodeToKeep = updatedConfig.map( _.id ).toSet
       logger.info(s"Configuration of following nodes were updated, their promises are going to be written: [${updatedConfig.map(_.id.value).mkString(", ")}]")
-      nodeConfigurations.filterKeys(id => nodeToKeep.contains(id))
+      nodeConfigurations.keySet.intersect(nodeToKeep)
     }
   }
 
@@ -272,9 +301,10 @@ class NodeConfigurationServiceImpl(
    * Write templates for node configuration that changed since the last write.
    *
    */
-  def writeTemplate(rootNodeId: NodeId, nodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]] = {
+  def writeTemplate(rootNodeId: NodeId, nodesToWrite: Set[NodeId], allNodeConfigs: Map[NodeId, NodeConfiguration]) : Box[Seq[NodeConfiguration]] = {
+    val nodeConfigsToWrite = allNodeConfigs.filterKeys(nodesToWrite.contains(_))
     //debug - but don't fails for debugging !
-    logNodeConfig.log(nodeConfigs.values.toSeq) match {
+    logNodeConfig.log(nodeConfigsToWrite.values.toSeq) match {
       case eb:EmptyBox =>
         val e = eb ?~! "Error when trying to write node configurations for debugging"
         logger.error(e)
@@ -284,7 +314,7 @@ class NodeConfigurationServiceImpl(
       case _ => //nothing to do
     }
 
-    policyTranslator.writePromisesForMachines(nodeConfigs, rootNodeId, nodeConfigs).map(_ => nodeConfigs.values.toSeq )
+    policyTranslator.writePromisesForMachines(nodesToWrite, rootNodeId, allNodeConfigs).map(_ => nodeConfigsToWrite.values.toSeq )
 
   }
 

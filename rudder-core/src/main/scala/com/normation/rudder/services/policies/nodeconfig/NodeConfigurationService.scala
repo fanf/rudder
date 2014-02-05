@@ -85,12 +85,12 @@ trait NodeConfigurationService {
    * Write the templates of ALL the given node configuration.
    * Select them carrefully!
    */
-  def writeTemplate(rootNodeId: NodeId,  allNodeConfigs: Map[NodeId, NodeConfiguration]): Box[Seq[NodeConfiguration]]
+  def writeTemplate(rootNodeId: NodeId, configToWrite: Set[NodeId], allNodeConfigs: Map[NodeId, NodeConfiguration]): Box[Seq[NodeConfiguration]]
 
   /**
-   * Look what are the node configuration to write
+   * Look what are the node configuration updated compared to information in cache
    */
-  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]): Map[NodeId, NodeConfiguration]
+  def selectUpdatedNodeConfiguration(nodeConfigurations: Map[NodeId, NodeConfiguration], cache: Map[NodeId, NodeConfigurationCache]): Set[NodeId]
 
   def detectChangeInNode(currentOpt: Option[NodeConfigurationCache], targetConfig: NodeConfiguration, directiveLib: FullActiveTechniqueCategory): Set[RuleId]
 

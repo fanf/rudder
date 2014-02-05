@@ -86,6 +86,9 @@ trait DeploymentService extends Loggable {
    *
    */
   def deploy() : Box[Set[NodeId]] = {
+
+    logger.info("Start policy generation, checking updated rules")
+
     val initialTime = DateTime.now().getMillis
     val rootNodeId = Constants.ROOT_POLICY_SERVER_ID
 
@@ -168,7 +171,7 @@ trait DeploymentService extends Loggable {
       writtenNodeConfigs.map( _.nodeInfo.id )
     }
 
-    logger.debug("Deployment completed in %d millisec".format((DateTime.now().getMillis - initialTime)))
+    logger.debug("Policy generation completed in %d millisec".format((DateTime.now().getMillis - initialTime)))
     result
   }
 
@@ -453,7 +456,7 @@ trait DeploymentService_buildNodeConfigurations extends DeploymentService with L
   ) {
     val identifiablePolicyDrafts = scala.collection.mutable.Buffer[PolicyDraft]()
 
-    def immutable = NodeConfiguration(nodeInfo, identifiablePolicyDrafts.toSeq.map(_.toRuleWithCf3PolicyDraft), nodeContext, parameters, writtenDate, isRoot)
+    def immutable = NodeConfiguration(nodeInfo, identifiablePolicyDrafts.map(_.toRuleWithCf3PolicyDraft).toSet, nodeContext, parameters, writtenDate, isRoot)
   }
 
 
@@ -716,11 +719,11 @@ trait DeploymentService_updateAndWriteRule extends DeploymentService {
     val fsWrite0   =  DateTime.now.getMillis
 
     for {
-      written    <- nodeConfigurationService.writeTemplate(rootNodeId, updated)
+      written    <- nodeConfigurationService.writeTemplate(rootNodeId, updated, allNodeConfigs)
       ldapWrite0 =  DateTime.now.getMillis
       fsWrite1   =  (ldapWrite0 - fsWrite0)
       _          =  logger.debug(s"Node configuration written on filesystem in ${fsWrite1} millisec.")
-      cached     <- nodeConfigurationService.cacheNodeConfiguration(updated.values.toSet)
+      cached     <- nodeConfigurationService.cacheNodeConfiguration(allNodeConfigs.filterKeys(updated.contains(_)).values.toSet)
       ldapWrite1 =  (DateTime.now.getMillis - ldapWrite0)
       _          =  logger.debug(s"Node configuration cached in LDAP in ${ldapWrite1} millisec.")
     } yield {
