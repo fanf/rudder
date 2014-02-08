@@ -38,6 +38,9 @@ import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.inventory.domain.NodeId
 import com.normation.utils.HashcodeCaching
 import com.normation.rudder.domain.nodes.NodeGroup
+import net.liftweb.json._
+import net.liftweb.json.JsonDSL._
+import net.liftweb.util.JSONParser
 
 
 /**
@@ -49,6 +52,7 @@ import com.normation.rudder.domain.nodes.NodeGroup
  */
 sealed abstract class RuleTarget {
   def target:String
+  def toJson : JValue = JString(target)
 }
 
 sealed trait NonGroupRuleTarget extends RuleTarget
@@ -78,17 +82,42 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
   def r = "special:all_exceptPolicyServers".r
 }
 
+case class TargetIntersection ( targets : List [RuleTarget]) extends RuleTarget {
+  override val toJson : JValue = ( "and" -> targets.map(_.toJson))
+  val target = toJson.toString
+
+  override def toString = targets.map(_.toString).mkString("( "," and ", " )")
+
+}
+
+case class TargetUnion ( targets : List [RuleTarget]) extends RuleTarget {
+  override val toJson : JValue = ( "or" -> targets.map(_.toJson))
+  val target = toJson.toString
+  override def toString = targets.map(_.toString).mkString("( "," or ", " )")
+
+}
+
+case class TargetExclusion ( excludedTarget : RuleTarget) extends RuleTarget {
+  override val toJson : JValue = ( "not" -> excludedTarget.toJson )
+  val target = toJson.toString
+  override def toString = "not ( " +target.toString()+" )"
+
+}
 
 object RuleTarget {
 
-  def unser(s:String) = {
+  def unser(s:String) : Option[RuleTarget] = {
     s match {
       case GroupTarget.r(g) => Some(GroupTarget(NodeGroupId(g)))
 //      case NodeTarget.r(s) => Some(NodeTarget(NodeId(s)))
       case PolicyServerTarget.r(s) => Some(PolicyServerTarget(NodeId(s)))
       case AllTarget.r() => Some(AllTarget)
       case AllTargetExceptPolicyServers.r() => Some(AllTargetExceptPolicyServers)
-      case _ => None
+      case s =>  parse(s) match {
+        case JString(value) => unser(s)
+        case JObject(JField("and", JArray()) :: Nil)
+
+      }
     }
   }
 }

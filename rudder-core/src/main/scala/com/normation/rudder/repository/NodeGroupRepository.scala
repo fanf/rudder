@@ -44,22 +44,11 @@ import com.normation.eventlog.ModificationId
 import com.normation.rudder.domain.nodes._
 import net.liftweb.common._
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.policies.RuleTarget
 import com.normation.utils.Utils
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import scala.collection.immutable.SortedMap
-import com.normation.rudder.domain.policies.RuleTargetInfo
-import com.normation.rudder.domain.policies.FullRuleTargetInfo
-import com.normation.rudder.domain.policies.RuleTargetInfo
-import com.normation.rudder.domain.policies.FullGroupTarget
-import com.normation.rudder.domain.policies.FullGroupTarget
-import com.normation.rudder.domain.policies.FullRuleTargetInfo
-import com.normation.rudder.domain.policies.AllTargetExceptPolicyServers
-import com.normation.rudder.domain.policies.AllTarget
-import com.normation.rudder.domain.policies.NonGroupRuleTarget
-import com.normation.rudder.domain.policies.PolicyServerTarget
-import com.normation.rudder.domain.policies.GroupTarget
+import com.normation.rudder.domain.policies._
 
 /**
  * Here is the ordering for a List[NodeGroupCategoryId]
@@ -172,6 +161,7 @@ final case class FullNodeGroupCategory(
    * Return all node ids that match the set of target.
    */
   def getNodeIds(targets: Set[RuleTarget], allNodeInfos: Set[NodeInfo]) : Set[NodeId] = {
+
     (Set[NodeId]()/:targets) {
       case (nodes, t:NonGroupRuleTarget) =>
         t match {
@@ -189,6 +179,20 @@ final case class FullNodeGroupCategory(
           case Some(ids) => ids
         }
         nodes ++ nodesForGroup
+
+      case (nodes, TargetIntersection(targets)) =>
+        val intersection = targets.map(t => getNodeIds(Set(t),allNodeInfos))
+        nodes ++ (Set[NodeId]()/: intersection) {
+          case (result, nodes) => result.intersect(nodes)
+        }
+      case (nodes, TargetUnion(targets)) =>
+        val union = targets.map(t => getNodeIds(Set(t),allNodeInfos))
+        nodes ++ (Set[NodeId]()/: union) {
+          case (result, nodes) => result.union(nodes)
+        }
+      case (nodes, TargetExclusion(target)) =>
+        val intersection = getNodeIds(Set(target),allNodeInfos)
+        nodes.diff(intersection)
     }
   }
 }
