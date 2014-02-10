@@ -41,6 +41,7 @@ import com.normation.rudder.domain.nodes.NodeGroup
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import net.liftweb.util.JSONParser
+import net.liftweb.common.Loggable
 
 
 /**
@@ -56,6 +57,10 @@ sealed abstract class RuleTarget {
 }
 
 sealed trait NonGroupRuleTarget extends RuleTarget
+
+sealed trait JsonRuleTarget extends RuleTarget {
+  def target = compact(render(toJson))
+}
 
 object GroupTarget { def r = "group:(.+)".r }
 final case class GroupTarget(groupId:NodeGroupId) extends RuleTarget with HashcodeCaching {
@@ -82,42 +87,56 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
   def r = "special:all_exceptPolicyServers".r
 }
 
-case class TargetIntersection ( targets : List [RuleTarget]) extends RuleTarget {
+case class TargetIntersection ( targets : List [RuleTarget]) extends JsonRuleTarget {
   override val toJson : JValue = ( "and" -> targets.map(_.toJson))
-  val target = toJson.toString
-
   override def toString = targets.map(_.toString).mkString("( "," and ", " )")
 
 }
 
-case class TargetUnion ( targets : List [RuleTarget]) extends RuleTarget {
+case class TargetUnion ( targets : List [RuleTarget]) extends JsonRuleTarget {
   override val toJson : JValue = ( "or" -> targets.map(_.toJson))
-  val target = toJson.toString
   override def toString = targets.map(_.toString).mkString("( "," or ", " )")
 
 }
 
-case class TargetExclusion ( excludedTarget : RuleTarget) extends RuleTarget {
+case class TargetExclusion ( excludedTarget : RuleTarget) extends JsonRuleTarget {
   override val toJson : JValue = ( "not" -> excludedTarget.toJson )
-  val target = toJson.toString
   override def toString = "not ( " +target.toString()+" )"
 
 }
 
-object RuleTarget {
+object RuleTarget extends Loggable {
+
+  def unserJson(json : JValue) : Option[RuleTarget] = {
+    json match {
+      case JString(s) => unser(s)
+      case JObject(JField("and",JArray(values)) :: Nil) =>
+        val res = values.map(unserJson).collect{case Some(c) => c}
+        Some(TargetIntersection(res))
+      case JObject(JField("or",JArray(values)) :: Nil) =>
+        val res = values.map(unserJson).collect{case Some(c) => c}
+        Some(TargetUnion(res))
+      case JObject(JField("not",value) :: Nil) =>
+        for {
+          json <- unserJson(value)
+        } yield {
+          TargetExclusion(json)
+        }
+      case _ =>
+        logger.error(s"${json.toString} is not a valid rule target")
+        None
+    }
+  }
+
 
   def unser(s:String) : Option[RuleTarget] = {
     s match {
       case GroupTarget.r(g) => Some(GroupTarget(NodeGroupId(g)))
-//      case NodeTarget.r(s) => Some(NodeTarget(NodeId(s)))
+      // case NodeTarget.r(s) => Some(NodeTarget(NodeId(s)))
       case PolicyServerTarget.r(s) => Some(PolicyServerTarget(NodeId(s)))
       case AllTarget.r() => Some(AllTarget)
       case AllTargetExceptPolicyServers.r() => Some(AllTargetExceptPolicyServers)
-      case s =>  parse(s) match {
-        case JString(value) => unser(s)
-        case JObject(JField("and", JArray()) :: Nil)
-
-      }
+      case _ => try { unserJson(parse(s)) } catch { case e : Exception => logger.error(s"could not parse $s cause is :${e.getMessage()}"); None}
     }
   }
 }
@@ -141,6 +160,10 @@ sealed trait FullRuleTarget {
 final case class FullGroupTarget(
     target   : GroupTarget
   , nodeGroup: NodeGroup
+) extends FullRuleTarget
+
+final case class FullJsonRuleTarget(
+    target: JsonRuleTarget
 ) extends FullRuleTarget
 
 final case class FullOtherTarget(

@@ -47,6 +47,7 @@ import com.normation.rudder.domain.policies.FullRuleTargetInfo
 import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.RuleTarget
+import com.normation.rudder.domain.policies.TargetUnion
 import com.normation.rudder.domain.reports.bean._
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
@@ -223,6 +224,8 @@ class RuleEditForm(
 
   private[this] def  showRuleDetails(directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : NodeSeq = {
     val updatedrule = roRuleRepository.get(rule.id)
+    val test_rule_target = TargetUnion( rule.targets.toList)
+    logger.info(test_rule_target)
     (
       "#details *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       "#nameField" #>    <div>{crName.displayNameHtml.getOrElse("Could not fetch rule name")} {updatedrule.map(_.name).openOr("could not fetch rule name")} </div> &
@@ -361,7 +364,9 @@ class RuleEditForm(
   private[this] def unserializeTargets(ids:String) : Seq[RuleTarget] = {
     implicit val formats = DefaultFormats
     parse(ids).extract[List[String]].map{x =>
+      logger.warn(x)
       val id = x.replace("jsTree-","")
+      logger.info(id)
       RuleTarget.unser(id).getOrElse(GroupTarget(NodeGroupId(id)))
     }
   }
@@ -409,6 +414,7 @@ class RuleEditForm(
       }, serializedirectiveIds(selectedDirectiveIds.toSeq)
     ) % ( "id" -> "selectedPis") ++
     SHtml.hidden( { targets =>
+        logger.error(targets)
         selectedTargets = unserializeTargets(targets).toSet
       }, serializeTargets(selectedTargets.toSeq)
     ) % ( "id" -> "selectedTargets") ++
@@ -466,11 +472,13 @@ class RuleEditForm(
     if(formTracker.hasErrors) {
       onFailure
     } else { //try to save the rule
+      val targetUnion = TargetUnion(selectedTargets.toList)
+      logger.info(targetUnion)
       val newCr = rule.copy(
           name             = crName.is
         , shortDescription = crShortDescription.is
         , longDescription  = crLongDescription.is
-        , targets          = selectedTargets
+        , targets          = Set(targetUnion)
         , directiveIds     = selectedDirectiveIds
         , isEnabledStatus  = rule.isEnabledStatus
         , categoryId       = RuleCategoryId(category.is)

@@ -161,7 +161,7 @@ final case class FullNodeGroupCategory(
    * Return all node ids that match the set of target.
    */
   def getNodeIds(targets: Set[RuleTarget], allNodeInfos: Set[NodeInfo]) : Set[NodeId] = {
-
+    val allNodeIds = allNodeInfos.map(_.id)
     (Set[NodeId]()/:targets) {
       case (nodes, t:NonGroupRuleTarget) =>
         t match {
@@ -182,17 +182,31 @@ final case class FullNodeGroupCategory(
 
       case (nodes, TargetIntersection(targets)) =>
         val intersection = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        nodes ++ (Set[NodeId]()/: intersection) {
+        logger.info("AND")
+        logger.info(nodes)
+        logger.warn(intersection)
+        val res = (allNodeIds/: intersection) {
           case (result, nodes) => result.intersect(nodes)
         }
+        logger.error(res)
+        nodes ++ res
       case (nodes, TargetUnion(targets)) =>
         val union = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        nodes ++ (Set[NodeId]()/: union) {
+        logger.info("OR")
+        logger.info(nodes)
+        logger.warn(union)
+
+        val res = (Set[NodeId]()/: union) {
           case (result, nodes) => result.union(nodes)
         }
+        logger.error( res)
+        nodes ++ res
       case (nodes, TargetExclusion(target)) =>
-        val intersection = getNodeIds(Set(target),allNodeInfos)
-        nodes.diff(intersection)
+        val intersection = allNodeIds.diff(getNodeIds(Set(target),allNodeInfos))
+        logger.info("NOT")
+        logger.info(nodes)
+        logger.warn(intersection)
+        nodes ++ intersection
     }
   }
 }

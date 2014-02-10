@@ -502,6 +502,7 @@ class RoLDAPNodeGroupRepository(
                    )
                  case t:NonGroupRuleTarget =>
                    FullOtherTarget(t)
+                 case rt: JsonRuleTarget => FullJsonRuleTarget(rt)
                }
 
                val fullInfo = FullRuleTargetInfo(

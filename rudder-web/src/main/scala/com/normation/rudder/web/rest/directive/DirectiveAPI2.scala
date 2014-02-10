@@ -88,6 +88,7 @@ class DirectiveAPI2 (
     }
 
     case Post(id:: Nil, req) => {
+      logger.info(req.params)
       val restDirective = restExtractor.extractDirective(req.params)
       apiV2.updateDirective(id,req,restDirective)
     }
