@@ -107,7 +107,7 @@ case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : Option[
 object RuleTarget extends Loggable {
 
   def unserJson(json : JValue) : Option[RuleTarget] = {
-    logger.info(json)
+    logger.debug(json)
     json match {
       case JString(s) => unser(s)
       case JObject(JField("and",JArray(values)) :: Nil) =>
@@ -142,7 +142,7 @@ object RuleTarget extends Loggable {
 
 
   def unser(s:String) : Option[RuleTarget] = {
-    logger.warn(s)
+    logger.debug(s)
     s match {
       case GroupTarget.r(g) => Some(GroupTarget(NodeGroupId(g)))
       // case NodeTarget.r(s) => Some(NodeTarget(NodeId(s)))
