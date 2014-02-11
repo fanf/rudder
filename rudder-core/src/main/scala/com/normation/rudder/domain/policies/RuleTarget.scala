@@ -58,7 +58,7 @@ sealed abstract class RuleTarget {
 
 sealed trait NonGroupRuleTarget extends RuleTarget
 
-sealed trait JsonRuleTarget extends RuleTarget {
+sealed trait CompositeRuleTarget extends RuleTarget {
   def target = compact(render(toJson))
 }
 
@@ -87,27 +87,27 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
   def r = "special:all_exceptPolicyServers".r
 }
 
-case class TargetIntersection ( targets : List [RuleTarget]) extends JsonRuleTarget {
+case class TargetIntersection ( targets : List [RuleTarget]) extends CompositeRuleTarget {
   override val toJson : JValue = ( "and" -> targets.map(_.toJson))
   override def toString = targets.map(_.toString).mkString("( "," and ", " )")
 
 }
 
-case class TargetUnion ( targets : List [RuleTarget]) extends JsonRuleTarget {
+case class TargetUnion ( targets : List [RuleTarget]) extends CompositeRuleTarget {
   override val toJson : JValue = ( "or" -> targets.map(_.toJson))
   override def toString = targets.map(_.toString).mkString("( "," or ", " )")
 
 }
 
-case class TargetExclusion ( excludedTarget : RuleTarget) extends JsonRuleTarget {
-  override val toJson : JValue = ( "not" -> excludedTarget.toJson )
-  override def toString = "not ( " +target.toString()+" )"
-
+case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : Option[RuleTarget]) extends CompositeRuleTarget {
+  override val toJson : JValue = ( "include" -> includedTarget.toJson ) ~ ( "exclude" -> excludedTarget.map(_.toJson) )
+  override def toString = " ( " +target.toString()+" )"
 }
 
 object RuleTarget extends Loggable {
 
   def unserJson(json : JValue) : Option[RuleTarget] = {
+    logger.info(json)
     json match {
       case JString(s) => unser(s)
       case JObject(JField("and",JArray(values)) :: Nil) =>
@@ -116,11 +116,23 @@ object RuleTarget extends Loggable {
       case JObject(JField("or",JArray(values)) :: Nil) =>
         val res = values.map(unserJson).collect{case Some(c) => c}
         Some(TargetUnion(res))
-      case JObject(JField("not",value) :: Nil) =>
-        for {
-          json <- unserJson(value)
-        } yield {
-          TargetExclusion(json)
+      case JObject(values) =>
+        values \ "include" match {
+          case JNothing =>
+            logger.error(s"${json.toString} target needs an 'include' child")
+            None
+          case includeJson =>
+            for {
+              includeTargets <- unserJson(includeJson)
+              excludeTargets = values \ "exclude" match {
+                                 case JNothing =>
+                                   None
+                                 case excludeJson =>
+                                   unserJson(excludeJson)
+                               }
+            } yield {
+              TargetExclusion(includeTargets,excludeTargets)
+            }
         }
       case _ =>
         logger.error(s"${json.toString} is not a valid rule target")
@@ -130,6 +142,7 @@ object RuleTarget extends Loggable {
 
 
   def unser(s:String) : Option[RuleTarget] = {
+    logger.warn(s)
     s match {
       case GroupTarget.r(g) => Some(GroupTarget(NodeGroupId(g)))
       // case NodeTarget.r(s) => Some(NodeTarget(NodeId(s)))
@@ -162,8 +175,8 @@ final case class FullGroupTarget(
   , nodeGroup: NodeGroup
 ) extends FullRuleTarget
 
-final case class FullJsonRuleTarget(
-    target: JsonRuleTarget
+final case class FullCompositeRuleTarget(
+    target: CompositeRuleTarget
 ) extends FullRuleTarget
 
 final case class FullOtherTarget(

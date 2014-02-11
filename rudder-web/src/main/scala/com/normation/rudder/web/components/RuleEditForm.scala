@@ -48,6 +48,7 @@ import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.RuleTarget
 import com.normation.rudder.domain.policies.TargetUnion
+import com.normation.rudder.domain.policies.TargetExclusion
 import com.normation.rudder.domain.reports.bean._
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
@@ -473,12 +474,13 @@ class RuleEditForm(
       onFailure
     } else { //try to save the rule
       val targetUnion = TargetUnion(selectedTargets.toList)
-      logger.info(targetUnion)
+      val targetExclusion = TargetExclusion(targetUnion,None)
+      logger.info(targetExclusion)
       val newCr = rule.copy(
           name             = crName.is
         , shortDescription = crShortDescription.is
         , longDescription  = crLongDescription.is
-        , targets          = Set(targetUnion)
+        , targets          = Set(targetExclusion)
         , directiveIds     = selectedDirectiveIds
         , isEnabledStatus  = rule.isEnabledStatus
         , categoryId       = RuleCategoryId(category.is)

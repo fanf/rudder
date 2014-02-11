@@ -201,12 +201,14 @@ final case class FullNodeGroupCategory(
         }
         logger.error( res)
         nodes ++ res
-      case (nodes, TargetExclusion(target)) =>
-        val intersection = allNodeIds.diff(getNodeIds(Set(target),allNodeInfos))
+      case (nodes, TargetExclusion(included,excluded)) =>
+        val includedNodes = getNodeIds(Set(included),allNodeInfos)
+        val excludedNodes = getNodeIds(excluded.toSet,allNodeInfos)
+        val result = includedNodes -- excludedNodes
         logger.info("NOT")
         logger.info(nodes)
-        logger.warn(intersection)
-        nodes ++ intersection
+        logger.warn(result)
+        nodes ++ result
     }
   }
 }

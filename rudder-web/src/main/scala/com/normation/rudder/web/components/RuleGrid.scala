@@ -330,7 +330,7 @@ class RuleGrid(
         }
 
       val targetsInfo = sequence(rule.targets.toSeq) {
-        case json:JsonRuleTarget =>
+        case json:CompositeRuleTarget =>
           val ruleTargetInfo = RuleTargetInfo(json,"","",true,false)
           Full(ruleTargetInfo)
 
