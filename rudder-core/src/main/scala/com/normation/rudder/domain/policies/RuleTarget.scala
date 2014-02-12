@@ -60,8 +60,10 @@ sealed trait NonGroupRuleTarget extends RuleTarget
 
 sealed trait CompositeRuleTarget extends RuleTarget {
   def target = compact(render(toJson))
-}
 
+  def remove(target : RuleTarget) : RuleTarget
+
+}
 object GroupTarget { def r = "group:(.+)".r }
 final case class GroupTarget(groupId:NodeGroupId) extends RuleTarget with HashcodeCaching {
   override def target = "group:"+groupId.value
@@ -87,21 +89,68 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
   def r = "special:all_exceptPolicyServers".r
 }
 
-case class TargetIntersection ( targets : Set[RuleTarget]) extends CompositeRuleTarget {
+case object EmptyTarget extends RuleTarget {
+  val target = ""
+}
+
+trait TargetComposition extends CompositeRuleTarget {
+  def targets : Set[RuleTarget]
+
+  def updateTargets(updatedTargets : Set[RuleTarget]) : RuleTarget
+
+  def remove(target : RuleTarget) : RuleTarget = {
+    val removedTargets = (targets - target)
+    val updatedTargets = removedTargets.map({
+      case composite : CompositeRuleTarget => composite.remove(target)
+      case otherTarget => otherTarget
+    }).filter{
+      case EmptyTarget => false
+      case _ => true
+    }
+    if (updatedTargets.isEmpty) {
+      EmptyTarget
+    }
+      else {
+      updateTargets(updatedTargets)
+    }
+  }
+}
+
+case class TargetIntersection ( targets : Set[RuleTarget]) extends TargetComposition {
   override val toJson : JValue = ( "and" -> targets.map(_.toJson))
   override def toString = targets.map(_.toString).mkString("( "," and ", " )")
+  def updateTargets(updated : Set[RuleTarget]) = copy(targets = updated)
 
 }
 
-case class TargetUnion ( targets : Set [RuleTarget]) extends CompositeRuleTarget {
+case class TargetUnion ( targets : Set [RuleTarget]) extends TargetComposition {
   override val toJson : JValue = ( "or" -> targets.map(_.toJson))
   override def toString = targets.map(_.toString).mkString("( "," or ", " )")
+  def updateTargets(updated : Set[RuleTarget]) = copy(targets = updated)
 
 }
 
 case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : Option[RuleTarget]) extends CompositeRuleTarget {
   override val toJson : JValue = ( "include" -> includedTarget.toJson ) ~ ( "exclude" -> excludedTarget.map(_.toJson) )
   override def toString = " ( " +target.toString()+" )"
+
+  def remove(target : RuleTarget) : RuleTarget = {
+    def updateTarget(ruleTarget : RuleTarget) = {
+      ruleTarget match {
+        case composite : CompositeRuleTarget => composite.remove(target)
+        case a if a == target => EmptyTarget
+        case _ => ruleTarget
+      }
+    }
+    val updatedInclude = updateTarget(includedTarget)
+    val updatedExclude = excludedTarget.map(updateTarget)
+
+    (updatedInclude, updatedExclude) match {
+      case (EmptyTarget, Some(EmptyTarget) | None ) => EmptyTarget
+      case _ => this.copy(includedTarget = updatedInclude, excludedTarget = updatedExclude)
+    }
+
+  }
 }
 
 object RuleTarget extends Loggable {
@@ -109,6 +158,7 @@ object RuleTarget extends Loggable {
   def unserJson(json : JValue) : Option[RuleTarget] = {
     logger.debug(json)
     json match {
+      case JNothing => Some(EmptyTarget)
       case JString(s) => unser(s)
       case JObject(JField("and",JArray(values)) :: Nil) =>
         val res = values.map(unserJson).collect{case Some(c) => c}
