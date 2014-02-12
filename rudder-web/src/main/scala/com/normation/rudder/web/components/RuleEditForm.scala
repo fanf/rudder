@@ -225,7 +225,7 @@ class RuleEditForm(
 
   private[this] def  showRuleDetails(directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : NodeSeq = {
     val updatedrule = roRuleRepository.get(rule.id)
-    val test_rule_target = TargetUnion( rule.targets.toList)
+    val test_rule_target = TargetUnion( rule.targets)
     logger.info(test_rule_target)
     (
       "#details *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
@@ -473,7 +473,7 @@ class RuleEditForm(
     if(formTracker.hasErrors) {
       onFailure
     } else { //try to save the rule
-      val targetUnion = TargetUnion(selectedTargets.toList)
+      val targetUnion = TargetUnion(selectedTargets)
       val targetExclusion = TargetExclusion(targetUnion,None)
       logger.info(targetExclusion)
       val newCr = rule.copy(

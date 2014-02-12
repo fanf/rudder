@@ -87,13 +87,13 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
   def r = "special:all_exceptPolicyServers".r
 }
 
-case class TargetIntersection ( targets : List [RuleTarget]) extends CompositeRuleTarget {
+case class TargetIntersection ( targets : Set[RuleTarget]) extends CompositeRuleTarget {
   override val toJson : JValue = ( "and" -> targets.map(_.toJson))
   override def toString = targets.map(_.toString).mkString("( "," and ", " )")
 
 }
 
-case class TargetUnion ( targets : List [RuleTarget]) extends CompositeRuleTarget {
+case class TargetUnion ( targets : Set [RuleTarget]) extends CompositeRuleTarget {
   override val toJson : JValue = ( "or" -> targets.map(_.toJson))
   override def toString = targets.map(_.toString).mkString("( "," or ", " )")
 
@@ -112,10 +112,10 @@ object RuleTarget extends Loggable {
       case JString(s) => unser(s)
       case JObject(JField("and",JArray(values)) :: Nil) =>
         val res = values.map(unserJson).collect{case Some(c) => c}
-        Some(TargetIntersection(res))
+        Some(TargetIntersection(res.toSet))
       case JObject(JField("or",JArray(values)) :: Nil) =>
         val res = values.map(unserJson).collect{case Some(c) => c}
-        Some(TargetUnion(res))
+        Some(TargetUnion(res.toSet))
       case JObject(values) =>
         values \ "include" match {
           case JNothing =>
