@@ -362,7 +362,7 @@ class DependencyAndDeletionServiceImpl(
   /////////////////////////////////////////////////////////////////////////////////
 
   private[this] def searchRules(con:RoLDAPConnection, target:RuleTarget) : Box[Seq[Rule]] = {
-    sequence(con.searchOne(rudderDit.RULES.dn, EQ(A_RULE_TARGET, target.target))) { entry =>
+    sequence(con.searchOne(rudderDit.RULES.dn, SUB(A_RULE_TARGET,null,Array(target.target),null))) { entry =>
       mapper.entry2Rule(entry)
     }
   }
