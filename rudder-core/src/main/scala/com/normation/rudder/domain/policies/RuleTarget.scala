@@ -52,7 +52,7 @@ import net.liftweb.common.Loggable
  * - a specific node
  */
 sealed abstract class RuleTarget {
-  def target:String
+  def target : String
   def toJson : JValue = JString(target)
 }
 
@@ -93,10 +93,19 @@ case object EmptyTarget extends RuleTarget {
   val target = ""
 }
 
-trait TargetComposition extends CompositeRuleTarget {
+trait TargetComposition extends CompositeRuleTarget with Loggable {
   def targets : Set[RuleTarget]
 
-  def updateTargets(updatedTargets : Set[RuleTarget]) : RuleTarget
+  def updateTargets(updatedTargets : Set[RuleTarget]) : TargetComposition
+
+  def + (target : RuleTarget) = {
+    val toAdd = target match {
+      case t:TargetComposition => t.targets
+      case _ => Set(target)
+    }
+    logger.info(toAdd)
+    updateTargets( targets ++ toAdd)
+  }
 
   def remove(target : RuleTarget) : RuleTarget = {
     val removedTargets = (targets - target)
@@ -130,10 +139,29 @@ case class TargetUnion ( targets : Set [RuleTarget]) extends TargetComposition {
 
 }
 
-case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : Option[RuleTarget]) extends CompositeRuleTarget {
-  override val toJson : JValue = ( "include" -> includedTarget.toJson ) ~ ( "exclude" -> excludedTarget.map(_.toJson) )
-  override def toString = " ( " +target.toString()+" )"
+case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : RuleTarget) extends CompositeRuleTarget with Loggable{
+  override val toJson : JValue = ( "include" -> includedTarget.toJson ) ~ ( "exclude" -> excludedTarget.toJson )
+  override def toString = target.toString()
 
+  def updateInclude (target : RuleTarget) = {
+    val newIncluded = includedTarget match {
+      case union : TargetUnion =>  union + target
+      case EmptyTarget => target
+      case t => TargetUnion(Set(t ,target))
+    }
+    logger.error(newIncluded)
+    copy(newIncluded)
+  }
+
+  def updateExclude (target : RuleTarget) = {
+
+    val newExcluded = excludedTarget match {
+      case union : TargetUnion => union + target
+      case EmptyTarget => target
+      case t => TargetUnion(Set(t ,target))
+    }
+    copy(includedTarget,newExcluded)
+  }
   def remove(target : RuleTarget) : RuleTarget = {
     def updateTarget(ruleTarget : RuleTarget) = {
       ruleTarget match {
@@ -143,10 +171,10 @@ case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : Option[
       }
     }
     val updatedInclude = updateTarget(includedTarget)
-    val updatedExclude = excludedTarget.map(updateTarget)
+    val updatedExclude = updateTarget(excludedTarget)
 
     (updatedInclude, updatedExclude) match {
-      case (EmptyTarget, Some(EmptyTarget) | None ) => EmptyTarget
+      case (EmptyTarget, EmptyTarget) => EmptyTarget
       case _ => this.copy(includedTarget = updatedInclude, excludedTarget = updatedExclude)
     }
 
@@ -174,8 +202,9 @@ object RuleTarget extends Loggable {
           case includeJson =>
             for {
               includeTargets <- unserJson(includeJson)
-              excludeTargets = values \ "exclude" match {
+              excludeTargets <- values \ "exclude" match {
                                  case JNothing =>
+                                   logger.error(s"${json.toString} target needs an 'exclude' child")
                                    None
                                  case excludeJson =>
                                    unserJson(excludeJson)
@@ -188,6 +217,20 @@ object RuleTarget extends Loggable {
         logger.error(s"${json.toString} is not a valid rule target")
         None
     }
+  }
+
+  def merge(targets : Set[RuleTarget]) : TargetExclusion = {
+
+    val start = TargetExclusion(TargetUnion(Set()),TargetUnion(Set()))
+    val res = (start /: targets) {
+      case (res,e:TargetExclusion) =>
+        logger.info(e)
+        logger.warn(res)
+       res.updateInclude(e.includedTarget).updateExclude(e.excludedTarget)
+      case (res,t) => res.updateInclude(t)
+      }
+    logger.error(s"merge is $res")
+    res
   }
 
 

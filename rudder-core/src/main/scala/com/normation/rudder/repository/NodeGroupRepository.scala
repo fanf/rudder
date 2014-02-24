@@ -203,7 +203,7 @@ final case class FullNodeGroupCategory(
         nodes ++ res
       case (nodes, TargetExclusion(included,excluded)) =>
         val includedNodes = getNodeIds(Set(included),allNodeInfos)
-        val excludedNodes = getNodeIds(excluded.toSet,allNodeInfos)
+        val excludedNodes = getNodeIds(Set(excluded),allNodeInfos)
         val result = includedNodes -- excludedNodes
         logger.info("NOT")
         logger.info(nodes)
