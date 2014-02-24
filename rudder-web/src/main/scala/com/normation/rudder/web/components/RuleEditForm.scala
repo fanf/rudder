@@ -474,7 +474,7 @@ class RuleEditForm(
       onFailure
     } else { //try to save the rule
       val targetUnion = TargetUnion(selectedTargets)
-      val targetExclusion = TargetExclusion(targetUnion,None)
+      val targetExclusion = TargetExclusion(targetUnion,TargetUnion(Set()))
       logger.info(targetExclusion)
       val newCr = rule.copy(
           name             = crName.is

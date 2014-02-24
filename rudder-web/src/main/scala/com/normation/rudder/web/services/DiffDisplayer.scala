@@ -156,10 +156,7 @@ object DiffDisplayer extends Loggable {
           <span> "and" : {targets.map(displayNodeGroup)} </span>
         case TargetExclusion(included,excluded) =>
           <span> "include" : {displayNodeGroup(included)} </span> ++
-          ( excluded match {
-              case None => NodeSeq.Empty
-              case Some(excluded) => <br/><span> "exclude" : {displayNodeGroup(excluded)} </span>
-            } )
+          <br/><span> "exclude" : {displayNodeGroup(excluded)} </span>
         case GroupTarget(nodeGroupId) =>
           <span> Group {createGroupLink(nodeGroupId)}</span>
         case x => groupLib.allTargets.get(x).map{ targetInfo =>
