@@ -50,9 +50,6 @@ import com.normation.rudder.rule.category.RuleCategoryId
 import net.liftweb.common.Full
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Loggable
-import com.normation.rudder.domain.policies.TargetUnion
-import com.normation.rudder.domain.policies.TargetIntersection
-import com.normation.rudder.domain.policies.TargetExclusion
 
 
 
@@ -150,13 +147,6 @@ object DiffDisplayer extends Loggable {
 
     implicit def displayNodeGroup(target: RuleTarget) : NodeSeq= {
       target match {
-        case TargetUnion(targets) =>
-          <span> "or" : {targets.map(displayNodeGroup)} </span>
-        case TargetIntersection(targets) =>
-          <span> "and" : {targets.map(displayNodeGroup)} </span>
-        case TargetExclusion(included,excluded) =>
-          <span> "include" : {displayNodeGroup(included)} </span> ++
-          <br/><span> "exclude" : {displayNodeGroup(excluded)} </span>
         case GroupTarget(nodeGroupId) =>
           <span> Group {createGroupLink(nodeGroupId)}</span>
         case x => groupLib.allTargets.get(x).map{ targetInfo =>
