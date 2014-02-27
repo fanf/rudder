@@ -35,7 +35,7 @@
 package com.normation.rudder.services.policies
 
 import com.normation.rudder.domain.policies.{
-  GroupTarget,RuleTarget,CompositeRuleTarget, EmptyTarget
+  GroupTarget,RuleTarget,CompositeRuleTarget
 }
 import com.unboundid.ldap.sdk.DN
 import com.normation.rudder.repository.ldap.LDAPEntityMapper
@@ -420,10 +420,7 @@ class DependencyAndDeletionServiceImpl(
           val updatedTargets = removedTargets.map({
             case composite : CompositeRuleTarget => composite.remove(target)
             case t => t
-          } ).filter{
-            case EmptyTarget => false
-            case _ => true
-          }
+          } )
           val newRule = rule.copy(targets = updatedTargets)
           val updatedRuleRes = if(rule.isSystem) {
             woRuleRepository.updateSystem(newRule, modId, actor, reason)

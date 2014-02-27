@@ -181,36 +181,34 @@ final case class FullNodeGroupCategory(
         nodes ++ nodesForGroup
 
       case (nodes, TargetIntersection(targets)) =>
-        val intersection = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        logger.info("AND")
-        logger.info(nodes)
-        logger.warn(intersection)
-        val res = (allNodeIds/: intersection) {
-          case (result, nodes) => result.intersect(nodes)
+        val nodeSets = targets.map(t => getNodeIds(Set(t),allNodeInfos))
+        // Compute the intersection of the sets of Nodes
+        val intersection = (allNodeIds/: nodeSets) {
+          case (currentIntersection, nodes) => currentIntersection.intersect(nodes)
         }
-        logger.error(res)
-        nodes ++ res
-      case (nodes, TargetUnion(targets)) =>
-        val union = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        logger.info("OR")
-        logger.info(nodes)
-        logger.warn(union)
+        nodes ++ intersection
 
-        val res = (Set[NodeId]()/: union) {
-          case (result, nodes) => result.union(nodes)
+      case (nodes, TargetUnion(targets)) =>
+        val nodeSets = targets.map(t => getNodeIds(Set(t),allNodeInfos))
+        // Compute the union of the sets of Nodes
+        val union = (Set[NodeId]()/: nodeSets) {
+          case (currentUnion, nodes) => currentUnion.union(nodes)
         }
-        logger.error( res)
-        nodes ++ res
+        nodes ++ union
+
       case (nodes, TargetExclusion(included,excluded)) =>
+        // Compute the included Nodes
         val includedNodes = getNodeIds(Set(included),allNodeInfos)
+        // Compute the excluded Nodes
         val excludedNodes = getNodeIds(Set(excluded),allNodeInfos)
+        // Remove excluded nodes from included nodes
         val result = includedNodes -- excludedNodes
-        logger.info("NOT")
-        logger.info(nodes)
-        logger.warn(result)
         nodes ++ result
-      case (nodes,EmptyTarget) =>
-        logger.warn("should not find empty target here")
+
+
+      case (nodes,target) =>
+        logger.warn(s"cannot find nodes from a Rule target")
+        logger.debug(s"the target is : ${target}")
         nodes
     }
   }
