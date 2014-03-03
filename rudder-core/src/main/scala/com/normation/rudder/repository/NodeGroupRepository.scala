@@ -207,8 +207,7 @@ final case class FullNodeGroupCategory(
 
 
       case (nodes,target) =>
-        logger.warn(s"cannot find nodes from a Rule target")
-        logger.debug(s"the target is : ${target}")
+        logger.debug(s"Cannot find nodes from a Rule target, the target is : ${target}")
         nodes
     }
   }

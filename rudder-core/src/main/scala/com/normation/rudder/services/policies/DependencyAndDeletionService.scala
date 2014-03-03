@@ -418,7 +418,7 @@ class DependencyAndDeletionServiceImpl(
       val removedTargets = rule.targets - targetToDelete
       // Remove target from composite targets
       val updatedTargets = removedTargets.map({
-        case composite : CompositeRuleTarget => composite.remove(targetToDelete)
+        case composite : CompositeRuleTarget => composite.removeTarget(targetToDelete)
         case t => t
       } )
       // Update the Rule and save it

@@ -91,7 +91,7 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
  */
 sealed trait CompositeRuleTarget extends RuleTarget {
   def target = compact(render(toJson))
-  def remove(target : RuleTarget) : RuleTarget
+  def removeTarget(target : RuleTarget) : RuleTarget
 }
 
 
@@ -157,7 +157,7 @@ trait TargetComposition extends CompositeRuleTarget {
    * - If the same kind of composition: merge all targets
    * - otherwise: add the target as one of the target handled by the composition
    */
-  def + (target : RuleTarget) : TargetComposition = {
+  def addTarget (target : RuleTarget) : TargetComposition = {
     val updatedTarget = target match {
         case t:TargetComposition if t.kind == kind => targets ++ t.targets
         case _ =>  ( targets + target )
@@ -166,12 +166,14 @@ trait TargetComposition extends CompositeRuleTarget {
   }
 
   /**
-   * Remove a target from targets and remove it from targets too
+   * Remove the target
+   * - Directly from list of targets if that target is a direct children
+   * - Asks inner targets to remove that target also
    */
-  def remove(target : RuleTarget) : TargetComposition = {
+  def removeTarget(target : RuleTarget) : TargetComposition = {
     val removedTargets = (targets - target)
     val updatedTargets = removedTargets.map({
-      case composite : CompositeRuleTarget => composite.remove(target)
+      case composite : CompositeRuleTarget => composite.removeTarget(target)
       case otherTarget => otherTarget
     })
     updateTargets(updatedTargets)
@@ -234,7 +236,7 @@ case class TargetExclusion(
    * Add a target to the included target
    */
   def updateInclude (target : RuleTarget) = {
-    val newIncluded = includedTarget + target
+    val newIncluded = includedTarget addTarget target
     copy(newIncluded)
   }
 
@@ -243,17 +245,17 @@ case class TargetExclusion(
    * Add a target to the excluded target
    */
   def updateExclude (target : RuleTarget) = {
-    val newExcluded = excludedTarget + target
+    val newExcluded = excludedTarget addTarget target
     copy(includedTarget,newExcluded)
   }
 
   /**
    * Remove a target from both the included and the excluded target
    */
-  def remove(target : RuleTarget) = {
+  def removeTarget(target : RuleTarget) = {
 
-    val updatedInclude = includedTarget.remove(target)
-    val updatedExclude = excludedTarget.remove(target)
+    val updatedInclude = includedTarget.removeTarget(target)
+    val updatedExclude = excludedTarget.removeTarget(target)
     copy(updatedInclude,updatedExclude)
 
   }
@@ -321,7 +323,7 @@ object RuleTarget extends Loggable {
           unserJson(parse(s))
         } catch {
           case e : Exception =>
-            logger.error(s"could not parse $s cause is :${e.getMessage()}")
+            logger.error(s"Error when trying to read the following serialized Rule target as a composite target (other case where not relevant): '${s}'. Reported parsing error cause was: ${e.getMessage}")
             None
         }
     }
