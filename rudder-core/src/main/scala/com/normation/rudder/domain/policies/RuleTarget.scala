@@ -90,35 +90,36 @@ final case object AllTargetExceptPolicyServers extends NonGroupRuleTarget {
  * This target is rendered as Json
  */
 sealed trait CompositeRuleTarget extends RuleTarget {
-  def target = compact(render(toJson))
-  def removeTarget(target : RuleTarget) : RuleTarget
-}
+  final def target = compact(render(toJson))
 
 
-/**
- *  To determine if Target composition are the same
- */
-sealed trait CompositionKind {
-  val token : String
-}
+  /**
+   * Removing a target is the action of erasing that target in each place where
+   * it appears.
+   */
+  final def removeTarget(target : RuleTarget) : CompositeRuleTarget = {
+    //filter a set of targets recursively
+    def recRemoveTarget(targets:Set[RuleTarget]): Set[RuleTarget] = {
+      targets.filterNot( _ == target).map {
+        case t:CompositeRuleTarget => t.removeTarget(target)
+        case x => x
+      }
+    }
 
-object CompositionKind {
-  def fromToken (token : String) : Box[CompositionKind] = {
-    token match {
-      case Union.token => Full(Union)
-      case Intersection.token => Full(Intersection)
-      case _ => Failure(s" '${token}' is not a valid composition kind")
+    def removeOnJoin(t:TargetComposition): TargetComposition = {
+      t match {
+        case TargetUnion(t) => TargetUnion(recRemoveTarget(t))
+        case TargetIntersection(t) => TargetIntersection(recRemoveTarget(t))
+      }
+    }
+
+    this match {
+      case t: TargetComposition => removeOnJoin(t)
+      case TargetExclusion(plus, minus) => TargetExclusion(removeOnJoin(plus), removeOnJoin(minus))
     }
   }
-
 }
 
-case object Union extends CompositionKind {
-  val token = "union"
-}
-case object Intersection extends CompositionKind {
-  val token = "intersection"
-}
 
 /**
  * Target Composition allow you to compose multiple targets in one target
@@ -129,84 +130,37 @@ trait TargetComposition extends CompositeRuleTarget {
    */
   def targets : Set[RuleTarget]
 
-  /**
-   * Kind of composition
-   */
-  def kind : CompositionKind
-
-  /**
-   * Create a new target replacing the target by those in the target passed as parameter.
-   */
-  def updateTargets (updatedTargets : Set[RuleTarget]) : TargetComposition
-
-  /**
-   * Json value of a composition:
-   * { "targets" -> [ targets of the composition ], "kind" -> Kind of composition }
-   */
-  override val toJson : JValue = {
-    ( "targets" -> targets.map(_.toJson)) ~
-    ( "kind" -> kind.token)
-  }
-
-  override def toString = {
-    targets.map(_.toString).mkString("( ",s" ${kind.token} ", " )")
-  }
 
   /**
    * Add a target:
    * - If the same kind of composition: merge all targets
    * - otherwise: add the target as one of the target handled by the composition
    */
-  def addTarget (target : RuleTarget) : TargetComposition = {
-    val updatedTarget = target match {
-        case t:TargetComposition if t.kind == kind => targets ++ t.targets
-        case _ =>  ( targets + target )
-      }
-    updateTargets(updatedTarget)
-  }
+  def addTarget(target : RuleTarget) : TargetComposition
 
-  /**
-   * Remove the target
-   * - Directly from list of targets if that target is a direct children
-   * - Asks inner targets to remove that target also
-   */
-  def removeTarget(target : RuleTarget) : TargetComposition = {
-    val removedTargets = (targets - target)
-    val updatedTargets = removedTargets.map({
-      case composite : CompositeRuleTarget => composite.removeTarget(target)
-      case otherTarget => otherTarget
-    })
-    updateTargets(updatedTargets)
-  }
 }
 
-
-object TargetComposition {
-  def fromKind (kind:CompositionKind, targets : Set[RuleTarget]): TargetComposition = {
-    kind match {
-      case Union => TargetUnion(targets)
-      case Intersection => TargetIntersection(targets)
-    }
-  }
-}
 
 /**
  * Union of all Targets, Should take all Nodes from these targets
  */
-case class TargetUnion (targets:Set[RuleTarget] = Set()) extends TargetComposition {
-  def kind = Union
-  def updateTargets(updatedTargets: Set[RuleTarget]) = copy(updatedTargets)
+final case class TargetUnion(targets:Set[RuleTarget] = Set()) extends TargetComposition {
+  override val toJson : JValue = {
+    ( "or" -> targets.map(_.toJson))
+  }
+  def addTarget(target : RuleTarget) : TargetComposition = TargetUnion(targets + target)
 }
 
 
 /**
  * Intersection of all Targets, Should take Nodes belongings to all targets
  */
-case class TargetIntersection (targets:Set[RuleTarget] = Set()) extends TargetComposition {
-  def kind = Intersection
-  def updateTargets(updatedTargets: Set[RuleTarget]) = copy(updatedTargets)
+final case class TargetIntersection(targets:Set[RuleTarget] = Set()) extends TargetComposition {
+  override val toJson : JValue = {
+    ( "and" -> targets.map(_.toJson))
+  }
+  def addTarget(target : RuleTarget) : TargetComposition = TargetIntersection(targets + target)
 }
-
 
 /**
  * this Target take 2 composition targets as parameters:
@@ -249,16 +203,6 @@ case class TargetExclusion(
     copy(includedTarget,newExcluded)
   }
 
-  /**
-   * Remove a target from both the included and the excluded target
-   */
-  def removeTarget(target : RuleTarget) = {
-
-    val updatedInclude = includedTarget.removeTarget(target)
-    val updatedExclude = excludedTarget.removeTarget(target)
-    copy(updatedInclude,updatedExclude)
-
-  }
 }
 
 object RuleTarget extends Loggable {
@@ -270,12 +214,17 @@ object RuleTarget extends Loggable {
 
     def unserComposition(json : JValue) : Box[TargetComposition] = {
       json match {
-        case JObject(JField("targets",JArray(content)) :: JField("kind",JString(kind)) :: Nil) =>
+        case JObject(JField("or",JArray(content)) :: Nil) =>
           for {
             targets <- sequence(content)(unserJson)
-            compositionKind <- CompositionKind.fromToken(kind)
           } yield {
-            TargetComposition.fromKind(compositionKind, targets.toSet)
+            TargetUnion(targets.toSet)
+          }
+        case JObject(JField("and",JArray(content)) :: Nil) =>
+          for {
+            targets <- sequence(content)(unserJson)
+          } yield {
+            TargetIntersection(targets.toSet)
           }
       case _ =>
         Failure(s"${json.toString} is not a valid rule target")
