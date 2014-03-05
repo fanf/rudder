@@ -84,7 +84,7 @@ class SystemVariableServiceImpl(
   // allNodeInfos has to contain ALL the node info (those of every node within Rudder)
   // for this method to work properly
   def getSystemVariables(nodeInfo: NodeInfo, allNodeInfos: Set[NodeInfo], groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory, allRules: Map[RuleId, Rule]): Box[Map[String, Variable]] = {
-    logger.debug("Preparing the system variables for server %s".format(nodeInfo.id.value))
+    logger.trace("Preparing the system variables for node %s".format(nodeInfo.id.value))
 
     // Set the roles of the nodes
     val nodeConfigurationRoles = collection.mutable.Set[String]()
@@ -122,10 +122,12 @@ class SystemVariableServiceImpl(
     var varManagedNodes = systemVariableSpecService.get("MANAGED_NODES_NAME").toVariable()
     var varManagedNodesId = systemVariableSpecService.get("MANAGED_NODES_ID").toVariable()
     var varAllowedNetworks = systemVariableSpecService.get("AUTHORIZED_NETWORKS").toVariable()
+    var varManagedNodesAdmin = systemVariableSpecService.get("MANAGED_NODES_ADMIN").toVariable()
 
     val allowConnect = collection.mutable.Set[String]()
 
     val clientList = collection.mutable.Set[String]()
+
 
     // If we are facing a policy server, we have to allow each child to connect, plus the policy parent,
     // else it's only the policy server
@@ -165,6 +167,23 @@ class SystemVariableServiceImpl(
       val children = allNodeInfos.filter(_.policyServerId == nodeInfo.id).toSeq
       varManagedNodes = varManagedNodes.copyWithSavedValues(children.map(_.hostname))
       varManagedNodesId = varManagedNodesId.copyWithSavedValues(children.map(_.id.value))
+
+      val varNameForAdminUsers = "${rudder.hasPolicyServer-" + nodeInfo.id.value + ".target.admin}"
+      val allowedUserVarSpec = SystemVariableSpec(name = varNameForAdminUsers, description = "", multivalued = true)
+      val allowedUserVar = SystemVariable(allowedUserVarSpec, Seq()).copyWithSavedValues(Seq(varNameForAdminUsers))
+
+      parameterizedValueLookupService.lookupRuleParameterization(Seq(allowedUserVar), allNodeInfos, groupLib, directiveLib, allRules) match {
+        case Full(variable) =>
+          varManagedNodesAdmin = varManagedNodesAdmin.copyWithSavedValues(variable.flatMap(x => x.values).distinct)
+        case Empty =>
+          logger.warn(s"There were no variable parametrized found for ${varNameForAdminUsers}, which means that the configuration of Policy Server with Rudder ID ${nodeInfo.id.value} is probably incorrect. Please run again the rudder-init.sh script, or the script used to add a Relay Server")
+        case f: Failure =>
+          val e = f ?~! "Failure when fetching the list of administrators of managed nodes"
+          logger.error(e.messageChain)
+          return e
+      }
+
+
     }
 
     allNodeInfos.find( _.id == nodeInfo.policyServerId) match {
@@ -198,7 +217,7 @@ class SystemVariableServiceImpl(
     val denyBadClocks = getProp("DENYBADCLOCKS", getDenyBadClocks)
     val skipIdentify = getProp("SKIPIDENTIFY", getSkipIdentify)
 
-    logger.debug("System variables for server %s done".format(nodeInfo.id.value))
+    logger.trace("System variables for node %s done".format(nodeInfo.id.value))
 
     Full(Map(
         (varNodeRole.spec.name, varNodeRole)
@@ -212,6 +231,7 @@ class SystemVariableServiceImpl(
       , (varManagedNodesId.spec.name, varManagedNodesId)
       , (varManagedNodes.spec.name, varManagedNodes)
       , (varAllowedNetworks.spec.name, varAllowedNetworks)
+      , (varManagedNodesAdmin.spec.name, varManagedNodesAdmin)
       , (varWebdavUser.spec.name, varWebdavUser)
       , (varWebdavPassword.spec.name, varWebdavPassword)
       , (syslogPortConfig.spec.name, syslogPortConfig)
