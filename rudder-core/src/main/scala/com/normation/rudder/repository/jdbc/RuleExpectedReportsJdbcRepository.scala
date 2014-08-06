@@ -120,7 +120,7 @@ class RuleExpectedReportsJdbcRepository(
           seq.size match {
             case 0 => None
             case 1 => Some(seq.head)
-            case _ => Failure("Inconsistency in the database, too many entries infor rule id %s".format(ruleId))
+            case _ => Failure("Inconsistency in the database, too many entries for rule id %s".format(ruleId))
           }
       }
     }

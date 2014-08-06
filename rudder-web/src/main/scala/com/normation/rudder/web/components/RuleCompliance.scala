@@ -95,16 +95,12 @@ class RuleCompliance (
   def showCompliance : NodeSeq = {
     val complianceData = ComplianceData(directiveLib,allNodeInfos)
 
-    reportingService.findImmediateReportsByRule(rule.id) match {
+    reportingService.findDirectiveRuleStatusReportsByRule(rule.id) match {
       case e: EmptyBox => <div class="error">Error while fetching report information</div>
-      case Full(optReport) =>
-        val data = optReport match {
-          case Some(reports) =>
-            val directivesReport=reports.getRuleStatus().filter(dir => rule.directiveIds.contains(dir.directiveId))
-            val data = complianceData.getDirectivesComplianceDetails(directivesReport,rule,false)
-            data.json.toJsCmd
-          case None => "[]"
-        }
+      case Full(reports) =>
+        val directivesReport = reports.filter(dir => rule.directiveIds.contains(dir.directiveId))
+        val data = complianceData.getDirectivesComplianceDetails(directivesReport,rule,false).json.toJsCmd
+
         <div>
           <hr class="spacer" />
          <table id="reportsGrid" cellspacing="0">  </table>
@@ -119,20 +115,15 @@ class RuleCompliance (
   def refresh() = {
      val ajaxCall = SHtml.ajaxCall(JsNull, (s) => {
         val result : Box[String] = for {
-            optReports <- reportingService.findImmediateReportsByRule(rule.id)
+            reports <- reportingService.findDirectiveRuleStatusReportsByRule(rule.id)
             updatedRule <- roRuleRepository.get(rule.id)
             updatedNodes <- getAllNodeInfos().map(_.toMap)
             updatedDirectives <- getFullDirectiveLib()
         } yield {
           val complianceData = ComplianceData(directiveLib,allNodeInfos)
+          val directivesReport = reports.filter(dir => updatedRule.directiveIds.contains(dir.directiveId))
 
-          optReports match {
-            case Some(reports) =>
-              val directivesReport=reports.getRuleStatus().filter(dir => updatedRule.directiveIds.contains(dir.directiveId))
-              complianceData.getDirectivesComplianceDetails(directivesReport,updatedRule,false).json.toJsCmd
-
-            case _ => "[]"
-          }
+          complianceData.getDirectivesComplianceDetails(directivesReport,updatedRule,false).json.toJsCmd
         }
 
         JsRaw(s"""refreshTable("reportsGrid",${result.getOrElse("[]")});

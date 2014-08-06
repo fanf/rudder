@@ -34,20 +34,11 @@
 
 package com.normation.rudder.domain.reports
 
+import scala.collection.Seq
+
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.DirectiveId
-import scala.collection._
-import org.joda.time._
-import org.joda.time.format._
-import com.normation.rudder.domain.Constants
-import com.normation.cfclerk.domain.{Cf3PolicyDraftId}
-import com.normation.utils.HashcodeCaching
-import scala.collection.mutable.Buffer
-import ExecutionBatch._
-import com.normation.rudder.domain.logger.ReportLogger
-import com.normation.rudder.domain.policies.Directive
-import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.policies.RuleId
 
 /**
  * That file contains all the kind of status reports:

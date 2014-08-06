@@ -189,12 +189,23 @@ class ReportingServiceImpl(
    * Find the latest reports for a given rule (for all servers)
    * Note : if there is an expected report, and that we don't have it, we should say that it is empty
    */
-  def findImmediateReportsByRule(ruleId : RuleId) : Box[Option[ExecutionBatch]] = {
+  override private[reports] def findImmediateReportsByRule(ruleId : RuleId) : Box[Option[ExecutionBatch]] = {
      // look in the configuration
     confExpectedRepo.findCurrentExpectedReports(ruleId) match {
       case Empty => Empty
       case e:Failure => logger.error("Error when fetching reports for Rule %s : %s".format(ruleId.value, e.messageChain)); e
       case Full(expected) => Full(expected.map(createLastBatchFromConfigurationReports(_)))
+    }
+  }
+
+  override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]] = {
+    for {
+      optBatch <- findImmediateReportsByRule(ruleId)
+    } yield {
+      optBatch match {
+        case None => Seq()
+        case Some(batch) => batch.getRuleStatus
+      }
     }
   }
 
@@ -204,7 +215,7 @@ class ReportingServiceImpl(
    * The returned Map should have the same elements than the Seq in argument, so that we
    * can reconcile in the RuleGrid the values, and display properly the success or failure, or applying
    */
-  def findImmediateReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Option[ExecutionBatch]]] = {
+  override private[reports] def findImmediateReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Option[ExecutionBatch]]] = {
     val agentRunInterval = getAgentRunInterval()
 
     val expectedReports = rulesIds.map { ruleId =>
@@ -242,12 +253,15 @@ class ReportingServiceImpl(
     }.toMap
   }
 
+  override def findNodeStatusReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Seq[NodeStatusReport]]] = {
+    findImmediateReportsByRules(rulesIds).map { case (id, box) => (id, box.map( _.map( _.getNodeStatus).getOrElse(Seq()) )) }
+  }
 
   /**
    * Find the latest (15 minutes) reports for a given node (all CR)
    * Note : if there is an expected report, and that we don't have it, we should say that it is empty
    */
-  def findImmediateReportsByNode(nodeId : NodeId) :  Box[Seq[ExecutionBatch]] = {
+  override private[reports] def findImmediateReportsByNode(nodeId : NodeId) :  Box[Seq[ExecutionBatch]] = {
     // look in the configuration
     confExpectedRepo.findCurrentExpectedReportsByNode(nodeId) match {
       case e:EmptyBox => e
@@ -255,6 +269,15 @@ class ReportingServiceImpl(
         Full(seq.map(expected => createLastBatchFromConfigurationReports(expected, Some(nodeId))))
     }
   }
+
+  override def findNodeStatusReportsByNode(nodeId: NodeId) : Box[Seq[NodeStatusReport]] = {
+    for {
+      batches <- findImmediateReportsByNode(nodeId)
+    } yield {
+      batches.flatMap(x => x.getNodeStatus())
+    }
+  }
+
 
   /************************ Helpers functions **************************************/
 

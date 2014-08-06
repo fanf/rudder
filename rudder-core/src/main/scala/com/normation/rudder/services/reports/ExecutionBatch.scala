@@ -32,7 +32,7 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.domain.reports
+package com.normation.rudder.services.reports
 
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
@@ -48,6 +48,7 @@ import ExecutionBatch._
 import com.normation.rudder.domain.logger.ReportLogger
 import com.normation.rudder.domain.policies.Directive
 import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.reports._
 
 /**
  * An execution batch contains the node reports for a given Rule / Directive at a given date
@@ -78,7 +79,7 @@ object ExecutionBatch {
 }
 
 
-case class ExecutionBatch(
+private[reports] case class ExecutionBatch(
     val ruleId                          : RuleId
   // Differents Nodes may have differents version of the same directive.
   // We use this seq to store this information

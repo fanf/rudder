@@ -88,20 +88,20 @@ class ReportDisplayer(
   def reportByNodeTemplate = chooseTemplate("batches", "list", templateByNode)
   def directiveDetails = chooseTemplate("directive", "foreach", templateByNode)
 
-  var staticReportsSeq : Seq[ExecutionBatch] = Seq[ExecutionBatch]()
+  var staticReportsSeq : Seq[NodeStatusReport] = Seq()
 
-  def display(reportsSeq : Seq[ExecutionBatch], tableId:String, node : NodeInfo): NodeSeq = {
+  def display(reportsSeq : Seq[NodeStatusReport], tableId:String, node : NodeInfo): NodeSeq = {
 
     staticReportsSeq = reportsSeq.filter( x => ruleRepository.get(x.ruleId).isDefined  )
     bind("lastReportGrid",reportByNodeTemplate,
            "intro" ->  (staticReportsSeq.filter(x => (
-                               (x.getNodeStatus().exists(x => x.reportType == ErrorReportType)) ||
-                               (x.getNodeStatus().exists(x => x.reportType == RepairedReportType)) ||
-                               (x.getNodeStatus().exists(x => x.reportType == NoAnswerReportType))
+                               (x.reportType == ErrorReportType) ||
+                               (x.reportType == RepairedReportType) ||
+                               (x.reportType == NoAnswerReportType)
                         )
-                                ).toList match {
+          ).toList match {
              case x if (x.size > 0) => <div>There are {x.size} out of {staticReportsSeq.size} reports that require our attention</div>
-             case _ => if (staticReportsSeq.filter(x => (x.getNodeStatus().exists(x => x.reportType == PendingReportType))).size>0) {
+             case _ => if (staticReportsSeq.filter(x => (x.reportType == PendingReportType)).size>0) {
                      <div>Policy update in progress</div>
                    } else {
                      <div>All the last execution reports for this server are ok</div>
@@ -113,11 +113,10 @@ class ReportDisplayer(
            )
   }
 
-  def getComplianceData(executionsBatches : Seq[ExecutionBatch]) = {
+  def getComplianceData(reportStatus: Seq[NodeStatusReport]) = {
     for {
       directiveLib <-directiveRepository.getFullDirectiveLibrary
       allNodeInfos <- getAllNodeInfos()
-      reportStatus = executionsBatches.flatMap(x => x.getNodeStatus())
     } yield {
       val complianceData = ComplianceData(directiveLib,allNodeInfos)
 
@@ -126,9 +125,9 @@ class ReportDisplayer(
     }
   }
 
-  def showReportDetail(executionsBatches : Seq[ExecutionBatch], node : NodeInfo) : NodeSeq = {
+  def showReportDetail(reports : Seq[NodeStatusReport], node : NodeInfo) : NodeSeq = {
 
-    val data = getComplianceData(executionsBatches).map(_.json).getOrElse(JsArray())
+    val data = getComplianceData(reports).map(_.json).getOrElse(JsArray())
 
 
     reportsGridXml++
@@ -143,7 +142,7 @@ class ReportDisplayer(
 
     def refreshData : Box[JsCmd] = {
       for {
-        reports <- reportingService.findImmediateReportsByNode(node.id)
+        reports <- reportingService.findNodeStatusReportsByNode(node.id)
         data <- getComplianceData(reports)
       } yield {
         JsRaw(s"""refreshTable("reportsGrid",${data.json.toJsCmd});""")
@@ -173,9 +172,9 @@ class ReportDisplayer(
   }
 
   def displayReports(node : NodeInfo) : NodeSeq = {
-    reportingService.findImmediateReportsByNode(node.id) match {
+    reportingService.findNodeStatusReportsByNode(node.id) match {
       case e:EmptyBox => <div class="error">Could not fetch reports information</div>
-      case Full(batches) => display(batches, "reportsGrid", node)
+      case Full(reports) => display(reports, "reportsGrid", node)
     }
   }
 
@@ -211,7 +210,7 @@ class ReportDisplayer(
       </tr>
     }
 
-    def showMissingReports(batches:Seq[ExecutionBatch]) : NodeSeq = {
+    def showMissingReports(nodeStatusReports: Seq[NodeStatusReport]) : NodeSeq = {
       def showMissingReport(report:((String,String),String,String)) : NodeSeq = {
         val techniqueName =report._2
         val techniqueVersion = report._3
@@ -220,7 +219,7 @@ class ReportDisplayer(
                 "#component *" #>  reportValue._1&
                 "#value *" #>  reportValue._2
               ) ( missingLineXml )
-            }
+      }
 
       /*
        * To get missing reports we have to find them in each node report
@@ -228,7 +227,7 @@ class ReportDisplayer(
        * we could add more information at each level (directive name? rule name?)
        * NOTE : a missing report is an unknown report with no message
        */
-      val reports = batches.flatMap(x => x.getNodeStatus()).filter(_.reportType==UnknownReportType).flatMap { reports =>
+      val reports = nodeStatusReports.filter(_.reportType==UnknownReportType).flatMap { reports =>
         val techniqueComponentsReports = reports.directives.filter(_.reportType==UnknownReportType).flatMap{dir =>
           val componentsReport = dir.components.filter(_.reportType==UnknownReportType).flatMap{component =>
             val values = (component.componentValues++component.unexpectedCptValues).filter(value => value.reportType==UnknownReportType&&value.message.size==0)
@@ -300,7 +299,7 @@ class ReportDisplayer(
       </tr>
     }
 
-    def showUnexpectedReports(batches:Seq[ExecutionBatch]) : NodeSeq = {
+    def showUnexpectedReports(nodeStatusReports: Seq[NodeStatusReport]) : NodeSeq = {
        def showUnexpectedReport(report:((String,String,List[String]),String,String)) : NodeSeq = {
         val techniqueName =report._2
         val techniqueVersion = report._3
@@ -318,7 +317,7 @@ class ReportDisplayer(
        * and also get technique details at directive level for each report
        * we could add more information at each level (directive name? rule name?)
        */
-      val reports = batches.flatMap(x => x.getNodeStatus()).filter(_.reportType==UnknownReportType).flatMap { reports =>
+      val reports = nodeStatusReports.filter(_.reportType==UnknownReportType).flatMap { reports =>
         val techniqueComponentsReports = reports.directives.filter(_.reportType==UnknownReportType).flatMap{dir =>
           val componentsReport = dir.components.filter(_.reportType==UnknownReportType).flatMap{component =>
             val values = (component.componentValues++component.unexpectedCptValues).filter(value => value.reportType==UnknownReportType&&value.message.size!=0)

@@ -355,7 +355,7 @@ class RuleGrid(
              case _:NotAppliedStatus =>
                Full(None)
              case _ =>
-               complianceMap.getOrElse(rule.id, Failure(s"Error when getting compliance for Rule ${rule.name}"))
+               complianceMap.getOrElse(rule.id, Failure(s"Error when getting compliance for Rule ${rule.name}")).map(Some(_))
            }
            compliance match {
              case e:EmptyBox =>
@@ -515,19 +515,16 @@ class RuleGrid(
 
   }
 
-  private[this] def computeCompliances(rules: Set[Rule]) : Map[RuleId, Box[Option[ComplianceLevel]]] = {
-    reportingService.findImmediateReportsByRules(rules.map(_.id)).map { case (ruleId, entry) =>
+  private[this] def computeCompliances(rules: Set[Rule]) : Map[RuleId, Box[ComplianceLevel]] = {
+    reportingService.findNodeStatusReportsByRules(rules.map(_.id)).map { case (ruleId, entry) =>
       (ruleId,
           entry match {
             case e:EmptyBox => e
-            case Full(None) => Full(Some(Applying)) // when we have a rule but nothing in the database, it means that it is currently being deployed
-            case Full(Some(batch)) =>
-              if(batch.getNodeStatus.size == 0) {
-                Full(None)
-              } else if(batch.getNodeStatus().exists(x => x.reportType == PendingReportType )) {
-                Full(Some(Applying))
+            case Full(nodeReports) =>
+              if(nodeReports.size == 0 || nodeReports.exists(x => x.reportType == PendingReportType )) {
+                Full(Applying) // when we have a rule but nothing in the database, it means that it is currently being deployed
               } else {
-                Full(Some(new Compliance((100 * batch.getNodeStatus().filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / batch.getNodeStatus().size)))
+                Full(new Compliance((100 * nodeReports.filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / nodeReports.size))
               }
           }
       )

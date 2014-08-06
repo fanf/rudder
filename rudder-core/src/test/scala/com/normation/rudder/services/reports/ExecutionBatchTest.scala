@@ -32,7 +32,7 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.domain.reports
+package com.normation.rudder.services.reports
 
 
 import org.junit.runner._
@@ -43,6 +43,8 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.DirectiveId
 import org.joda.time.DateTime
+import com.normation.rudder.domain.reports.DirectiveExpectedReports
+import com.normation.rudder.domain.reports._
 
 @RunWith(classOf[JUnitRunner])
 class ExecutionBatchTest extends Specification {
