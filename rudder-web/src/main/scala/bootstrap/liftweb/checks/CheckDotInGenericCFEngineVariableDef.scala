@@ -44,6 +44,11 @@ import com.normation.eventlog.ModificationId
 import com.normation.utils.StringUuidGenerator
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.WoDirectiveRepository
+import java.lang.System
+import com.normation.rudder.repository.FullActiveTechniqueCategory
+import com.normation.cfclerk.domain.TechniqueId
+import com.normation.cfclerk.domain.TechniqueId
+import com.normation.rudder.domain.policies.ActiveTechniqueId
 
 /**
  * See http://www.rudder-project.org/redmine/issues/3642
@@ -59,6 +64,8 @@ class CheckDotInGenericCFEngineVariableDef (
   , woRepos: WoDirectiveRepository
   , uuid   : StringUuidGenerator
 ) extends BootstrapChecks {
+
+  override val description = "Check that CFEngine variable names don't contain '.'"
 
   private[this] val logger = new Logger {
     override protected def _logger = LoggerFactory.getLogger("migration")
@@ -76,20 +83,18 @@ class CheckDotInGenericCFEngineVariableDef (
   private[this] val genericCFEngineVarDef = "Generic CFEngine variable definition"
 
   override def checks() : Unit = {
-    roRepos.getAll(includeSystem = false) match {
+
+    roRepos.getFullDirectiveLibrary match {
       case eb:EmptyBox =>
         val f = (eb ?~! "Can not check if there are variable name with a dot in them in the directives based on genericCFEngineVariableDefinition")
         logger.defaultErrorLogger(f)
 
-      case Full(directives) =>
-        getVariablesWithDot(directives) match {
-          case eb:EmptyBox =>
-            val f = (eb ?~! "Can not check if there are variable name with a dot in them in the directives based on genericCFEngineVariableDefinition")
-            logger.defaultErrorLogger(f)
-          case Full(matchedDefinition) if( matchedDefinition.size == 0 ) =>
+      case Full(directiveLib) =>
+        getVariablesWithDot(directiveLib) match {
+          case matchedDefinition if( matchedDefinition.size == 0 ) =>
             logger.info("No variable name with dot defined in the generic CFEngine Variable Definition, skipping")
 
-          case Full(matchedDefinition) =>
+          case matchedDefinition =>
             logger.info("Starting migration of variable name with dot defined in the generic CFEngine Variable Definition")
             // We iterate over all directives, over all values
             val flatten = matchedDefinition.flatMap { case (directive, keys) =>
@@ -110,20 +115,44 @@ class CheckDotInGenericCFEngineVariableDef (
    * looks in given directives (based on generic cfengine conf) for variable name with a dot
    * returns directive, and the variables within with a dot
    */
-  private[this] def getVariablesWithDot(directives:Seq[Directive]) : Box[Seq[(Directive, Seq[String])]] = {
-    sequence(directives) { directive => roRepos.getDirectiveWithContext(directive.id) } .map { directivesWithContext =>
-        // first, look for all possible variable with a dot in it
-        for {
-           (technique, activeTechnique, directive) <- directivesWithContext
-           if( technique.name == genericCFEngineVarDef )
-           (key, values) <- directive.parameters
+  private[this] def getVariablesWithDot(directiveLib: FullActiveTechniqueCategory) : Seq[(Directive, Seq[String])] = {
+    //only get directive whose technique name is "genericCFEngineVarDef" and that contains at least
+    //one variable with a dot
+
+    (directiveLib.allDirectives.values.toSeq.flatMap { case (activeTechnique, directive) =>
+      if(activeTechnique.techniqueName != genericCFEngineVarDef) {
+        None
+      } else {
+        val seq = for {
+           (key, values) <- directive.parameters.toSeq
                               .filter { case (key,values) => (key == parameterName) }
                               .map { case (key,values) => (key , (values.filter(_.contains(".")))) }
-           if( values.size > 0 )
+           if(values.size > 0)
         } yield {
           (directive, values)
         }
-    }
+
+        if(seq.size > 0 ) Some(seq)
+        else None
+
+      }
+
+    }).flatten
+
+
+//    sequence(directives) { directive => roRepos.getDirectiveWithContext(directive.id) } .map { directivesWithContext =>
+//        // first, look for all possible variable with a dot in it
+//        for {
+//           (technique, activeTechnique, directive) <- directivesWithContext
+//           if( technique.name == genericCFEngineVarDef )
+//           (key, values) <- directive.parameters
+//                              .filter { case (key,values) => (key == parameterName) }
+//                              .map { case (key,values) => (key , (values.filter(_.contains(".")))) }
+//           if( values.size > 0 )
+//        } yield {
+//          (directive, values)
+//        }
+//    }
   }
 
   private[this] def newModId() = ModificationId(uuid.newUuid)
