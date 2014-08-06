@@ -1452,7 +1452,6 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val allChecks = new SequentialImmediateBootStrapChecks(
       new CheckDIT(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl, rudderDitImpl, rwLdap)
-    , new CheckSystemDirectives(rudderDitImpl, roLdapRuleRepository)
     , new CheckInitUserTemplateLibrary(
         rudderDitImpl, rwLdap, techniqueRepositoryImpl,
         roLdapDirectiveRepository, woLdapDirectiveRepository, uuidGen, asyncDeploymentAgentImpl) //new CheckDirectiveBusinessRules()
@@ -1460,7 +1459,6 @@ object RudderConfig extends Loggable {
     , new CheckInitXmlExport(itemArchiveManagerImpl, personIdentServiceImpl, uuidGen)
     , new CheckRootRuleCategoryExport (itemArchiveManager, ruleCategoriesDirectory,  personIdentServiceImpl, uuidGen)
     , new CheckMigrationDirectiveInterpolatedVariablesHaveRudderNamespace(roLdapDirectiveRepository, woLdapDirectiveRepository, uuidGen)
-    , new CheckDotInGenericCFEngineVariableDef(roLdapDirectiveRepository, woLdapDirectiveRepository, uuidGen)
     // Check technique library reload needs to be achieved after modification in configuration (like migration of CFEngine variables)
     , new CheckTechniqueLibraryReload(
           techniqueRepositoryImpl
