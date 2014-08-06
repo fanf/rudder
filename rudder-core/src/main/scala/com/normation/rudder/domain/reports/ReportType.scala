@@ -33,11 +33,7 @@
 */
 
 
-package com.normation.rudder.domain.reports.bean
-
-
-import com.normation.rudder.domain.reports.bean._
-
+package com.normation.rudder.domain.reports
 
 /**
  * List of all type of report we are expecting, as a result
@@ -50,10 +46,8 @@ import com.normation.rudder.domain.reports.bean._
  */
 
 
-trait ReportType {
-
+sealed trait ReportType {
   val severity :String
-
 }
 
 case object NotApplicableReportType extends ReportType {

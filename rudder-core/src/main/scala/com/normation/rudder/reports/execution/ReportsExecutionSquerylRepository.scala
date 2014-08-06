@@ -208,7 +208,7 @@ case class WoReportsExecutionSquerylRepository (
                                       ReportExecutionWithoutState(x.nodeId, x.date)
                                     }.filter { x =>
                                         existingNotCompWithoutState.contains(x)
-                                    }.map(x => ReportExecution(x.nodeId, x.date, true))
+                                    }.map(x => ReportExecutionWithoutState(x.nodeId, x.date))
 
       // a new closed execution is an execution closed, but not in the list of the executions
       // closed
@@ -230,7 +230,7 @@ case class WoReportsExecutionSquerylRepository (
     }
   }
 
-  def closeExecution (execution : ReportExecution) : Box[ReportExecution] =  {
+  def closeExecution (execution : ReportExecutionWithoutState) : Box[ReportExecution] =  {
     try {
       val closeResult = sessionProvider.ourTransaction {
           Executions.executions.update( exec =>
@@ -243,7 +243,7 @@ case class WoReportsExecutionSquerylRepository (
         )
       }
       logger.debug(s" closed 1, should have close")
-      Full(execution)
+      Full(ReportExecution(execution.nodeId, execution.date, true))
     } catch {
       case e:Exception =>
         val msg = s"Could not save close the node execution ${execution}, reason is ${e.getMessage()}"
@@ -253,7 +253,7 @@ case class WoReportsExecutionSquerylRepository (
   }
 
 
-  def closeExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
+  def closeExecutions (executions : Seq[ReportExecutionWithoutState]) : Box[Seq[ReportExecution]] =  {
     try {
       val closeResult = sessionProvider.ourTransaction {
         executions.map( execution =>
@@ -267,7 +267,7 @@ case class WoReportsExecutionSquerylRepository (
         ) )
       }
       logger.debug(s"Closed ${closeResult.size} execution, out of the ${executions.size} that should have been closed")
-      Full(executions)
+      Full(executions.map(e => ReportExecution(e.nodeId, e.date, true)))
     } catch {
       case e:Exception =>
         val msg = s"Could not close the ${executions.size} nodes executions, reason is ${e.getMessage()}"

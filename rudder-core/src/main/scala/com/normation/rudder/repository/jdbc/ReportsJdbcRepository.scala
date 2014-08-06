@@ -41,7 +41,7 @@ import com.normation.rudder.repository.ReportsRepository
 import scala.collection.mutable.Buffer
 import org.joda.time._
 import org.slf4j.{Logger,LoggerFactory}
-import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.reports._
 import com.normation.cfclerk.domain.{Cf3PolicyDraftId}
 import org.springframework.jdbc.core._
 import java.sql.ResultSet
@@ -52,6 +52,7 @@ import net.liftweb.common.Box._
 import java.sql.Types
 import org.springframework.dao.DataAccessException
 import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.domain.reports.Reports
 
 class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsRepository with Loggable {
 

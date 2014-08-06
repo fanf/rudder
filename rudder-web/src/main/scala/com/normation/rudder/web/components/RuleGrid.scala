@@ -40,7 +40,7 @@ import com.normation.rudder.domain.policies._
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.policies._
 import com.normation.rudder.domain.eventlog.RudderEventActor
-import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.reports._
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.repository._
 import com.normation.rudder.services.reports.ReportingService
@@ -521,9 +521,14 @@ class RuleGrid(
           entry match {
             case e:EmptyBox => e
             case Full(None) => Full(Some(Applying)) // when we have a rule but nothing in the database, it means that it is currently being deployed
-            case Full(Some(x)) if (x.directivesOnNodesExpectedReports.size==0) => Full(None)
-            case Full(Some(x)) if x.getNodeStatus().exists(x => x.reportType == PendingReportType ) => Full(Some(Applying))
-            case Full(Some(x)) =>  Full(Some(new Compliance((100 * x.getNodeStatus().filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / x.getNodeStatus().size)))
+            case Full(Some(batch)) =>
+              if(batch.getNodeStatus.size == 0) {
+                Full(None)
+              } else if(batch.getNodeStatus().exists(x => x.reportType == PendingReportType )) {
+                Full(Some(Applying))
+              } else {
+                Full(Some(new Compliance((100 * batch.getNodeStatus().filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / batch.getNodeStatus().size)))
+              }
           }
       )
     }

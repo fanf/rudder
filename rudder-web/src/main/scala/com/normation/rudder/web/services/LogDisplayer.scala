@@ -42,7 +42,7 @@ import com.normation.rudder.domain.policies.RuleVal
 import com.normation.rudder.services.servers.NodeSummaryService
 import com.normation.rudder.web.model._
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.reports.bean.Reports
+import com.normation.rudder.domain.reports.Reports
 import com.normation.rudder.web.components.DateFormaterService
 import scala.xml._
 import net.liftweb.common._

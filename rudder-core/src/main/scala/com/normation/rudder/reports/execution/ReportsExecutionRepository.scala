@@ -73,5 +73,9 @@ trait WoReportsExecutionRepository {
    */
   def updateExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]]
 
-  def closeExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]]
+  /**
+   * Close given execution run.
+   * Return the number of report correctly closed.
+   */
+  def closeExecutions (executions : Seq[ReportExecutionWithoutState]) : Box[Seq[ReportExecution]]
 }

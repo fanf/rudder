@@ -32,7 +32,7 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.domain.reports.bean
+package com.normation.rudder.domain.reports
 
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
@@ -42,14 +42,11 @@ import org.joda.time._
 import org.joda.time.format._
 import com.normation.rudder.domain.Constants
 import com.normation.cfclerk.domain.{Cf3PolicyDraftId}
-import com.normation.rudder.domain.reports.ReportComponent
-import com.normation.rudder.domain.reports.DirectiveExpectedReports
 import com.normation.utils.HashcodeCaching
 import scala.collection.mutable.Buffer
-import ConfigurationExecutionBatch._
+import ExecutionBatch._
 import com.normation.rudder.domain.logger.ReportLogger
 import com.normation.rudder.domain.policies.Directive
-import com.normation.rudder.domain.reports.ReportComponent
 import com.normation.inventory.domain.NodeId
 
 /**
@@ -57,50 +54,7 @@ import com.normation.inventory.domain.NodeId
  * An execution Batch is at a given time <- TODO : Is it relevant when we have several node ?
  * @author Nicolas CHARLES
  */
-trait ExecutionBatch {
-  val ruleId : RuleId
-  val serial : Int // the serial of the rule
 
-  val executionTime : DateTime // this is the time of the batch
-
-  val agentExecutionInterval : Int // this is the agent execution interval, in minutes
-
-  // Differents Nodes may have differents version of the same directive.
-  // We use this seq to store this information
-  // It could even in a not so distant future allow differents node to have differents
-  // directive (not simply differents components values, but really different directives)
-  val directivesOnNodesExpectedReports : Seq[DirectivesOnNodeExpectedReport]
-
-  val executionReports : Seq[Reports]
-
-
-  def getNodeStatus() : Seq[NodeStatusReport]
-
-  def getRuleStatus() : Seq[DirectiveRuleStatusReport]
-
-  def getNotApplicableReports() : Seq[Reports] = {
-    executionReports.collect { case x : ResultNotApplicableReport => x }
-  }
-
-  def getSuccessReports() : Seq[Reports] = {
-    executionReports.collect { case x : ResultSuccessReport => x }
-  }
-
-  def getRepairedReports() : Seq[Reports] = {
-    executionReports.collect { case x : ResultRepairedReport => x }
-  }
-
-  /* Warn is temporarly unused*/
-  /*
-  def getWarnReports() : Seq[Reports] = {
-    executionReports.filter(x => x.isInstanceOf[WarnReport])
-  }*/
-
-  def getErrorReports() : Seq[Reports] = {
-    executionReports.collect { case x : ResultErrorReport => x }
-  }
-
-}
 
 case class DirectivesOnNodeExpectedReport(
     nodeIds                 : Seq[NodeId]
@@ -108,7 +62,7 @@ case class DirectivesOnNodeExpectedReport(
 ) extends HashcodeCaching {}
 
 
-object ConfigurationExecutionBatch {
+object ExecutionBatch {
   final val matchCFEngineVars = """.*\$(\{.+\}|\(.+\)).*""".r
   final private val replaceCFEngineVars = """\$\{.+\}|\$\(.+\)"""
 
@@ -123,25 +77,26 @@ object ConfigurationExecutionBatch {
   }
 }
 
-/**
- * The execution batch for a rule, still a lot of intelligence to add within
- *
- */
-case class ConfigurationExecutionBatch(
-    val ruleId                  : RuleId
-  , val serial                  : Int
-  , val directivesOnNodesExpectedReports : Seq[DirectivesOnNodeExpectedReport]
-  , val executionTime           : DateTime
-  , val executionReports        : Seq[Reports]
-  , val beginDate               : DateTime
-  , val endDate                 : Option[DateTime]
-  , val agentExecutionInterval : Int
-) extends ExecutionBatch {
+
+case class ExecutionBatch(
+    val ruleId                          : RuleId
+  // Differents Nodes may have differents version of the same directive.
+  // We use this seq to store this information
+  // It could even in a not so distant future allow differents node to have differents
+  // directive (not simply differents components values, but really different directives)
+  , private val directivesOnNodesExpectedReports: Seq[DirectivesOnNodeExpectedReport]
+  // this is the time of the batch
+  , private val executionReports                : Seq[Reports]
+  , private val beginDate               : DateTime
+  // this is the agent execution interval, in minutes
+  , private val agentExecutionInterval  : Int
+) {
+
 
   // A cache of the already computed values
-  val cache = scala.collection.mutable.Map[String, Seq[NodeId]]()
+  private[this] val cache = scala.collection.mutable.Map[String, Seq[NodeId]]()
 
-  val nodeStatus = scala.collection.mutable.Map[String, Seq[NodeStatusReport]]()
+  private[this] var nodeStatusCache = Option.empty[Seq[NodeStatusReport]]
 
   /**
    * This is the main entry point to get the detailed reporting
@@ -151,7 +106,7 @@ case class ConfigurationExecutionBatch(
    */
   def getNodeStatus() : Seq[NodeStatusReport] = {
 
-    nodeStatus.getOrElseUpdate("nodeStatus",
+    val nodeStatus = nodeStatusCache.getOrElse(
       (for {
         nodeId <- directivesOnNodesExpectedReports.flatMap(x => x.nodeIds).distinct
         nodeFilteredReports = executionReports.filter(x => (x.nodeId==nodeId))
@@ -194,9 +149,17 @@ case class ConfigurationExecutionBatch(
         nodeStatusReport
       })
     )
+
+    nodeStatusCache = Some(nodeStatus)
+    nodeStatus
   }
 
-  protected[bean] def checkExpectedComponentWithReports(
+  /**
+   * Allows to calculate the status of component for a node.
+   *
+   * The visibility is for allowing tests
+   */
+  private[reports] def checkExpectedComponentWithReports(
       expectedComponent : ReportComponent
     , filteredReports   : Seq[Reports]
     , nodeId            : NodeId
@@ -333,7 +296,7 @@ case class ConfigurationExecutionBatch(
    * Return:
    * a couple containing the actual status of the component key and the messages associated
    */
-  protected def checkExpectedComponentStatus(
+  private[this] def checkExpectedComponentStatus(
       currentValue           : String
     , purgedReports          : Seq[Reports]
     , values                 : Seq[String]
@@ -488,7 +451,7 @@ case class ConfigurationExecutionBatch(
    * components  : Expected component report format
    * directive   : Latest directive reports
    */
-  def getComponentRuleStatus(directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
+  private[this] def getComponentRuleStatus(directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
      components.map{ component =>
        val id = component.componentName
        val componentvalues = directive.flatMap{ nodestatus =>
@@ -507,7 +470,7 @@ case class ConfigurationExecutionBatch(
    * values      : Expected values format
    * components  : Latest components report
    */
- def getComponentValuesRuleStatus(directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
+ private[this] def getComponentValuesRuleStatus(directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
      values.map{
        case (value, unexpanded) =>
          val componentValues = components.flatMap(_.componentValues.filter(_.componentValue==value))
@@ -528,7 +491,7 @@ case class ConfigurationExecutionBatch(
    * component   : Unexpected Values have been received for that component
    * values      : Unexpected values received for that component
    */
- def getUnexpectedComponentValuesRuleStatus(directiveid:DirectiveId, component:String, values:Seq[ComponentValueStatusReport]) : Seq[ComponentValueRuleStatusReport]={
+ private[this] def getUnexpectedComponentValuesRuleStatus(directiveid:DirectiveId, component:String, values:Seq[ComponentValueStatusReport]) : Seq[ComponentValueRuleStatusReport]={
      values.map{
        value =>
          val nodes = Seq(NodeReport(value.nodeId,value.reportType,value.message))
@@ -543,172 +506,3 @@ case class ConfigurationExecutionBatch(
  }
 
 }
-
-trait StatusReport {
-  def reportType : ReportType
-}
-/**
- * For a component value, store the report status
- */
-case class ComponentValueStatusReport(
-    componentValue 		       : String
-  , unexpandedComponentValue : Option[String]
-  , reportType               : ReportType
-  , message                  : List[String]
-  , nodeId	                 : NodeId
-) extends StatusReport
-
-/**
- * For a component, store the report status, as the worse status of the component
- * Or error if there is an unexpected component value
- */
-case class ComponentStatusReport(
-    component           : String
-  , componentValues     : Seq[ComponentValueStatusReport]
-  , message             : List[String]
-  , unexpectedCptValues : Seq[ComponentValueStatusReport]
-) extends StatusReport {
-
-  val reportType = {
-    val reports = (componentValues ++ unexpectedCptValues).map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
-}
-
-
-case class DirectiveStatusReport(
-    directiveId          : DirectiveId
-  , components	         : Seq[ComponentStatusReport]
-  , unexpectedComponents : Seq[ComponentStatusReport] // for future use, not used yet
-) extends StatusReport {
-
-  val reportType = {
-    val reports = (components ++ unexpectedComponents).map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
-}
-
-case class NodeStatusReport(
-    nodeId               : NodeId
-  , ruleId               : RuleId
-  , directives	         : Seq[DirectiveStatusReport]
-  , unexpectedDirectives : Seq[DirectiveStatusReport] // for future use, not used yet
-) extends StatusReport {
-
-  val reportType = {
-    val reports = (directives ++ unexpectedDirectives).map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
-}
-
-case class NodeReport (
-    node       : NodeId
-  , reportType : ReportType
-  , message    : List[String]
-)
-
-sealed trait RuleStatusReport {
-
-  def nodesReport : Seq[NodeReport]
-
-  lazy val reportType = {
-    val reports = nodesReport.map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
-
-  def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport]
-
-  def computeCompliance : Option[Int] = {
-    if (nodesReport.size>0){
-      val reportsSize = nodesReport.size.toDouble
-      Some((nodesReport.map(report => report.reportType match {
-        case SuccessReportType => 1
-        case NotApplicableReportType    => 1
-        case _                 => 0
-    }):\ 0)((res:Int,value:Int) => res+value) * 100 / reportsSize).map{ res =>
-      BigDecimal(res).setScale(0,BigDecimal.RoundingMode.HALF_UP).toInt
-      }
-    }
-    else {
-      None
-    }
-  }
-}
-
-case class ComponentValueRuleStatusReport(
-    directiveId         : DirectiveId
-  , component           : String
-  , componentValue      : String
-  , unexpandedComponentValue : Option[String]
-  , nodesReport             : Seq[NodeReport]
-) extends RuleStatusReport {
-
-
-  // Key of the component, get the unexpanded value if it exists or else the component value
-  val key = unexpandedComponentValue.getOrElse(componentValue)
-
-  def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport] ={
-    nodesReport.filter(filter).map(MessageReport(_,component,componentValue, unexpandedComponentValue))
-  }
-}
-
-case class ComponentRuleStatusReport (
-    directiveId         : DirectiveId
-  , component           : String
-  , componentValues     : Seq[ComponentValueRuleStatusReport]
-) extends RuleStatusReport {
-
-  override val nodesReport = componentValues.flatMap(_.nodesReport)
-
-  // since we have "exploded" ComponentValue, we need to regroup them
-  override def computeCompliance = {
-   if (componentValues.size>0){
-     // we need to group the compliances per unexpandedComponentValue
-     val aggregatedComponents = componentValues.groupBy { entry => entry.unexpandedComponentValue.getOrElse(entry.componentValue)}.map { case (key, entries) =>
-       ComponentValueRuleStatusReport(
-             entries.head.directiveId // can't fail because we are in a groupBy
-           , entries.head.component  // can't fail because we are in a groupBy
-           , key
-           , None
-           , entries.flatMap(_.nodesReport)
-          )
-     }
-     Some((aggregatedComponents.map(_.computeCompliance.getOrElse(0))
-         :\ 100)((res:Int,value:Int) => if(value>res)res else value))
-   }
-    else
-      None
-  }
-
-  def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport] = {
-    componentValues.flatMap( value => value.processMessageReport(filter))
-  }
-}
-
-case class DirectiveRuleStatusReport(
-    directiveId          : DirectiveId
-  , components           : Seq[ComponentRuleStatusReport]
-) extends RuleStatusReport {
-
-  override val nodesReport = components.flatMap(_.nodesReport)
-
-  override def computeCompliance =
-   if (components.size>0){
-     Some((components.map(_.computeCompliance.getOrElse(0))
-         :\ 100)((res:Int,value:Int) => if(value>res)res else value))
-   }
-    else
-      None
-
-  def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport] = {
-    components.flatMap( component => component.processMessageReport(filter))
-  }
-}
-
-
-  case class MessageReport(
-        report          : NodeReport
-      , component       : String
-      , value           : String
-      , unexpandedValue : Option[String]
-  )

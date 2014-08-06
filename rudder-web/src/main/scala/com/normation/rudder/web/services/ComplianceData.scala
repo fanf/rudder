@@ -41,7 +41,7 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import scala.xml._
 import net.liftweb.http._
 import net.liftweb.common._
-import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.reports._
 import net.liftweb.util.Helpers._
 import net.liftweb.util.Helpers
 import net.liftweb.http.js.JsCmds._

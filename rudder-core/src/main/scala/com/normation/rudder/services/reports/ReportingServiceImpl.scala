@@ -48,7 +48,7 @@ import com.normation.cfclerk.domain.{
 import com.normation.rudder.domain._
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.reports._
 import com.normation.rudder.services.reports._
 import com.normation.rudder.repository._
 import com.normation.rudder.domain.policies.RuleVal
@@ -226,14 +226,11 @@ class ReportingServiceImpl(
           val reports = allReports.filter( report => report.ruleId == expected.ruleId)
           Full(
               Some(
-                  ConfigurationExecutionBatch(
+                  ExecutionBatch(
                       expected.ruleId
-                    , expected.serial
                     , expected.directivesOnNodes.map(dir => DirectivesOnNodeExpectedReport(dir.nodeIds, dir.directiveExpectedReports))
-                    , reports.headOption.map(_.executionTimestamp).getOrElse(DateTime.now())
                     , reports
                     , expected.beginDate
-                    , expected.endDate
                     , agentRunInterval
                   )
               )
@@ -286,14 +283,12 @@ class ReportingServiceImpl(
       case Some(node) =>
         expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeIds.contains(node)).map(x => DirectivesOnNodeExpectedReport(Seq(node), x.directiveExpectedReports))
     }
-    new ConfigurationExecutionBatch(
+
+    ExecutionBatch(
           expectedConfigurationReports.ruleId
-        , expectedConfigurationReports.serial
         , directivesOnNodes
-        , reports.headOption.map(x => x.executionTimestamp).getOrElse(DateTime.now()) // this is a dummy date !
         , reports
         , expectedConfigurationReports.beginDate
-        , expectedConfigurationReports.endDate
         , agentRunInterval
       )
   }

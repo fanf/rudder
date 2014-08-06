@@ -38,7 +38,7 @@ import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.nodes.NodeInfo
 import scala.xml._
-import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.reports._
 import net.liftweb.util.Helpers._
 import net.liftweb.util._
 import com.normation.rudder.domain.policies._

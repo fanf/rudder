@@ -46,6 +46,10 @@ case class ReportExecution (
   , isComplete : Boolean
 )
 
+object ReportExecution {
+  implicit def withoutState(r: ReportExecution) = ReportExecutionWithoutState(r.nodeId, r.date)
+}
+
 /**
  * reports executions, without the state store, to compare between already saved and new executions
  */
@@ -53,3 +57,4 @@ case class ReportExecutionWithoutState (
     nodeId     : NodeId
   , date       : DateTime
 )
+

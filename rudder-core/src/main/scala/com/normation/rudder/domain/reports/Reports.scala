@@ -32,23 +32,28 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.domain.reports.bean
+package com.normation.rudder.domain.reports
+
+import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
-import org.joda.time._
-import org.slf4j.{Logger,LoggerFactory}
 import com.normation.utils.HashcodeCaching
+
 /**
- * Store the reports entry from the execution
+ * Define one "line" of reports from an agent execution
+ * (so for a given run, their would be a lot of them)
+ *
+ * This is a direct mapping of what the agent actually
+ * send to the server via syslog.
+ *
  * Contains : the datetime at which it was generated, the rule/directive,
  * the server on which it has been run, the severity, and the message,
  * and the serial (id of generation), the component and its key value
- * @author Nicolas CHARLES
- *
  */
-trait Reports {
+sealed trait Reports {
   val executionDate      : DateTime
   val ruleId             : RuleId
   val directiveId        : DirectiveId
@@ -61,7 +66,7 @@ trait Reports {
   val message            : String
 }
 
-sealed case class ResultSuccessReport(
+final case class ResultSuccessReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -75,7 +80,7 @@ sealed case class ResultSuccessReport(
   val severity = Reports.RESULT_SUCCESS
 }
 
-sealed case class ResultNotApplicableReport(
+final case class ResultNotApplicableReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -89,7 +94,7 @@ sealed case class ResultNotApplicableReport(
   val severity = Reports.RESULT_NOTAPPLICABLE
 }
 
-sealed case class ResultRepairedReport(
+final case class ResultRepairedReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -103,7 +108,7 @@ sealed case class ResultRepairedReport(
   val severity = Reports.RESULT_REPAIRED
 }
 
-sealed case class ResultErrorReport(
+final case class ResultErrorReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -118,7 +123,7 @@ sealed case class ResultErrorReport(
 }
 
 
-sealed case class LogRepairedReport(
+final case class LogRepairedReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -132,7 +137,7 @@ sealed case class LogRepairedReport(
   val severity = Reports.LOG_REPAIRED
 }
 
-sealed case class LogWarnReport(
+final case class LogWarnReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -146,7 +151,7 @@ sealed case class LogWarnReport(
   val severity = Reports.LOG_WARN
 }
 
-sealed case class LogInformReport(
+final case class LogInformReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -160,7 +165,7 @@ sealed case class LogInformReport(
   val severity = Reports.LOG_INFO
 }
 
-sealed case class LogDebugReport(
+final case class LogDebugReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -174,7 +179,7 @@ sealed case class LogDebugReport(
   val severity = Reports.LOG_DEBUG
 }
 
-sealed case class LogTraceReport(
+final case class LogTraceReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId
@@ -188,7 +193,7 @@ sealed case class LogTraceReport(
   val severity = Reports.LOG_TRACE
 }
 
-sealed case class UnknownReport(
+final case class UnknownReport(
     executionDate      : DateTime
   , ruleId             : RuleId
   , directiveId        : DirectiveId

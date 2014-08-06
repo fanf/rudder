@@ -34,12 +34,12 @@
 
 package com.normation.rudder.domain.reports
 
+import org.joda.time.DateTime
+import org.joda.time.Interval
+
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
-import scala.collection._
-import org.joda.time._
-import org.joda.time.format._
 import com.normation.utils.HashcodeCaching
 
 

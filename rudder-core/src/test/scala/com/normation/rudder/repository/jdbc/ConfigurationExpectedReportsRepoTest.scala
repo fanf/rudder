@@ -42,7 +42,6 @@ import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports._
 import org.joda.time.DateTime
-import com.normation.rudder.domain.reports.bean.DirectivesOnNodeExpectedReport
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Full
 

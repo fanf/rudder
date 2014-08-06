@@ -35,14 +35,12 @@
 package com.normation.rudder.services.reports
 
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.RuleExpectedReports
-import com.normation.rudder.domain.policies.RuleVal
-import net.liftweb.common.Box
-import com.normation.rudder.domain.reports.bean._
-import org.joda.time._
-import com.normation.cfclerk.domain.{Cf3PolicyDraftId}
 import com.normation.rudder.domain.policies.ExpandedRuleVal
+import com.normation.rudder.domain.policies.RuleId
+import com.normation.rudder.domain.reports.ExecutionBatch
+import com.normation.rudder.domain.reports.RuleExpectedReports
+
+import net.liftweb.common.Box
 
 /**
  * The reporting service. It is used to

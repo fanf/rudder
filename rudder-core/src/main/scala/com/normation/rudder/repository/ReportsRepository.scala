@@ -36,7 +36,7 @@ package com.normation.rudder.repository
 
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.bean._
+import com.normation.rudder.domain.reports._
 import org.joda.time._
 import com.normation.cfclerk.domain.{Cf3PolicyDraftId}
 import net.liftweb.common.Box

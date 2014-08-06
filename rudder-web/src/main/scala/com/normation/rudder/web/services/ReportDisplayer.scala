@@ -42,8 +42,8 @@ import com.normation.rudder.domain.policies.RuleVal
 import com.normation.rudder.services.servers.NodeSummaryService
 import com.normation.rudder.web.components.DateFormaterService
 import com.normation.rudder.web.model._
-import com.normation.rudder.domain.reports.bean._
-import com.normation.rudder.domain.reports.bean.{Reports => TWReports}
+import com.normation.rudder.domain.reports._
+import com.normation.rudder.domain.reports.{Reports => TWReports}
 import com.normation.inventory.ldap.core.InventoryDit
 import com.normation.exceptions.TechnicalException
 import scala.xml._
