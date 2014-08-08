@@ -78,7 +78,7 @@ trait RuleExpectedReportsRepository {
    * Return the ruleId currently opened
    * It is only used to know which conf expected report we should close
    */
-  def findAllCurrentExpectedReports() : scala.collection.Set[RuleId]
+  def findAllCurrentExpectedReports(): Set[RuleId]
 
 
   /**
@@ -86,13 +86,13 @@ trait RuleExpectedReportsRepository {
    * It is only used to know which conf expected report we should close
    * This should not be used any more
    */
-  def findAllCurrentExpectedReportsAndSerial(): scala.collection.Map[RuleId, Int]
+  def findAllCurrentExpectedReportsAndSerial(): Map[RuleId, Int]
 
   /**
    * Return the ruleId currently opened, and their serial and list of nodes
    * It is only used to know which conf expected report we should close
    */
-  def findAllCurrentExpectedReportsWithNodesAndSerial(): scala.collection.Map[RuleId, (Int, scala.collection.Set[NodeId])]
+  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])]
 
   /**
    *  Return current expectedreports (the one still pending) for this policyIsntance

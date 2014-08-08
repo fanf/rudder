@@ -34,40 +34,30 @@
 
 package com.normation.rudder.web.services
 
-import com.normation.rudder.services.reports.ReportingService
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.repository.RoRuleRepository
-import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.policies.RuleVal
-import com.normation.rudder.services.servers.NodeSummaryService
-import com.normation.rudder.web.components.DateFormaterService
-import com.normation.rudder.web.model._
-import com.normation.rudder.domain.reports._
-import com.normation.rudder.domain.reports.{Reports => TWReports}
-import com.normation.inventory.ldap.core.InventoryDit
-import com.normation.exceptions.TechnicalException
-import scala.xml._
-import net.liftweb.common._
-import net.liftweb.http._
-import net.liftweb.util._
-import Helpers._
-import net.liftweb.http.js._
-import JsCmds._
-import JE._
-import net.liftweb.http.SHtml._
-import bootstrap.liftweb.LiftSpringApplicationContext.inject
-import net.liftweb.http.Templates
-import com.normation.rudder.repository.RoDirectiveRepository
+import scala.xml.NodeSeq
+import scala.xml.NodeSeq.seqToNodeSeq
+
 import com.normation.cfclerk.services.TechniqueRepository
+import com.normation.exceptions.TechnicalException
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.reports._
+import com.normation.rudder.repository.RoDirectiveRepository
+import com.normation.rudder.repository.RoRuleRepository
+import com.normation.rudder.services.reports.ReportingService
+
 import bootstrap.liftweb.RudderConfig
+import net.liftweb.common._
+import net.liftweb.http.S
+import net.liftweb.http.SHtml
+import net.liftweb.http.Templates
+import net.liftweb.http.js.JE._
+import net.liftweb.http.js.JsCmd
+import net.liftweb.http.js.JsCmds._
+import net.liftweb.util.Helpers._
 
 /**
  * Display the last reports of a server
  * Based on template : templates-hidden/reports_server
- *
- *
- * @author Nicolas CHARLES
- *
  */
 class ReportDisplayer(
     ruleRepository      : RoRuleRepository

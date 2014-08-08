@@ -128,13 +128,15 @@ CREATE INDEX reportsexecution_date_idx ON ReportsExecution (date);
 -- Create the sequences
 CREATE SEQUENCE ruleSerialId START 1;
 
+-- that sequence is used for nodeJoinKey value
 CREATE SEQUENCE ruleVersionId START 1;
+
 
 -- Create the table for the reports information
 CREATE TABLE expectedReports (
   pkId                       integer PRIMARY KEY DEFAULT nextval('ruleSerialId')
 , nodeJoinKey                integer NOT NULL
-, ruleId text                NOT NULL CHECK (ruleId <> '')
+, ruleId                     text NOT NULL CHECK (ruleId <> '')
 , serial                     integer NOT NULL
 , directiveId                text NOT NULL CHECK (directiveId <> '')
 , component                  text NOT NULL CHECK (component <> '')
@@ -166,7 +168,6 @@ CREATE INDEX expectedReportsNodes_versionId ON expectedReportsNodes (nodeJoinKey
  */
 
 CREATE SEQUENCE eventLogIdSeq START 1;
-
 
 CREATE TABLE EventLog (
   id             integer PRIMARY KEY  DEFAULT nextval('eventLogIdSeq')

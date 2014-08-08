@@ -44,9 +44,8 @@ import com.normation.utils.HashcodeCaching
 
 
 /**
- * The representation of the database object for the expected reports for a rule
- *
- * @author Nicolas CHARLES
+ * The representation of the database object for the expected reports for
+ * a rule and a list of nodes
  *
  */
 case class RuleExpectedReports(
@@ -61,12 +60,12 @@ case class RuleExpectedReports(
 }
 
 /**
- * This class allow to have for differents nodes differents directives
+ * This class allow to have different directives for different nodes.
  * Actually, it is used in a constrainted way : same directiveId for all nodes,
- * but directives can have differents component/componentValues per Nodes
+ * but directives can have different components/componentValues per Nodes
  */
 case class DirectivesOnNodes(
-    nodeJoinKey             : Int// the version id of the rule, follows a sequence, used to join with the node table
+    nodeJoinKey             : Int// id following a sequence used to join to the list of nodes
   , nodeIds                 : Seq[NodeId]
   , directiveExpectedReports: Seq[DirectiveExpectedReports]
 ) extends HashcodeCaching

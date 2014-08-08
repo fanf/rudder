@@ -259,22 +259,33 @@ class ReportingServiceImpl(
 
   /**
    * Find the latest (15 minutes) reports for a given node (all CR)
-   * Note : if there is an expected report, and that we don't have it, we should say that it is empty
    */
-  override private[reports] def findImmediateReportsByNode(nodeId : NodeId) :  Box[Seq[ExecutionBatch]] = {
-    // look in the configuration
-    confExpectedRepo.findCurrentExpectedReportsByNode(nodeId) match {
-      case e:EmptyBox => e
-      case Full(seq) =>
-        Full(seq.map(expected => createLastBatchFromConfigurationReports(expected, Some(nodeId))))
-    }
-  }
-
   override def findNodeStatusReportsByNode(nodeId: NodeId) : Box[Seq[NodeStatusReport]] = {
     for {
-      batches <- findImmediateReportsByNode(nodeId)
+      expectedReports <- confExpectedRepo.findCurrentExpectedReportsByNode(nodeId)
     } yield {
-      batches.flatMap(x => x.getNodeStatus())
+      expectedReports.flatMap { expectedConfigurationReports =>
+
+        val agentRunInterval = getAgentRunInterval()
+
+        // Fetch the reports corresponding to this rule, and filter them by nodes
+        val reports = reportsRepository.findLastReportByRule(
+                expectedConfigurationReports.ruleId
+              , expectedConfigurationReports.serial
+              , Some(nodeId)
+              , agentRunInterval
+        )
+
+        val directivesOnNodes = expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeIds.contains(nodeId)).map(x => DirectivesOnNodeExpectedReport(Seq(nodeId), x.directiveExpectedReports))
+
+        ExecutionBatch.getNodeStatusReports(
+              expectedConfigurationReports.ruleId
+            , directivesOnNodes
+            , reports
+            , expectedConfigurationReports.beginDate
+            , agentRunInterval
+        )
+      }
     }
   }
 
@@ -301,6 +312,8 @@ class ReportingServiceImpl(
           , agentRunInterval)
 
     // If we are only searching on a node, then we restrict the directivesonnode to this node
+    val filter = (x: DirectivesOnNodes) => nodeId.fold(true)(id => x.nodeIds.contains(id))
+
     val directivesOnNodes = nodeId match {
       case None => expectedConfigurationReports.directivesOnNodes.map(x => DirectivesOnNodeExpectedReport(x.nodeIds, x.directiveExpectedReports))
       case Some(node) =>

@@ -475,16 +475,19 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
 
 object ReportsMapper extends RowMapper[Reports] {
    def mapRow(rs : ResultSet, rowNum: Int) : Reports = {
-        Reports.factory(new DateTime(rs.getTimestamp("executionDate")),
-                  RuleId(rs.getString("ruleId")),
-                  DirectiveId(rs.getString("directiveId")),
-                  NodeId(rs.getString("nodeId")),
-                  rs.getInt("serial"),
-                  rs.getString("component"),
-                  rs.getString("keyValue"),
-                  new DateTime(rs.getTimestamp("executionTimeStamp")),
-                  rs.getString("eventType"),
-                  rs.getString("msg"))
+        Reports(
+            new DateTime(rs.getTimestamp("executionDate"))
+          , RuleId(rs.getString("ruleId"))
+          , DirectiveId(rs.getString("directiveId"))
+          , NodeId(rs.getString("nodeId"))
+          , rs.getInt("serial")
+          , rs.getString("component")
+          , rs.getString("keyValue")
+          , new DateTime(rs.getTimestamp("executionTimeStamp"))
+          , rs.getString("eventType")
+          , rs.getString("msg")
+          //what about policy ? => contains the technique name, not used directly by Rudder
+        )
     }
 }
 

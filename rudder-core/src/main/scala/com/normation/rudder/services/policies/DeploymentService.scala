@@ -62,6 +62,8 @@ import scala.collection.immutable.TreeMap
 import com.normation.inventory.services.core.ReadOnlyFullInventoryRepository
 import com.normation.inventory.domain.NodeInventory
 import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.NodeInventory
+import com.normation.rudder.domain.parameters.GlobalParameter
 
 
 
@@ -81,7 +83,6 @@ trait DeploymentService extends Loggable {
    *
    */
   def deploy() : Box[Set[NodeId]] = {
-
     logger.info("Start policy generation, checking updated rules")
 
     val initialTime = System.currentTimeMillis

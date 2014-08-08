@@ -54,14 +54,14 @@ import com.normation.utils.HashcodeCaching
  * and the serial (id of generation), the component and its key value
  */
 sealed trait Reports {
-  val executionDate      : DateTime
+  val executionDate      : DateTime //the execution timestamp of that report
   val ruleId             : RuleId
   val directiveId        : DirectiveId
   val nodeId             : NodeId
   val serial             : Int
   val component          : String
-  val keyValue           : String // the key of the component
-  val executionTimestamp : DateTime
+  val keyValue           : String // component value
+  val executionTimestamp : DateTime //the start run timestamp
   val severity           : String
   val message            : String
 }
@@ -211,42 +211,50 @@ object Reports {
 
   val logger = LoggerFactory.getLogger(classOf[Reports])
 
-  def factory(executionDate : DateTime, ruleId : RuleId,
-      directiveId : DirectiveId, nodeId : NodeId,  serial : Int,
-        component : String, keyValue : String,executionTimestamp : DateTime,
-        severity : String,  message : String) : Reports = {
+  def factory(
+      executionDate     : DateTime
+    , ruleId            : RuleId
+    , directiveId       : DirectiveId
+    , nodeId            : NodeId
+    , serial            : Int
+    , component         : String
+    , componentValue    : String
+    , executionTimestamp: DateTime
+    , severity          : String
+    , message           : String
+  ) : Reports = {
     severity.toLowerCase match {
       case RESULT_ERROR => new ResultErrorReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case RESULT_SUCCESS => new ResultSuccessReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case RESULT_REPAIRED => new ResultRepairedReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case RESULT_NOTAPPLICABLE => new ResultNotApplicableReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case LOG_REPAIRED => new LogRepairedReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case LOG_WARN | LOG_WARNING  => new LogWarnReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case LOG_INFO | LOG_INFORM => new LogInformReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case LOG_DEBUG => new LogDebugReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case LOG_TRACE => new LogTraceReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message )
+              serial, component, componentValue, executionTimestamp, message )
 
       case _ =>
         logger.error(s"Invalid report type ${severity} for directive ${directiveId}")
         new UnknownReport(executionDate, ruleId, directiveId, nodeId,
-              serial, component, keyValue, executionTimestamp, message)
+              serial, component, componentValue, executionTimestamp, message)
     }
   }
 
@@ -257,12 +265,12 @@ object Reports {
     , nodeId             : NodeId
     , serial             : Int
     , component          : String
-    , keyValue           : String
+    , componentValue     : String
     , executionTimestamp : DateTime
     , severity           : String
     , message            : String
   ) : Reports = {
-    factory(executionDate, ruleId, directiveId, nodeId, serial, component, keyValue, executionTimestamp, severity,  message)
+    factory(executionDate, ruleId, directiveId, nodeId, serial, component, componentValue, executionTimestamp, severity,  message)
   }
 
   def unapply(report : Reports) = Some((report.executionDate, report.ruleId,

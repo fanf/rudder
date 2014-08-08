@@ -59,7 +59,6 @@ final case class ComponentValueStatusReport(
   , unexpandedComponentValue: Option[String]
   , reportType              : ReportType
   , message                 : List[String]
-  , nodeId	             : NodeId
 ) extends StatusReport
 
 /**

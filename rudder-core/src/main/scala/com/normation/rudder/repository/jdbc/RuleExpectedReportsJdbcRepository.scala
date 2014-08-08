@@ -41,7 +41,6 @@ import com.normation.rudder.domain.policies._
 import com.normation.rudder.repository.RuleExpectedReportsRepository
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import com.normation.rudder.domain.reports._
-import scala.collection._
 import org.joda.time._
 import org.slf4j.{Logger,LoggerFactory}
 import org.springframework.jdbc.core.JdbcTemplate
@@ -77,20 +76,20 @@ class RuleExpectedReportsJdbcRepository(
 
   val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate  from " + TABLE_NAME + "  where 1=1 ";
 
-  def findAllCurrentExpectedReports(): scala.collection.Set[RuleId] = {
+  def findAllCurrentExpectedReports(): Set[RuleId] = {
     jdbcTemplate.query("select distinct ruleid from "+ TABLE_NAME +
         "      where enddate is null",
           RuleIdMapper).toSet;
   }
 
 
-  def findAllCurrentExpectedReportsAndSerial(): scala.collection.Map[RuleId, Int] = {
+  def findAllCurrentExpectedReportsAndSerial(): Map[RuleId, Int] = {
     jdbcTemplate.query("select distinct ruleid, serial from "+ TABLE_NAME +
         "      where enddate is null",
           RuleIdAndSerialMapper).toMap;
   }
 
-  def findAllCurrentExpectedReportsWithNodesAndSerial(): scala.collection.Map[RuleId, (Int, scala.collection.Set[NodeId])] = {
+  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])] = {
     val composite = jdbcTemplate.query("select distinct ruleid, serial, nodejoinkey from "+ TABLE_NAME +
           "      where enddate is null",
             RuleIdSerialNodeJoinKeyMapper);
@@ -238,7 +237,7 @@ class RuleExpectedReportsJdbcRepository(
    */
   def findExpectedReports(ruleId : RuleId, beginDate : Option[DateTime], endDate : Option[DateTime]) : Box[Seq[RuleExpectedReports]] = {
     var query = baseQuery + " and ruleId = ? "
-    var array = mutable.Buffer[AnyRef](ruleId.value)
+    var array = scala.collection.mutable.Buffer[AnyRef](ruleId.value)
 
     beginDate match {
       case None =>
@@ -263,7 +262,7 @@ class RuleExpectedReportsJdbcRepository(
    */
   def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]] = {
     var query = baseQuery + " and beginDate < ? and coalesce(endDate, ?) >= ? "
-    var array = mutable.Buffer[AnyRef](new Timestamp(endDate.getMillis), new Timestamp(beginDate.getMillis), new Timestamp(beginDate.getMillis))
+    var array = scala.collection.mutable.Buffer[AnyRef](new Timestamp(endDate.getMillis), new Timestamp(beginDate.getMillis), new Timestamp(beginDate.getMillis))
 
     toRuleExpectedReports(jdbcTemplate.query(query,
           array.toArray[AnyRef],
@@ -280,7 +279,7 @@ class RuleExpectedReportsJdbcRepository(
         " join "+ NODE_TABLE_NAME +" on "+ NODE_TABLE_NAME +".nodejoinkey = "+ TABLE_NAME +".nodejoinkey " +
         " where nodeid = ? "
 
-    var array = mutable.Buffer[AnyRef](nodeId.value)
+    var array = scala.collection.mutable.Buffer[AnyRef](nodeId.value)
 
     beginDate match {
       case None =>
