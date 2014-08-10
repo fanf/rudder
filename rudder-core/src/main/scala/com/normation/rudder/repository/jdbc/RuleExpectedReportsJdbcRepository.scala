@@ -76,20 +76,7 @@ class RuleExpectedReportsJdbcRepository(
 
   val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate  from " + TABLE_NAME + "  where 1=1 ";
 
-  def findAllCurrentExpectedReports(): Set[RuleId] = {
-    jdbcTemplate.query("select distinct ruleid from "+ TABLE_NAME +
-        "      where enddate is null",
-          RuleIdMapper).toSet;
-  }
-
-
-  def findAllCurrentExpectedReportsAndSerial(): Map[RuleId, Int] = {
-    jdbcTemplate.query("select distinct ruleid, serial from "+ TABLE_NAME +
-        "      where enddate is null",
-          RuleIdAndSerialMapper).toMap;
-  }
-
-  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])] = {
+  override def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])] = {
     val composite = jdbcTemplate.query("select distinct ruleid, serial, nodejoinkey from "+ TABLE_NAME +
           "      where enddate is null",
             RuleIdSerialNodeJoinKeyMapper);
@@ -107,7 +94,7 @@ class RuleExpectedReportsJdbcRepository(
    * @param rule
    * @return
    */
-  def findCurrentExpectedReports(ruleId : RuleId) : Box[Option[RuleExpectedReports]] = {
+  override def findCurrentExpectedReports(ruleId : RuleId) : Box[Option[RuleExpectedReports]] = {
     tryo {
       toRuleExpectedReports(jdbcTemplate.query(baseQuery +
           "      and enddate is null and ruleid = ?",
@@ -129,7 +116,7 @@ class RuleExpectedReportsJdbcRepository(
    * Simply set the endDate for the expected report for this conf rule
    * @param ruleId
    */
-  def closeExpectedReport(ruleId : RuleId) : Box[Unit] = {
+  override def closeExpectedReport(ruleId : RuleId) : Box[Unit] = {
     logger.debug(s"Closing expected report for rules '${ruleId.value}'")
     findCurrentExpectedReports(ruleId) match {
       case e:EmptyBox => e
@@ -149,7 +136,7 @@ class RuleExpectedReportsJdbcRepository(
    * Save an expected reports.
    *
    */
-  def saveExpectedReports(
+  override def saveExpectedReports(
       ruleId                : RuleId
     , serial                : Int
     , policyExpectedReports : Seq[DirectiveExpectedReports]
@@ -229,69 +216,15 @@ class RuleExpectedReportsJdbcRepository(
   }
 
 
-
-  /**
-   * Return all the expected reports for this policyinstance between the two date
-   * @param directiveId
-   * @return
-   */
-  def findExpectedReports(ruleId : RuleId, beginDate : Option[DateTime], endDate : Option[DateTime]) : Box[Seq[RuleExpectedReports]] = {
-    var query = baseQuery + " and ruleId = ? "
-    var array = scala.collection.mutable.Buffer[AnyRef](ruleId.value)
-
-    beginDate match {
-      case None =>
-      case Some(date) => query = query + " and coalesce(endDate, ?) >= ?"; array += new Timestamp(date.getMillis);array += new Timestamp(date.getMillis)
-    }
-
-    endDate match {
-      case None =>
-      case Some(date) => query = query + " and beginDate < ?"; array += new Timestamp(date.getMillis)
-    }
-
-    toRuleExpectedReports(jdbcTemplate.query(query,
-          array.toArray[AnyRef],
-          RuleExpectedReportsMapper).toSeq)
-
-
-  }
-
   /**
    * Return all the expected reports between the two dates
    * @return
    */
-  def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]] = {
+  override def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]] = {
     var query = baseQuery + " and beginDate < ? and coalesce(endDate, ?) >= ? "
     var array = scala.collection.mutable.Buffer[AnyRef](new Timestamp(endDate.getMillis), new Timestamp(beginDate.getMillis), new Timestamp(beginDate.getMillis))
 
     toRuleExpectedReports(jdbcTemplate.query(query,
-          array.toArray[AnyRef],
-          RuleExpectedReportsMapper).toSeq)
-  }
-
-  /**
-   * Return all the expected reports for this server between the two date
-   * @param directiveId
-   * @return
-   */
-  def findExpectedReportsByNode(nodeId : NodeId, beginDate : Option[DateTime], endDate : Option[DateTime]) : Box[Seq[RuleExpectedReports]] = {
-    var joinQuery = "select pkid, "+ TABLE_NAME +".nodejoinkey, ruleid, directiveid, serial, component, componentsvalues, unexpandedComponentsValues, cardinality, begindate, enddate  from "+ TABLE_NAME +
-        " join "+ NODE_TABLE_NAME +" on "+ NODE_TABLE_NAME +".nodejoinkey = "+ TABLE_NAME +".nodejoinkey " +
-        " where nodeid = ? "
-
-    var array = scala.collection.mutable.Buffer[AnyRef](nodeId.value)
-
-    beginDate match {
-      case None =>
-      case Some(date) => joinQuery = joinQuery + " and coalesce(endDate, ?) >= ?"; array += new Timestamp(date.getMillis);array += new Timestamp(date.getMillis)
-    }
-
-    endDate match {
-      case None =>
-      case Some(date) => joinQuery = joinQuery + " and beginDate < ?"; array += new Timestamp(date.getMillis)
-    }
-
-    toRuleExpectedReports(jdbcTemplate.query(joinQuery,
           array.toArray[AnyRef],
           RuleExpectedReportsMapper).toSeq)
   }
@@ -303,7 +236,7 @@ class RuleExpectedReportsJdbcRepository(
    * @param directiveId
    * @return
    */
-  def findCurrentExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]] = {
+  override def findCurrentExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]] = {
     val joinQuery = "select pkid, "+ TABLE_NAME +".nodejoinkey, ruleid,directiveid, serial, component, componentsvalues, unexpandedComponentsValues, cardinality, begindate, enddate  from "+ TABLE_NAME +
         " join "+ NODE_TABLE_NAME +" on "+ NODE_TABLE_NAME +".nodejoinkey = "+ TABLE_NAME +".nodejoinkey " +
         "      where enddate is null and  "+ NODE_TABLE_NAME +".nodeId = ?";
@@ -342,7 +275,7 @@ class RuleExpectedReportsJdbcRepository(
    * Effectively convert lines from the DB to RuleExpectedReports (and does also fill the nodes, opposite to what
    * was previously done)
    */
-  def toRuleExpectedReports(entries : Seq[ExpectedConfRuleMapping]) : Box[Seq[RuleExpectedReports]] = {
+  private[this] def toRuleExpectedReports(entries : Seq[ExpectedConfRuleMapping]) : Box[Seq[RuleExpectedReports]] = {
     // first, we fetch all the nodes, so that it's done once and for all
     val nodes = entries.map(_.nodeJoinKey).distinct.map { nodeJoinKey => (nodeJoinKey -> getNodes(nodeJoinKey)) }.toMap
 

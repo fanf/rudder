@@ -34,40 +34,25 @@
 
 package com.normation.rudder.reports.execution
 
-import org.joda.time.DateTime
-import com.normation.inventory.domain.NodeId
-import org.squeryl.PrimitiveTypeMode._
-import org.squeryl._
-import org.squeryl.annotations.Column
 import java.sql.Timestamp
-import net.liftweb.util.Helpers.tryo
-import net.liftweb.common._
-import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
+
+import org.joda.time.DateTime
+import org.squeryl.KeyedEntity
+import org.squeryl.PrimitiveTypeMode._
+import org.squeryl.Schema
+import org.squeryl.annotations.Column
 import org.squeryl.dsl.CompositeKey2
-import java.sql.SQLException
-import com.normation.utils.Control._
+
+import com.normation.inventory.domain.NodeId
+import com.normation.rudder.reports.execution.ReportExecution.withoutState
+import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
+
+import net.liftweb.common._
+import ExecutionRepositoryUtils._
 
 case class RoReportsExecutionSquerylRepository (
     sessionProvider : SquerylConnectionProvider
 ) extends RoReportsExecutionRepository with Loggable {
-
-  import ExecutionRepositoryUtils._
-
-  def getExecutionByNode (nodeId : NodeId) : Box[Seq[ReportExecution]] = {
-    try {  sessionProvider.ourTransaction {
-      val queryResult = from(Executions.executions)(entry =>
-        where(
-          entry.nodeId === nodeId.value
-        )
-        select(entry)
-      ).toSeq.map(fromDB)
-      Full(Seq[ReportExecution]() ++ queryResult)
-    } } catch {
-      case e:Exception  =>
-        logger.error(s"Error when trying to get report executions for node '${nodeId.value}'", e)
-        Failure(s"Error when trying to get report executions for node '${nodeId.value}' cause is : $e")
-    }
-  }
 
   def getNodeLastExecution (nodeId : NodeId) : Box[Option[ReportExecution]] = {
     try {  sessionProvider.ourTransaction {
@@ -78,27 +63,89 @@ case class RoReportsExecutionSquerylRepository (
         select(entry)
         orderBy(entry.date desc)
       ).page(0,1).headOption.map(fromDB)
-      Full( queryResult)
-    } } catch {
-      case e:Exception  =>
-        val msg = s"Error when trying to get report executions for node with Id '${nodeId.value}', reason is ${e.getMessage()}"
-        logger.error(msg, e)
-        Failure(msg)
-    }
-  }
-  def getExecutionByNodeAndDate (nodeId : NodeId, date: DateTime) : Box[Option[ReportExecution]] = {
-    try {  sessionProvider.ourTransaction {
-      val queryResult : Option[ReportExecution] = from(Executions.executions)(entry =>
-        where(
-              entry.nodeId === nodeId.value
-          and entry.date   === toTimeStamp(date)
-        )
-        select(entry)
-      ).headOption.map(fromDB)
       Full(queryResult)
     } } catch {
+          case e:Exception  =>
+            val msg = s"Error when trying to get report executions for node with Id '${nodeId.value}', reason is ${e.getMessage()}"
+            logger.error(msg, e)
+            Failure(msg)
+    }
+  }
+}
+
+case class WoReportsExecutionSquerylRepository (
+  readExecutions  : RoReportsExecutionSquerylRepository
+) extends WoReportsExecutionRepository with Loggable {
+
+  import readExecutions._
+
+
+  def updateExecutions(executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
+    //"contains" is only defined regarding the primary key
+    def same(x:ReportExecution, y:ReportExecution) = {
+      x.nodeId == y.nodeId && x.date == y.date
+    }
+
+    def find(r:ReportExecution, seq: Seq[ReportExecution]) = {
+      seq.find(x => same(x,r))
+    }
+
+    //
+    // Question: do we want to save an updated nodeConfigurationVersion ?
+    // for now, say we update all
+    //
+
+    /*
+     * Three cases:
+     * - already saved, completed: update them but keeping the "completed" state
+     * - already saved, not completed: update them with whatever we found
+     * - not already saved: insert them
+     */
+    for {
+      existingExec <- getExecutionsByNodeAndDate(executions) ?~! "Could not fetch the already save executions date for node"
+
+      //insert all execution in parameter not already existing
+      toInsert     =  executions.filterNot( x => find(x, existingExec).isDefined )
+
+      //find the list of execution to update, with their actual values
+      toUpdate     =  executions.flatMap( x =>
+                        find(x, existingExec)
+                        //for the one toUpdate, always keep the most recent
+                        // nodeConfigurationVersion and most completed status
+                        .flatMap { y =>
+                          val completed = x.isCompleted || y.isCompleted
+                          val version = x.nodeConfigVersion
+                          val toSave = x.copy( isCompleted = completed, nodeConfigVersion = version)
+                          if(toSave == y) None else Some(toSave)
+                        }
+                      )
+
+      updated         <- update(toUpdate) ?~! s"Could not close or update the ${toUpdate.size} execution that has been completed during the interval"
+      inserted        <- insert(toInsert) ?~! s"Could not create the ${toInsert.size} execution that has been completed during the interval"
+
+
+    } yield {
+
+      println("toUpdate: " + toUpdate.mkString("\n", "\n", ""))
+      println("updating: " + updated.mkString("\n", "\n", ""))
+      println("toInsert: " + toInsert.mkString("\n", "\n", ""))
+      println("adding: " + inserted.mkString("\n", "\n", ""))
+
+      println("no touched: " + executions.filterNot(x => find(x, toUpdate).isDefined || find(x, toInsert).isDefined))
+
+      updated ++ inserted
+    }
+  }
+
+  private[this] def exec[A, B](body: => B)(res: B => A)(errorMessage: Exception => String): Box[A] = {
+    try {
+      val a = sessionProvider.ourTransaction {
+        body
+      }
+      Full(res(a))
+    } catch {
       case e:Exception  =>
-        val msg = s"Error when trying to get report executions for node with Id '${nodeId.value} at date ${date}', reason is ${e.getMessage()}"
+        val msg = errorMessage(e)
         logger.error(msg, e)
         Failure(msg)
     }
@@ -107,172 +154,48 @@ case class RoReportsExecutionSquerylRepository (
   /**
    * From a seq of found executions in RudderSysEvents, find in the existing executions matching
    */
-  def getExecutionsByNodeAndDate (executions: Seq[ReportExecution]) : Box[Seq[ReportExecution]] = {
-    try {
-      sessionProvider.ourTransaction {
-        val result = executions.flatMap { execution =>
-          from(Executions.executions)(entry =>
-            where(
-                  entry.nodeId === execution.nodeId.value
-              and entry.date   === toTimeStamp(execution.date)
-            )
-            select(entry)
+  private[this] def getExecutionsByNodeAndDate (executions: Seq[ReportExecution]) : Box[Seq[ReportExecution]] = {
+    exec {
+      val result = executions.flatMap { execution =>
+        from(Executions.executions)(entry =>
+          where(
+                entry.nodeId === execution.nodeId.value
+            and entry.date   === toTimeStamp(execution.date)
           )
-        }
-
-        Full(Seq() ++ result.toSeq.map(fromDB))
-    } } catch {
-      case e:Exception  =>
-        val msg = s"Error when trying to get nodes report executions, reason is ${e.getMessage()}"
-        logger.error(msg, e)
-        Failure(msg)
-    }
-  }
-
-}
-
-case class WoReportsExecutionSquerylRepository (
-    sessionProvider : SquerylConnectionProvider
-  , readExecutions  : RoReportsExecutionRepository
-) extends WoReportsExecutionRepository with Loggable {
-
-
-  import readExecutions._
-  import ExecutionRepositoryUtils._
-
-  def saveOrUpdateExecution (execution : ReportExecution) : Box[ReportExecution] = {
-    getExecutionByNodeAndDate(execution.nodeId, execution.date) match {
-      case Full(Some(_)) =>
-        if (execution.isComplete) {
-          logger.trace(s"need to update execution ${execution}")
-          closeExecution(execution)
-        } else {
-          logger.trace(s"execution ${execution} not ended yet")
-          Full(execution)
-        }
-      case Full(None) =>
-        saveExecution(execution)
-      case eb: EmptyBox =>
-        eb ?~! "Could not get previous node execution"
-    }
-  }
-
-  private[this] def saveExecution (execution: ReportExecution) : Box[ReportExecution] = {
-    try {
-      val saveResult = sessionProvider.ourTransaction {
-        Executions.executions.insert(execution)
-      }
-      Full(fromDB(saveResult))
-    } catch {
-      case e:Exception =>
-        val msg = s"Could not save the node execution ${execution}, reason is ${e.getMessage()}"
-        logger.error(msg, e)
-        Failure(msg)
-    }
-  }
-
-  private[this] def saveExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
-    try {
-      val saveResult = sessionProvider.ourTransaction {
-        executions.map( execution =>
-          Executions.executions.insert( execution )
+          select(entry)
         )
       }
-      logger.trace(s"Created ${saveResult.size} executions, should have saved ${executions.size}")
-      Full(executions)
-    } catch {
-      case e:Exception =>
-        val msg = s"Could not save the ${executions.size} nodes executions, reason is ${e.getMessage()}"
-        logger.error(msg, e)
-        Failure(msg)
-    }
 
-  }
-
-  def updateExecutions(executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
-    for {
-      existingExec            <- getExecutionsByNodeAndDate(executions) ?~! "Could not fetch the already save executions date for node"
-      existingExecWithoutState= existingExec.map(ex =>
-                                    ReportExecutionWithoutState(ex.nodeId, ex.date))
-
-      existingNotCompleteExec = existingExec.filter(!_.isComplete)
-      existingNotCompWithoutState = existingNotCompleteExec.map(ex =>
-                                         ReportExecutionWithoutState(ex.nodeId, ex.date))
-
-      // corner case; there may be existing execution already complete (like, if we come back on existing values)
-      completeExec            = executions.filter(_.isComplete).filterNot(x => existingExec.contains(x))
-
-
-      // closed execution are those complete, into the existing execution incomplete
-      closedExec              = completeExec.map  { x =>
-                                      ReportExecutionWithoutState(x.nodeId, x.date)
-                                    }.filter { x =>
-                                        existingNotCompWithoutState.contains(x)
-                                    }.map(x => ReportExecutionWithoutState(x.nodeId, x.date))
-
-      // a new closed execution is an execution closed, but not in the list of the executions
-      // closed
-      newlyClosedExec         = completeExec.filter(x => !closedExec.contains(x))
-      // new execution are those not complete (otherwise in the previous case),
-      // which are not in the existing, independantly of the state
-      newExec                 = executions.filter(!_.isComplete).map  { x =>
-                                  ReportExecutionWithoutState(x.nodeId, x.date)
-                               }.filterNot { x =>
-                                    existingExecWithoutState.contains(x)
-                               }.map(x => ReportExecution(x.nodeId, x.date, false))
-      closed                  <- closeExecutions(closedExec) ?~! s"Could not close the ${closedExec.size} execution that has been completed during the interval"
-      newlyClosed             <- saveExecutions(newlyClosedExec) ?~! s"Could not create the ${newlyClosedExec.size} execution that has been completed during the interval"
-      newExecutions           <- saveExecutions(newExec) ?~! s"Could not create the ${newExec.size} execution that has been started during the interval"
-
-
-    } yield {
-      closed ++ newlyClosed ++ newExecutions
-    }
-  }
-
-  def closeExecution (execution : ReportExecutionWithoutState) : Box[ReportExecution] =  {
-    try {
-      val closeResult = sessionProvider.ourTransaction {
-          Executions.executions.update( exec =>
-            where (
-                  exec.nodeId === execution.nodeId.value
-              and exec.date   === toTimeStamp(execution.date)
-            )
-
-            set   ( exec.isComplete := true)
-        )
-      }
-      logger.debug(s" closed 1, should have close")
-      Full(ReportExecution(execution.nodeId, execution.date, true))
-    } catch {
-      case e:Exception =>
-        val msg = s"Could not save close the node execution ${execution}, reason is ${e.getMessage()}"
-        logger.error(msg, e)
-        Failure(msg)
+      result.toSeq.map(fromDB)
+    } { a => a
+    } {
+      e: Exception => s"Error when trying to get nodes report executions, reason is ${e.getMessage()}"
     }
   }
 
 
-  def closeExecutions (executions : Seq[ReportExecutionWithoutState]) : Box[Seq[ReportExecution]] =  {
-    try {
-      val closeResult = sessionProvider.ourTransaction {
-        executions.map( execution =>
-          Executions.executions.update( exec =>
-            where (
-                  exec.nodeId === execution.nodeId.value
-              and exec.date   === toTimeStamp(execution.date)
-            )
+  private[this] def insert(executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
+    exec {
+      Executions.executions.insert(executions.map( toDB(_) ))
+    } { saveResult =>
+      executions
+    } {
+      e:Exception =>
+        s"Could not save the ${executions.size} nodes executions, reason is ${e.getMessage()}"
+    }
+  }
 
-            set   ( exec.isComplete := true)
-        ) )
-      }
-      logger.debug(s"Closed ${closeResult.size} execution, out of the ${executions.size} that should have been closed")
-      Full(executions.map(e => ReportExecution(e.nodeId, e.date, true)))
-    } catch {
-      case e:Exception =>
-        val msg = s"Could not close the ${executions.size} nodes executions, reason is ${e.getMessage()}"
-        logger.error(msg, e)
-        Failure(msg)
+  /**
+   * Save the EXISTING execution
+   */
+  private[this] def update(executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
+    exec {
+      Executions.executions.update(executions.map( toDB(_) ))
+    } { closeResult =>
+      executions
+    } {
+      e:Exception =>
+        s"Could not close the ${executions.size} nodes executions, reason is ${e.getMessage()}"
     }
   }
 }
@@ -283,11 +206,11 @@ object ExecutionRepositoryUtils {
   }
 
   implicit def toDB (execution : ReportExecution)  : DBReportExecution = {
-    DBReportExecution(execution.nodeId.value, execution.date, execution.isComplete)
+    DBReportExecution(execution.nodeId.value, execution.date, execution.nodeConfigVersion, execution.isCompleted)
   }
 
   implicit def fromDB (execution : DBReportExecution)  : ReportExecution = {
-    ReportExecution(NodeId(execution.nodeId), new DateTime(execution.date), execution.isComplete)
+    ReportExecution(NodeId(execution.nodeId), new DateTime(execution.date), execution.nodeConfigVersion, execution.isCompleted)
   }
 }
 
@@ -299,7 +222,8 @@ object Executions extends Schema {
 case class DBReportExecution (
     @Column("nodeid")   nodeId     : String
   , @Column("date")     date       : Timestamp
-  , @Column("complete") isComplete : Boolean
+  , @Column("nodeconfigversion") nodeConfigVersion : Option[String]
+  , @Column("complete") isCompleted: Boolean
 ) extends KeyedEntity[CompositeKey2[String,Timestamp]] {
 
   def id = compositeKey(nodeId,date)

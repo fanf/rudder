@@ -519,6 +519,10 @@ object ReportsExecutionMapper extends RowMapper[ReportExecution] {
      ReportExecution(
          NodeId(rs.getString("nodeId"))
        , new DateTime(rs.getTimestamp("executionTimeStamp"))
+       , {
+           val s = rs.getString("nodeConfigVersion")
+           if(s == null) None else Some(s)
+         }
        , rs.getBoolean("complete")
      )
     }

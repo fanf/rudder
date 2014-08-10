@@ -44,23 +44,7 @@ import org.joda.time.DateTime
  */
 trait RoReportsExecutionRepository {
 
-  /**
-   * Returns all executions (complete or not) for a specific Node, over all the time
-   * Caution, it can get large !
-   */
-  def getExecutionByNode (nodeId : NodeId) : Box[Seq[ReportExecution]]
-
-  /**
-   * Returns all execution for a specific node, at a specific time
-   */
-  def getExecutionByNodeAndDate (nodeId : NodeId, date: DateTime) : Box[Option[ReportExecution]]
-
   def getNodeLastExecution (nodeId : NodeId) : Box[Option[ReportExecution]]
-
-  /**
-   * From a seq of found executions in RudderSysEvents, find in the existing executions matching
-   */
-  def getExecutionsByNodeAndDate (executions: Seq[ReportExecution]) : Box[Seq[ReportExecution]]
 
 }
 
@@ -68,14 +52,15 @@ trait RoReportsExecutionRepository {
 trait WoReportsExecutionRepository {
 
   /**
-   * From a list of nodes execution fetch from the ruddersysevent table, create or update
-   * the list of execution in the execution tables
+   * Create or update the list of execution in the execution tables
+   * Only return execution which where actually changed in backend
+   *
+   * The logic is:
+   * - a new execution (not present in backend) is inserted as provided
+   * - a existing execution can only change the completion status from
+   *   "not completed" to "completed" (i.e: a completed execution can
+   *   not be un-completed).
    */
   def updateExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]]
 
-  /**
-   * Close given execution run.
-   * Return the number of report correctly closed.
-   */
-  def closeExecutions (executions : Seq[ReportExecutionWithoutState]) : Box[Seq[ReportExecution]]
 }

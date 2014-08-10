@@ -54,7 +54,6 @@ import net.liftweb.util.Helpers
 import org.junit.runner.RunWith
 import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
-import org.apache.commons.dbcp.BasicDataSource
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import scala.xml.XML
@@ -63,6 +62,7 @@ import scala.xml.Elem
 import org.specs2.specification.Fragments
 import org.specs2.specification.Step
 import java.sql.Timestamp
+import org.springframework.jdbc.core.RowCallbackHandler
 
 
 /**
@@ -74,6 +74,7 @@ import java.sql.Timestamp
  */
 @RunWith(classOf[JUnitRunner])
 class TestManageMigration_2_3 extends DBCommon {
+  System.setProperty("test.postgres", "true")
 
   case class MigEx102(msg:String) extends Exception(msg)
 
@@ -117,7 +118,14 @@ CREATE TEMP TABLE MigrationEventLog(
 );
     """
 
-
+  jdbcTemplate.query("SELECT * FROM pg_catalog.pg_tables ", new RowCallbackHandler(){
+      def processRow(rs: ResultSet) = {
+          val num = rs.getMetaData().getColumnCount()
+          println((for(i <- 1 to num) yield {
+            rs.getString(i)
+          }).mkString(", "))
+      }
+  })
 
   //create the migration request line in DB with the
   //given parameter, and delete it
@@ -201,7 +209,6 @@ CREATE TEMP TABLE MigrationEventLog(
     }
 
   }
-
 
 
 }

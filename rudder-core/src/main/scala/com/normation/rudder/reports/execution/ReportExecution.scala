@@ -41,13 +41,14 @@ import org.joda.time.DateTime
  * a mapping of reports executions
  */
 case class ReportExecution (
-    nodeId     : NodeId
-  , date       : DateTime
-  , isComplete : Boolean
+    nodeId           : NodeId
+  , date             : DateTime
+  , nodeConfigVersion: Option[String]
+  , isCompleted      : Boolean
 )
 
 object ReportExecution {
-  implicit def withoutState(r: ReportExecution) = ReportExecutionWithoutState(r.nodeId, r.date)
+  implicit def withoutState(r: ReportExecution) = ReportExecutionWithoutState(r.nodeId, r.date, r.nodeConfigVersion)
 }
 
 /**
@@ -56,5 +57,6 @@ object ReportExecution {
 case class ReportExecutionWithoutState (
     nodeId     : NodeId
   , date       : DateTime
+  , nodeConfigVersion: Option[String]
 )
 

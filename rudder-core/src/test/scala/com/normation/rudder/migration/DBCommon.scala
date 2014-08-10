@@ -34,31 +34,22 @@
 
 package com.normation.rudder.migration
 
-import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
-import java.sql.Driver
-import java.sql.DriverManager
-import java.io.FileInputStream
+import java.sql._
 import java.util.Properties
-import java.sql.Connection
-import java.sql.ResultSet
-import Migration_2_DATA_Other._
-import Migration_2_DATA_Group._
-import Migration_2_DATA_Directive._
-import Migration_2_DATA_Rule._
-import net.liftweb.common._
-import net.liftweb.util.Helpers
-import org.junit.runner.RunWith
-import org.specs2.mutable._
-import org.specs2.runner.JUnitRunner
-import org.apache.commons.dbcp.BasicDataSource
-import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.core.RowMapper
+
 import scala.xml.XML
-import scala.collection.JavaConverters._
-import scala.xml.Elem
+
+import org.specs2.mutable.Specification
+import org.specs2.mutable.Tags
 import org.specs2.specification.Fragments
 import org.specs2.specification.Step
-import java.sql.Timestamp
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.RowMapper
+
+import com.normation.rudder.repository.jdbc.RudderDatasourceProvider
+import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
+
+import net.liftweb.common.Loggable
 
 
 
@@ -84,6 +75,8 @@ trait DBCommon extends Specification with Loggable with Tags {
 
   def cleanDb = {
     if(sqlClean.trim.size > 0) jdbcTemplate.execute(sqlClean)
+
+    dataSource.close
   }
 
   def now = new Timestamp(System.currentTimeMillis)
@@ -113,19 +106,14 @@ trait DBCommon extends Specification with Loggable with Tags {
 
   // init DB and repositories
   lazy val dataSource = {
-    val driver = properties.getProperty("jdbc.driverClassName")
-    Class.forName(driver);
-    val pool = new BasicDataSource()
-    pool.setDriverClassName(driver)
-    pool.setUrl(properties.getProperty("jdbc.url"))
-    pool.setUsername(properties.getProperty("jdbc.username"))
-    pool.setPassword(properties.getProperty("jdbc.password"))
-
-    /* test connection */
-    val connection = pool.getConnection()
-    connection.close()
-
-    pool
+    val config = new RudderDatasourceProvider(
+        properties.getProperty("jdbc.driverClassName")
+      , properties.getProperty("jdbc.url")
+      , properties.getProperty("jdbc.username")
+      , properties.getProperty("jdbc.password")
+    )
+    config.config.setMaximumPoolSize(1)
+    config.datasource
   }
 
   //a row mapper for TestLog

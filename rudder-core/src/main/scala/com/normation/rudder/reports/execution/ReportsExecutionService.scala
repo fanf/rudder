@@ -48,7 +48,6 @@ import net.liftweb.common._
  */
 class ReportsExecutionService (
     reportsRepository      : ReportsRepository
-  , readExecutions         : RoReportsExecutionRepository
   , writeExecutions        : WoReportsExecutionRepository
   , statusUpdateRepository : StatusUpdateRepository
   , maxDays                : Int // in days

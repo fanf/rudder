@@ -50,7 +50,6 @@ import net.liftweb.util.Helpers
 import org.junit.runner.RunWith
 import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
-import org.apache.commons.dbcp.BasicDataSource
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import scala.xml.XML

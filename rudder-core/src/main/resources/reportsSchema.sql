@@ -58,7 +58,7 @@ ALTER database rudder SET standard_conforming_strings=true;
 
 -- create the table for the reports sent
 
-CREATE sequence serial START 101;
+CREATE SEQUENCE serial START 101;
 
 CREATE TABLE RudderSysEvents (
   id                 bigint PRIMARY KEY default nextval('serial')
@@ -110,9 +110,10 @@ CREATE INDEX executionTimeStamp_archived_idx ON ArchivedRudderSysEvents (executi
  * or not. 
  */
 CREATE TABLE ReportsExecution (
-  nodeId   text NOT NULL
-, date     timestamp with time zone NOT NULL
-, complete boolean NOT NULL
+  nodeId            text NOT NULL
+, date              timestamp with time zone NOT NULL
+, complete          boolean NOT NULL
+, nodeConfigVersion text
 , PRIMARY KEY(nodeId, date)
 );
 
@@ -188,6 +189,7 @@ CREATE INDEX creationDate_idx ON EventLog (creationDate);
  * That table is used when a migration between 
  * event log format is needed. 
  */
+CREATE SEQUENCE MigrationEventLogId start 1;
 CREATE TABLE MigrationEventLog (
   id                  integer PRIMARY KEY default(nextval('MigrationEventLogId'))
 , detectionTime       timestamp with time zone NOT NULL
@@ -226,7 +228,7 @@ CREATE TABLE gitCommit(
 , modificationid text
 );
 
-create sequence ChangeRequestId start 1;
+CREATE SEQUENCE ChangeRequestId start 1;
 
 CREATE TABLE ChangeRequest(
   id        integer PRIMARY KEY default(nextval('ChangeRequestId'))
@@ -326,7 +328,7 @@ CREATE TABLE RulesDirectivesJoin (
 CREATE INDEX rule_id_start on Rules (ruleId, startTime);
 CREATE INDEX rule_end on Rules (endTime);
 
-CREATE sequence NodesId START 101;
+CREATE SEQUENCE NodesId START 101;
 
 CREATE TABLE Nodes (
   id              integer PRIMARY KEY default nextval('NodesId')
@@ -339,8 +341,6 @@ CREATE TABLE Nodes (
 
 CREATE INDEX nodes_id_start on Nodes (nodeId, startTime);
 CREATE INDEX nodes_end on Nodes (endTime);
-
-CREATE SEQUENCE MigrationEventLogId start 1;
 
 /*
  *************************************************************************************

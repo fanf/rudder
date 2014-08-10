@@ -75,7 +75,6 @@ import com.normation.rudder.repository.xml._
 import com.normation.rudder.repository.jdbc._
 import com.normation.rudder.repository._
 import net.liftweb.common.Loggable
-import org.apache.commons.dbcp.BasicDataSource
 import com.normation.rudder.services.eventlog.HistorizationServiceImpl
 import com.normation.rudder.services.policies.DeployOnTechniqueCallback
 import com.normation.rudder.services.marshalling._
@@ -1554,7 +1553,7 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val roReportsExecutionSquerylRepository = new RoReportsExecutionSquerylRepository(squerylDatasourceProvider)
 
-  private[this] lazy  val woReportExecutionsSquerylRepository = new WoReportsExecutionSquerylRepository(squerylDatasourceProvider, roReportsExecutionSquerylRepository )
+  private[this] lazy  val woReportExecutionsSquerylRepository = new WoReportsExecutionSquerylRepository(roReportsExecutionSquerylRepository )
 
   val updatesEntryJdbcRepository = new StatusUpdateSquerylRepository(squerylDatasourceProvider)
 
@@ -1568,7 +1567,6 @@ object RudderConfig extends Loggable {
 
     new ReportsExecutionService(
       reportsRepository
-    , roReportsExecutionSquerylRepository
     , woReportExecutionsSquerylRepository
     , updatesEntryJdbcRepository
     , max

@@ -44,25 +44,9 @@ import org.joda.time._
 
 trait RuleExpectedReportsRepository {
 
-
-  /**
-   * Return all the expected reports for this ruleId between the two date
-   * @param ruleId
-   * @return
-   */
-  def findExpectedReports(ruleId : RuleId, beginDate : Option[DateTime], endDate : Option[DateTime]) : Box[Seq[RuleExpectedReports]]
-
-
-  /**
-   * Return all the expected reports for this server between the two date
-   * @param directiveId
-   * @return
-   */
-  def findExpectedReportsByNode(nodeId : NodeId, beginDate : Option[DateTime], endDate : Option[DateTime]) : Box[Seq[RuleExpectedReports]]
-
   /**
    * Return all the expected reports between the two dates
-   * @return
+   * //used by the advanced reporting module
    */
   def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]]
 
@@ -75,31 +59,11 @@ trait RuleExpectedReportsRepository {
   def findCurrentExpectedReports(rule : RuleId) : Box[Option[RuleExpectedReports]]
 
   /**
-   * Return the ruleId currently opened
-   * It is only used to know which conf expected report we should close
-   */
-  def findAllCurrentExpectedReports(): Set[RuleId]
-
-
-  /**
-   * Return the ruleId currently opened, and their serial
-   * It is only used to know which conf expected report we should close
-   * This should not be used any more
-   */
-  def findAllCurrentExpectedReportsAndSerial(): Map[RuleId, Int]
-
-  /**
    * Return the ruleId currently opened, and their serial and list of nodes
    * It is only used to know which conf expected report we should close
    */
   def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])]
 
-  /**
-   *  Return current expectedreports (the one still pending) for this policyIsntance
-   * @param directiveId
-   * @return
-   */
-//  def findCurrentExpectedReports(directiveId : Cf3PolicyDraftId) : Option[RuleExpectedReports]
 
   /**
    * Return currents expectedreports (the one still pending) for this server

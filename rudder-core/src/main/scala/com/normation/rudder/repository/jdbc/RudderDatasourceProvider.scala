@@ -36,12 +36,17 @@ package com.normation.rudder.repository.jdbc
 
 
 import javax.sql.DataSource
-import org.apache.commons.dbcp.BasicDataSource
 import net.liftweb.common.Loggable
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
+import java.io.Closeable
 
 /**
- * A wrapper around the Squeryl default implementation to allow for several
+ * A wrapper around defaut data source provider to allow for several
  * databases connections, and still offer the multi-threading capabilities
+ *
+ * Switch to HikaryCP seems it seems to be the new kid in the bloc
+ * http://blog.trustiv.co.uk/2014/06/battle-connection-pools
  */
 class RudderDatasourceProvider(
     driver  : String
@@ -50,26 +55,27 @@ class RudderDatasourceProvider(
   , password: String
 ) extends Loggable {
 
+  val config = new HikariConfig()
+  config.setMaximumPoolSize(10)
+  config.setDriverClassName(driver)
+  config.setJdbcUrl(url)
+  config.addDataSourceProperty("user", username)
+  config.addDataSourceProperty("password", password)
+  //set parameters to test for dead connection
+  //not sure we need that, since we use JDBC4 driver, see:
+  //https://github.com/brettwooldridge/HikariCP => in page, text "connectionTestQuery"
+  config.setConnectionTestQuery("SELECT 1")
 
-  lazy val datasource = try {
 
-    Class.forName(driver);
+  lazy val datasource: DataSource with Closeable = try {
 
-    val pool = new BasicDataSource();
-    pool.setDriverClassName(driver)
-    pool.setUrl(url)
-    pool.setUsername(username)
-    pool.setPassword(password)
-
-    //set parameters to test for dead connection
-    pool.setValidationQuery("SELECT 1")
+    val pool = new HikariDataSource(config)
 
     /* try to get the connection */
     val connection = pool.getConnection()
     connection.close()
 
     pool
-
   } catch {
     case e: Exception =>
       logger.error("Could not initialise the access to the database")
