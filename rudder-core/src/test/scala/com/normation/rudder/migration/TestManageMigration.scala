@@ -90,9 +90,8 @@ class TestManageMigration_2_3 extends DBCommon {
           migrationEventLogRepository = new MigrationEventLogRepository(squerylConnectionProvider)
         , Seq(migration)
       )
-  val sqlClean = "" //no need to clean temp data table.
 
-  val sqlInit = """
+  override val sqlInit = """
 CREATE TEMP SEQUENCE eventLogIdSeq START 1;
 
 CREATE TEMP TABLE EventLog (

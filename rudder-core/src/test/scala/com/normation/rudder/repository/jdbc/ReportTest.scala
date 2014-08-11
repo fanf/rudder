@@ -34,24 +34,23 @@
 
 package com.normation.rudder.repository.jdbc
 
+import java.sql.Timestamp
 import org.junit.runner.RunWith
 import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
-import com.normation.rudder.migration.DBCommon
-import scala.io.Source
-import com.normation.rudder.reports.execution.RoReportsExecutionSquerylRepository
-import com.normation.rudder.reports.execution.WoReportsExecutionSquerylRepository
-import com.normation.rudder.reports.execution.ReportExecution
-import com.normation.inventory.domain.NodeId
+import scala.slick.driver.PostgresDriver.simple._
 import org.joda.time.DateTime
-import net.liftweb.common.Full
-import org.springframework.jdbc.core.ResultSetExtractor
-import org.springframework.jdbc.core.RowMapper
-import org.springframework.jdbc.core.RowCallbackHandler
-import java.sql.ResultSet
-import org.specs2.matcher.BeEqualTo
-import org.specs2.specification.BeforeExample
-
+import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.domain.policies.RuleId
+import com.normation.rudder.domain.reports.Reports
+import com.normation.rudder.migration.DBCommon
+import com.normation.rudder.reports.execution.AgentRunId
+import javax.sql.DataSource
+import net.liftweb.common.Loggable
+import java.sql.BatchUpdateException
+import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.reports.execution.AgentRunId
 
 /**
  *
@@ -60,26 +59,8 @@ import org.specs2.specification.BeforeExample
  */
 @RunWith(classOf[JUnitRunner])
 class ReportsTest extends DBCommon {
+System.setProperty("test.postgres", "true")
 
-  System.setProperty("test.postgres", "true")
-
-  //init the database from the last schema, creating temporary
-  //db in place of persistent one.
-  val sqlInit: String = {
-    val is = this.getClass().getClassLoader().getResourceAsStream("reportsSchema.sql")
-    val sqlText = Source.fromInputStream(is).getLines.toSeq.map(s =>
-      s
-       .replaceAll("CREATE TABLE", "CREATE TEMP TABLE")
-       .replaceAll("CREATE SEQUENCE", "CREATE TEMP SEQUENCE")
-       .replaceAll("ALTER database rudder", "ALTER database test")
-    ).mkString("\n")
-    is.close()
-
-    println(sqlText)
-    sqlText
-  }
-
-  def sqlClean = ""
 
   //clean data base
   def cleanTables() = {
@@ -87,75 +68,139 @@ class ReportsTest extends DBCommon {
   }
 
 
-  val roRunRepo = new RoReportsExecutionSquerylRepository(squerylConnectionProvider)
-  val woRunRepo = new WoReportsExecutionSquerylRepository(roRunRepo)
-
-
-  val (n1, n2) = (NodeId("n1"), NodeId("n2"))
-  val runMinus2 = DateTime.now.minusMinutes(7)
-  val runMinus1 = DateTime.now.minusMinutes(2)
-
-  val runs = Seq(
-      ReportExecution(n1, runMinus2, Some("nodeConfig_n1_v1"), true)
-    , ReportExecution(n1, runMinus1, Some("nodeConfig_n1_v1"), false)
-  )
+  val repostsRepo = new ReportsJdbcRepository(jdbcTemplate)
+  val slick = new ReportsSlick(dataSource)
 
   sequential
 
-//  step(cleanTables)
+  implicit def toReport(t:(DateTime,String, String, String, Int, String, String, DateTime, String, String)) = {
+    implicit def toRuleId(s:String) = RuleId(s)
+    implicit def toDirectiveId(s: String) = DirectiveId(s)
+    implicit def toNodeId(s: String) = NodeId(s)
 
-  "Execution repo" should {
-    "correctly insert" in {
-      woRunRepo.updateExecutions(Seq(runs(0))) must beEqualTo( Full(Seq(runs(0)) ))
-    }
-
-    "correctly find back" in {
-      roRunRepo.getNodeLastExecution(n1) must beEqualTo(Full(Some(runs(0))))
-    }
-
-    "correctly update last" in {
-      (woRunRepo.updateExecutions(runs) must beEqualTo( Full(Seq(runs(1))) )) and
-      (roRunRepo.getNodeLastExecution(n1) must beEqualTo(Full(Some(runs(1)))))
-    }
-
-    "don't find report when none was added" in {
-      roRunRepo.getNodeLastExecution(n2) must beEqualTo(Full(None))
-    }
+    Reports(t._1, t._2, t._3,t._4,t._5,t._6,t._7,t._8,t._9,t._10)
   }
 
+  def node(nodeId:String)(lines: (String, String, Int, String, String, DateTime, String, String)*): (String, Seq[Reports]) = {
+    (nodeId, lines.map(t => toReport((t._6, t._1, t._2, nodeId, t._3,t._4,t._5,t._6,t._7,t._8))))
+  }
 
-  val initRuns = Seq(
-      ReportExecution(n1, runMinus2.minusMinutes(5), Some("nodeConfig_n1_v1"), true)
-    , ReportExecution(n1, runMinus2, Some("nodeConfig_n1_v1"), true)
-    , ReportExecution(n1, runMinus1, Some("nodeConfig_n1_v1"), false)
+  val run1 = DateTime.now.minusMinutes(5*5).withMillisOfSecond(123) //check that millis are actually used
+  val run2 = DateTime.now.minusMinutes(5*4)
+  val reports = (
+    Map[String, Seq[Reports]]() +
+    node("n0")(
+        ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
+    ) +
+    node("n1")(
+        ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
+      , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
+      , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
+      //haha! run2!
+      , ("r1", "d1", 1, "c2", "cv2", run2, "result_success", "msg1")
+    ) +
+    node("n2")(
+        ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
+      , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
+      , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
+    )
   )
 
-  /*
-   * BE VERY CAREFULL: code just above the "should" is not
-   * executed when one's thinking. So if you have logic
-   * to exec before fragment, it MUST go in a step...
-   */
+
   step {
-    cleanTables
-    woRunRepo.updateExecutions(initRuns)
+    slick.insertReports(reports.values.toSeq.flatten)
   }
 
-  "Updating execution" should {
+  implicit def toAgentIds(ids:Set[(String, DateTime)]):Set[AgentRunId] = {
+    ids.map(t => AgentRunId(NodeId(t._1), t._2))
+  }
 
-    "correctly close and let closed existing execution" in {
-      val all = Seq(
-          initRuns(0).copy(isCompleted = false) //not updated
-        , initRuns(1).copy(nodeConfigVersion = Some("nodeConfig_n1_v2"))
-        , initRuns(2).copy(isCompleted = true)
-        , ReportExecution(n1, runMinus2.minusMinutes(10), Some("nodeConfig_n1_v1"), true)
-        , ReportExecution(n1, runMinus1.plusMinutes(5), Some("nodeConfig_n1_v1"), false)
-      )
+  "Execution repo" should {
 
-      //only the first one should not be modified
-      woRunRepo.updateExecutions(all).openOrThrowException("Failed test") must contain(exactly(all.tail:_*))
+    "find the last reports for node0" in {
+      val result = repostsRepo.findReportByAgentExecution(Set(AgentRunId(NodeId("n0"), run1))).openOrThrowException("Test failed with exception")
+      result must contain(exactly(reports("n0")(0)))
+    }
 
+    "find reports for node 0,1,2" in {
+      val runs = Set(("n0", run1), ("n1", run1), ("n2", run1) )
+      val result = repostsRepo.findReportByAgentExecution(runs).openOrThrowException("Test failed with exception")
+      result must contain(exactly(reports("n0")++reports("n1").reverse.tail++reports("n2"):_*))
+    }
+
+    "not find report for none existing agent run id" in {
+      val runs = Set( ("n2", run2), ("n3", run1))
+      val result = repostsRepo.findReportByAgentExecution(runs).openOrThrowException("Test failed with exception")
+      result must beEmpty
     }
   }
 
+}
 
+class ReportsSlick(datasource: DataSource) extends Loggable {
+
+  final case class SlickReports(
+      id                 : Option[Long]
+    , executionDate      : DateTime
+    , nodeId             : String
+    , directiveId        : String
+    , ruleId             : String
+    , serial             : Int
+    , component          : String
+    , keyValue           : String
+    , executionTimestamp : DateTime
+    , eventType          : String
+    , policy             : String
+    , msg                : String
+  )
+
+  implicit def date2dateTime = MappedColumnType.base[DateTime, Timestamp](
+      dt => new Timestamp(dt.getMillis)
+    , ts => new DateTime(ts.getTime)
+  )
+
+  class ReportsTable(tag: Tag) extends Table[SlickReports](tag, "ruddersysevents") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc) // This is the primary key column
+    def executionDate = column[DateTime]("executiondate")
+    def nodeId = column[String]("nodeid")
+    def directiveId = column[String]("directiveid")
+    def ruleId = column[String]("ruleid")
+    def serial = column[Int]("serial")
+    def component = column[String]("component")
+    def keyValue = column[String]("keyvalue")
+    def executionTimeStamp = column[DateTime]("executiontimestamp")
+    def eventType = column[String]("eventtype")
+    def policy = column[String]("policy")
+    def msg = column[String]("msg")
+
+    // Every table needs a * projection with the same type as the table's type parameter
+    def * = (
+        id.?, executionDate, nodeId, directiveId, ruleId, serial,
+        component, keyValue, executionTimeStamp, eventType, policy, msg
+    ) <> (SlickReports.tupled, SlickReports.unapply)
+  }
+
+  val reportsQuery = TableQuery[ReportsTable]
+
+  val slickDB = Database.forDataSource(datasource)
+
+  def toSlickReport(r:Reports): SlickReports = {
+    SlickReports(None, r.executionDate, r.nodeId.value, r.directiveId.value, r.ruleId.value, r.serial
+        , r.component, r.keyValue, r.executionTimestamp, r.severity, "policy", r.message)
+  }
+
+  def insertReports(reports: Seq[Reports]) = {
+    val slickReports = reports.map(toSlickReport(_))
+
+    try {
+      slickDB.withSession { implicit s =>
+        reportsQuery ++= slickReports
+      }
+    } catch {
+      case e: BatchUpdateException =>
+        logger.error("Error when inserting reports: " + e.getMessage)
+        logger.error(e.getNextException)
+        throw e
+    }
+  }
 }

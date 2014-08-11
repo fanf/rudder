@@ -41,6 +41,7 @@ import org.joda.time._
 import com.normation.cfclerk.domain.{Cf3PolicyDraftId}
 import net.liftweb.common.Box
 import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.execution.AgentRunId
 
 /**
  * An overly simple repository for searching through the cfengine reports
@@ -49,6 +50,17 @@ import com.normation.rudder.reports.execution.ReportExecution
  *
  */
 trait ReportsRepository {
+
+
+  /**
+   * Find the reports corresponding to the given agent executions,
+   * so the reports for a set of (node, execution starting timestamp).
+   *
+   * That method doesn't check if there is missing execution in
+   * the result compared to inputs.
+   */
+  def findReportByAgentExecution(agentRunId: Set[AgentRunId]): Box[Seq[Reports]]
+
 
   /**
    * Returns all reports for the ruleId, between the two differents date (optionnally)

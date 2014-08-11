@@ -152,8 +152,9 @@ CREATE INDEX expectedReports_versionId ON expectedReports (nodeJoinKey);
 CREATE INDEX expectedReports_serialId ON expectedReports (ruleId, serial);
 
 CREATE TABLE expectedReportsNodes (
-  nodeJoinKey integer NOT NULL 
-, nodeId      varchar(50) NOT NULL CHECK (nodeId <> '')
+  nodeJoinKey       integer NOT NULL 
+, nodeId            varchar(50) NOT NULL CHECK (nodeId <> '')
+, nodeConfigVersion text
 , PRIMARY KEY (nodeJoinKey, nodeId)
 );
 

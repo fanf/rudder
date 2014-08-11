@@ -92,7 +92,7 @@ final case class DirectiveStatusReport(
 }
 
 final case class NodeStatusReport(
-    nodeId              : NodeId
+    nodeConfigId        : NodeConfigurationId
   , ruleId              : RuleId
   , directives	         : Seq[DirectiveStatusReport]
   , unexpectedDirectives: Seq[DirectiveStatusReport] // for future use, not used yet
@@ -105,7 +105,7 @@ final case class NodeStatusReport(
 }
 
 final case class NodeReport (
-    node      : NodeId
+    node      : NodeConfigurationId
   , reportType: ReportType
   , message   : List[String]
 )

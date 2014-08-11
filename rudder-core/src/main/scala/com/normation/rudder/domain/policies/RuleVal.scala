@@ -46,6 +46,7 @@ import com.normation.utils.HashcodeCaching
 import net.liftweb.common.Box
 import scala.collection.immutable.TreeMap
 import com.normation.inventory.domain.NodeInventory
+import com.normation.rudder.domain.reports.NodeConfigurationId
 
 /*
  * Immutable bridge between cfclerk and rudder
@@ -191,7 +192,7 @@ case class ExpandedDirectiveVal(
 
 case class ExpandedRuleVal(
   ruleId       : RuleId,
-  configs      : Map[NodeId, Seq[ExpandedDirectiveVal]], // A map of NodeId->DirectiveId, where all vars are expanded
+  configs      : Map[NodeConfigurationId, Seq[ExpandedDirectiveVal]], // A map of NodeId->DirectiveId, where all vars are expanded
   serial       : Int // the generation serial of the Rule
 ) extends HashcodeCaching
 

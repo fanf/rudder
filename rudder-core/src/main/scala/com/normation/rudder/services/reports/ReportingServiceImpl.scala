@@ -83,7 +83,7 @@ class ReportingServiceImpl(
    */
   def updateExpectedReports(expandedRuleVals : Seq[ExpandedRuleVal], deleteRules : Seq[RuleId]) : Box[Seq[RuleExpectedReports]] = {
     // All the rule and serial. Used to know which one are to be removed
-    val currentConfigurationsToRemove =  MutMap[RuleId, (Int, Set[NodeId])]() ++
+    val currentConfigurationsToRemove =  MutMap[RuleId, (Int, Set[NodeConfigurationId])]() ++
       confExpectedRepo.findAllCurrentExpectedReportsWithNodesAndSerial()
 
     val confToClose = MutSet[RuleId]()
@@ -170,7 +170,7 @@ class ReportingServiceImpl(
 
     // here we group them by rule/serial/seq of node, so that we have the list of all DirectiveExpectedReports that apply to them
     val groupedContent = preparedValues.toSeq.map { case ((ruleId, serial, directive), nodes) => (ruleId, serial, directive, nodes) }.
-       groupBy[(RuleId, Int, Seq[NodeId])]{ case (ruleId, serial, directive, nodes) => (ruleId, serial, nodes.toSeq)}.map {
+       groupBy[(RuleId, Int, Seq[NodeConfigurationId])]{ case (ruleId, serial, directive, nodes) => (ruleId, serial, nodes.toSeq)}.map {
          case (key, value) => (key -> value.map(x => x._3))
        }.toSeq
     // now we save them
@@ -239,7 +239,7 @@ class ReportingServiceImpl(
               Some(
                   ExecutionBatch(
                       expected.ruleId
-                    , expected.directivesOnNodes.map(dir => DirectivesOnNodeExpectedReport(dir.nodeIds, dir.directiveExpectedReports))
+                    , expected.directivesOnNodes.map(dir => DirectivesOnNodeExpectedReport(dir.nodeConfigurationIds, dir.directiveExpectedReports))
                     , reports
                     , expected.beginDate
                     , agentRunInterval
@@ -276,7 +276,7 @@ class ReportingServiceImpl(
               , agentRunInterval
         )
 
-        val directivesOnNodes = expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeIds.contains(nodeId)).map(x => DirectivesOnNodeExpectedReport(Seq(nodeId), x.directiveExpectedReports))
+        val directivesOnNodes = expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _.nodeId == nodeId)).map(x => DirectivesOnNodeExpectedReport(x.nodeConfigurationIds, x.directiveExpectedReports))
 
         ExecutionBatch.getNodeStatusReports(
               expectedConfigurationReports.ruleId
@@ -312,12 +312,15 @@ class ReportingServiceImpl(
           , agentRunInterval)
 
     // If we are only searching on a node, then we restrict the directivesonnode to this node
-    val filter = (x: DirectivesOnNodes) => nodeId.fold(true)(id => x.nodeIds.contains(id))
+    val filter = (id:NodeId) => (x: DirectivesOnNodes) => x.nodeConfigurationIds.exists(_.nodeId == id)
 
     val directivesOnNodes = nodeId match {
-      case None => expectedConfigurationReports.directivesOnNodes.map(x => DirectivesOnNodeExpectedReport(x.nodeIds, x.directiveExpectedReports))
+      case None => expectedConfigurationReports.directivesOnNodes.map(x => DirectivesOnNodeExpectedReport(x.nodeConfigurationIds, x.directiveExpectedReports))
       case Some(node) =>
-        expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeIds.contains(node)).map(x => DirectivesOnNodeExpectedReport(Seq(node), x.directiveExpectedReports))
+        expectedConfigurationReports.directivesOnNodes.
+          filter(filter(node)).map(x =>
+            DirectivesOnNodeExpectedReport(x.nodeConfigurationIds.filter(_.nodeId == node), x.directiveExpectedReports)
+          )
     }
 
     ExecutionBatch(

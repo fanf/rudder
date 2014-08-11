@@ -44,6 +44,9 @@ import org.joda.time.DateTime
  */
 trait RoReportsExecutionRepository {
 
+  /**
+   * Find the last execution of for the node, whatever is its state.
+   */
   def getNodeLastExecution (nodeId : NodeId) : Box[Option[ReportExecution]]
 
 }

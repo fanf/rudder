@@ -88,9 +88,8 @@ class TestDbMigration_2_3 extends DBCommon with XmlMatchers {
     override val errorLogger = (f:Failure) => throw new MigEx102(f.messageChain)
   }
 
-  val sqlClean = "" //no need to clean temp data table.
 
-  val sqlInit = """
+  override val sqlInit = """
 CREATE TEMP SEQUENCE eventLogIdSeq START 1;
 
 CREATE TEMP TABLE EventLog (
@@ -211,9 +210,7 @@ class TestDbMigration_2_3b extends DBCommon with XmlMatchers {
         , Seq(migration)
   )
 
-  val sqlClean = "" //no need to clean temp data table.
-
-  val sqlInit = """
+  override val sqlInit = """
 CREATE TEMP SEQUENCE eventLogIdSeq START 1;
 
 CREATE TEMP TABLE EventLog (

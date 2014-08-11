@@ -36,11 +36,11 @@ package com.normation.rudder.domain.reports
 
 import org.joda.time.DateTime
 import org.joda.time.Interval
-
-import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
+import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.utils.HashcodeCaching
+import com.normation.inventory.domain.NodeId
 
 
 /**
@@ -66,7 +66,7 @@ case class RuleExpectedReports(
  */
 case class DirectivesOnNodes(
     nodeJoinKey             : Int// id following a sequence used to join to the list of nodes
-  , nodeIds                 : Seq[NodeId]
+  , nodeConfigurationIds    : Seq[NodeConfigurationId]
   , directiveExpectedReports: Seq[DirectiveExpectedReports]
 ) extends HashcodeCaching
 
@@ -93,18 +93,12 @@ case class ReportComponent(
 /**
  * A Directive may have several components
  */
-case class DirectiveExpectedReports (
+final case class DirectiveExpectedReports (
     directiveId: DirectiveId
   , components : Seq[ReportComponent]
 ) extends HashcodeCaching
 
-
-/**
- * This utilitary class is used only to compare what is already saved in the
- * DB and compare it with what is to be saved
- */
-case class Comparator(
-    nodeId       : NodeId
-  , directiveId  : DirectiveId
-  , componentName: String
+final case class NodeConfigurationId(
+    nodeId : NodeId
+  , version: String
 )

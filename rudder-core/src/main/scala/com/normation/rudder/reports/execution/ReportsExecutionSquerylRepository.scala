@@ -44,7 +44,6 @@ import org.squeryl.annotations.Column
 import org.squeryl.dsl.CompositeKey2
 
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.reports.execution.ReportExecution.withoutState
 import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
 
 import net.liftweb.common._
@@ -111,7 +110,7 @@ case class WoReportsExecutionSquerylRepository (
       toUpdate     =  executions.flatMap( x =>
                         find(x, existingExec)
                         //for the one toUpdate, always keep the most recent
-                        // nodeConfigurationVersion and most completed status
+                        // nodeConfigurationVersion and the most completed status
                         .flatMap { y =>
                           val completed = x.isCompleted || y.isCompleted
                           val version = x.nodeConfigVersion
@@ -119,20 +118,9 @@ case class WoReportsExecutionSquerylRepository (
                           if(toSave == y) None else Some(toSave)
                         }
                       )
-
       updated         <- update(toUpdate) ?~! s"Could not close or update the ${toUpdate.size} execution that has been completed during the interval"
       inserted        <- insert(toInsert) ?~! s"Could not create the ${toInsert.size} execution that has been completed during the interval"
-
-
     } yield {
-
-      println("toUpdate: " + toUpdate.mkString("\n", "\n", ""))
-      println("updating: " + updated.mkString("\n", "\n", ""))
-      println("toInsert: " + toInsert.mkString("\n", "\n", ""))
-      println("adding: " + inserted.mkString("\n", "\n", ""))
-
-      println("no touched: " + executions.filterNot(x => find(x, toUpdate).isDefined || find(x, toInsert).isDefined))
-
       updated ++ inserted
     }
   }
@@ -159,8 +147,8 @@ case class WoReportsExecutionSquerylRepository (
       val result = executions.flatMap { execution =>
         from(Executions.executions)(entry =>
           where(
-                entry.nodeId === execution.nodeId.value
-            and entry.date   === toTimeStamp(execution.date)
+                entry.nodeId === execution.runId.nodeId.value
+            and entry.date   === toTimeStamp(execution.runId.date)
           )
           select(entry)
         )
@@ -206,11 +194,11 @@ object ExecutionRepositoryUtils {
   }
 
   implicit def toDB (execution : ReportExecution)  : DBReportExecution = {
-    DBReportExecution(execution.nodeId.value, execution.date, execution.nodeConfigVersion, execution.isCompleted)
+    DBReportExecution(execution.runId.nodeId.value, execution.runId.date, execution.nodeConfigVersion, execution.isCompleted)
   }
 
   implicit def fromDB (execution : DBReportExecution)  : ReportExecution = {
-    ReportExecution(NodeId(execution.nodeId), new DateTime(execution.date), execution.nodeConfigVersion, execution.isCompleted)
+    ReportExecution(AgentRunId(NodeId(execution.nodeId), new DateTime(execution.date)), execution.nodeConfigVersion, execution.isCompleted)
   }
 }
 

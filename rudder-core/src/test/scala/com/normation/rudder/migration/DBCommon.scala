@@ -36,20 +36,17 @@ package com.normation.rudder.migration
 
 import java.sql._
 import java.util.Properties
-
 import scala.xml.XML
-
 import org.specs2.mutable.Specification
 import org.specs2.mutable.Tags
 import org.specs2.specification.Fragments
 import org.specs2.specification.Step
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
-
 import com.normation.rudder.repository.jdbc.RudderDatasourceProvider
 import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
-
 import net.liftweb.common.Loggable
+import scala.io.Source
 
 
 
@@ -60,20 +57,42 @@ import net.liftweb.common.Loggable
 trait DBCommon extends Specification with Loggable with Tags {
   skipAllIf(System.getProperty("test.postgres", "true").toBoolean != true)
 
-  def sqlClean : String
-  def sqlInit : String
+  /**
+   * By default, init schema with the Rudder schema and tables, safe that
+   * everything is temporary
+   */
+  def sqlInit : String = {
+    val is = this.getClass().getClassLoader().getResourceAsStream("reportsSchema.sql")
+    val sqlText = Source.fromInputStream(is).getLines.toSeq.map(s =>
+      s
+       .replaceAll("CREATE TABLE", "CREATE TEMP TABLE")
+       .replaceAll("CREATE SEQUENCE", "CREATE TEMP SEQUENCE")
+       .replaceAll("ALTER database rudder", "ALTER database test")
+    ).mkString("\n")
+    is.close()
+
+    sqlText
+  }
+
+
+  /**
+   * By default, clean does nothing:
+   * - cleaning at the end is not that reliable
+   * - and everything is temporary by default.
+   *
+   * Just let the possibility to do fancy things.
+   */
+  def sqlClean : String = ""
 
   override def map(fs: =>Fragments) = (
-      Step(initDb)
-    ^ fs
-    ^ Step(cleanDb)
+      Step(initDb) ^ fs ^ Step(cleanDb)
   )
 
-  def initDb = {
+  def initDb() = {
     if(sqlInit.trim.size > 0) jdbcTemplate.execute(sqlInit)
   }
 
-  def cleanDb = {
+  def cleanDb() = {
     if(sqlClean.trim.size > 0) jdbcTemplate.execute(sqlClean)
 
     dataSource.close

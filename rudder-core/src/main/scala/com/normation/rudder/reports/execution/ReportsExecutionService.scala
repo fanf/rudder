@@ -77,7 +77,7 @@ class ReportsExecutionService (
 
               val maxDate = {
                 // Keep the last report date is the last report treated is after all treated in this batch
-                val maxReportsDate = reportExec.maxBy(_.date.getMillis()).date
+                val maxReportsDate = reportExec.maxBy(_.runId.date.getMillis()).runId.date
                 if (maxReportsDate isAfter lastReportDate) {
                   maxReportsDate
                 } else {

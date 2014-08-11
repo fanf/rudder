@@ -55,6 +55,8 @@ import com.normation.utils.Control._
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.TransactionCallback
 import org.springframework.transaction.PlatformTransactionManager
+import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.reports.execution.AgentRunId
 
 class RuleExpectedReportsJdbcRepository(
     jdbcTemplate      : JdbcTemplate
@@ -71,15 +73,29 @@ class RuleExpectedReportsJdbcRepository(
    */
   val transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager)
 
-  val TABLE_NAME = "expectedreports"
-  val NODE_TABLE_NAME = "expectedreportsnodes"
+  val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate from expectedreports where 1=1 ";
 
-  val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate  from " + TABLE_NAME + "  where 1=1 ";
 
-  override def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])] = {
-    val composite = jdbcTemplate.query("select distinct ruleid, serial, nodejoinkey from "+ TABLE_NAME +
-          "      where enddate is null",
-            RuleIdSerialNodeJoinKeyMapper);
+  override def findExpectedReportsByAgentRun(runId: AgentRunId): Box[Seq[RuleExpectedReports]] = {
+    /*
+     * Select agentRun join expectedReportsNodes join expectedreports
+     */
+
+    val query = """select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate
+      from expectedreports as A
+      join expectedreportsnodes as B on A.nodejoinkey = B.nodejoinkey
+      join ReportsExecution as C on B.nodeconfigversion = C.nodeconfigversion
+      where C.nodeid = ? and C.date = ?;"""
+
+    try {
+      toRuleExpectedReports(jdbcTemplate.query(query, Array[AnyRef](runId.nodeId.value, new Timestamp(runId.date.getMillis)), RuleExpectedReportsMapper).toSeq)
+    } catch {
+      case e:Exception => Failure(s"Error when getting expected report for node '${runId.nodeId.value}' and execution time '${runId.date}'", Full(e), Empty)
+    }
+  }
+
+  override def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeConfigurationId])] = {
+    val composite = jdbcTemplate.query("select distinct ruleid, serial, nodejoinkey from expectedreports where enddate is null", RuleIdSerialNodeJoinKeyMapper)
 
     (for {
       (ruleId, serial, nodeJoin) <- composite
@@ -89,26 +105,17 @@ class RuleExpectedReportsJdbcRepository(
     }).toMap
 
   }
+
   /**
    * Return current expectedreports (the one still pending) for this Rule
    * @param rule
    * @return
    */
   override def findCurrentExpectedReports(ruleId : RuleId) : Box[Option[RuleExpectedReports]] = {
-    tryo {
-      toRuleExpectedReports(jdbcTemplate.query(baseQuery +
-          "      and enddate is null and ruleid = ?",
-            Array[AnyRef](ruleId.value),
-            RuleExpectedReportsMapper).toSeq) match {
-        case Empty => Empty
-        case e:Failure => logger.error("Error when expected reports for Rule %s : %s".format(ruleId.value, e.messageChain)); e
-        case Full(seq) =>
-          seq.size match {
-            case 0 => None
-            case 1 => Some(seq.head)
-            case _ => Failure("Inconsistency in the database, too many entries for rule id %s".format(ruleId))
-          }
-      }
+    try {
+      toRuleExpectedReport(jdbcTemplate.query(baseQuery + " and enddate is null and ruleid = ?", Array[AnyRef](ruleId.value), RuleExpectedReportsMapper).toSeq)
+    } catch {
+      case e:Exception => Failure("Error when getting expected report for rule " + ruleId.value, Full(e), Empty)
     }
   }
 
@@ -124,12 +131,23 @@ class RuleExpectedReportsJdbcRepository(
             logger.warn(s"Cannot close a non existing entry '${ruleId.value}'")
             Full(Unit)
       case Full(Some(entry)) =>
-        jdbcTemplate.update("update "+ TABLE_NAME +"  set enddate = ? where serial = ? and ruleId = ?",
+        jdbcTemplate.update("update expectedreports  set enddate = ? where serial = ? and ruleId = ?",
           new Timestamp(DateTime.now().getMillis), new java.lang.Integer(entry.serial), entry.ruleId.value
         )
         Full(Unit) // unit is expected
     }
   }
+
+
+  /**
+   * This utilitary class is used only to compare what is already saved in the
+   * DB and compare it with what is to be saved
+   */
+  private[this] final case class Comparator(
+      nodeConfigId : NodeConfigurationId
+    , directiveId  : DirectiveId
+    , componentName: String
+  )
 
   /**
    * TODO: change this API !
@@ -137,10 +155,10 @@ class RuleExpectedReportsJdbcRepository(
    *
    */
   override def saveExpectedReports(
-      ruleId                : RuleId
-    , serial                : Int
-    , policyExpectedReports : Seq[DirectiveExpectedReports]
-    , nodes                 : Seq[NodeId]
+      ruleId                  : RuleId
+    , serial                  : Int
+    , directiveExpectedReports: Seq[DirectiveExpectedReports]
+    , nodeConfigIds           : Seq[NodeConfigurationId]
   ) : Box[RuleExpectedReports] = {
      logger.debug("Saving expected report for rule {}", ruleId.value)
 // TODO : store also the unexpanded
@@ -149,38 +167,41 @@ class RuleExpectedReportsJdbcRepository(
        case Full(Some(x)) =>
          // I need to check I'm not having duplicates
          // easiest way : unfold all, and check intersect
-         val toInsert = policyExpectedReports.flatMap { case DirectiveExpectedReports(dir, comp) =>
-             comp.map(x => (dir, x.componentName))
-           }.flatMap { case (dir, compName) =>
-             nodes.map(node => Comparator(node, dir, compName))}
+         val toInsert = directiveExpectedReports.flatMap { case DirectiveExpectedReports(dir, comp) =>
+           comp.map(x => (dir, x.componentName))
+         }.flatMap { case (dir, compName) =>
+           nodeConfigIds.map(id => Comparator(id, dir, compName))
+         }
 
-         val comparator = x.directivesOnNodes.flatMap { case DirectivesOnNodes(_, nodes, dirExp) =>
+         val comparator = x.directivesOnNodes.flatMap { case DirectivesOnNodes(_, configs, dirExp) =>
            dirExp.flatMap { case DirectiveExpectedReports(dir, comp) =>
              comp.map(x => (dir, x.componentName))
            }.flatMap { case (dir, compName) =>
-             nodes.map(node => Comparator(node, dir, compName))}
+             configs.map(id => Comparator(id, dir, compName))
+           }
          }
 
          toInsert.intersect(comparator) match {
            case seq if seq.size > 0 =>
-             logger.error("Inconsistency in the database : cannot save an already existing expected report for %s".format(ruleId.value))
+             val msg = s"Inconsistency in the database : cannot save an already existing expected report for rule '${ruleId.value}'"
+             logger.error(msg)
              logger.debug("Intersecting values are " + seq)
-             Failure("cannot save an already existing expected report")
-           case _ =>
-             // Ok
-             createExpectedReports(ruleId, serial, policyExpectedReports, nodes)
+             Failure(msg)
+
+           case _ => // Ok
+             createExpectedReports(ruleId, serial, directiveExpectedReports, nodeConfigIds)
          }
 
       case Full(None) =>
-          createExpectedReports(ruleId, serial, policyExpectedReports, nodes)
+          createExpectedReports(ruleId, serial, directiveExpectedReports, nodeConfigIds)
      }
   }
 
   private[this] def createExpectedReports(
-      ruleId                : RuleId
-    , serial                : Int
-    , policyExpectedReports : Seq[DirectiveExpectedReports]
-    , nodes                 : Seq[NodeId]
+      ruleId                  : RuleId
+    , serial                  : Int
+    , directiveExpectedReports: Seq[DirectiveExpectedReports]
+    , nodeConfigIds           : Seq[NodeConfigurationId]
   ) : Box[RuleExpectedReports] = {
 
     transactionTemplate.execute(new TransactionCallback[Box[RuleExpectedReports]]() {
@@ -190,21 +211,24 @@ class RuleExpectedReportsJdbcRepository(
 
         // Create the lines for the mapping
         val list = for {
-                policy <- policyExpectedReports
+                policy <- directiveExpectedReports
                 component <- policy.components
-
         } yield {
                 new ExpectedConfRuleMapping(0, nodeJoinKey, ruleId, serial,
                       policy.directiveId, component.componentName, component.cardinality, component.componentsValues, component.unexpandedComponentsValues, DateTime.now(), None)
         }
         list.foreach(entry =>
-                    jdbcTemplate.update("insert into "+ TABLE_NAME +" ( nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsValues, unexpandedComponentsValues, begindate) " +
-                        " values (?,?,?,?,?,?,?,?,?)",
-                      new java.lang.Integer(entry.nodeJoinKey), ruleId.value, new java.lang.Integer(entry.serial), entry.policyExpectedReport.value,
-                      entry.component,  new java.lang.Integer(entry.cardinality), ComponentsValuesSerialiser.serializeComponents(entry.componentsValues), ComponentsValuesSerialiser.serializeComponents(entry.unexpandedComponentsValues), new Timestamp(entry.beginDate.getMillis)
-                    )
+          jdbcTemplate.update("""insert into expectedreports (
+              nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsValues, unexpandedComponentsValues, begindate
+            ) values (?,?,?,?,?,?,?,?,?)"""
+          , new java.lang.Integer(entry.nodeJoinKey), ruleId.value, new java.lang.Integer(entry.serial), entry.policyExpectedReport.value
+          , entry.component,  new java.lang.Integer(entry.cardinality), ComponentsValuesSerialiser.serializeComponents(entry.componentsValues)
+          , ComponentsValuesSerialiser.serializeComponents(entry.unexpandedComponentsValues), new Timestamp(entry.beginDate.getMillis)
+          )
         )
-        saveNode(nodes, nodeJoinKey )
+
+        saveNode(nodeConfigIds, nodeJoinKey )
+
         findCurrentExpectedReports(ruleId) match {
           case Full(Some(x)) => Full(x)
           case Full(None) => Failure("Could not fetch the freshly saved expected report for rule %s".format(ruleId.value))
@@ -237,9 +261,11 @@ class RuleExpectedReportsJdbcRepository(
    * @return
    */
   override def findCurrentExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]] = {
-    val joinQuery = "select pkid, "+ TABLE_NAME +".nodejoinkey, ruleid,directiveid, serial, component, componentsvalues, unexpandedComponentsValues, cardinality, begindate, enddate  from "+ TABLE_NAME +
-        " join "+ NODE_TABLE_NAME +" on "+ NODE_TABLE_NAME +".nodejoinkey = "+ TABLE_NAME +".nodejoinkey " +
-        "      where enddate is null and  "+ NODE_TABLE_NAME +".nodeId = ?";
+    val joinQuery =
+      s"""select pkid, expectedreports.nodejoinkey, ruleid,directiveid, serial, component, componentsvalues, unexpandedComponentsValues, cardinality, begindate, enddate
+          from expectedreports
+          join expectedreportsnodes on expectedreportsnodes.nodejoinkey = expectedreports.nodejoinkey
+          where enddate is null and  expectedreportsnodes.nodeId = ?"""
 
     toRuleExpectedReports(jdbcTemplate.query(joinQuery,
           Array[AnyRef](nodeId.value),
@@ -247,21 +273,21 @@ class RuleExpectedReportsJdbcRepository(
 
   }
 
-  private[this] def getNodes(nodeJoinKey : Int) : Box[Seq[NodeId]] = {
+  private[this] def getNodes(nodeJoinKey : Int) : Box[Seq[NodeConfigurationId]] = {
     tryo {
-      jdbcTemplate.queryForList("select nodeId from "+ NODE_TABLE_NAME +" where nodeJoinKey = ?",
+      jdbcTemplate.query("select (nodeId, nodeconfigversion) from expectedreportsnodes where nodeJoinKey = ?",
         Array[AnyRef](new java.lang.Integer(nodeJoinKey)),
-        classOf[ String ]).map(NodeId(_))
+        NodeJoinKeyConfigMapper).toSeq
     }
   }
 
   /**
    * Save the server list in the database
    */
-  private def saveNode(servers : Seq[NodeId], nodeJoinKey : Int) = {
-    for (server <- servers) {
-      jdbcTemplate.update("insert into "+ NODE_TABLE_NAME +" ( nodejoinkey, nodeid) values (?,?)",
-        new java.lang.Integer(nodeJoinKey), server.value
+  private def saveNode(nodeConfigurationIds : Seq[NodeConfigurationId], nodeJoinKey : Int) = {
+    for (config <- nodeConfigurationIds) {
+      jdbcTemplate.update("insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversion) values (?,?,?)",
+        new java.lang.Integer(nodeJoinKey), config.nodeId, config.version
       )
     }
   }
@@ -307,6 +333,20 @@ class RuleExpectedReportsJdbcRepository(
     }
   }
 
+  private[this] def toRuleExpectedReport(entries : Seq[ExpectedConfRuleMapping]) : Box[Option[RuleExpectedReports]] = {
+      toRuleExpectedReports(entries)  match {
+        case Empty => Empty
+        case f:Failure =>
+          logger.error(s"Error when getting expected report: ${f.messageChain}")
+          f
+        case Full(seq) =>
+          seq.size match {
+            case 0 => Full(None)
+            case 1 => Full(Some(seq.head))
+            case _ => Failure(s"Inconsistency in the database, too many expected reports for a rule")
+          }
+      }
+  }
 }
 
 object RuleExpectedReportsMapper extends RowMapper[ExpectedConfRuleMapping] {
@@ -348,6 +388,12 @@ object RuleIdAndSerialMapper extends RowMapper[(RuleId, Int)] {
 object RuleIdSerialNodeJoinKeyMapper extends RowMapper[(RuleId, Int, Int)] {
   def mapRow(rs : ResultSet, rowNum: Int) : (RuleId, Int, Int) = {
     (new RuleId(rs.getString("ruleid")) , rs.getInt("serial"), rs.getInt("nodejoinkey"))
+  }
+}
+
+object NodeJoinKeyConfigMapper extends RowMapper[NodeConfigurationId] {
+  def mapRow(rs : ResultSet, rowNum: Int) : NodeConfigurationId = {
+    NodeConfigurationId(new NodeId(rs.getString("nodeid")) , rs.getString("nodeconfigversion"))
   }
 }
 /**

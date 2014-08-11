@@ -40,9 +40,15 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports._
 import org.joda.time._
+import com.normation.rudder.reports.execution.AgentRunId
 
 
 trait RuleExpectedReportsRepository {
+
+  /**
+   * Find expected reports corresponding to a agent run
+   */
+  def findExpectedReportsByAgentRun(runId: AgentRunId): Box[Seq[RuleExpectedReports]]
 
   /**
    * Return all the expected reports between the two dates
@@ -62,7 +68,7 @@ trait RuleExpectedReportsRepository {
    * Return the ruleId currently opened, and their serial and list of nodes
    * It is only used to know which conf expected report we should close
    */
-  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeId])]
+  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeConfigurationId])]
 
 
   /**
@@ -88,12 +94,12 @@ trait RuleExpectedReportsRepository {
    * @param cardinality : the cardinality of the expected reports
    * @return
    */
-    def saveExpectedReports(
-        ruleId               : RuleId
-      , serial               : Int
-      , policyExpectedReports: Seq[DirectiveExpectedReports]
-      , nodes                : Seq[NodeId]
-    ) : Box[RuleExpectedReports]
+  def saveExpectedReports(
+      ruleId                   : RuleId
+    , serial                   : Int
+    , directiveExpectedReports : Seq[DirectiveExpectedReports]
+    , nodeConfigurationVersions: Seq[NodeConfigurationId]
+  ) : Box[RuleExpectedReports]
 
 
 }

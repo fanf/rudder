@@ -204,7 +204,7 @@ case class NodeLine (
   val lastReportValue = {
     lastReport match {
       case Full(exec) =>
-        exec.map(report =>  DateFormaterService.getFormatedDate(report.date)).getOrElse("Never")
+        exec.map(report =>  DateFormaterService.getFormatedDate(report.runId.date)).getOrElse("Never")
       case eb : EmptyBox =>
         "Error While fetching node executions"
     }

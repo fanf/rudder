@@ -53,6 +53,7 @@ import java.sql.Types
 import org.springframework.dao.DataAccessException
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.domain.reports.Reports
+import com.normation.rudder.reports.execution.AgentRunId
 
 class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsRepository with Loggable {
 
@@ -76,6 +77,42 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
                           (select distinct nodeid, executiontimestamp from ruddersysevents where id > ? and id <= ?) as T left join
                           (select true as isComplete, nodeid, executiontimestamp from
                             ruddersysevents where id > ? and id <= ? and ruleId like 'hasPolicyServer%' and component = 'common' and keyValue = 'EndRun') as C on T.nodeid = C.nodeid and T.executiontimestamp = C.executiontimestamp"""
+
+
+  private[this] def boxed[A](name: String)(body: => A): Box[A] = {
+    try {
+      Full(body)
+    } catch {
+      case ex: Exception =>
+        val msg = "Error when trying to " + name
+        logger.error(msg, ex)
+        Failure(msg, Full(ex), Empty)
+    }
+  }
+
+  def findReportByAgentExecution(agentRunIds: Set[AgentRunId]): Box[Seq[Reports]] = {
+    val param = agentRunIds.map(x => s"('${x.nodeId.value}','${new Timestamp(x.date.getMillis)}'::timestamp)" ).mkString(",")
+
+    /*
+     * be careful in the number of parenthesis for "in values", it is:
+     * ... in (VALUES ('a', 'b') );
+     * ... in (VALUES ('a', 'b'), ('c', 'd') );
+     * etc. No more, no less.
+     */
+    val query =
+      s"""select
+           executiondate, nodeid, ruleId, serial, directiveid, component, keyValue, executionTimeStamp, eventtype, policy, msg
+         from
+           RudderSysEvents
+         where
+          (nodeid, executiontimestamp) in (VALUES ${param})
+      """
+
+
+
+    boxed(s"get last run reports for ${agentRunIds.size} nodes")(jdbcTemplate.query(query, ReportsMapper).toSeq)
+  }
+
 
   def findReportsByRule(
       ruleId   : RuleId
@@ -517,8 +554,7 @@ object ReportsWithIdMapper extends RowMapper[(Reports,Long)] {
 object ReportsExecutionMapper extends RowMapper[ReportExecution] {
    def mapRow(rs : ResultSet, rowNum: Int) : ReportExecution = {
      ReportExecution(
-         NodeId(rs.getString("nodeId"))
-       , new DateTime(rs.getTimestamp("executionTimeStamp"))
+         AgentRunId(NodeId(rs.getString("nodeId")), new DateTime(rs.getTimestamp("executionTimeStamp")))
        , {
            val s = rs.getString("nodeConfigVersion")
            if(s == null) None else Some(s)

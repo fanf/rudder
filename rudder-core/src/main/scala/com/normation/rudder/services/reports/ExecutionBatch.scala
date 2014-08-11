@@ -58,7 +58,7 @@ import com.normation.rudder.domain.reports._
 
 
 case class DirectivesOnNodeExpectedReport(
-    nodeIds                 : Seq[NodeId]
+    nodeIds                 : Seq[NodeConfigurationId]
   , directiveExpectedReports: Seq[DirectiveExpectedReports]
 ) extends HashcodeCaching {}
 
@@ -143,10 +143,10 @@ object ExecutionBatch {
    * The visibility is for allowing tests
    */
   private[reports] def checkExpectedComponentWithReports(
-      expectedComponent : ReportComponent
-    , filteredReports   : Seq[Reports]
-    , nodeId            : NodeId
-    , maxDate           : DateTime
+      expectedComponent  : ReportComponent
+    , filteredReports    : Seq[Reports]
+    , nodeConfigurationId: NodeConfigurationId
+    , maxDate            : DateTime
   ) : ComponentStatusReport = {
 
     // easy case : No Reports mean no answer
@@ -455,9 +455,9 @@ private[reports] case class ExecutionBatch(
    * The visibility is for allowing tests
    */
   private[reports] def checkExpectedComponentWithReports(
-      expectedComponent : ReportComponent
-    , filteredReports   : Seq[Reports]
-    , nodeId            : NodeId
+      expectedComponent  : ReportComponent
+    , filteredReports    : Seq[Reports]
+    , nodeConfigurationId: NodeConfigurationId
   ) : ComponentStatusReport = {
 
     // easy case : No Reports mean no answer
@@ -704,7 +704,7 @@ private[reports] case class ExecutionBatch(
                       flatMap{ nodeStatus =>
           // we filter by directiveId
           val directivesStatus = nodeStatus.directives.filter(_.directiveId == directiveId)
-          getComponentRuleStatus(nodeStatus.nodeId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus)
+          getComponentRuleStatus(nodeStatus.nodeConfigId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus)
         }.groupBy(_.component).map { case (componentName, componentReport) =>
           val componentValueReports = componentReport.flatMap(_.componentValues).
             groupBy(x=> (x.unexpandedComponentValue)).
@@ -746,7 +746,7 @@ private[reports] case class ExecutionBatch(
    * components  : Expected component report format
    * directive   : Latest directive reports
    */
-  private[this] def getComponentRuleStatus(nodeId: NodeId, directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
+  private[this] def getComponentRuleStatus(nodeId: NodeConfigurationId, directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
      components.map{ component =>
        val id = component.componentName
        val componentvalues = directive.flatMap{ nodestatus =>
@@ -765,7 +765,7 @@ private[reports] case class ExecutionBatch(
    * values      : Expected values format
    * components  : Latest components report
    */
- private[this] def getComponentValuesRuleStatus(nodeId: NodeId, directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
+ private[this] def getComponentValuesRuleStatus(nodeId: NodeConfigurationId, directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
      values.map{
        case (value, unexpanded) =>
          val componentValues = components.flatMap(_.componentValues.filter(_.componentValue==value))
