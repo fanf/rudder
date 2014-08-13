@@ -207,76 +207,63 @@ class ReportingServiceImpl(
     }
   }
 
-  /**
-   * Find the latest reports for a given rule (for all servers)
-   * Note : if there is an expected report, and that we don't have it, we should say that it is empty
-   */
-  override private[reports] def findImmediateReportsByRule(ruleId : RuleId) : Box[Option[ExecutionBatch]] = {
-     // look in the configuration
-    confExpectedRepo.findCurrentExpectedReports(ruleId) match {
-      case Empty => Empty
-      case e:Failure => logger.error("Error when fetching reports for Rule %s : %s".format(ruleId.value, e.messageChain)); e
-      case Full(expected) => Full(expected.map(createLastBatchFromConfigurationReports(_)))
-    }
-  }
 
   override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]] = {
+    //TODO: it does not use the nodeConfigVersion logic
+
     for {
-      optBatch <- findImmediateReportsByRule(ruleId)
+      optExpected <- confExpectedRepo.findCurrentExpectedReports(ruleId)
+      compliance  <- getComplianceMode()
     } yield {
-      optBatch match {
+
+      optExpected match {
         case None => Seq()
-        case Some(batch) => batch.getRuleStatus
+        case Some(expected) =>
+          val agentRunInterval = getAgentRunInterval()
+
+          // Fetch the reports corresponding to this rule, and filter them by nodes
+          val reports = reportsRepository.findLastReportByRule(
+                  expected.ruleId
+                , expected.serial
+                , None
+                , agentRunInterval
+          )
+          ExecutionBatch.getRuleStatus(ruleId, expected, reports, agentRunInterval, compliance)
       }
     }
   }
 
-  /**
-   * Find the latest reports for a seq of rules (for all node)
-   * Note : if there is an expected report, and that we don't have it, we should say that it is empty
-   * The returned Map should have the same elements than the Seq in argument, so that we
-   * can reconcile in the RuleGrid the values, and display properly the success or failure, or applying
-   */
-  override private[reports] def findImmediateReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Option[ExecutionBatch]]] = {
+
+
+  override def findNodeStatusReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Seq[NodeStatusReport]]] = {
+    //TODO: it does not use the nodeConfigVersion logic
     val agentRunInterval = getAgentRunInterval()
 
     val expectedReports = rulesIds.map { ruleId =>
       (ruleId, confExpectedRepo.findCurrentExpectedReports(ruleId))
-    }
+    }.toMap
+
     // For optimization purpose, we want to do only one query to the database
     // so we handle all the expected reports at once
     // We need to go through each full non none element, and put back the elements in the map
     val nonEmptyExpected = expectedReports.map(_._2).flatten.flatten
 
-    val rulesAndSerials = nonEmptyExpected.map(x => (x.ruleId, x.serial))
+    val rulesAndSerials = nonEmptyExpected.map(x => (x.ruleId, x.serial)).toSet
     val allReports = reportsRepository.findLastReportsByRules(rulesAndSerials, agentRunInterval)
 
-    // Here we go over each elements of the map [ruleId, Box[ExpectedReports], and reconcile the
-    // entries with the batches
-    expectedReports.map { case (ruleId, status) =>
-      val executionBatch = status match {
-        case Full(Some(expected)) =>
-          val reports = allReports.filter( report => report.ruleId == expected.ruleId)
-          Full(
-              Some(
-                  ExecutionBatch(
-                      expected.ruleId
-                    , expected.directivesOnNodes.map(dir => DirectivesOnNodeExpectedReport(dir.nodeConfigurationIds, dir.directiveExpectedReports))
-                    , reports
-                    , expected.beginDate
-                    , agentRunInterval
-                  )
-              )
-          )
-        case Full(None) => Full(None)
-        case e : EmptyBox => e
-      }
-      (ruleId, executionBatch)
-    }.toMap
-  }
-
-  override def findNodeStatusReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Seq[NodeStatusReport]]] = {
-    findImmediateReportsByRules(rulesIds).map { case (id, box) => (id, box.map( _.map( _.getNodeStatus).getOrElse(Seq()) )) }
+    (expectedReports.map { case (ruleId, boxOptExpected) =>
+       val boxStatus = for {
+         optExpected       <- boxOptExpected
+         compliance        <- getComplianceMode()
+         nodeStatusReports <- optExpected match {
+                                case None => Full(Seq())
+                                case Some(expected) => Full(ExecutionBatch.getNodeStatusReportsByRule(expected, allReports, agentRunInterval, compliance))
+                              }
+       } yield {
+         nodeStatusReports
+       }
+       (ruleId, boxStatus)
+    }).toMap
   }
 
   /**
@@ -332,51 +319,6 @@ class ReportingServiceImpl(
       )
     }
   }
-
-
-  /************************ Helpers functions **************************************/
-
-  /**
-   * From a RuleExpectedReports, create batch synthetizing the last run
-   * @param expectedOperationReports
-   * @param reports
-   * @return
-   */
-  private def createLastBatchFromConfigurationReports(
-      expectedConfigurationReports : RuleExpectedReports
-    , nodeId                       : Option[NodeId] = None
-  ) : ExecutionBatch = {
-    val agentRunInterval = getAgentRunInterval()
-
-    // Fetch the reports corresponding to this rule, and filter them by nodes
-    val reports = reportsRepository.findLastReportByRule(
-            expectedConfigurationReports.ruleId
-          , expectedConfigurationReports.serial
-          , nodeId
-          , agentRunInterval)
-
-    // If we are only searching on a node, then we restrict the directivesonnode to this node
-    val filter = (id:NodeId) => (x: DirectivesOnNodes) => x.nodeConfigurationIds.exists(_.nodeId == id)
-
-    val directivesOnNodes = nodeId match {
-      case None => expectedConfigurationReports.directivesOnNodes.map(x => DirectivesOnNodeExpectedReport(x.nodeConfigurationIds, x.directiveExpectedReports))
-      case Some(node) =>
-        expectedConfigurationReports.directivesOnNodes.
-          filter(filter(node)).map(x =>
-            DirectivesOnNodeExpectedReport(x.nodeConfigurationIds.filter(_.nodeId == node), x.directiveExpectedReports)
-          )
-    }
-
-    ExecutionBatch(
-          expectedConfigurationReports.ruleId
-        , directivesOnNodes
-        , reports
-        , expectedConfigurationReports.beginDate
-        , agentRunInterval
-      )
-  }
-
-
 }
 
 /**

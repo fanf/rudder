@@ -63,20 +63,9 @@ trait ReportingService {
   def updateExpectedReports(ruleVal : Seq[ExpandedRuleVal], deletedCrs : Seq[RuleId]) : Box[Seq[RuleExpectedReports]]
 
 
-  /**
-   * Find the latest reports for a given rule (for all servers)
-   * Note : if there is an expected report, and that we don't have it, we should say that it is empty
-   */
-  private[reports] def findImmediateReportsByRule(ruleId : RuleId) : Box[Option[ExecutionBatch]]
-
-
-  /**
-   * Find the latest reports for a seq of rules (for all node)
-   * Note : if there is an expected report, and that we don't have it, we should say that it is empty
-   */
-  private[reports] def findImmediateReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Option[ExecutionBatch]]]
 
   def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]]
+
   def findNodeStatusReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Seq[NodeStatusReport]]]
 
   def findNodeStatusReportsByNode(nodeId: NodeId) : Box[Seq[NodeStatusReport]]
