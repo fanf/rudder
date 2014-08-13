@@ -64,6 +64,10 @@ import com.normation.inventory.domain.NodeInventory
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.NodeInventory
 import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
+import com.normation.rudder.domain.reports.NodeConfigurationId
+import com.normation.rudder.domain.reports.NodeConfigurationId
+import com.normation.inventory.domain.NodeId
 
 
 
@@ -717,6 +721,18 @@ trait DeploymentService_setExpectedReports extends DeploymentService {
   def reportingService : ReportingService
 
 
+  /**
+   * From a nodeConfiguration, calculate the nodeConfigurationVersion
+   * (and so, nodeConfigurationId) associated to the node.
+   */
+  private[this] def generateNodeConfigVersion(nodeConfig: NodeConfiguration): NodeConfigurationId = {
+    //this is a dumb implementation.
+    //A far better and reapeatable one would be to serialise that in a normalized
+    //json data structure, and get an md5 of it. So, it could be checked and
+    //calculated again from outside of Rudder.
+    NodeConfigurationId(nodeConfig.nodeInfo.id, nodeConfig.hashCode.toString)
+  }
+
    /**
    * Update the serials in the rule vals based on the updated rule (which may be empty if nothing is updated)
    * Goal : actually set the right serial in them, as well as the correct variable
@@ -757,7 +773,7 @@ trait DeploymentService_setExpectedReports extends DeploymentService {
             case _ => None
         }
 
-        expectedDirectiveValsForNode.map(d => nodeConfig.nodeInfo.id -> d.toSeq)
+        expectedDirectiveValsForNode.map(d => generateNodeConfigVersion(nodeConfig) -> d.toSeq)
       })
 
       ExpandedRuleVal(

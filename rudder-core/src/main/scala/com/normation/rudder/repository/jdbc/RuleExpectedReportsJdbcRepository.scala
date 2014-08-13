@@ -76,21 +76,22 @@ class RuleExpectedReportsJdbcRepository(
   val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate from expectedreports where 1=1 ";
 
 
-  override def findExpectedReportsByAgentRun(runId: AgentRunId): Box[Seq[RuleExpectedReports]] = {
+  override def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigurationId): Box[Seq[RuleExpectedReports]] = {
     /*
      * Select agentRun join expectedReportsNodes join expectedreports
      */
 
     val query = """select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate
       from expectedreports as A
-      join expectedreportsnodes as B on A.nodejoinkey = B.nodejoinkey
-      join ReportsExecution as C on B.nodeconfigversion = C.nodeconfigversion
-      where C.nodeid = ? and C.date = ?;"""
+      join (
+        select nodejoinkey from expectedreportsnodes as B
+        where B.nodeId = ? and B.nodeconfigversions like ?
+      ) as J on A.nodejoinkey = J.nodejoinkey;"""
 
     try {
-      toRuleExpectedReports(jdbcTemplate.query(query, Array[AnyRef](runId.nodeId.value, new Timestamp(runId.date.getMillis)), RuleExpectedReportsMapper).toSeq)
+      toRuleExpectedReports(jdbcTemplate.query(query, Array[AnyRef](nodeConfigId.nodeId.value, "%"+nodeConfigId.version+"%"), RuleExpectedReportsMapper).toSeq)
     } catch {
-      case e:Exception => Failure(s"Error when getting expected report for node '${runId.nodeId.value}' and execution time '${runId.date}'", Full(e), Empty)
+      case e:Exception => Failure(s"Error when getting expected report for node '${nodeConfigId.nodeId.value}' and configuration version '${nodeConfigId.version}'", Full(e), Empty)
     }
   }
 
@@ -101,7 +102,10 @@ class RuleExpectedReportsJdbcRepository(
       (ruleId, serial, nodeJoin) <- composite
       nodeList <- getNodes(nodeJoin)
     } yield {
-      (ruleId, (serial, nodeList.toSet))
+      //only return the last node configuration for each node id
+      val nodeConfigIds = nodeList.map{case (nodeId, versions) => NodeConfigurationId(nodeId, versions.reverse.headOption.getOrElse("")) }
+
+      (ruleId, (serial, nodeConfigIds.toSet))
     }).toMap
 
   }
@@ -116,6 +120,14 @@ class RuleExpectedReportsJdbcRepository(
       toRuleExpectedReport(jdbcTemplate.query(baseQuery + " and enddate is null and ruleid = ?", Array[AnyRef](ruleId.value), RuleExpectedReportsMapper).toSeq)
     } catch {
       case e:Exception => Failure("Error when getting expected report for rule " + ruleId.value, Full(e), Empty)
+    }
+  }
+  private[this] def findCurrentExpectedReportsForRules(ruleIds : Set[RuleId]) : Box[Seq[RuleExpectedReports]] = {
+    val in = ruleIds.map( _.value ).mkString(",")
+    try {
+      toRuleExpectedReports(jdbcTemplate.query(baseQuery + " and enddate is null and ruleid in (?)", Array[AnyRef](in), RuleExpectedReportsMapper).toSeq)
+    } catch {
+      case e:Exception => Failure("Error when getting expected report for rules " + in, Full(e), Empty)
     }
   }
 
@@ -253,7 +265,42 @@ class RuleExpectedReportsJdbcRepository(
           RuleExpectedReportsMapper).toSeq)
   }
 
+  def updateNodeConfigVersion(toUpdate: Map[RuleId, Map[NodeId, Seq[String]]]): Box[Map[RuleId, Map[NodeId, Seq[String]]]] = {
+    for {
+      //get back the existing (nodeJoinKey, nodeId, configVersions) for rules
+      expectedReports    <- findCurrentExpectedReportsForRules(toUpdate.keySet)
+      nodeJoinKeyByRules =  expectedReports.flatMap(report => report.directivesOnNodes.map( x => (report.ruleId, x.nodeJoinKey))).toMap
+      existing           <- sequence(nodeJoinKeyByRules.toSeq) { k => getNodes(k._2).map( ( k, _) ) }
+      currentNodeConfig  =  existing.groupBy { case ((ruleId, k), _) => ruleId }
+      updatedVersions    =  toUpdate.flatMap { case (ruleId, byNodeVersions) =>
+                              currentNodeConfig.getOrElse(ruleId, Seq()).flatMap { case ( (_, nodeJoin), nodes) =>
+                                byNodeVersions.map { case (nodeId, versions) =>
+                                  (nodeJoin, nodeId, versions ++ nodes.getOrElse(nodeId, Seq()))
+                                }
 
+                              }
+                            }
+      saved              <- updateNodes(updatedVersions.toSeq)
+    } yield {
+      toUpdate
+    }
+  }
+
+  /**
+   * Save the server list in the database
+   */
+  private[this] def updateNodes(configs: Seq[(Int,NodeId,Seq[String])]): Box[Seq[(Int,NodeId,Seq[String])]] = {
+    tryo {
+      for ((nodeJoinKey, nodeId, versions) <- configs) {
+        val versionsString = versions.map(_.trim).mkString(",")
+        jdbcTemplate.update(
+            "update expectedreportsnodes set nodeconfigversions = ? where nodejoinkey = ? and nodeid = ?"
+          ,  versionsString, new java.lang.Integer(nodeJoinKey), nodeId.value
+        )
+      }
+      configs
+    }
+  }
 
   /**
    * Return currents expectedreports (the one still pending) for this server
@@ -273,11 +320,17 @@ class RuleExpectedReportsJdbcRepository(
 
   }
 
-  private[this] def getNodes(nodeJoinKey : Int) : Box[Seq[NodeConfigurationId]] = {
+  private[this] def getNodes(nodeJoinKey : Int) : Box[Map[NodeId, Seq[String]]] = {
     tryo {
-      jdbcTemplate.query("select (nodeId, nodeconfigversion) from expectedreportsnodes where nodeJoinKey = ?",
+      jdbcTemplate.query("select (nodeId, nodeconfigversions) from expectedreportsnodes where nodeJoinKey = ?",
         Array[AnyRef](new java.lang.Integer(nodeJoinKey)),
-        NodeJoinKeyConfigMapper).toSeq
+        NodeJoinKeyConfigMapper).toMap
+    }
+  }
+
+  private[this] def getNodesLastVersion(nodeJoinKey : Int) : Box[Seq[NodeConfigurationId]] = {
+    getNodes(nodeJoinKey).map { m =>
+      m.map {case (nodeId, versions) => NodeConfigurationId(nodeId, versions.reverse.headOption.getOrElse(""))}.toSeq
     }
   }
 
@@ -286,7 +339,7 @@ class RuleExpectedReportsJdbcRepository(
    */
   private def saveNode(nodeConfigurationIds : Seq[NodeConfigurationId], nodeJoinKey : Int) = {
     for (config <- nodeConfigurationIds) {
-      jdbcTemplate.update("insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversion) values (?,?,?)",
+      jdbcTemplate.update("insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversions) values (?,?,?)",
         new java.lang.Integer(nodeJoinKey), config.nodeId, config.version
       )
     }
@@ -303,7 +356,7 @@ class RuleExpectedReportsJdbcRepository(
    */
   private[this] def toRuleExpectedReports(entries : Seq[ExpectedConfRuleMapping]) : Box[Seq[RuleExpectedReports]] = {
     // first, we fetch all the nodes, so that it's done once and for all
-    val nodes = entries.map(_.nodeJoinKey).distinct.map { nodeJoinKey => (nodeJoinKey -> getNodes(nodeJoinKey)) }.toMap
+    val nodes = entries.map(_.nodeJoinKey).distinct.map { nodeJoinKey => (nodeJoinKey -> getNodesLastVersion(nodeJoinKey)) }.toMap
 
     nodes.values.filter (x => !x.isDefined).headOption match {
       case Some(e:Failure) => Failure("Some nodes could not be fetched for expected reports, cause " + e.messageChain)
@@ -391,9 +444,16 @@ object RuleIdSerialNodeJoinKeyMapper extends RowMapper[(RuleId, Int, Int)] {
   }
 }
 
-object NodeJoinKeyConfigMapper extends RowMapper[NodeConfigurationId] {
-  def mapRow(rs : ResultSet, rowNum: Int) : NodeConfigurationId = {
-    NodeConfigurationId(new NodeId(rs.getString("nodeid")) , rs.getString("nodeconfigversion"))
+object NodeJoinKeyConfigMapper extends RowMapper[(NodeId, Seq[String])] {
+  def mapRow(rs : ResultSet, rowNum: Int) : (NodeId, Seq[String]) = {
+    (
+        new NodeId(rs.getString("nodeid"))
+      , rs.getString("nodeconfigversions") match {
+          case null | "" => Seq()
+          case x => x.split(",").map(_.trim).toSeq
+        }
+
+    )
   }
 }
 /**

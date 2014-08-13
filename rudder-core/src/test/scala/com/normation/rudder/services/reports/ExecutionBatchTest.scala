@@ -51,6 +51,7 @@ class ExecutionBatchTest extends Specification {
   private implicit def str2directiveId(s:String) = DirectiveId(s)
   private implicit def str2ruleId(s:String) = RuleId(s)
   private implicit def str2nodeId(s:String) = NodeId(s)
+  private implicit def str2nodeConfigId(s:String) = NodeConfigurationId(NodeId(s), "version_" + s)
 
 
 
@@ -81,7 +82,7 @@ class ExecutionBatchTest extends Specification {
        "cr",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -99,66 +100,66 @@ class ExecutionBatchTest extends Specification {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).reportType == RepairedReportType
+        , "nodeId").reportType == RepairedReportType
     }
     "return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "return a component with the key values foo which is repaired " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "foo").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "foo").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "foo").head.reportType ==  RepairedReportType
+        , "nodeId").componentValues.filter(x => x.componentValue == "foo").head.reportType ==  RepairedReportType
      }
      "return a component with the key values bar which is a success " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").head.reportType ==  SuccessReportType
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").head.reportType ==  SuccessReportType
      }
 
      " with bad reports return a component globally unknwon" in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).reportType == UnknownReportType
+        , "nodeId").reportType == UnknownReportType
      }
      "with bad reports return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "with bad reports return a component with the key values foo which is unknwon " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "foo").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "foo").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "foo").head.reportType ==  UnknownReportType
+        , "nodeId").componentValues.filter(x => x.componentValue == "foo").head.reportType ==  UnknownReportType
      }
      "with bad reports return a component with the key values bar which is a success " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").head.reportType ==  SuccessReportType
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").head.reportType ==  SuccessReportType
      }
 
   }
@@ -187,7 +188,7 @@ class ExecutionBatchTest extends Specification {
        "cr",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -205,46 +206,46 @@ class ExecutionBatchTest extends Specification {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).reportType == RepairedReportType
+        , "nodeId").reportType == RepairedReportType
     }
     "return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "return a component with both None key repaired " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "None").size == 2 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "None").size == 2 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "None").forall(x => x.reportType == RepairedReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "None").forall(x => x.reportType == RepairedReportType)
     }
 
     "with bad reports return a component globally unknown " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).reportType == UnknownReportType
+        , "nodeId").reportType == UnknownReportType
     }
     "with bad reports return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "with bad reports return a component with both None key unknown " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "None").size == 2 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "None").size == 2 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "None").forall(x => x.reportType == UnknownReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "None").forall(x => x.reportType == UnknownReportType)
     }
   }
 
@@ -272,7 +273,7 @@ class ExecutionBatchTest extends Specification {
        "cr",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -289,23 +290,23 @@ class ExecutionBatchTest extends Specification {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).reportType == RepairedReportType
+        , "nodeId").reportType == RepairedReportType
     }
     "return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "return a component with both cfengine keys repaired " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "${sys.bla}").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "${sys.bla}").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.forall(x => x.reportType == RepairedReportType)
+        , "nodeId").componentValues.forall(x => x.reportType == RepairedReportType)
     }
   }
 
@@ -333,7 +334,7 @@ class ExecutionBatchTest extends Specification {
        "cr",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -350,65 +351,65 @@ class ExecutionBatchTest extends Specification {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).reportType == RepairedReportType
+        , "nodeId").reportType == RepairedReportType
     }
     "return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "return a component with the cfengine keys repaired " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "${sys.bla}").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "${sys.bla}").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "${sys.bla}").forall(x => x.reportType == RepairedReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "${sys.bla}").forall(x => x.reportType == RepairedReportType)
     }
     "return a component with the bar key success " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
     }
     "with bad reports return a component globally unknown " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).reportType == UnknownReportType
+        , "nodeId").reportType == UnknownReportType
     }
     "with bad reports return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "with bad reports return a component with bar as a success " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
     }
     "with bad reports return a component with the cfengine key as unknown " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "${sys.bla}").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "${sys.bla}").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , badReports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "${sys.bla}").forall(x => x.reportType == UnknownReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "${sys.bla}").forall(x => x.reportType == UnknownReportType)
     }
   }
 
@@ -418,7 +419,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one"),
+           Seq[NodeConfigurationId]("one"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -436,7 +437,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed success node when we create it with one success report" in {
-      uniqueExecutionBatch.getNodeStatus.head.nodeId == NodeId("one") &&
+      uniqueExecutionBatch.getNodeStatus.head.nodeId == str2nodeId("one") and
       uniqueExecutionBatch.getNodeStatus.head.reportType == SuccessReportType
     }
 
@@ -465,7 +466,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed rule success directive when we create it with one success report" in {
-      uniqueExecutionBatch.getRuleStatus.head.directiveId == DirectiveId("policy") &&
+      uniqueExecutionBatch.getRuleStatus.head.directiveId == DirectiveId("policy") and
       uniqueExecutionBatch.getRuleStatus.head.reportType == SuccessReportType
     }
 
@@ -496,7 +497,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one"),
+           Seq[NodeConfigurationId]("one"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -514,7 +515,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have a pending node when we create it with one wrong success report right now" in {
-      uniqueExecutionBatch.getNodeStatus.head.nodeId == NodeId("one") &&
+      uniqueExecutionBatch.getNodeStatus.head.nodeId == str2nodeId("one") and
       uniqueExecutionBatch.getNodeStatus.head.reportType == PendingReportType
     }
 
@@ -545,7 +546,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one"),
+           Seq[NodeConfigurationId]("one"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -566,7 +567,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one unknown node when we create it with one success report" in {
-      uniqueExecutionBatch.getNodeStatus.head.nodeId == NodeId("one") &&
+      uniqueExecutionBatch.getNodeStatus.head.nodeId == str2nodeId("one") and
       uniqueExecutionBatch.getNodeStatus.head.reportType == UnknownReportType
     }
 
@@ -600,7 +601,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one", "two"),
+           Seq[NodeConfigurationId]("one", "two"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -636,7 +637,7 @@ class ExecutionBatchTest extends Specification {
       uniqueExecutionBatch.getRuleStatus.exists(x => x.reportType == PendingReportType)
     }
     "have one success, and one pending node, in the component detail of the rule" in {
-      (uniqueExecutionBatch.getRuleStatus.head.components.head.componentValues.head.nodesReport.size == 2) &&
+      (uniqueExecutionBatch.getRuleStatus.head.components.head.componentValues.head.nodesReport.size == 2) and
       (uniqueExecutionBatch.getRuleStatus.head.components.head.componentValues.head.nodesReport.exists(x => x.node == NodeId("one") && x.reportType == SuccessReportType))
     }
   }
@@ -646,7 +647,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one", "two", "three"),
+           Seq[NodeConfigurationId]("one", "two", "three"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -679,7 +680,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one", "two", "three"),
+           Seq[NodeConfigurationId]("one", "two", "three"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -727,7 +728,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one", "two", "three"),
+           Seq[NodeConfigurationId]("one", "two", "three"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -785,7 +786,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one", "two", "three"),
+           Seq[NodeConfigurationId]("one", "two", "three"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -834,7 +835,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("one"),
+           Seq[NodeConfigurationId]("one"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -852,7 +853,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed success node when we create it with one success report" in {
-      uniqueExecutionBatch.getNodeStatus.head.nodeId == NodeId("one") &&
+      uniqueExecutionBatch.getNodeStatus.head.nodeId == str2nodeId("one") &&
       uniqueExecutionBatch.getNodeStatus.head.reportType == SuccessReportType
     }
 
@@ -908,7 +909,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -926,7 +927,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed success node when we create it with one success report" in {
-      sameKeyExecutionBatch.getNodeStatus.head.nodeId == NodeId("nodeId") &&
+      sameKeyExecutionBatch.getNodeStatus.head.nodeId == str2nodeId("nodeId") &&
       sameKeyExecutionBatch.getNodeStatus.head.reportType == SuccessReportType
     }
 
@@ -981,7 +982,7 @@ class ExecutionBatchTest extends Specification {
        "rule",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -999,7 +1000,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed success node when we create it with one success report" in {
-      sameKeyExecutionBatch.getNodeStatus.head.nodeId == NodeId("nodeId") &&
+      sameKeyExecutionBatch.getNodeStatus.head.nodeId == str2nodeId("nodeId") and
       sameKeyExecutionBatch.getNodeStatus.head.reportType == SuccessReportType
     }
 
@@ -1021,7 +1022,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed rule success directive when we create it with one success report" in {
-      sameKeyExecutionBatch.getRuleStatus.head.directiveId == DirectiveId("policy") &&
+      sameKeyExecutionBatch.getRuleStatus.head.directiveId == DirectiveId("policy") and
       sameKeyExecutionBatch.getRuleStatus.head.reportType == SuccessReportType
     }
 
@@ -1063,7 +1064,7 @@ class ExecutionBatchTest extends Specification {
        "cr",
        Seq(
          DirectivesOnNodeExpectedReport(
-           Seq[NodeId]("nodeId"),
+           Seq[NodeConfigurationId]("nodeId"),
            Seq(
              DirectiveExpectedReports(
               "policy",
@@ -1080,33 +1081,33 @@ class ExecutionBatchTest extends Specification {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).reportType == SuccessReportType
+        , "nodeId").reportType == SuccessReportType
     }
     "return a component with two key values " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.size == 2
+        , "nodeId").componentValues.size == 2
     }
     "return a component with the /var/cfengine in NotApplicable " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "/var/cfengine").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "/var/cfengine").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "/var/cfengine").forall(x => x.reportType == NotApplicableReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "/var/cfengine").forall(x => x.reportType == NotApplicableReportType)
     }
     "return a component with the bar key success " in {
       executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").size == 1 &&
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").size == 1 and
        executionBatch.checkExpectedComponentWithReports(
           expectedComponent
         , reports
-        , NodeId("nodeId")).componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
+        , "nodeId").componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
     }
   }
 

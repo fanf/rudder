@@ -110,10 +110,10 @@ CREATE INDEX executionTimeStamp_archived_idx ON ArchivedRudderSysEvents (executi
  * or not. 
  */
 CREATE TABLE ReportsExecution (
-  nodeId            text NOT NULL
-, date              timestamp with time zone NOT NULL
-, complete          boolean NOT NULL
-, nodeConfigVersion text
+  nodeId             text NOT NULL
+, date               timestamp with time zone NOT NULL
+, complete           boolean NOT NULL
+, nodeConfigVersion  text
 , PRIMARY KEY(nodeId, date)
 );
 
@@ -152,9 +152,19 @@ CREATE INDEX expectedReports_versionId ON expectedReports (nodeJoinKey);
 CREATE INDEX expectedReports_serialId ON expectedReports (ruleId, serial);
 
 CREATE TABLE expectedReportsNodes (
-  nodeJoinKey       integer NOT NULL 
-, nodeId            varchar(50) NOT NULL CHECK (nodeId <> '')
-, nodeConfigVersion text
+  nodeJoinKey        integer NOT NULL 
+, nodeId             varchar(50) NOT NULL CHECK (nodeId <> '')
+  /*
+   * Node Config version is actually a comma-separated list
+   * of string used for node config version id. It can be 
+   * null or empty to accomodate pre-2.12 behaviour. 
+   * 
+   * Last version is the most recent one, so that in
+   * a, b, c, d
+   * d is the newest. Space will be trim
+   * 
+   */
+, nodeConfigVersions text
 , PRIMARY KEY (nodeJoinKey, nodeId)
 );
 

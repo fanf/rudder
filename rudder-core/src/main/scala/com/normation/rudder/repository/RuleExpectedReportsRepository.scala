@@ -46,9 +46,11 @@ import com.normation.rudder.reports.execution.AgentRunId
 trait RuleExpectedReportsRepository {
 
   /**
-   * Find expected reports corresponding to a agent run
+   * Find expected reports corresponding to a agent run, i.e to a
+   * nodeConfigurationId (several agent run may point to the
+   * same nodeConfigurationId)
    */
-  def findExpectedReportsByAgentRun(runId: AgentRunId): Box[Seq[RuleExpectedReports]]
+  def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigurationId): Box[Seq[RuleExpectedReports]]
 
   /**
    * Return all the expected reports between the two dates
@@ -67,6 +69,9 @@ trait RuleExpectedReportsRepository {
   /**
    * Return the ruleId currently opened, and their serial and list of nodes
    * It is only used to know which conf expected report we should close
+   *
+   * For only the last version (and so only one NodeConfigurationId) is
+   * returned for each nodeJoinKey
    */
   def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeConfigurationId])]
 
@@ -101,5 +106,10 @@ trait RuleExpectedReportsRepository {
     , nodeConfigurationVersions: Seq[NodeConfigurationId]
   ) : Box[RuleExpectedReports]
 
+
+  /**
+   * Update the list of nodeConfigVersion for the given nodes
+   */
+  def updateNodeConfigVersion(toUpdate: Map[RuleId, Map[NodeId, Seq[String]]]): Box[Map[RuleId, Map[NodeId, Seq[String]]]]
 
 }

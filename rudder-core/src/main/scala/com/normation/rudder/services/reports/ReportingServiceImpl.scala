@@ -55,20 +55,26 @@ import com.normation.rudder.domain.policies.RuleVal
 import com.normation.rudder.domain.reports.DirectiveExpectedReports
 import com.normation.rudder.domain.reports.ReportComponent
 import com.normation.cfclerk.xmlparsers.CfclerkXmlConstants._
-import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.utils.Control._
 import scala.collection.mutable.Buffer
 import com.normation.cfclerk.domain.PredefinedValuesVariableSpec
 import com.normation.cfclerk.domain.PredefinedValuesVariableSpec
 import com.normation.rudder.domain.policies.ExpandedDirectiveVal
+import com.normation.rudder.domain.policies.RuleId
+import com.normation.rudder.reports.execution.RoReportsExecutionRepository
+import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.ComplianceMode
 
 class ReportingServiceImpl(
-    confExpectedRepo         : RuleExpectedReportsRepository
-  , reportsRepository        : ReportsRepository
-  , techniqueRepository      : TechniqueRepository
-  , computeCardinality       : ComputeCardinalityOfDirectiveVal
-  , getAgentRunInterval      : () => Int
+    confExpectedRepo   : RuleExpectedReportsRepository
+  , reportsRepository  : ReportsRepository
+  , agentRunRepository : RoReportsExecutionRepository
+  , computeCardinality : ComputeCardinalityOfDirectiveVal
+  , getAgentRunInterval: () => Int
+  , getComplianceMode  : () => Box[ComplianceMode]
 ) extends ReportingService {
 
   val logger = LoggerFactory.getLogger(classOf[ReportingServiceImpl])
@@ -86,6 +92,11 @@ class ReportingServiceImpl(
     val currentConfigurationsToRemove =  MutMap[RuleId, (Int, Set[NodeConfigurationId])]() ++
       confExpectedRepo.findAllCurrentExpectedReportsWithNodesAndSerial()
 
+    // We can have case of node config version being updated, but node the exepected report
+    // (for example, if the version increment is due to a change in an other directive)
+    // track them for saving
+    var updatedNodeConfigVersion = Set[(RuleId, NodeConfigurationId)]()
+
     val confToClose = MutSet[RuleId]()
     val confToCreate = Buffer[ExpandedRuleVal]()
 
@@ -97,15 +108,21 @@ class ReportingServiceImpl(
           logger.debug("New rule %s".format(ruleId))
           confToCreate += conf
 
-        case Some((serial, nodeSet)) if ((serial == newSerial)&&(configs.size > 0)) =>
+        case Some((serial, nodeConfigSet)) if ((serial == newSerial)&&(configs.size > 0)) =>
             // no change if same serial and some config appliable, that's ok, trace level
             logger.trace(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed and cache up-to-date: nothing to do")
             // must check that their are no differents nodes in the DB than in the new reports
             // it can happen if we delete nodes in some corner case (detectUpdates(nodes) cannot detect it
-            if (configs.keySet != nodeSet) {
+            // And it's actually nodes, not node version because version may change and still use the
+            // same expected report
+            if (configs.keySet.map( _.nodeId) != nodeConfigSet.map( _.nodeId)) {
               logger.debug("Same serial %s for ruleId %s, but not same node set, it need to be closed and created".format(serial, ruleId))
               confToCreate += conf
               confToClose += ruleId
+            } else {
+              //check for node configuration version to update
+              val changedVersion = configs.keySet.filterNot( nodeConfigSet.contains )
+              updatedNodeConfigVersion ++= changedVersion.map(x => (ruleId, x))
             }
             currentConfigurationsToRemove.remove(ruleId)
 
@@ -136,7 +153,7 @@ class ReportingServiceImpl(
     // set of ruleId, serial, DirectiveExpectedReports we have the list of  corresponding nodes
 
     val expanded = confToCreate.map { case ExpandedRuleVal(ruleId, configs, serial) =>
-      configs.toSeq.map { case (nodeId, directives) =>
+      configs.toSeq.map { case (nodeConfigId, directives) =>
         // each directive is converted into Seq[DirectiveExpectedReports]
         val directiveExpected = directives.map { directive =>
 	          val seq = computeCardinality.getCardinality(directive)
@@ -156,13 +173,13 @@ class ReportingServiceImpl(
 	          }
         }
 
-        (ruleId, serial, nodeId, directiveExpected.flatten)
+        (ruleId, serial, nodeConfigId, directiveExpected.flatten)
       }
     }
 
     // we need to group by DirectiveExpectedReports, RuleId, Serial
-    val flatten = expanded.flatten.flatMap { case (ruleId, serial, nodeId, directives) =>
-      directives.map (x => (ruleId, serial, nodeId, x))
+    val flatten = expanded.flatten.flatMap { case (ruleId, serial, nodeConfigId, directives) =>
+      directives.map (x => (ruleId, serial, nodeConfigId, x))
     }
 
     val preparedValues = flatten.groupBy[(RuleId, Int, DirectiveExpectedReports)]{ case (ruleId, serial, nodeId, directive) =>
@@ -174,16 +191,21 @@ class ReportingServiceImpl(
          case (key, value) => (key -> value.map(x => x._3))
        }.toSeq
     // now we save them
-    sequence(groupedContent) { case ((ruleId, serial, nodes), directives) =>
-      confExpectedRepo.saveExpectedReports(
-                           ruleId
-                         , serial
-                         , directives
-                         , nodes
-                       )
+
+    for {
+      updatedExpectedReports   <- sequence(groupedContent) { case ((ruleId, serial, nodes), directives) =>
+                                    confExpectedRepo.saveExpectedReports(ruleId, serial, directives, nodes)
+                                  }
+      nodeConfigToUpdate       =  (updatedNodeConfigVersion.groupBy { case (ruleId, _) => ruleId }).mapValues { case set =>
+                                    set.toSeq.map { case (_, NodeConfigurationId(nodeId, version)) =>
+                                      (nodeId, version)
+                                    }.groupBy( _._1).mapValues( _.map(_._2 ) )
+                                  }
+      updatedNodeConfigVersion <- confExpectedRepo.updateNodeConfigVersion(nodeConfigToUpdate)
+    } yield {
+      updatedExpectedReports
     }
   }
-
 
   /**
    * Find the latest reports for a given rule (for all servers)
@@ -258,34 +280,56 @@ class ReportingServiceImpl(
   }
 
   /**
-   * Find the latest (15 minutes) reports for a given node (all CR)
+   * Find the latest reports for a given Node.
+   * The tactic is to try to find the last node execution,
+   * and if not available, to fallback on a "last" reports
+   * available
    */
   override def findNodeStatusReportsByNode(nodeId: NodeId) : Box[Seq[NodeStatusReport]] = {
     for {
-      expectedReports <- confExpectedRepo.findCurrentExpectedReportsByNode(nodeId)
+      optLastRun <- agentRunRepository.getNodeLastExecution(nodeId)
+      allReports <- optLastRun match {
+                      case None =>
+                        //in that case, we don't have any reports, and no mean to know the nodeConfigVersion
+                        //could be. Just get the last expected report for that node
+                        for {
+                          expected <- confExpectedRepo.findCurrentExpectedReportsByNode(nodeId)
+                        } yield {
+                          (None, None, expected, Seq())
+                        }
+                      case Some(run) => run.nodeConfigVersion match {
+                        case None =>
+                          //this is a migration mode, look for last reports
+                          for {
+                            expected <- confExpectedRepo.findCurrentExpectedReportsByNode(nodeId)
+                            //Question: shouldn't we get reports based on the run.runId.date ?
+                            reports  <- reportsRepository.findReportByAgentExecution(Set(run.runId))
+                          } yield {
+                            (Some(run.runId.date), None, expected, reports)
+                          }
+                        case Some(version) =>
+                          for {
+                            expected <- confExpectedRepo.findExpectedReportsByNodeConfigId(NodeConfigurationId(nodeId,version))
+                            reports  <- reportsRepository.findReportByAgentExecution(Set(run.runId))
+                          } yield {
+                            (Some(run.runId.date), Some(version), expected, reports)
+                          }
+                      }
+                    }
+      compliance <- getComplianceMode()
     } yield {
-      expectedReports.flatMap { expectedConfigurationReports =>
 
-        val agentRunInterval = getAgentRunInterval()
+      val (optAgentRunTime, optVersion, expectedReports, nodeReports) = allReports
 
-        // Fetch the reports corresponding to this rule, and filter them by nodes
-        val reports = reportsRepository.findLastReportByRule(
-                expectedConfigurationReports.ruleId
-              , expectedConfigurationReports.serial
-              , Some(nodeId)
-              , agentRunInterval
-        )
-
-        val directivesOnNodes = expectedConfigurationReports.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _.nodeId == nodeId)).map(x => DirectivesOnNodeExpectedReport(x.nodeConfigurationIds, x.directiveExpectedReports))
-
-        ExecutionBatch.getNodeStatusReports(
-              expectedConfigurationReports.ruleId
-            , directivesOnNodes
-            , reports
-            , expectedConfigurationReports.beginDate
-            , agentRunInterval
-        )
-      }
+      ExecutionBatch.getNodeStatusReports(
+          nodeId
+        , optAgentRunTime
+        , optVersion
+        , expectedReports
+        , nodeReports
+        , getAgentRunInterval()
+        , compliance
+      )
     }
   }
 
@@ -427,7 +471,7 @@ class ComputeCardinalityOfDirectiveVal {
               case Some(name) =>
                 (container.variables.get(name), container.originalVariables.get(name)) match {
                   case (Some(expandedValues), Some(originalValues)) if expandedValues.values.size == originalValues.values.size =>
-                    Some(section.name, expandedValues.values, originalValues.values)
+                    Some((section.name, expandedValues.values, originalValues.values))
 
                   case (Some(expandedValues), Some(originalValues)) if expandedValues.values.size != originalValues.values.size =>
                     logger.error(s"In section ${section.name}, the original values and the expanded values don't have the same size. Orignal values are ${originalValues.values}, expanded are ${expandedValues.values}")

@@ -49,16 +49,16 @@ import com.normation.rudder.domain.logger.ReportLogger
 import com.normation.rudder.domain.policies.Directive
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.reports._
+import com.normation.rudder.reports.ComplianceMode
 
 /**
  * An execution batch contains the node reports for a given Rule / Directive at a given date
  * An execution Batch is at a given time <- TODO : Is it relevant when we have several node ?
- * @author Nicolas CHARLES
  */
 
 
 case class DirectivesOnNodeExpectedReport(
-    nodeIds                 : Seq[NodeConfigurationId]
+    nodeConfigurationIds    : Seq[NodeConfigurationId]
   , directiveExpectedReports: Seq[DirectiveExpectedReports]
 ) extends HashcodeCaching {}
 
@@ -80,226 +80,166 @@ object ExecutionBatch {
   /**
    * This is the main entry point to get the detailed reporting
    * It returns a Sequence of NodeStatusReport which gives, for
-   * each node, the status and all the directives associated
+   * each node, the status and all the directives associated.
+   *
+   * The contract is to give to that function a list of expected
+   * report for an unique given node
    *
    */
   def getNodeStatusReports(
-      ruleId                          : RuleId
-    , directivesOnNodesExpectedReports: Seq[DirectivesOnNodeExpectedReport]
-    , executionReports                : Seq[Reports]
-    , beginDate                       : DateTime
+      nodeId                : NodeId
+    , optAgentRunTime       : Option[DateTime]
+    , optNodeConfigVersion  : Option[String]
+    , expectedReportsParam  : Seq[RuleExpectedReports]
+    , reportsParam          : Seq[Reports]
     // this is the agent execution interval, in minutes
-    , agentExecutionInterval          : Int
+    , agentExecutionInterval: Int
+    , complianceMode        : ComplianceMode
   ) : Seq[NodeStatusReport] = {
 
-    val maxDate = beginDate.plus(agentExecutionInterval*2*1000*60)
+    val rawNodeStatusReports = (for {
+      (ruleId, expectedReports) <- expectedReportsParam.groupBy( _.ruleId)
+      expectedReport            <- expectedReports
+      directivesOnNode          <- expectedReport.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _.nodeId == nodeId) )
 
-    for {
-      nodeId <- directivesOnNodesExpectedReports.flatMap(x => x.nodeIds).distinct
-      nodeFilteredReports = executionReports.filter(x => (x.nodeId==nodeId))
+      directiveStatusReports    =  for {
+                                    expectedDirective <- directivesOnNode.directiveExpectedReports
+                                  } yield {
+                                    // look for each component
+                                    val componentsStatus = for {
+                                                             expectedComponent <- expectedDirective.components
+                                                           } yield {
+                                                             val componentFilteredReports = reportsParam.filter(x =>
+                                                               x.nodeId == nodeId &&
+                                                               x.directiveId == expectedDirective.directiveId &&
+                                                               x.component == expectedComponent.componentName
+                                                             )
 
-      directiveStatusReports = for {
-        expectedDirective <- directivesOnNodesExpectedReports.filter(x => x.nodeIds.contains(nodeId)).flatMap(x => x.directiveExpectedReports)
-        directiveFilteredReports = nodeFilteredReports.filter(x => x.directiveId == expectedDirective.directiveId)
+                                                             checkExpectedComponentWithReports(expectedComponent, componentFilteredReports)
+                                                           }
 
-        // look for each component
-        componentsStatus = for {
-          expectedComponent <- expectedDirective.components
-          componentFilteredReports = directiveFilteredReports.filter(x => x.component == expectedComponent.componentName)
-
-          componentStatusReport = checkExpectedComponentWithReports(
-                  expectedComponent
-                , componentFilteredReports
-                , nodeId
-                , maxDate
-          )
-        } yield {
-          componentStatusReport
-        }
-
-        directiveStatusReport = DirectiveStatusReport(
-            expectedDirective.directiveId
-          , componentsStatus
-          , Seq()
-        )
-
-      } yield {
-        directiveStatusReport
-      }
-
-      nodeStatusReport = NodeStatusReport(
-          nodeId
-        , ruleId
-        , directiveStatusReports
-        , Seq()
-      )
+                                    DirectiveStatusReport(expectedDirective.directiveId, componentsStatus, Seq())
+                                  }
     } yield {
-      nodeStatusReport
-    }
+      NodeStatusReport(nodeId, optAgentRunTime, optNodeConfigVersion, ruleId, directiveStatusReports, Seq())
+    }).toSeq
+
+    interpretNoAnswer(rawNodeStatusReports)
   }
+
+  /**
+   * That method interpret what meaning should be given to "NoAnswer"
+   * report base on when we get them and the compliance mode.
+   */
+  private[this] def interpretNoAnswer(reports: Seq[NodeStatusReport]) : Seq[NodeStatusReport] = {
+      ???
+  }
+
   /**
    * Allows to calculate the status of component for a node.
+   * We don't deal with interpretation at that level,
+   * in particular regarding the not received / etc status, we
+   * simply put "no answer" for each case where we don't
+   * have an actual report corresponding to the expected one
    *
    * The visibility is for allowing tests
    */
   private[reports] def checkExpectedComponentWithReports(
-      expectedComponent  : ReportComponent
-    , filteredReports    : Seq[Reports]
-    , nodeConfigurationId: NodeConfigurationId
-    , maxDate            : DateTime
+      expectedComponent: ReportComponent
+    , filteredReports  : Seq[Reports]
   ) : ComponentStatusReport = {
 
-    // easy case : No Reports mean no answer
-    filteredReports.size match {
-      case 0 =>
-        val components = for {
-          (component, unexpanded) <- expectedComponent.groupedComponentValues
-        } yield {
-          ComponentValueStatusReport(
-              component
-            , unexpanded
-            , getNoAnswerOrPending(maxDate)
-            , Nil
-          )
-        }
-        ComponentStatusReport(
-            expectedComponent.componentName
-          , components
-          , Nil
-          , Seq()
-        )
-      case _ =>
-        // First, filter out all the not interesting reports
-        val purgedReports = filteredReports.filter(x => x.isInstanceOf[ResultErrorReport]
-                               || x.isInstanceOf[ResultRepairedReport]
-                               || x.isInstanceOf[ResultSuccessReport]
-                               || x.isInstanceOf[ResultNotApplicableReport]
-                               || x.isInstanceOf[UnknownReport])
+    // First, filter out all the not interesting reports
+    val purgedReports = filteredReports.filter(x => x.isInstanceOf[ResultErrorReport]
+                           || x.isInstanceOf[ResultRepairedReport]
+                           || x.isInstanceOf[ResultSuccessReport]
+                           || x.isInstanceOf[ResultNotApplicableReport]
+                           || x.isInstanceOf[UnknownReport]
+    )
 
-        val components = for {
-            (componentValue, unexpandedComponentValues) <- expectedComponent.groupedComponentValues
-            (status,message) = checkExpectedComponentStatus(
-                              componentValue
-                            , purgedReports
-                            , expectedComponent.componentsValues
-                            , maxDate
-                            )
-        } yield {
-          ComponentValueStatusReport(
-                componentValue
-              , unexpandedComponentValues
-              , status
-              , message
-          )
-        }
 
-        // must fetch extra entries
-        val unexpectedReports = getUnexpectedReports(
-            expectedComponent.componentsValues.toList
-          , purgedReports
-        )
-
-        unexpectedReports.size match {
-          case 0 =>
-            ComponentStatusReport(
-                expectedComponent.componentName
-              , components
-              , purgedReports.map(_.message).toList
-              , Seq()
-            )
-
-          case _ => // some bad report
-            unexpectedReports.foreach{ invalidReport =>
-              ReportLogger.warn("Unexpected report for Directive %s, Rule %s generated on %s on node %s, Component is %s, keyValue is %s. The associated message is : %s".format(
-                  invalidReport.directiveId
-                , invalidReport.ruleId
-                , invalidReport.executionTimestamp
-                , invalidReport.nodeId
-                , invalidReport.component
-                , invalidReport.keyValue
-                , invalidReport.message))
-            }
-            val cpvalue = for {
-              unexpectedReport <- unexpectedReports
-            } yield {
-                ComponentValueStatusReport(
-                   unexpectedReport.keyValue
-                 , None // <- is it really None that we set there ?
-                 , UnknownReportType
-                 , List(unexpectedReport.message)
-                )
-            }
-             ComponentStatusReport(
-                expectedComponent.componentName
-              , components
-              , unexpectedReports.map(_.message).toList
-              , cpvalue
-            )
-        }
-
+    val componentValueStatusReports = for {
+      (componentValue, unexpandedComponentValues) <- expectedComponent.groupedComponentValues
+    } yield {
+      val (status,message) = checkExpectedComponentStatus(
+                                componentValue
+                              , purgedReports
+                              , expectedComponent.componentsValues
+                              )
+      ComponentValueStatusReport(
+          componentValue
+        , unexpandedComponentValues
+        , status
+        , message
+      )
     }
-  }
 
+    // must fetch extra entries
+    val unexpectedReports = getUnexpectedReports(
+        expectedComponent.componentsValues.toList
+      , purgedReports
+    )
+    unexpectedReports.foreach { r =>
+      ReportLogger.warn(s"Unexpected report for Directive '${r.directiveId.value}', Rule '${r.ruleId.value}' generated on '${r.executionTimestamp}' "+
+          s"on node '${r.nodeId.value}', Component is '${r.component}', keyValue is '${r.keyValue}'. The associated message is : ${r.message}"
+      )
+    }
+    val unexpectedCVSRs = for {
+      unexpectedReport <- unexpectedReports
+    } yield {
+        ComponentValueStatusReport(
+           unexpectedReport.keyValue
+         , None // <- is it really None that we set there ?
+         , UnknownReportType
+         , List(unexpectedReport.message)
+        )
+    }
 
-  private[this] def returnWorseStatus(
-      reports : Seq[Reports]
-    , maxDate : DateTime
-  ) : ReportType = {
-    if (reports.exists(x => x.isInstanceOf[ResultErrorReport])) {
-      ErrorReportType
-    } else {
-      if (reports.exists(x => x.isInstanceOf[UnknownReport])) {
-        UnknownReportType
-      } else {
-        if (reports.exists(x => x.isInstanceOf[ResultRepairedReport])) {
-          RepairedReportType
+    ComponentStatusReport(
+        expectedComponent.componentName
+      , componentValueStatusReports
+      , if(unexpectedCVSRs.size < 1) {
+          unexpectedReports.map(_.message).toList
         } else {
-          if (reports.exists(x => x.isInstanceOf[ResultSuccessReport])) {
-            SuccessReportType
-          } else {
-            if (reports.exists(x => x.isInstanceOf[ResultNotApplicableReport])) {
-              NotApplicableReportType
-            } else {
-              getNoAnswerOrPending(maxDate)
-            }
-          }
+          purgedReports.map(_.message).toList
         }
-      }
-    }
-
+      , unexpectedCVSRs
+    )
   }
+
+
+
 
 
   /*
-   * An utility method that fetch the proper status and messages
-   * of a component key.
+   * An utility method that fetches the proper status and messages
+   * of a component value.
    * Parameters :
-   * currentValue : the current keyValue processes
-   * filteredReports : the report for that component (but including all keys)
-   * values : all values expected for that component, to fetch unexpected as well
+   * currentValue : the current value processed
+   * filteredReports : the report for that component (but including all values)
+   * epectedValues : all values expected for that component, to fetch unexpected as well
    * Return:
    * a couple containing the actual status of the component key and the messages associated
    */
   private[this] def checkExpectedComponentStatus(
-      currentValue           : String
-    , purgedReports          : Seq[Reports]
-    , values                 : Seq[String]
-    , maxDate                : DateTime
+      currentValue   : String
+    , filteredReports: Seq[Reports]
+    , expectedValues : Seq[String]
   ) : (ReportType,List[String]) = {
-    val unexepectedReports = purgedReports.filterNot(value => values.contains(value.keyValue))
+    val unexepectedReports = filteredReports.filterNot(value => expectedValues.contains(value.keyValue))
 
     /* Refactored this function because it was the same behavior for each case*/
-    def getComponentStatus (filteredReports:Seq[Reports]) : (ReportType,List[String]) = {
-       filteredReports.filter( x => x.isInstanceOf[ResultErrorReport]).size match {
-          case i if i > 0 => (ErrorReportType,filteredReports.map(_.message).toList)
+    def getComponentStatus(reports: Seq[Reports]) : (ReportType, List[String]) = {
+       reports.filter( x => x.isInstanceOf[ResultErrorReport]).size match {
+          case i if i > 0 => (ErrorReportType, reports.map(_.message).toList)
           case _ => {
-            filteredReports.size match {
+            reports.size match {
               /* Nothing was received at all for that component so : No Answer or Pending */
-              case 0 if unexepectedReports.size==0 =>  (getNoAnswerOrPending(maxDate),Nil)
+              case 0 if unexepectedReports.size == 0 =>  (NoAnswerReportType, Nil)
               /* Reports were received for that component, but not for that key, that's a missing report */
-              case 0 =>  (UnknownReportType,Nil)
-              case x if x == values.filter( x => x == currentValue).size =>
-                (returnWorseStatus(filteredReports, maxDate),filteredReports.map(_.message).toList)
+              case 0 =>  (UnknownReportType, Nil)
+              case x if x == expectedValues.filter( x => x == currentValue).size =>
+                (ReportType.getWorseReport(reports), reports.map(_.message).toList)
               case _ => (UnknownReportType,filteredReports.map(_.message).toList)
             }
           }
@@ -308,38 +248,22 @@ object ExecutionBatch {
 
     currentValue match {
       case "None" =>
-        val filteredReports = purgedReports.filter( x => x.keyValue == currentValue)
-        getComponentStatus(filteredReports)
+        val reports = filteredReports.filter( x => x.keyValue == currentValue )
+        getComponentStatus(reports)
 
       case matchCFEngineVars(_) =>
         // convert the entry to regexp, and match what can be matched
          val matchableExpected = replaceCFEngineVars(currentValue)
-         val matchedReports = purgedReports.filter( x => x.keyValue.matches(matchableExpected))
-
-         matchedReports.filter( x => x.isInstanceOf[ResultErrorReport]).size match {
-           case i if i > 0 => (ErrorReportType,matchedReports.map(_.message).toList)
-
-           case _ => {
-            matchedReports.size match {
-              case 0 if unexepectedReports.size==0 => (getNoAnswerOrPending(maxDate),Nil)
-              case 0 =>
-                (UnknownReportType,Nil)
-              case x if x == values.filter( x => x.matches(matchableExpected)).size =>
-                (returnWorseStatus(matchedReports, maxDate),matchedReports.map(_.message).toList)
-              case _ => (UnknownReportType,matchedReports.map(_.message).toList)
-            }
-
-          }
-
-         }
-
+         val matchedReports = filteredReports.filter( x => x.keyValue.matches(matchableExpected))
+         getComponentStatus(matchedReports)
 
       case _: String =>
-          // for a given component, if the key is not "None", then we are
-          // checking that what is have is what we wish
-          // we can have more reports that what we expected, because of
-          // name collision, but it would be resolved by the total number
-        val keyReports =  purgedReports.filter( x => x.keyValue == currentValue)
+        // for a given component, if the value is not "None", then we are
+        // checking that what the value is is equals to what we wish.
+        // We can have more reports that what we expected, because of
+        // name collision, but it would be resolved by checking the total
+        // number of received reports for that component.
+        val keyReports =  filteredReports.filter( x => x.keyValue == currentValue)
         getComponentStatus(keyReports)
     }
   }
@@ -349,38 +273,24 @@ object ExecutionBatch {
    * keyValue not present)
    */
   private[this] def getUnexpectedReports(
-      keyValues      : List[String]
-    , reports        : Seq[Reports]
-    ) : Seq[Reports] = {
+      keyValues: List[String]
+    , reports  : Seq[Reports]
+  ) : Seq[Reports] = {
     keyValues match {
-      case Nil => reports
+      case Nil          => reports
       case head :: tail =>
-        head match {
+
+        val isExpected = (s:String) => head match {
           case matchCFEngineVars(_) =>
             val matchableExpected = replaceCFEngineVars(head)
-            getUnexpectedReports(
-                tail
-              , reports.filterNot(x => x.keyValue.matches(matchableExpected)) )
-          case s: String =>
-            getUnexpectedReports(
-                tail
-              , reports.filterNot(x => x.keyValue == s ) )
+            s.matches(matchableExpected)
+          case ss: String =>
+            ss == s
         }
+
+        getUnexpectedReports(tail, reports.filterNot(r => isExpected(r.keyValue)))
     }
   }
-
-  /**
-   * Utility method to determine if we are in the pending time, or if the node hasn't answered for a long time
-   * We consider it is a no answer if the agent hasn't answered for twice the run interval
-   */
-  private[this] def getNoAnswerOrPending(maxDate: DateTime) : ReportType = {
-    if (maxDate.isAfter(DateTime.now())) {
-      PendingReportType
-    } else {
-      NoAnswerReportType
-    }
-  }
-
 }
 
 
@@ -408,11 +318,11 @@ private[reports] case class ExecutionBatch(
   def getNodeStatus() : Seq[NodeStatusReport] = {
 
     for {
-      nodeId <- directivesOnNodesExpectedReports.flatMap(x => x.nodeIds).distinct
-      nodeFilteredReports = executionReports.filter(x => (x.nodeId==nodeId))
+      nodeConfigurationId <- directivesOnNodesExpectedReports.flatMap(x => x.nodeConfigurationIds).distinct
+      nodeFilteredReports = executionReports.filter(x => (x.nodeId==nodeConfigurationId.nodeId))
 
       directiveStatusReports = for {
-        expectedDirective <- directivesOnNodesExpectedReports.filter(x => x.nodeIds.contains(nodeId)).flatMap(x => x.directiveExpectedReports)
+        expectedDirective <- directivesOnNodesExpectedReports.filter(x => x.nodeConfigurationIds.contains(nodeConfigurationId)).flatMap(x => x.directiveExpectedReports)
         directiveFilteredReports = nodeFilteredReports.filter(x => x.directiveId == expectedDirective.directiveId)
 
         // look for each component
@@ -423,7 +333,7 @@ private[reports] case class ExecutionBatch(
           componentStatusReport = checkExpectedComponentWithReports(
                   expectedComponent
                 , componentFilteredReports
-                , nodeId
+                , nodeConfigurationId
           )
         } yield {
           componentStatusReport
@@ -440,7 +350,9 @@ private[reports] case class ExecutionBatch(
       }
 
       nodeStatusReport = NodeStatusReport(
-          nodeId
+          nodeConfigurationId.nodeId
+        , ???
+        , ???
         , ruleId
         , directiveStatusReports
         , Seq()
@@ -704,7 +616,7 @@ private[reports] case class ExecutionBatch(
                       flatMap{ nodeStatus =>
           // we filter by directiveId
           val directivesStatus = nodeStatus.directives.filter(_.directiveId == directiveId)
-          getComponentRuleStatus(nodeStatus.nodeConfigId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus)
+          getComponentRuleStatus(???, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus)
         }.groupBy(_.component).map { case (componentName, componentReport) =>
           val componentValueReports = componentReport.flatMap(_.componentValues).
             groupBy(x=> (x.unexpandedComponentValue)).
@@ -746,7 +658,7 @@ private[reports] case class ExecutionBatch(
    * components  : Expected component report format
    * directive   : Latest directive reports
    */
-  private[this] def getComponentRuleStatus(nodeId: NodeConfigurationId, directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
+  private[this] def getComponentRuleStatus(nodeId: NodeId, directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
      components.map{ component =>
        val id = component.componentName
        val componentvalues = directive.flatMap{ nodestatus =>
@@ -765,7 +677,7 @@ private[reports] case class ExecutionBatch(
    * values      : Expected values format
    * components  : Latest components report
    */
- private[this] def getComponentValuesRuleStatus(nodeId: NodeConfigurationId, directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
+ private[this] def getComponentValuesRuleStatus(nodeId: NodeId, directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
      values.map{
        case (value, unexpanded) =>
          val componentValues = components.flatMap(_.componentValues.filter(_.componentValue==value))

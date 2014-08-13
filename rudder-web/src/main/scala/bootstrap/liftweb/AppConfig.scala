@@ -1234,9 +1234,10 @@ object RudderConfig extends Loggable {
   private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(
         configurationExpectedRepo
       , reportsRepositoryImpl
-      , techniqueRepositoryImpl
+      , roReportExecutionsRepository
       , new ComputeCardinalityOfDirectiveVal()
       , configService.agent_run_interval
+      , configService.rudder_compliance_mode
   )
   private[this] lazy val configurationExpectedRepo = new com.normation.rudder.repository.jdbc.RuleExpectedReportsJdbcRepository(jdbcTemplate, transactionManager)
   private[this] lazy val reportsRepositoryImpl = new com.normation.rudder.repository.jdbc.ReportsJdbcRepository(jdbcTemplate)

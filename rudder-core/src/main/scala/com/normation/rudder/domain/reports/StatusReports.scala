@@ -35,10 +35,10 @@
 package com.normation.rudder.domain.reports
 
 import scala.collection.Seq
-
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
+import org.joda.time.DateTime
 
 /**
  * That file contains all the kind of status reports:
@@ -92,7 +92,9 @@ final case class DirectiveStatusReport(
 }
 
 final case class NodeStatusReport(
-    nodeConfigId        : NodeConfigurationId
+    nodeId              : NodeId
+  , optAgentRunTime     : Option[DateTime]
+  , optNodeConfigVerion : Option[String]
   , ruleId              : RuleId
   , directives	         : Seq[DirectiveStatusReport]
   , unexpectedDirectives: Seq[DirectiveStatusReport] // for future use, not used yet
@@ -105,7 +107,7 @@ final case class NodeStatusReport(
 }
 
 final case class NodeReport (
-    node      : NodeConfigurationId
+    node      : NodeId
   , reportType: ReportType
   , message   : List[String]
 )

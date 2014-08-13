@@ -91,6 +91,10 @@ object ReportType {
     }
   }
 
+  def getWorseReport(reports: Seq[Reports]): ReportType = {
+    getWorseType(reports.map( apply(_) ))
+  }
+
   def getSeverityFromStatus(status : ReportType) : String = {
       status.severity
   }
