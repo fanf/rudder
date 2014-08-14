@@ -59,13 +59,6 @@ import com.normation.rudder.reports.ErrorOnly
  * An execution Batch is at a given time <- TODO : Is it relevant when we have several node ?
  */
 
-
-case class DirectivesOnNodeExpectedReport(
-    nodeConfigurationIds    : Seq[NodeConfigurationId]
-  , directiveExpectedReports: Seq[DirectiveExpectedReports]
-) extends HashcodeCaching {}
-
-
 object ExecutionBatch {
   final val matchCFEngineVars = """.*\$(\{.+\}|\(.+\)).*""".r
   final private val replaceCFEngineVars = """\$\{.+\}|\$\(.+\)"""
@@ -133,7 +126,6 @@ object ExecutionBatch {
       (ruleId, exr) <- expectedReports.groupBy( _.ruleId)
       expectedReport            <- exr
       directivesOnNode          <- expectedReport.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _.nodeId == nodeId) )
-
       directiveStatusReports    =  for {
                                     expectedDirective <- directivesOnNode.directiveExpectedReports
                                   } yield {
@@ -174,28 +166,17 @@ object ExecutionBatch {
   ) : ComponentStatusReport = {
 
     // First, filter out all the not interesting reports
-    val purgedReports = filteredReports.filter(x => x.isInstanceOf[ResultErrorReport]
-                           || x.isInstanceOf[ResultRepairedReport]
-                           || x.isInstanceOf[ResultSuccessReport]
-                           || x.isInstanceOf[ResultNotApplicableReport]
-                           || x.isInstanceOf[UnknownReport]
-    )
-
+    val purgedReports = filteredReports.filter(x => x.isInstanceOf[ResultReports])
 
     val componentValueStatusReports = for {
       (componentValue, unexpandedComponentValues) <- expectedComponent.groupedComponentValues
     } yield {
-      val (status,message) = checkExpectedComponentStatus(
-                                componentValue
-                              , purgedReports
-                              , expectedComponent.componentsValues
-                              , noAnswerType
-                              )
-      ComponentValueStatusReport(
+      buildComponentValueStatus(
           componentValue
+        , purgedReports
+        , expectedComponent.componentsValues
+        , noAnswerType
         , unexpandedComponentValues
-        , status
-        , message
       )
     }
 
@@ -232,26 +213,17 @@ object ExecutionBatch {
     )
   }
 
-
-
-
-
   /*
    * An utility method that fetches the proper status and messages
    * of a component value.
-   * Parameters :
-   * currentValue : the current value processed
-   * filteredReports : the report for that component (but including all values)
-   * epectedValues : all values expected for that component, to fetch unexpected as well
-   * Return:
-   * a couple containing the actual status of the component key and the messages associated
    */
-  private[this] def checkExpectedComponentStatus(
+  private[this] def buildComponentValueStatus(
       currentValue   : String
     , filteredReports: Seq[Reports]
     , expectedValues : Seq[String]
     , noAnswerType   : ReportType
-  ) : (ReportType,List[String]) = {
+    , unexpandedValue: Option[String]
+  ) : ComponentValueStatusReport = {
     val unexepectedReports = filteredReports.filterNot(value => expectedValues.contains(value.keyValue))
 
     /* Refactored this function because it was the same behavior for each case*/
@@ -272,7 +244,7 @@ object ExecutionBatch {
         }
     }
 
-    currentValue match {
+    val (status,message) = currentValue match {
       case "None" =>
         val reports = filteredReports.filter( x => x.keyValue == currentValue )
         getComponentStatus(reports, _ == currentValue)
@@ -292,6 +264,12 @@ object ExecutionBatch {
         val keyReports =  filteredReports.filter( x => x.keyValue == currentValue)
         getComponentStatus(keyReports, _ == currentValue)
     }
+    ComponentValueStatusReport(
+        currentValue
+      , unexpandedValue
+      , status
+      , message
+    )
   }
 
   /**
@@ -302,19 +280,18 @@ object ExecutionBatch {
       keyValues: List[String]
     , reports  : Seq[Reports]
   ) : Seq[Reports] = {
+
+    val isExpected = (head:String, s:String) => head match {
+      case matchCFEngineVars(_) =>
+        val matchableExpected = replaceCFEngineVars(head)
+        s.matches(matchableExpected)
+      case x => x == s
+    }
+
     keyValues match {
       case Nil          => reports
       case head :: tail =>
-
-        val isExpected = (s:String) => head match {
-          case matchCFEngineVars(_) =>
-            val matchableExpected = replaceCFEngineVars(head)
-            s.matches(matchableExpected)
-          case ss: String =>
-            ss == s
-        }
-
-        getUnexpectedReports(tail, reports.filterNot(r => isExpected(r.keyValue)))
+        getUnexpectedReports(tail, reports.filterNot(r => isExpected(head, r.keyValue)))
     }
   }
 

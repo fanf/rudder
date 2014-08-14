@@ -61,18 +61,6 @@ trait ReportsRepository {
    */
   def findReportByAgentExecution(agentRunId: Set[AgentRunId]): Box[Seq[Reports]]
 
-
-  /**
-   * Returns all reports for the ruleId, between the two differents date (optionnally)
-   */
-  def findReportsByRule(
-      ruleId   : RuleId
-    , serial   : Option[Int]
-    , beginDate: Option[DateTime]
-    , endDate  : Option[DateTime]
-  ) : Seq[Reports]
-
-
   /**
    * Return the last (really the last, serial wise, with full execution) reports for a rule
    */
@@ -99,10 +87,6 @@ trait ReportsRepository {
    */
   def findReportsByNode(
       nodeId   : NodeId
-    , ruleId   : Option[RuleId]
-    , serial   : Option[Int]
-    , beginDate: Option[DateTime]
-    , endDate  : Option[DateTime]
   ) : Seq[Reports]
 
   /**
@@ -116,39 +100,31 @@ trait ReportsRepository {
     , endDate  : Option[DateTime]
   ) : Seq[Reports]
 
+
+  //advanced reporting only
   def findExecutionTimeByNode(
       nodeId   : NodeId
     , beginDate: DateTime
     , endDate  : Option[DateTime]
   ) : Seq[DateTime]
-
-
   def getOldestReports() : Box[Option[Reports]]
 
+  //databaseManager only
   def getOldestArchivedReports() : Box[Option[Reports]]
-
-  def getNewestReportOnNode(nodeid:NodeId) : Box[Option[Reports]]
-
   def getNewestReports() : Box[Option[Reports]]
-
   def getNewestArchivedReports() : Box[Option[Reports]]
-
   def getDatabaseSize(databaseName : String) : Box[Long]
-
   def reportsTable : String
-
   def archiveTable : String
-
   def archiveEntries(date : DateTime) : Box[Int]
-
   def deleteEntries(date : DateTime) : Box[Int]
 
+  //automaticReportLogger only
   def getHighestId : Box[Long]
-
   def getLastHundredErrorReports(kinds:List[String]) : Box[Seq[(Reports,Long)]]
-
   def getErrorReportsBeetween(lower : Long, upper:Long,kinds:List[String]) : Box[Seq[Reports]]
 
+  //reportExecution only
   /**
    * From an id and an end date, return a list of ReportExecution, and the max ID that has been considered
    */

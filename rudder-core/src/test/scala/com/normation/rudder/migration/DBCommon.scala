@@ -65,9 +65,12 @@ trait DBCommon extends Specification with Loggable with Tags {
     val is = this.getClass().getClassLoader().getResourceAsStream("reportsSchema.sql")
     val sqlText = Source.fromInputStream(is).getLines.toSeq.map(s =>
       s
-       .replaceAll("CREATE TABLE", "CREATE TEMP TABLE")
-       .replaceAll("CREATE SEQUENCE", "CREATE TEMP SEQUENCE")
-       .replaceAll("ALTER database rudder", "ALTER database test")
+      //using toLowerCase is safer, it will always replace create table by a temp one,
+      //but it also mean that we will not know when we won't be strict with ourselves
+         .toLowerCase
+         .replaceAll("create table", "create temp table")
+         .replaceAll("create sequence", "create temp sequence")
+         .replaceAll("alter database rudder", "alter database test")
     ).mkString("\n")
     is.close()
 

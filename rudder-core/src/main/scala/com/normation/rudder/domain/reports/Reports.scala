@@ -66,6 +66,10 @@ sealed trait Reports {
   val message            : String
 }
 
+//two marker trait to split between result and log reports
+sealed trait ResultReports extends Reports
+sealed trait LogReports extends Reports
+
 final case class ResultSuccessReport(
     executionDate      : DateTime
   , ruleId             : RuleId
@@ -76,7 +80,7 @@ final case class ResultSuccessReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends ResultReports with HashcodeCaching {
   val severity = Reports.RESULT_SUCCESS
 }
 
@@ -90,7 +94,7 @@ final case class ResultNotApplicableReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends ResultReports with HashcodeCaching {
   val severity = Reports.RESULT_NOTAPPLICABLE
 }
 
@@ -104,7 +108,7 @@ final case class ResultRepairedReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends ResultReports with HashcodeCaching {
   val severity = Reports.RESULT_REPAIRED
 }
 
@@ -118,10 +122,23 @@ final case class ResultErrorReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends ResultReports with HashcodeCaching {
   val severity = Reports.RESULT_ERROR
 }
 
+final case class UnknownReport(
+    executionDate      : DateTime
+  , ruleId             : RuleId
+  , directiveId        : DirectiveId
+  , nodeId             : NodeId
+  , serial             : Int
+  , component          : String
+  , keyValue           : String
+  , executionTimestamp : DateTime
+  , message            : String
+) extends ResultReports with HashcodeCaching {
+  val severity = Reports.RESULT_UNKNOWN
+}
 
 final case class LogRepairedReport(
     executionDate      : DateTime
@@ -133,7 +150,7 @@ final case class LogRepairedReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends LogReports with HashcodeCaching {
   val severity = Reports.LOG_REPAIRED
 }
 
@@ -147,7 +164,7 @@ final case class LogWarnReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends LogReports with HashcodeCaching {
   val severity = Reports.LOG_WARN
 }
 
@@ -161,7 +178,7 @@ final case class LogInformReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends LogReports with HashcodeCaching {
   val severity = Reports.LOG_INFO
 }
 
@@ -175,7 +192,7 @@ final case class LogDebugReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends LogReports with HashcodeCaching {
   val severity = Reports.LOG_DEBUG
 }
 
@@ -189,22 +206,8 @@ final case class LogTraceReport(
   , keyValue           : String
   , executionTimestamp : DateTime
   , message            : String
-) extends Reports with HashcodeCaching {
+) extends LogReports with HashcodeCaching {
   val severity = Reports.LOG_TRACE
-}
-
-final case class UnknownReport(
-    executionDate      : DateTime
-  , ruleId             : RuleId
-  , directiveId        : DirectiveId
-  , nodeId             : NodeId
-  , serial             : Int
-  , component          : String
-  , keyValue           : String
-  , executionTimestamp : DateTime
-  , message            : String
-) extends Reports with HashcodeCaching {
-  val severity = "Unknown"
 }
 
 object Reports {
@@ -289,5 +292,5 @@ object Reports {
   val RESULT_NOTAPPLICABLE = "result_na"
   val RESULT_REPAIRED      = "result_repaired"
   val RESULT_ERROR         = "result_error"
-
+  val RESULT_UNKNOWN       = "Unknown"
 }

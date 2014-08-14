@@ -76,12 +76,12 @@ CREATE TABLE RudderSysEvents (
 );
 
 
-CREATE INDEX nodeid_idx                   on RudderSysEvents (nodeId);
-CREATE INDEX executionTimeStamp_idx       on RudderSysEvents (executionTimeStamp);
-CREATE INDEX composite_node_execution_idx on RudderSysEvents (nodeId, executionTimeStamp);
-CREATE INDEX component_idx                on RudderSysEvents (component);
-CREATE INDEX keyValue_idx                 on RudderSysEvents (keyValue);
-CREATE INDEX ruleId_idx                   on RudderSysEvents (ruleId);
+CREATE INDEX nodeid_idx                   ON RudderSysEvents (nodeId);
+CREATE INDEX executionTimeStamp_idx       ON RudderSysEvents (executionTimeStamp);
+CREATE INDEX composite_node_execution_idx ON RudderSysEvents (nodeId, executionTimeStamp);
+CREATE INDEX component_idx                ON RudderSysEvents (component);
+CREATE INDEX keyValue_idx                 ON RudderSysEvents (keyValue);
+CREATE INDEX ruleId_idx                   ON RudderSysEvents (ruleId);
 
 /*
  * The table used to store archived agent execution reports. 
@@ -336,8 +336,8 @@ CREATE TABLE RulesDirectivesJoin (
 , PRIMARY KEY(rulePkeyId, directiveId)
 );
 
-CREATE INDEX rule_id_start on Rules (ruleId, startTime);
-CREATE INDEX rule_end on Rules (endTime);
+CREATE INDEX rule_id_start ON Rules (ruleId, startTime);
+CREATE INDEX rule_end      ON Rules (endTime);
 
 CREATE SEQUENCE NodesId START 101;
 
@@ -350,8 +350,8 @@ CREATE TABLE Nodes (
 , endTime         timestamp with time zone
 );
 
-CREATE INDEX nodes_id_start on Nodes (nodeId, startTime);
-CREATE INDEX nodes_end on Nodes (endTime);
+CREATE INDEX nodes_id_start ON Nodes (nodeId, startTime);
+CREATE INDEX nodes_end      ON Nodes (endTime);
 
 /*
  *************************************************************************************

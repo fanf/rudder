@@ -57,23 +57,24 @@ import com.normation.rudder.reports.execution.AgentRunId
 
 class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsRepository with Loggable {
 
-  val baseQuery = "select executiondate, nodeid, ruleid, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents where 1=1 ";
-  val baseArchivedQuery = "select executiondate, nodeid, ruleid, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from archivedruddersysevents where 1=1 ";
-
   val reportsTable = "ruddersysevents"
   val archiveTable = "archivedruddersysevents"
-  val reportsExecutionTable = "reportsexecution"
 
-  val idQuery = "select id, executiondate, nodeid, ruleid, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from ruddersysevents where 1=1 ";
+  private[this] val baseQuery = "select executiondate, nodeid, ruleid, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents where 1=1 ";
+  private[this] val baseArchivedQuery = "select executiondate, nodeid, ruleid, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from archivedruddersysevents where 1=1 ";
+
+  private[this] val reportsExecutionTable = "reportsexecution"
+
+  private[this] val idQuery = "select id, executiondate, nodeid, ruleid, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from ruddersysevents where 1=1 ";
 
   // find the last full run per node
   // we are not looking for older request than interval minutes
-  def lastQuery(interval: Int) = s"select nodeid as Node, max(date) as Time from reportsexecution where date > (now() - interval '${interval} minutes') and complete = true group by nodeid"
-  def lastQueryByNode(interval: Int) = s"select nodeid as Node, max(date) as Time from reportsexecution where date > (now() - interval '${interval} minutes') and nodeid = ? and complete = true group by nodeid"
-  def joinQuery(interval: Int) = "select executiondate, nodeid, ruleId, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents join (" + lastQuery(interval) +" ) as Ordering on Ordering.Node = nodeid and executionTimeStamp = Ordering.Time where 1=1"
-  def joinQueryByNode(interval: Int) = "select executiondate, nodeid, ruleId, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents join (" + lastQueryByNode(interval) +" ) as Ordering on Ordering.Node = nodeid and executionTimeStamp = Ordering.Time where 1=1";
+  private[this] def lastQuery(interval: Int) = s"select nodeid as Node, max(date) as Time from reportsexecution where date > (now() - interval '${interval} minutes') and complete = true group by nodeid"
+  private[this] def lastQueryByNode(interval: Int) = s"select nodeid as Node, max(date) as Time from reportsexecution where date > (now() - interval '${interval} minutes') and nodeid = ? and complete = true group by nodeid"
+  private[this] def joinQuery(interval: Int) = "select executiondate, nodeid, ruleId, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents join (" + lastQuery(interval) +" ) as Ordering on Ordering.Node = nodeid and executionTimeStamp = Ordering.Time where 1=1"
+  private[this] def joinQueryByNode(interval: Int) = "select executiondate, nodeid, ruleId, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents join (" + lastQueryByNode(interval) +" ) as Ordering on Ordering.Node = nodeid and executionTimeStamp = Ordering.Time where 1=1";
 
-  val fetchExecutions = """select T.nodeid, T.executiontimestamp, coalesce(C.iscomplete, false) as complete from
+  private[this] val fetchExecutions = """select T.nodeid, T.executiontimestamp, coalesce(C.iscomplete, false) as complete from
                           (select distinct nodeid, executiontimestamp from ruddersysevents where id > ? and id <= ?) as T left join
                           (select true as isComplete, nodeid, executiontimestamp from
                             ruddersysevents where id > ? and id <= ? and ruleId like 'hasPolicyServer%' and component = 'common' and keyValue = 'EndRun') as C on T.nodeid = C.nodeid and T.executiontimestamp = C.executiontimestamp"""
@@ -90,7 +91,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def findReportByAgentExecution(agentRunIds: Set[AgentRunId]): Box[Seq[Reports]] = {
+ override def findReportByAgentExecution(agentRunIds: Set[AgentRunId]): Box[Seq[Reports]] = {
     val param = agentRunIds.map(x => s"('${x.nodeId.value}','${new Timestamp(x.date.getMillis)}'::timestamp)" ).mkString(",")
 
     /*
@@ -113,77 +114,16 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     boxed(s"get last run reports for ${agentRunIds.size} nodes")(jdbcTemplate.query(query, ReportsMapper).toSeq)
   }
 
+  override def findReportsByNode(nodeId   : NodeId) : Seq[Reports] = {
 
-  def findReportsByRule(
-      ruleId   : RuleId
-    , serial   : Option[Int]
-    , beginDate: Option[DateTime]
-    , endDate  : Option[DateTime]
-  ): Seq[Reports] = {
-    var query = baseQuery + " and ruleId = ? "
-    var array = Buffer[AnyRef](ruleId.value)
-
-    serial match {
-      case None => ;
-      case Some(int) => query = query + " and serial = ?"; array += new java.lang.Integer(int)
-    }
-
-    beginDate match {
-      case None =>
-      case Some(date) => query = query + " and executionTimeStamp > ?"; array += new Timestamp(date.getMillis)
-    }
-
-    endDate match {
-      case None =>
-      case Some(date) => query = query + " and executionTimeStamp < ?"; array += new Timestamp(date.getMillis)
-    }
-
-    jdbcTemplate.query(query,
-          array.toArray[AnyRef],
-          ReportsMapper).toSeq;
-
+    jdbcTemplate.query(
+        baseQuery + " and nodeId = ?  ORDER BY id desc LIMIT 1000"
+      , Array[AnyRef](nodeId.value)
+      , ReportsMapper
+    ).toSeq;
   }
 
-  def findReportsByNode(
-      nodeId   : NodeId
-    , ruleId   : Option[RuleId]
-    , serial   : Option[Int]
-    , beginDate: Option[DateTime]
-    , endDate  : Option[DateTime]
-  ) : Seq[Reports] = {
-    var query = baseQuery + " and nodeId = ? "
-    var array = Buffer[AnyRef](nodeId.value)
-
-    ruleId match {
-      case None =>
-      case Some(cr) => query = query + " and ruleId = ?"; array += cr.value
-
-        // A serial makes sense only if the CR is set
-        serial match {
-         case None => ;
-         case Some(int) => query = query + " and serial = ?"; array += new java.lang.Integer(int)
-      }
-    }
-
-    beginDate match {
-      case None =>
-      case Some(date) => query = query + " and executionDate > ?"; array += new Timestamp(date.getMillis)
-    }
-
-    endDate match {
-      case None =>
-      case Some(date) => query = query + " and executionDate < ?"; array += new Timestamp(date.getMillis)
-    }
-
-    query = query + " ORDER BY id desc LIMIT 1000"
-    jdbcTemplate.query(query,
-          array.toArray[AnyRef],
-          ReportsMapper).toSeq;
-
-
-  }
-
-  def findReportsByNode(
+  override def findReportsByNode(
       nodeId   : NodeId
     , ruleId   : RuleId
     , serial   : Int
@@ -214,7 +154,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
   /**
    * Return the last (really the last, serial wise, with full execution) reports for a rule
    */
-  def findLastReportByRule(
+  override def findLastReportByRule(
       ruleId     : RuleId
     , serial     : Int
     , node       : Option[NodeId]
@@ -241,7 +181,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
   /**
    * Return the last (really the last, serial wise, with full execution) reports for a rule
    */
-  def findLastReportsByRules(
+  override def findLastReportsByRules(
       rulesAndSerials: Set[(RuleId, Int)]
     , runInterval    : Int
   ) : Seq[Reports] = {
@@ -260,7 +200,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
           ReportsMapper).toSeq;
   }
 
-  def findExecutionTimeByNode(
+  override def findExecutionTimeByNode(
       nodeId   : NodeId
     , beginDate: DateTime
     , endDate  : Option[DateTime]
@@ -279,7 +219,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     ).toSeq;
   }
 
-  def getOldestReports() : Box[Option[Reports]] = {
+  override def getOldestReports() : Box[Option[Reports]] = {
     jdbcTemplate.query(baseQuery + " order by executionTimeStamp asc limit 1",
           ReportsMapper).toSeq match {
       case seq if seq.size > 1 => Failure("Too many answer for the latest report in the database")
@@ -288,7 +228,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def getOldestArchivedReports() : Box[Option[Reports]] = {
+  override def getOldestArchivedReports() : Box[Option[Reports]] = {
     jdbcTemplate.query(baseArchivedQuery + " order by executionTimeStamp asc limit 1",
           ReportsMapper).toSeq match {
       case seq if seq.size > 1 => Failure("Too many answer for the latest report in the database")
@@ -297,20 +237,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def getNewestReportOnNode(nodeId:NodeId) : Box[Option[Reports]] = {
-
-    val array = Seq(nodeId.value)
-    val query = baseQuery + s" and nodeid = ? order by executionTimeStamp desc limit 1"
-    jdbcTemplate.query(query,array.toArray[AnyRef],ReportsMapper).toSeq match {
-      case seq if seq.size > 1 => Failure("Too many answer for the latest report in the database")
-      case seq => Full(seq.headOption)
-
-    }
-  }
-
-
-
-  def getNewestReports() : Box[Option[Reports]] = {
+  override def getNewestReports() : Box[Option[Reports]] = {
     jdbcTemplate.query(baseQuery + " order by executionTimeStamp desc limit 1",
           ReportsMapper).toSeq match {
       case seq if seq.size > 1 => Failure("Too many answer for the latest report in the database")
@@ -319,7 +246,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def getNewestArchivedReports() : Box[Option[Reports]] = {
+  override def getNewestArchivedReports() : Box[Option[Reports]] = {
     jdbcTemplate.query(baseArchivedQuery + " order by executionTimeStamp desc limit 1",
           ReportsMapper).toSeq match {
       case seq if seq.size > 1 => Failure("Too many answer for the latest report in the database")
@@ -329,7 +256,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def getDatabaseSize(databaseName:String) : Box[Long] = {
+  override def getDatabaseSize(databaseName:String) : Box[Long] = {
     try {
       jdbcTemplate.query(
           s"""SELECT pg_total_relation_size('${databaseName}') as "size" """
@@ -347,7 +274,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def archiveEntries(date : DateTime) : Box[Int] = {
+  override def archiveEntries(date : DateTime) : Box[Int] = {
     try{
       val migrate = jdbcTemplate.execute("""
           insert into %s
@@ -380,7 +307,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
 
   }
 
-  def deleteEntries(date : DateTime) : Box[Int] = {
+  override def deleteEntries(date : DateTime) : Box[Int] = {
 
     logger.debug("""Deleting report with SQL query: [[
                    | delete from %s  where executionTimeStamp < '%s'
@@ -417,7 +344,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
      }
   }
 
-  def getHighestId : Box[Long] = {
+  override def getHighestId : Box[Long] = {
     val query = "select id from RudderSysEvents order by id desc limit 1"
     try {
       jdbcTemplate.query(query,IdMapper).toSeq match {
@@ -431,7 +358,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def getLastHundredErrorReports(kinds:List[String]) : Box[Seq[(Reports,Long)]] = {
+  override def getLastHundredErrorReports(kinds:List[String]) : Box[Seq[(Reports,Long)]] = {
     val query = "%s and (%s) order by executiondate desc limit 100".format(idQuery,kinds.map("eventtype='%s'".format(_)).mkString(" or "))
       try {
         Full(jdbcTemplate.query(query,ReportsWithIdMapper).toSeq)
@@ -442,7 +369,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
       }
   }
 
-  def getReportsWithLowestId : Box[Option[(Reports,Long)]] = {
+  override def getReportsWithLowestId : Box[Option[(Reports,Long)]] = {
     jdbcTemplate.query(s"${idQuery} order by id asc limit 1",
           ReportsWithIdMapper).toSeq match {
       case seq if seq.size > 1 => Failure("Too many answer for the latest report in the database")
@@ -454,7 +381,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
   /**
    * From an id and an end date, return a list of ReportExecution, and the max ID that has been considered
    */
-  def getReportsfromId(id : Long, endDate : DateTime) : Box[(Seq[ReportExecution], Long)] = {
+  override def getReportsfromId(id : Long, endDate : DateTime) : Box[(Seq[ReportExecution], Long)] = {
     // we first have to fetch the max id
     val queryForMaxId = "select max(id) as id from RudderSysEvents where id > ? and executionTimeStamp < ?"
     val array = Buffer[AnyRef](new java.lang.Long(id), new Timestamp(endDate.getMillis))
@@ -494,7 +421,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
-  def getErrorReportsBeetween(lower : Long, upper:Long,kinds:List[String]) : Box[Seq[Reports]] = {
+  override def getErrorReportsBeetween(lower : Long, upper:Long,kinds:List[String]) : Box[Seq[Reports]] = {
     if (lower>=upper)
       Empty
     else{
