@@ -228,7 +228,7 @@ class ReportingServiceImpl(
                 , None
                 , agentRunInterval
           )
-          ExecutionBatch.getRuleStatus(ruleId, expected, reports, agentRunInterval, compliance)
+          ExecutionBatch.getRuleStatus(expected, reports, agentRunInterval, compliance)
       }
     }
   }

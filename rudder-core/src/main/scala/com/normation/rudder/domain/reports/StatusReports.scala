@@ -34,11 +34,11 @@
 
 package com.normation.rudder.domain.reports
 
-import scala.collection.Seq
+import org.joda.time.DateTime
+
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
-import org.joda.time.DateTime
 
 /**
  * That file contains all the kind of status reports:
@@ -49,6 +49,10 @@ import org.joda.time.DateTime
 
 sealed trait StatusReport {
   def reportType : ReportType
+
+  def getWorseType(reports:Seq[StatusReport]) = {
+    ReportType.getWorseType(reports.map(_.reportType))
+  }
 }
 
 /**
@@ -72,10 +76,7 @@ final case class ComponentStatusReport(
   , unexpectedCptValues: Seq[ComponentValueStatusReport]
 ) extends StatusReport {
 
-  val reportType = {
-    val reports = (componentValues ++ unexpectedCptValues).map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
+  val reportType = getWorseType(componentValues ++ unexpectedCptValues)
 }
 
 
@@ -85,10 +86,7 @@ final case class DirectiveStatusReport(
   , unexpectedComponents: Seq[ComponentStatusReport] // for future use, not used yet
 ) extends StatusReport {
 
-  val reportType = {
-    val reports = (components ++ unexpectedComponents).map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
+  val reportType = getWorseType(components ++ unexpectedComponents)
 }
 
 final case class NodeStatusReport(
@@ -100,10 +98,7 @@ final case class NodeStatusReport(
   , unexpectedDirectives: Seq[DirectiveStatusReport] // for future use, not used yet
 ) extends StatusReport {
 
-  val reportType = {
-    val reports = (directives ++ unexpectedDirectives).map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
+  val reportType = getWorseType(directives ++ unexpectedDirectives)
 }
 
 final case class NodeReport (
@@ -114,10 +109,10 @@ final case class NodeReport (
 
 
 final case class MessageReport(
-      report         : NodeReport
-    , component      : String
-    , value          : String
-    , unexpandedValue: Option[String]
+    report         : NodeReport
+  , component      : String
+  , value          : String
+  , unexpandedValue: Option[String]
 )
 
 sealed trait RuleStatusReport {

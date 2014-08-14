@@ -51,6 +51,8 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.reports._
 import com.normation.rudder.reports.ComplianceMode
 import com.normation.utils.Control.sequence
+import com.normation.rudder.reports.FullCompliance
+import com.normation.rudder.reports.ErrorOnly
 
 /**
  * An execution batch contains the node reports for a given Rule / Directive at a given date
@@ -78,6 +80,11 @@ object ExecutionBatch {
     x.replaceAll(replaceCFEngineVars, ".*").replaceAll("""\\""", """\\\\""")
   }
 
+  case class ContextForNoAnswer(
+      agentExecutionInterval: Int
+    , complianceMode        : ComplianceMode
+  )
+
   /**
    * This is the main entry point to get the detailed reporting
    * It returns a Sequence of NodeStatusReport which gives, for
@@ -91,16 +98,40 @@ object ExecutionBatch {
       nodeId                : NodeId
     , optAgentRunTime       : Option[DateTime]
     , optNodeConfigVersion  : Option[String]
-    , expectedReportsParam  : Seq[RuleExpectedReports]
-    , reportsParam          : Seq[Reports]
+    , expectedReports       : Seq[RuleExpectedReports]
+    , agentExecutionReports : Seq[Reports]
     // this is the agent execution interval, in minutes
     , agentExecutionInterval: Int
     , complianceMode        : ComplianceMode
   ) : Seq[NodeStatusReport] = {
 
-    val rawNodeStatusReports = (for {
-      (ruleId, expectedReports) <- expectedReportsParam.groupBy( _.ruleId)
-      expectedReport            <- expectedReports
+    /**
+     * NoAnswer is interpreted the same for all reports
+     * of ONE node.
+     */
+    val noAnswerInterpretation = {
+      complianceMode match {
+        case FullCompliance =>
+          //in that case, we should have gotten report after a "reasonable" amount of time
+          //after the last rule update, i.e the most recent "begin date" among execpted reports
+          val lastExpectReportModification = expectedReports.map( _.beginDate).maxBy( _.getMillis)
+
+          //the "reasonable" time is 2 times the agent interval, in minutes.
+          if (lastExpectReportModification.plus(agentExecutionInterval*2*1000*60).isAfter(DateTime.now())) {
+            PendingReportType
+          } else {
+            NoAnswerReportType
+          }
+        case ErrorOnly =>
+          //in that mode, an answer is a SUCCESS that should be display
+          //to the user as "No change"
+          SuccessReportType
+      }
+    }
+
+    (for {
+      (ruleId, exr) <- expectedReports.groupBy( _.ruleId)
+      expectedReport            <- exr
       directivesOnNode          <- expectedReport.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _.nodeId == nodeId) )
 
       directiveStatusReports    =  for {
@@ -110,13 +141,13 @@ object ExecutionBatch {
                                     val componentsStatus = for {
                                                              expectedComponent <- expectedDirective.components
                                                            } yield {
-                                                             val componentFilteredReports = reportsParam.filter(x =>
+                                                             val componentFilteredReports = agentExecutionReports.filter(x =>
                                                                x.nodeId == nodeId &&
                                                                x.directiveId == expectedDirective.directiveId &&
                                                                x.component == expectedComponent.componentName
                                                              )
 
-                                                             checkExpectedComponentWithReports(expectedComponent, componentFilteredReports)
+                                                             checkExpectedComponentWithReports(expectedComponent, componentFilteredReports, noAnswerInterpretation)
                                                            }
 
                                     DirectiveStatusReport(expectedDirective.directiveId, componentsStatus, Seq())
@@ -124,17 +155,8 @@ object ExecutionBatch {
     } yield {
       NodeStatusReport(nodeId, optAgentRunTime, optNodeConfigVersion, ruleId, directiveStatusReports, Seq())
     }).toSeq
-
-    interpretNoAnswer(rawNodeStatusReports)
   }
 
-  /**
-   * That method interpret what meaning should be given to "NoAnswer"
-   * report base on when we get them and the compliance mode.
-   */
-  private[this] def interpretNoAnswer(reports: Seq[NodeStatusReport]) : Seq[NodeStatusReport] = {
-      ???
-  }
 
   /**
    * Allows to calculate the status of component for a node.
@@ -148,6 +170,7 @@ object ExecutionBatch {
   private[reports] def checkExpectedComponentWithReports(
       expectedComponent: ReportComponent
     , filteredReports  : Seq[Reports]
+    , noAnswerType     : ReportType
   ) : ComponentStatusReport = {
 
     // First, filter out all the not interesting reports
@@ -166,6 +189,7 @@ object ExecutionBatch {
                                 componentValue
                               , purgedReports
                               , expectedComponent.componentsValues
+                              , noAnswerType
                               )
       ComponentValueStatusReport(
           componentValue
@@ -226,20 +250,21 @@ object ExecutionBatch {
       currentValue   : String
     , filteredReports: Seq[Reports]
     , expectedValues : Seq[String]
+    , noAnswerType   : ReportType
   ) : (ReportType,List[String]) = {
     val unexepectedReports = filteredReports.filterNot(value => expectedValues.contains(value.keyValue))
 
     /* Refactored this function because it was the same behavior for each case*/
-    def getComponentStatus(reports: Seq[Reports]) : (ReportType, List[String]) = {
+    def getComponentStatus(reports: Seq[Reports], valueMatcher: String => Boolean) : (ReportType, List[String]) = {
        reports.filter( x => x.isInstanceOf[ResultErrorReport]).size match {
           case i if i > 0 => (ErrorReportType, reports.map(_.message).toList)
           case _ => {
             reports.size match {
               /* Nothing was received at all for that component so : No Answer or Pending */
-              case 0 if unexepectedReports.size == 0 =>  (NoAnswerReportType, Nil)
+              case 0 if unexepectedReports.size == 0 =>  (noAnswerType, Nil)
               /* Reports were received for that component, but not for that key, that's a missing report */
               case 0 =>  (UnknownReportType, Nil)
-              case x if x == expectedValues.filter( x => x == currentValue).size =>
+              case x if x == expectedValues.filter( x => valueMatcher(x)).size =>
                 (ReportType.getWorseReport(reports), reports.map(_.message).toList)
               case _ => (UnknownReportType,filteredReports.map(_.message).toList)
             }
@@ -250,13 +275,13 @@ object ExecutionBatch {
     currentValue match {
       case "None" =>
         val reports = filteredReports.filter( x => x.keyValue == currentValue )
-        getComponentStatus(reports)
+        getComponentStatus(reports, _ == currentValue)
 
       case matchCFEngineVars(_) =>
         // convert the entry to regexp, and match what can be matched
-         val matchableExpected = replaceCFEngineVars(currentValue)
-         val matchedReports = filteredReports.filter( x => x.keyValue.matches(matchableExpected))
-         getComponentStatus(matchedReports)
+        val matchableExpected = replaceCFEngineVars(currentValue)
+        val matchedReports = filteredReports.filter( x => x.keyValue.matches(matchableExpected))
+        getComponentStatus(matchedReports, _.matches(matchableExpected))
 
       case _: String =>
         // for a given component, if the value is not "None", then we are
@@ -265,7 +290,7 @@ object ExecutionBatch {
         // name collision, but it would be resolved by checking the total
         // number of received reports for that component.
         val keyReports =  filteredReports.filter( x => x.keyValue == currentValue)
-        getComponentStatus(keyReports)
+        getComponentStatus(keyReports, _ == currentValue)
     }
   }
 
@@ -313,8 +338,7 @@ object ExecutionBatch {
    * Get the actual status of a Rule, it returns a list of every directive contained by that Rule
    */
   def getRuleStatus(
-      ruleId                : RuleId
-    , ruleExpectedReports   : RuleExpectedReports
+      ruleExpectedReports   : RuleExpectedReports
     , reportsParam          : Seq[Reports]
     // this is the agent execution interval, in minutes
     , agentExecutionInterval: Int
