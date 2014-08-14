@@ -51,6 +51,8 @@ import net.liftweb.common.Loggable
 import java.sql.BatchUpdateException
 import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.execution.AgentRunId
 
 /**
  *
@@ -64,7 +66,7 @@ System.setProperty("test.postgres", "true")
 
   //clean data base
   def cleanTables() = {
-    jdbcTemplate.execute("DELETE FROM ReportsExecution;")
+    jdbcTemplate.execute("DELETE FROM ReportsExecution; DELETE FROM RudderSysEvents;")
   }
 
 
@@ -81,41 +83,43 @@ System.setProperty("test.postgres", "true")
     Reports(t._1, t._2, t._3,t._4,t._5,t._6,t._7,t._8,t._9,t._10)
   }
 
-  def node(nodeId:String)(lines: (String, String, Int, String, String, DateTime, String, String)*): (String, Seq[Reports]) = {
+  //         nodeId               ruleId  dirId   serial  comp     keyVal   execTime   severity  msg
+  def node(nodeId:String)(lines: (String, String, Int,    String,  String,  DateTime,  String,   String)*): (String, Seq[Reports]) = {
     (nodeId, lines.map(t => toReport((t._6, t._1, t._2, nodeId, t._3,t._4,t._5,t._6,t._7,t._8))))
   }
 
   val run1 = DateTime.now.minusMinutes(5*5).withMillisOfSecond(123) //check that millis are actually used
   val run2 = DateTime.now.minusMinutes(5*4)
-  val reports = (
-    Map[String, Seq[Reports]]() +
-    node("n0")(
-        ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
-    ) +
-    node("n1")(
-        ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
-      , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
-      , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
-      //haha! run2!
-      , ("r1", "d1", 1, "c2", "cv2", run2, "result_success", "msg1")
-    ) +
-    node("n2")(
-        ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
-      , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
-      , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
-    )
-  )
-
-
-  step {
-    slick.insertReports(reports.values.toSeq.flatten)
-  }
+  val run3 = DateTime.now.minusMinutes(5*3)
 
   implicit def toAgentIds(ids:Set[(String, DateTime)]):Set[AgentRunId] = {
     ids.map(t => AgentRunId(NodeId(t._1), t._2))
   }
 
+
+
   "Execution repo" should {
+    val reports = (
+      Map[String, Seq[Reports]]() +
+      node("n0")(
+          ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
+      ) +
+      node("n1")(
+          ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "Start execution")
+        , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
+        , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
+        //haha! run2!
+        , ("r1", "d1", 1, "c2", "cv2", run2, "result_success", "msg1")
+      ) +
+      node("n2")(
+          ("r0", "d1", 1, "c1", "cv1", run1, "result_success", "End execution")
+        , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
+        , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
+      )
+    )
+    step {
+      slick.insertReports(reports.values.toSeq.flatten)
+    }
 
     "find the last reports for node0" in {
       val result = repostsRepo.findReportByAgentExecution(Set(AgentRunId(NodeId("n0"), run1))).openOrThrowException("Test failed with exception")
@@ -133,6 +137,58 @@ System.setProperty("test.postgres", "true")
       val result = repostsRepo.findReportByAgentExecution(runs).openOrThrowException("Test failed with exception")
       result must beEmpty
     }
+  }
+
+  "Finding execution" should {
+    val reports = (
+      Map[String, Seq[Reports]]() +
+      node("n0")(
+          ("hasPolicyServer-root", "d1", 1, "common", "EndRun", run1, "result_success", "End execution")
+      ) +
+      node("n1")(
+        //run1
+          ("hasPolicyServer-root", "d1", 1, "common", "StartRun", run1, "result_success", "Start execution [n1_run1]")
+        , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
+        , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg2")
+        , ("r1", "d1", 1, "c2", "cv1", run1, "result_success", "msg1")
+        , ("r1", "d1", 1, "c2", "cv3", run1, "result_success", "msg3")
+        , ("hasPolicyServer-root", "d1", 1, "common", "EndRun", run1, "result_success", "End execution [n1_run1]")
+        //run2
+        , ("hasPolicyServer-root", "d1", 1, "common", "StartRun", run2, "result_success", "Start execution [n1_run2]")
+        , ("r1", "d1", 1, "c2", "cv2", run2, "result_success", "msg1")
+        //run3
+        , ("hasPolicyServer-root", "d1", 1, "common", "StartRun", run3, "result_success", "Start execution [n1_run3]")
+      ) +
+      node("n2")(
+          ("hasPolicyServer-root", "d1", 1, "common", "EndRun", run1, "result_success", "End execution [n2_run1]")
+        , ("r1", "d1", 1, "c1", "cv1", run1, "result_success", "msg1")
+        , ("r1", "d1", 1, "c2", "cv2", run1, "result_success", "msg1")
+      )
+    )
+    step {
+      cleanTables()
+      slick.insertReports(reports.values.toSeq.flatten)
+    }
+
+
+    /* TODO:
+     * - test with a nodeConfigVersion when run exists without one
+     * - test without a nodeConfigVersion when run exists with one
+     * - test case where there is no StartRun/EndRun
+     */
+    "get reports" in {
+      val res = repostsRepo.getReportsfromId(0, DateTime.now().plusDays(1)).openOrThrowException("Test failed")
+      val expected = Seq(
+          ReportExecution(AgentRunId(NodeId("n1"),run2),None,false)
+        , ReportExecution(AgentRunId(NodeId("n2"),run1),Some("n2_run1"),true)
+        , ReportExecution(AgentRunId(NodeId("n1"),run1),Some("n1_run1"),true)
+        , ReportExecution(AgentRunId(NodeId("n1"),run3),None,false)
+        , ReportExecution(AgentRunId(NodeId("n0"),run1),None,true)
+      )
+
+      res._1 must contain(exactly(expected:_*))
+    }
+
   }
 
 }

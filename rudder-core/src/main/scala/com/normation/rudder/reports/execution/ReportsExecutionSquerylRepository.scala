@@ -82,7 +82,7 @@ case class WoReportsExecutionSquerylRepository (
   def updateExecutions(executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
     //"contains" is only defined regarding the primary key
     def same(x:ReportExecution, y:ReportExecution) = {
-      x.nodeId == y.nodeId && x.date == y.date
+      x.runId == y.runId
     }
 
     def find(r:ReportExecution, seq: Seq[ReportExecution]) = {
@@ -113,7 +113,7 @@ case class WoReportsExecutionSquerylRepository (
                         // nodeConfigurationVersion and the most completed status
                         .flatMap { y =>
                           val completed = x.isCompleted || y.isCompleted
-                          val version = x.nodeConfigVersion
+                          val version = x.nodeConfigVersion.orElse(y.nodeConfigVersion)
                           val toSave = x.copy( isCompleted = completed, nodeConfigVersion = version)
                           if(toSave == y) None else Some(toSave)
                         }

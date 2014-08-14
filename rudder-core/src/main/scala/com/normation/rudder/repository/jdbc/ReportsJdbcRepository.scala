@@ -54,6 +54,9 @@ import org.springframework.dao.DataAccessException
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.domain.reports.Reports
 import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.execution.ReportExecution
 
 class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsRepository with Loggable {
 
@@ -73,12 +76,6 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
   private[this] def lastQueryByNode(interval: Int) = s"select nodeid as Node, max(date) as Time from reportsexecution where date > (now() - interval '${interval} minutes') and nodeid = ? and complete = true group by nodeid"
   private[this] def joinQuery(interval: Int) = "select executiondate, nodeid, ruleId, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents join (" + lastQuery(interval) +" ) as Ordering on Ordering.Node = nodeid and executionTimeStamp = Ordering.Time where 1=1"
   private[this] def joinQueryByNode(interval: Int) = "select executiondate, nodeid, ruleId, directiveid, serial, component, keyValue, executionTimeStamp, eventtype, policy, msg from RudderSysEvents join (" + lastQueryByNode(interval) +" ) as Ordering on Ordering.Node = nodeid and executionTimeStamp = Ordering.Time where 1=1";
-
-  private[this] val fetchExecutions = """select T.nodeid, T.executiontimestamp, coalesce(C.iscomplete, false) as complete from
-                          (select distinct nodeid, executiontimestamp from ruddersysevents where id > ? and id <= ?) as T left join
-                          (select true as isComplete, nodeid, executiontimestamp from
-                            ruddersysevents where id > ? and id <= ? and ruleId like 'hasPolicyServer%' and component = 'common' and keyValue = 'EndRun') as C on T.nodeid = C.nodeid and T.executiontimestamp = C.executiontimestamp"""
-
 
   private[this] def boxed[A](name: String)(body: => A): Box[A] = {
     try {
@@ -384,14 +381,34 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
   override def getReportsfromId(id : Long, endDate : DateTime) : Box[(Seq[ReportExecution], Long)] = {
     // we first have to fetch the max id
     val queryForMaxId = "select max(id) as id from RudderSysEvents where id > ? and executionTimeStamp < ?"
+    val fetchExecutions = """select
+                            |  T.nodeid, T.executiontimestamp, coalesce(C.iscomplete, false) as complete, coalesce(C.msg, '') as nodeconfigversion
+                            |from
+                            |  (select distinct nodeid, executiontimestamp from ruddersysevents where id > ? and id <= ?) as T
+                            |left join
+                            |  (select
+                            |    true as isComplete, nodeid, executiontimestamp, msg
+                            |  from
+                            |    ruddersysevents where id > ? and id <= ? and
+                            |    ruleId like 'hasPolicyServer%' and
+                            |    component = 'common' and keyValue = 'EndRun'
+                            |  ) as C
+                            |on T.nodeid = C.nodeid and T.executiontimestamp = C.executiontimestamp""".stripMargin
+                            //TODO: also get start execution
+
+    val nodeConfigVersionRegex = """.+\[(\w+)\].*""".r
+
     val array = Buffer[AnyRef](new java.lang.Long(id), new Timestamp(endDate.getMillis))
+
+
     for {
       maxId <-
                 try {
                   jdbcTemplate.query(
-                        queryForMaxId
-                      , array.toArray[AnyRef]
-                      , IdMapper).toSeq match {
+                      queryForMaxId
+                    , array.toArray[AnyRef]
+                    , IdMapper
+                  ).toSeq match {
                     case seq if seq.size > 1 => Failure("Too many answer for the highest id in the database")
                     case seq => seq.headOption match {
                       // there is a weird behaviour with max that returns 0
@@ -417,7 +434,17 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
                 }
     } yield {
       // there may be several executions at the same time
-      (reports.distinct, maxId)
+      val r = reports.distinct.map {
+        case ReportExecution(id,Some(version),status) =>
+          //check if we have the version and modify the report accordingly
+          version.trim match {
+            case nodeConfigVersionRegex(version) => ReportExecution(id, Some(version), status)
+            case _ => ReportExecution(id, None, status)
+          }
+        case x => x
+      }
+
+      (r, maxId)
     }
   }
 
@@ -481,10 +508,10 @@ object ReportsWithIdMapper extends RowMapper[(Reports,Long)] {
 object ReportsExecutionMapper extends RowMapper[ReportExecution] {
    def mapRow(rs : ResultSet, rowNum: Int) : ReportExecution = {
      ReportExecution(
-         AgentRunId(NodeId(rs.getString("nodeId")), new DateTime(rs.getTimestamp("executionTimeStamp")))
+         AgentRunId(NodeId(rs.getString("nodeid")), new DateTime(rs.getTimestamp("executiontimestamp")))
        , {
-           val s = rs.getString("nodeConfigVersion")
-           if(s == null) None else Some(s)
+           val s = rs.getString("nodeconfigversion")
+           if(s == null || s.trim == "") None else Some(s)
          }
        , rs.getBoolean("complete")
      )
