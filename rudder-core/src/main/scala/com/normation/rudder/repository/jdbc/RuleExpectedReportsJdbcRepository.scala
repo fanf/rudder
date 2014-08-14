@@ -320,9 +320,9 @@ class RuleExpectedReportsJdbcRepository(
 
   }
 
-  private[this] def getNodes(nodeJoinKey : Int) : Box[Map[NodeId, Seq[String]]] = {
+  private[jdbc] def getNodes(nodeJoinKey : Int) : Box[Map[NodeId, Seq[String]]] = {
     tryo {
-      jdbcTemplate.query("select (nodeId, nodeconfigversions) from expectedreportsnodes where nodeJoinKey = ?",
+      jdbcTemplate.query("select nodeid, nodeconfigversions from expectedreportsnodes where nodeJoinKey = ?",
         Array[AnyRef](new java.lang.Integer(nodeJoinKey)),
         NodeJoinKeyConfigMapper).toMap
     }
@@ -456,6 +456,7 @@ object NodeJoinKeyConfigMapper extends RowMapper[(NodeId, Seq[String])] {
     )
   }
 }
+
 /**
  * Just a plain mapping of the database
  */
