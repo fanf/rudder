@@ -55,6 +55,7 @@ import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
+import com.normation.rudder.domain.reports.NodeConfigVersions
 
 /**
  *
@@ -125,10 +126,10 @@ System.setProperty("test.postgres", "true")
     }
 
     "find the last reports for node0" in {
-      val result = expectedRepostsRepo.getNodes(1).openOrThrowException("Test failed with exception")
-      result.toSeq must contain(exactly(
-          (NodeId("n0"), Seq())
-        , (NodeId("n1"), Seq("abc", "def", "ghi"))
+      val result = expectedRepostsRepo.getNodes(Set(1)).openOrThrowException("Test failed with exception")
+      result.values.toSeq must contain(exactly(
+          NodeConfigVersions(NodeId("n0"), List())
+        , NodeConfigVersions(NodeId("n1"), List("abc", "def", "ghi"))
       ))
     }
   }

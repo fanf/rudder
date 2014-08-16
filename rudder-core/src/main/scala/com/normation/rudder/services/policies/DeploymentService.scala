@@ -147,7 +147,8 @@ trait DeploymentService extends Loggable {
 
       reportTime            =  System.currentTimeMillis
       // need to update this part as well
-      expectedReports       <- setExpectedReports(ruleVals, config, updatedCrs.toMap, deletedCrs)  ?~! "Cannot build expected reports"
+      updatedNodeConfig     =  writtenNodeConfigs.map( _.nodeInfo.id )
+      expectedReports       <- setExpectedReports(ruleVals, config, updatedCrs.toMap, deletedCrs, updatedNodeConfig)  ?~! "Cannot build expected reports"
       timeSetExpectedReport =  (System.currentTimeMillis - reportTime)
       _                     =  logger.debug(s"Reports updated in ${timeSetExpectedReport}ms")
 
@@ -271,7 +272,13 @@ trait DeploymentService extends Loggable {
    * @param ruleVal
    * @return
    */
-  def setExpectedReports(ruleVal : Seq[RuleVal], nodeConfigs: Seq[NodeConfiguration], updateCrs: Map[RuleId, Int], deletedCrs : Seq[RuleId]) : Box[Seq[RuleExpectedReports]]
+  def setExpectedReports(
+      ruleVal : Seq[RuleVal]
+    , nodeConfigs: Seq[NodeConfiguration]
+    , updateCrs: Map[RuleId, Int]
+    , deletedCrs : Seq[RuleId]
+    , updatedNodeConfig: Set[NodeId]
+  ) : Box[Seq[RuleExpectedReports]]
 
   /**
    * Store groups and directive in the database
@@ -784,11 +791,26 @@ trait DeploymentService_setExpectedReports extends DeploymentService {
     }
   }
 
-  def setExpectedReports(ruleVal : Seq[RuleVal], configs: Seq[NodeConfiguration], updatedCrs:Map[RuleId, Int], deletedCrs : Seq[RuleId]) : Box[Seq[RuleExpectedReports]] = {
+  def setExpectedReports(
+      ruleVal          : Seq[RuleVal]
+    , configs          : Seq[NodeConfiguration]
+    , updatedCrs       : Map[RuleId, Int]
+    , deletedCrs       : Seq[RuleId]
+    , updatedNodeConfig: Set[NodeId]
+  ) : Box[Seq[RuleExpectedReports]] = {
     val expandedRuleVal = getExpandedRuleVal(ruleVal, configs)
     val updatedRuleVal = updateRuleVal(expandedRuleVal, updatedCrs)
+    val updatedConfigIds = updatedNodeConfig.flatMap(id =>
+      //we should have all the nodeConfig for the nodeIds, but if it isn't
+      //the case, it seems safer to not try to save a new version of the nodeConfigId
+      //for that node and just ignore it.
+      configs.find( _.nodeInfo.id == id).map { x =>
+        val y = generateNodeConfigVersion(x)
+        (y.nodeId, y.version)
+      }
+    ).toMap
 
-    reportingService.updateExpectedReports(updatedRuleVal, deletedCrs)
+    reportingService.updateExpectedReports(updatedRuleVal, deletedCrs, updatedConfigIds)
   }
 }
 

@@ -87,15 +87,10 @@ class ReportingServiceImpl(
    * @param ruleVal
    * @return
    */
-  def updateExpectedReports(expandedRuleVals : Seq[ExpandedRuleVal], deleteRules : Seq[RuleId]) : Box[Seq[RuleExpectedReports]] = {
+  override def updateExpectedReports(expandedRuleVals : Seq[ExpandedRuleVal], deleteRules : Seq[RuleId], updatedNodeConfigs: Map[NodeId, String]) : Box[Seq[RuleExpectedReports]] = {
     // All the rule and serial. Used to know which one are to be removed
-    val currentConfigurationsToRemove =  MutMap[RuleId, (Int, Set[NodeConfigurationId])]() ++
+    val currentConfigurationsToRemove =  MutMap[RuleId, (Int,  Map[NodeId, NodeConfigVersions])]() ++
       confExpectedRepo.findAllCurrentExpectedReportsWithNodesAndSerial()
-
-    // We can have case of node config version being updated, but node the exepected report
-    // (for example, if the version increment is due to a change in an other directive)
-    // track them for saving
-    var updatedNodeConfigVersion = Set[(RuleId, NodeConfigurationId)]()
 
     val confToClose = MutSet[RuleId]()
     val confToCreate = Buffer[ExpandedRuleVal]()
@@ -108,21 +103,17 @@ class ReportingServiceImpl(
           logger.debug("New rule %s".format(ruleId))
           confToCreate += conf
 
-        case Some((serial, nodeConfigSet)) if ((serial == newSerial)&&(configs.size > 0)) =>
+        case Some((serial, nodeConfigMap)) if ((serial == newSerial)&&(configs.size > 0)) =>
             // no change if same serial and some config appliable, that's ok, trace level
             logger.trace(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed and cache up-to-date: nothing to do")
             // must check that their are no differents nodes in the DB than in the new reports
             // it can happen if we delete nodes in some corner case (detectUpdates(nodes) cannot detect it
             // And it's actually nodes, not node version because version may change and still use the
             // same expected report
-            if (configs.keySet.map( _.nodeId) != nodeConfigSet.map( _.nodeId)) {
+            if (configs.keySet.map( _.nodeId) != nodeConfigMap.keySet) {
               logger.debug("Same serial %s for ruleId %s, but not same node set, it need to be closed and created".format(serial, ruleId))
               confToCreate += conf
               confToClose += ruleId
-            } else {
-              //check for node configuration version to update
-              val changedVersion = configs.keySet.filterNot( nodeConfigSet.contains )
-              updatedNodeConfigVersion ++= changedVersion.map(x => (ruleId, x))
             }
             currentConfigurationsToRemove.remove(ruleId)
 
@@ -196,12 +187,10 @@ class ReportingServiceImpl(
       updatedExpectedReports   <- sequence(groupedContent) { case ((ruleId, serial, nodes), directives) =>
                                     confExpectedRepo.saveExpectedReports(ruleId, serial, directives, nodes)
                                   }
-      nodeConfigToUpdate       =  (updatedNodeConfigVersion.groupBy { case (ruleId, _) => ruleId }).mapValues { case set =>
-                                    set.toSeq.map { case (_, NodeConfigurationId(nodeId, version)) =>
-                                      (nodeId, version)
-                                    }.groupBy( _._1).mapValues( _.map(_._2 ) )
-                                  }
-      updatedNodeConfigVersion <- confExpectedRepo.updateNodeConfigVersion(nodeConfigToUpdate)
+      //we want to save updatedNodeConfiguration that were not already saved
+      //in expected reports.
+      savedNodeConfigs         =  updatedExpectedReports.flatMap( _.directivesOnNodes.flatMap( _.nodeConfigurationIds.map(x=> (x.nodeId,x.version)))).toMap
+      updatedNodeConfigVersion <- confExpectedRepo.updateNodeConfigVersion(updatedNodeConfigs.filterNot(x => savedNodeConfigs.isDefinedAt(x._1)))
     } yield {
       updatedExpectedReports
     }
@@ -280,7 +269,7 @@ class ReportingServiceImpl(
                         //in that case, we don't have any reports, and no mean to know the nodeConfigVersion
                         //could be. Just get the last expected report for that node
                         for {
-                          expected <- confExpectedRepo.findCurrentExpectedReportsByNode(nodeId)
+                          expected <- confExpectedRepo.findLatestExpectedReportsByNode(nodeId)
                         } yield {
                           (None, None, expected, Seq())
                         }
@@ -288,7 +277,7 @@ class ReportingServiceImpl(
                         case None =>
                           //this is a migration mode, look for last reports
                           for {
-                            expected <- confExpectedRepo.findCurrentExpectedReportsByNode(nodeId)
+                            expected <- confExpectedRepo.findLatestExpectedReportsByNode(nodeId)
                             //Question: shouldn't we get reports based on the run.runId.date ?
                             reports  <- reportsRepository.findReportByAgentExecution(Set(run.runId))
                           } yield {

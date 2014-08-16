@@ -73,15 +73,15 @@ trait RuleExpectedReportsRepository {
    * For only the last version (and so only one NodeConfigurationId) is
    * returned for each nodeJoinKey
    */
-  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Set[NodeConfigurationId])]
+  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Map[NodeId, NodeConfigVersions])]
 
 
   /**
-   * Return currents expectedreports (the one still pending) for this server
-   * @param nodeId
-   * @return
+   * Return currents expectedreports (the one still pending) for this server, but in the
+   * case where we don't know the node config version
    */
-  def findCurrentExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]]
+  //only used in reporting service
+  def findLatestExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]]
 
 
  /**
@@ -110,6 +110,5 @@ trait RuleExpectedReportsRepository {
   /**
    * Update the list of nodeConfigVersion for the given nodes
    */
-  def updateNodeConfigVersion(toUpdate: Map[RuleId, Map[NodeId, Seq[String]]]): Box[Map[RuleId, Map[NodeId, Seq[String]]]]
-
+  def updateNodeConfigVersion(toUpdate: Map[NodeId, String]): Box[Seq[(Int,NodeConfigVersions)]]
 }

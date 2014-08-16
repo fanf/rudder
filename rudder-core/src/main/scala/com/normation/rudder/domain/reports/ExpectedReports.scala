@@ -102,3 +102,9 @@ final case class NodeConfigurationId(
     nodeId : NodeId
   , version: String
 )
+ final case class NodeConfigVersions(
+     nodeId : NodeId
+     //the most recent version is the head
+     //and the list can be empty
+   , version: List[String]
+ )

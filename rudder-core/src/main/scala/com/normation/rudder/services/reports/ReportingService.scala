@@ -38,6 +38,7 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports.DirectiveRuleStatusReport
+import com.normation.rudder.domain.reports.NodeConfigurationId
 import com.normation.rudder.domain.reports.NodeStatusReport
 import com.normation.rudder.domain.reports.RuleExpectedReports
 
@@ -60,8 +61,11 @@ trait ReportingService {
    * If it was present and not changed, nothing is done for it
    * If it changed, then the previous version is closed, and the new one is opened
    */
-  def updateExpectedReports(ruleVal : Seq[ExpandedRuleVal], deletedCrs : Seq[RuleId]) : Box[Seq[RuleExpectedReports]]
-
+  def updateExpectedReports(
+      expandedRuleVals  : Seq[ExpandedRuleVal]
+    , deleteRules       : Seq[RuleId]
+    , updatedNodeConfigs: Map[NodeId, String]
+  ) : Box[Seq[RuleExpectedReports]]
 
 
   def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]]
