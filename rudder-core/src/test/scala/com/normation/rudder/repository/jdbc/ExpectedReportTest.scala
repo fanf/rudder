@@ -68,6 +68,8 @@ import com.normation.rudder.domain.reports.RuleExpectedReports
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import com.normation.rudder.domain.reports.DirectivesOnNodes
 import com.normation.rudder.domain.reports.NodeConfigVersion
+import com.normation.rudder.domain.reports.NodeConfigVersions
+import net.liftweb.common.Failure
 
 /**
  *
@@ -167,7 +169,7 @@ System.setProperty("test.postgres", "true")
 
     "find the last reports for nodejoinkey" in {
       val result = expectedReportsRepo.getNodes(Set(1)).openOrThrowException("Test failed with exception")
-      result.values.toSeq must contain(exactly(
+      result.values.map( _.map { case (x,y) => NodeConfigVersions(x,y) } ).flatten.toSeq must contain(exactly(
           NodeConfigVersions(NodeId("n0"), List())
           //the order of values is important, as head is most recent
         , NodeConfigVersions(NodeId("n1"), List("ghi", "def", "abc").map(NodeConfigVersion(_)))
@@ -176,7 +178,7 @@ System.setProperty("test.postgres", "true")
 
     "correctly sort version for a node and several nodejoinkey" in {
       val result = expectedReportsRepo.getNodes(Set(1,4)).openOrThrowException("Test failed with exception")
-      result.values.toSeq must contain(exactly(
+      result.values.map( _.map { case (x,y) => NodeConfigVersions(x,y) } ).flatten.toSeq must contain(exactly(
           NodeConfigVersions(NodeId("n0"), List())
           //the order of values is important, as head is most recent
         , NodeConfigVersions(NodeId("n1"), List("pqr","mno","ghi", "def", "abc").map(NodeConfigVersion(_)))
@@ -217,7 +219,7 @@ System.setProperty("test.postgres", "true")
         val nodes = expectedReportsNodesTable.list
         val directiveOnNodes = Seq(DirectivesOnNodes(100, nodeConfigIds, directiveExpectedReports))
 
-        compareER(inserted.openOrThrowException("Test failed"), RuleExpectedReports(r1, serial, directiveOnNodes, DateTime.now, None))
+        compareER(inserted.openOrThrowException("Test failed"), RuleExpectedReports(r1, serial, directiveOnNodes, DateTime.now, None)) and
         reports.size === 1 and compareSlickER(reports(0), expected) and
         nodes.size === 2 and (nodes must contain(exactly(
             SlickExpectedReportsNodes(100, "n1", """["n1_v1"]""")
@@ -227,12 +229,13 @@ System.setProperty("test.postgres", "true")
     }
 
     "saving the same exactly, nothing change" in {
-      expectedReportsRepo.saveExpectedReports(r1, serial, directiveExpectedReports, nodeConfigIds)
+      val inserted = expectedReportsRepo.saveExpectedReports(r1, serial, directiveExpectedReports, nodeConfigIds)
 
       slickExec { implicit s =>
         val reports =  expectedReportsTable.list
         val nodes = expectedReportsNodesTable.list
 
+        inserted.isInstanceOf[Failure] and
         reports.size === 1 and compareSlickER(reports(0), expected) and
         nodes.size === 2 and (nodes must contain(exactly(
             SlickExpectedReportsNodes(100, "n1", """["n1_v1"]""")

@@ -1234,7 +1234,7 @@ object RudderConfig extends Loggable {
   private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(
         configurationExpectedRepo
       , reportsRepositoryImpl
-      , roReportExecutionsRepository
+      , roReportsExecutionSquerylRepository
       , new ComputeCardinalityOfDirectiveVal()
       , configService.agent_run_interval
       , configService.rudder_compliance_mode
