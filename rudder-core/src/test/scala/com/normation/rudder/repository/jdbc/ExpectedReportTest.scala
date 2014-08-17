@@ -57,6 +57,17 @@ import com.normation.rudder.domain.reports.RuleExpectedReports
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import com.normation.rudder.domain.reports.NodeConfigVersions
 import com.normation.rudder.domain.reports.NodeConfigVersion
+import com.normation.rudder.domain.reports.NodeConfigId
+import com.normation.rudder.domain.reports.NodeConfigVersion
+import com.normation.rudder.domain.reports.NodeConfigVersion
+import com.normation.rudder.domain.reports.DirectiveExpectedReports
+import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.domain.reports.ReportComponent
+import com.normation.rudder.domain.reports.RuleExpectedReports
+import com.normation.rudder.domain.reports.RuleExpectedReports
+import com.normation.rudder.domain.reports.RuleExpectedReports
+import com.normation.rudder.domain.reports.DirectivesOnNodes
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 /**
  *
@@ -73,7 +84,7 @@ System.setProperty("test.postgres", "true")
     jdbcTemplate.execute("DELETE FROM expectedReports; DELETE FROM expectedReportsNodes;")
   }
 
-  val expectedRepostsRepo = new RuleExpectedReportsJdbcRepository(jdbcTemplate, new DataSourceTransactionManager(dataSource))
+  val expectedReportsRepo = new RuleExpectedReportsJdbcRepository(jdbcTemplate, new DataSourceTransactionManager(dataSource))
   val slick = new ExpectedReportsSchema(dataSource)
   import slick._
 
@@ -87,12 +98,35 @@ System.setProperty("test.postgres", "true")
     Reports(t._1, t._2, t._3,t._4,t._5,t._6,t._7,t._8,t._9,t._10)
   }
 
+  implicit def toNodeConfigIds(seq:Seq[(String, String)]) = seq.map(x => NodeConfigId(NodeId(x._1), NodeConfigVersion(x._2)))
+  implicit def toMapNodeConfig(seq:Seq[(String, String)]) = seq.map(x => (NodeId(x._1), Some(NodeConfigVersion(x._2)))).toMap
+
   val run1 = DateTime.now.minusMinutes(5*5).withMillisOfSecond(123) //check that millis are actually used
   val run2 = DateTime.now.minusMinutes(5*4)
   val run3 = DateTime.now.minusMinutes(5*3)
 
   implicit def toSlickExpectedReportsNodes(nodeJoin: Int, nodeId: String, nodeConfigVersions: String): SlickExpectedReportsNodes = {
     SlickExpectedReportsNodes(nodeJoin, nodeId, nodeConfigVersions)
+  }
+
+
+  def compareSlickER(report: SlickExpectedReports, expected: SlickExpectedReports) = {
+    report.pkId === expected.pkId and
+    report.nodeJoinKey === expected.nodeJoinKey and
+    report.serial === expected.serial and
+    report.directiveId === expected.directiveId and
+    report.component === expected.component and
+    report.cardinality === expected.cardinality and
+    report.componentsValues === expected.componentsValues and
+    report.unexpandedComponentsValues === expected.unexpandedComponentsValues and
+    report.endDate === expected.endDate
+  }
+
+  def compareER(report: RuleExpectedReports, expected: RuleExpectedReports) = {
+    report.ruleId === expected.ruleId and
+    report.serial === expected.serial and
+    (report.directivesOnNodes must contain(exactly( expected.directivesOnNodes:_*)))
+
   }
 
   "Finding nodes" should {
@@ -132,7 +166,7 @@ System.setProperty("test.postgres", "true")
     }
 
     "find the last reports for nodejoinkey" in {
-      val result = expectedRepostsRepo.getNodes(Set(1)).openOrThrowException("Test failed with exception")
+      val result = expectedReportsRepo.getNodes(Set(1)).openOrThrowException("Test failed with exception")
       result.values.toSeq must contain(exactly(
           NodeConfigVersions(NodeId("n0"), List())
           //the order of values is important, as head is most recent
@@ -141,13 +175,72 @@ System.setProperty("test.postgres", "true")
     }
 
     "correctly sort version for a node and several nodejoinkey" in {
-      val result = expectedRepostsRepo.getNodes(Set(1,4)).openOrThrowException("Test failed with exception")
+      val result = expectedReportsRepo.getNodes(Set(1,4)).openOrThrowException("Test failed with exception")
       result.values.toSeq must contain(exactly(
           NodeConfigVersions(NodeId("n0"), List())
           //the order of values is important, as head is most recent
         , NodeConfigVersions(NodeId("n1"), List("pqr","mno","ghi", "def", "abc").map(NodeConfigVersion(_)))
       ))
     }
+  }
+
+
+  /*
+   * Testing updates
+   */
+  "Updating from a clean expected reports table" should {
+    step {
+      cleanTables
+      //reset nodeJoinKey sequence to 100
+      jdbcTemplate.execute("ALTER SEQUENCE ruleVersionId RESTART WITH 100;")
+      jdbcTemplate.execute("ALTER SEQUENCE ruleSerialId RESTART WITH 100;")
+
+    }
+    val r1 = RuleId("r1")
+    val serial = 42
+    val nodeConfigIds = Seq( ("n1", "n1_v1"), ("n2", "n2_v1") )
+    val c1 = ReportComponent("c1", 1, Seq("c1_v1"), Seq())
+    val d1 = DirectiveExpectedReports(DirectiveId("d1"),Seq(c1))
+    val directiveExpectedReports = Seq(d1)
+
+    val expected = SlickExpectedReports(Some(100), 100, r1.value, serial, d1.directiveId.value
+      , c1.componentName, c1.cardinality, ComponentsValuesSerialiser.serializeComponents(c1.componentsValues)
+      , "[]", DateTime.now, None
+    )
+
+
+    "the first time, just insert" in {
+      val inserted = expectedReportsRepo.saveExpectedReports(r1, serial, directiveExpectedReports, nodeConfigIds)
+
+      slickExec { implicit s =>
+        val reports =  expectedReportsTable.list
+        val nodes = expectedReportsNodesTable.list
+        val directiveOnNodes = Seq(DirectivesOnNodes(100, nodeConfigIds, directiveExpectedReports))
+
+        compareER(inserted.openOrThrowException("Test failed"), RuleExpectedReports(r1, serial, directiveOnNodes, DateTime.now, None))
+        reports.size === 1 and compareSlickER(reports(0), expected) and
+        nodes.size === 2 and (nodes must contain(exactly(
+            SlickExpectedReportsNodes(100, "n1", """["n1_v1"]""")
+          , SlickExpectedReportsNodes(100, "n2", """["n2_v1"]""")
+        )))
+      }
+    }
+
+    "saving the same exactly, nothing change" in {
+      expectedReportsRepo.saveExpectedReports(r1, serial, directiveExpectedReports, nodeConfigIds)
+
+      slickExec { implicit s =>
+        val reports =  expectedReportsTable.list
+        val nodes = expectedReportsNodesTable.list
+
+        reports.size === 1 and compareSlickER(reports(0), expected) and
+        nodes.size === 2 and (nodes must contain(exactly(
+            SlickExpectedReportsNodes(100, "n1", """["n1_v1"]""")
+          , SlickExpectedReportsNodes(100, "n2", """["n2_v1"]""")
+        )))
+      }
+    }
+
   }
 
 }
@@ -165,7 +258,7 @@ class ExpectedReportsSchema(datasource: DataSource) extends Loggable {
     , componentsValues          : String
     , unexpandedComponentsValues: String
     , beginDate                 : DateTime
-    , endDate                   : DateTime
+    , endDate                   : Option[DateTime]
   )
 
   final case class SlickExpectedReportsNodes(
@@ -190,12 +283,12 @@ class ExpectedReportsSchema(datasource: DataSource) extends Loggable {
     def componentsValues = column[String]("componentsvalues")
     def unexpandedComponentsValues = column[String]("unexpandedcomponentsvalues")
     def beginDate = column[DateTime]("begindate")
-    def endDate = column[DateTime]("enddate")
+    def endDate = column[DateTime]("enddate", O.Nullable)
 
     // Every table needs a * projection with the same type as the table's type parameter
     def * = (
         pkId.?, nodeJoinKey, ruleId, serial, directiveId, component,
-        cardinality, componentsValues, unexpandedComponentsValues, beginDate, endDate
+        cardinality, componentsValues, unexpandedComponentsValues, beginDate, endDate.?
     ) <> (SlickExpectedReports.tupled, SlickExpectedReports.unapply)
   }
 

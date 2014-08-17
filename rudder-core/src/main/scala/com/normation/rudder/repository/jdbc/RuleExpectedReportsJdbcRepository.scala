@@ -62,9 +62,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 class RuleExpectedReportsJdbcRepository(
     jdbcTemplate      : JdbcTemplate
   , transactionManager: PlatformTransactionManager
-  ) extends RuleExpectedReportsRepository {
-
-  val logger = LoggerFactory.getLogger(classOf[RuleExpectedReportsJdbcRepository])
+  ) extends RuleExpectedReportsRepository with Loggable {
 
   /**
    * We need to create transaction for the insertion of expected reports
@@ -74,8 +72,13 @@ class RuleExpectedReportsJdbcRepository(
    */
   val transactionTemplate = new org.springframework.transaction.support.TransactionTemplate(transactionManager)
 
-  val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate from expectedreports where 1=1 ";
-
+  val expectedReportsWithNodeQuery ="""
+          select
+            pkid, expectedreports.nodejoinkey, ruleid,directiveid, serial, component, componentsvalues, unexpandedComponentsValues,
+            cardinality, begindate, enddate, expectedreportsnodes.nodeid, expectedreportsnodes.nodeconfigversions
+          from expectedreports
+          join expectedreportsnodes on expectedreportsnodes.nodejoinkey = expectedreports.nodejoinkey
+          where 1=1 """
 
   override def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigId): Box[Seq[RuleExpectedReports]] = {
     /*
@@ -89,11 +92,9 @@ class RuleExpectedReportsJdbcRepository(
         where B.nodeId = ? and B.nodeconfigversions like ?
       ) as J on A.nodejoinkey = J.nodejoinkey;"""
 
-    try {
+    tryo(
       toRuleExpectedReports(jdbcTemplate.query(query, Array[AnyRef](nodeConfigId.nodeId.value, "%"+nodeConfigId.version+"%"), RuleExpectedReportsMapper).toSeq)
-    } catch {
-      case e:Exception => Failure(s"Error when getting expected report for node '${nodeConfigId.nodeId.value}' and configuration version '${nodeConfigId.version}'", Full(e), Empty)
-    }
+    ) ?~! s"Error when getting expected report for node '${nodeConfigId.nodeId.value}' and configuration version '${nodeConfigId.version}'"
   }
 
   override def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Map[NodeId, NodeConfigVersions])] = {
@@ -114,19 +115,10 @@ class RuleExpectedReportsJdbcRepository(
    * @return
    */
   override def findCurrentExpectedReports(ruleId : RuleId) : Box[Option[RuleExpectedReports]] = {
-    try {
-      toRuleExpectedReport(jdbcTemplate.query(baseQuery + " and enddate is null and ruleid = ?", Array[AnyRef](ruleId.value), RuleExpectedReportsMapper).toSeq)
-    } catch {
-      case e:Exception => Failure("Error when getting expected report for rule " + ruleId.value, Full(e), Empty)
-    }
+    getRuleExpectedReport(" and enddate is null and ruleid = ?", Array[AnyRef](ruleId.value))
   }
   private[this] def findCurrentExpectedReportsForRules(ruleIds : Set[RuleId]) : Box[Seq[RuleExpectedReports]] = {
-    val in = ruleIds.map( _.value ).mkString(",")
-    try {
-      toRuleExpectedReports(jdbcTemplate.query(baseQuery + " and enddate is null and ruleid in (?)", Array[AnyRef](in), RuleExpectedReportsMapper).toSeq)
-    } catch {
-      case e:Exception => Failure("Error when getting expected report for rules " + in, Full(e), Empty)
-    }
+    getRuleExpectedReports(s" and enddate is null and ruleid in (${ruleIds.map( _.value ).mkString(",")})", Array[AnyRef]())
   }
 
   /**
@@ -170,7 +162,7 @@ class RuleExpectedReportsJdbcRepository(
     , directiveExpectedReports: Seq[DirectiveExpectedReports]
     , nodeConfigIds           : Seq[NodeConfigId]
   ) : Box[RuleExpectedReports] = {
-     logger.debug("Saving expected report for rule {}", ruleId.value)
+     logger.debug(s"Saving expected report for rule '${ruleId.value}'")
 // TODO : store also the unexpanded
      findCurrentExpectedReports(ruleId) match {
        case e: EmptyBox => e
@@ -237,7 +229,7 @@ class RuleExpectedReportsJdbcRepository(
         // save new nodeconfiguration - no need to check for existing version for them
         for (config <- nodeConfigIds) {
           jdbcTemplate.update("insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversions) values (?,?,?)",
-            new java.lang.Integer(nodeJoinKey), config.nodeId, config.version
+            new java.lang.Integer(nodeJoinKey), config.nodeId.value, NodeConfigVersionsSerializer.serialize(List(config.version))
           )
         }
 
@@ -257,12 +249,9 @@ class RuleExpectedReportsJdbcRepository(
    * @return
    */
   override def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]] = {
-    var query = baseQuery + " and beginDate < ? and coalesce(endDate, ?) >= ? "
-    var array = scala.collection.mutable.Buffer[AnyRef](new Timestamp(endDate.getMillis), new Timestamp(beginDate.getMillis), new Timestamp(beginDate.getMillis))
+    val params = Array[AnyRef](new Timestamp(endDate.getMillis), new Timestamp(beginDate.getMillis), new Timestamp(beginDate.getMillis))
 
-    toRuleExpectedReports(jdbcTemplate.query(query,
-          array.toArray[AnyRef],
-          RuleExpectedReportsMapper).toSeq)
+    getRuleExpectedReports(" and beginDate < ? and coalesce(endDate, ?) >= ? ", params)
   }
 
   /**
@@ -327,16 +316,7 @@ class RuleExpectedReportsJdbcRepository(
    * case where we don't know the node config version
    */
   override def findLatestExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]] = {
-    val joinQuery =
-      s"""select pkid, expectedreports.nodejoinkey, ruleid,directiveid, serial, component, componentsvalues, unexpandedComponentsValues, cardinality, begindate, enddate
-          from expectedreports
-          join expectedreportsnodes on expectedreportsnodes.nodejoinkey = expectedreports.nodejoinkey
-          where enddate is null and  expectedreportsnodes.nodeId = ?"""
-
-    toRuleExpectedReports(jdbcTemplate.query(joinQuery,
-          Array[AnyRef](nodeId.value),
-          RuleExpectedReportsMapper).toSeq)
-
+    getRuleExpectedReports(" and enddate is null and  expectedreportsnodes.nodeId = ?", Array[AnyRef](nodeId.value))
   }
 
   /**
@@ -374,11 +354,14 @@ class RuleExpectedReportsJdbcRepository(
   /**
    * Effectively convert lines from the DB to RuleExpectedReports
    */
-  private[this] def toRuleExpectedReports(entries : Seq[ExpectedConfRuleMapping]) : Box[Seq[RuleExpectedReports]] = {
+  private[this] def toRuleExpectedReports(entries:Seq[ExpectedConfRuleMapping]) : Seq[RuleExpectedReports] = {
     //find nodeConfigId by nodeJoinKey
     val nodeConfigIds = entries.groupBy( _.nodeJoinKey ).mapValues { _.map(x => (x.nodeId, x.configVersions.headOption)).toMap }
 
-    Full(entries.groupBy( entry => SerialedRuleId(entry.ruleId, entry.serial)).map { case (key, seq) =>
+    //only keep entries
+
+
+    entries.groupBy( entry => SerialedRuleId(entry.ruleId, entry.serial)).map { case (key, seq) =>
       // now we need to group elements of the seq together,  based on nodeJoinKey
       val directivesOnNode = seq.groupBy(x => x.nodeJoinKey).map { case (nodeJoinKey, mappedEntries) =>
         // need to convert to group everything by directiveId, the convert to DirectiveExpectedReports
@@ -397,12 +380,19 @@ class RuleExpectedReportsJdbcRepository(
         , seq.head.beginDate
         , seq.head.endDate
       )
-    }.toSeq)
-
+    }.toSeq
   }
 
-  private[this] def toRuleExpectedReport(entries : Seq[ExpectedConfRuleMapping]) : Box[Option[RuleExpectedReports]] = {
-      toRuleExpectedReports(entries)  match {
+  private[this] def getRuleExpectedReports(whereClause: String, params: Array[AnyRef]) : Box[Seq[RuleExpectedReports]] = {
+    for {
+      entries <- tryo(jdbcTemplate.query(expectedReportsWithNodeQuery + whereClause, params, RuleExpectedReportsMapper).toSeq)
+    } yield {
+      toRuleExpectedReports(entries)
+    }
+  }
+
+  private[this] def getRuleExpectedReport(whereClause: String, params: Array[AnyRef]) : Box[Option[RuleExpectedReports]] = {
+      getRuleExpectedReports(whereClause, params)  match {
         case Empty => Empty
         case f:Failure =>
           logger.error(s"Error when getting expected report: ${f.messageChain}")
@@ -439,9 +429,7 @@ object RuleExpectedReportsMapper extends RowMapper[ExpectedConfRuleMapping] {
           Some(new DateTime(rs.getTimestamp("endDate")))
         } else None
       , NodeId(rs.getString("nodeid"))
-      , if(rs.getTimestamp("date") == null) None else Some(new DateTime(rs.getTimestamp("date")))
-      , rs.getBoolean("complete")
-      , NodeConfigVersionsSerializer.unserialize(rs.getString("nodeConfigVersion"))
+      , NodeConfigVersionsSerializer.unserialize(rs.getString("nodeconfigversions"))
     )
   }
 }
@@ -481,8 +469,6 @@ case class ExpectedConfRuleMapping(
   , val beginDate : DateTime = DateTime.now()
   , val endDate : Option[DateTime] = None
   , val nodeId: NodeId
-  , val agentRunTime: Option[DateTime]
-  , val isCompleted: Boolean
   , val configVersions: List[NodeConfigVersion]
 ) extends HashcodeCaching
 
