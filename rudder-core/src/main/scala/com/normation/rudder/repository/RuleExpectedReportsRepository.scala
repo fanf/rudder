@@ -110,5 +110,5 @@ trait RuleExpectedReportsRepository {
   /**
    * Update the list of nodeConfigVersion for the given nodes
    */
-  def updateNodeConfigVersion(toUpdate: Map[NodeId, String]): Box[Seq[(Int,NodeConfigVersions)]]
+  def updateNodeConfigVersion(toUpdate: Map[NodeId, NodeConfigVersion]): Box[Seq[(Int,NodeConfigVersions)]]
 }

@@ -53,7 +53,7 @@ class ExecutionBatchTest extends Specification {
   private implicit def str2directiveId(s:String) = DirectiveId(s)
   private implicit def str2ruleId(s:String) = RuleId(s)
   private implicit def str2nodeId(s:String) = NodeId(s)
-  private implicit def str2nodeConfigIds(ss:Seq[String]) = ss.map(s =>  (NodeId(s), Some("version_" + s))).toMap
+  private implicit def str2nodeConfigIds(ss:Seq[String]) = ss.map(s =>  (NodeId(s), Some(NodeConfigVersion("version_" + s)))).toMap
 
 
 

@@ -36,6 +36,7 @@ package com.normation.rudder.reports.execution
 
 import com.normation.inventory.domain.NodeId
 import org.joda.time.DateTime
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 
 final case class AgentRunId(
@@ -48,6 +49,6 @@ final case class AgentRunId(
  */
 final case class ReportExecution (
     runId            : AgentRunId
-  , nodeConfigVersion: Option[String]
+  , nodeConfigVersion: Option[NodeConfigVersion]
   , isCompleted      : Boolean
 )

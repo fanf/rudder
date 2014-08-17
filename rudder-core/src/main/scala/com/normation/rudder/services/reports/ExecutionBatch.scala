@@ -90,7 +90,7 @@ object ExecutionBatch {
   def getNodeStatusReports(
       nodeId                : NodeId
     , optAgentRunTime       : Option[DateTime]
-    , optNodeConfigVersion  : Option[String]
+    , optNodeConfigVersion  : Option[NodeConfigVersion]
     , expectedReports       : Seq[RuleExpectedReports]
     , agentExecutionReports : Seq[Reports]
     // this is the agent execution interval, in minutes

@@ -53,6 +53,7 @@ import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 /**
  *
@@ -180,8 +181,8 @@ System.setProperty("test.postgres", "true")
       val res = repostsRepo.getReportsfromId(0, DateTime.now().plusDays(1)).openOrThrowException("Test failed")
       val expected = Seq(
           ReportExecution(AgentRunId(NodeId("n1"),run2),None,false)
-        , ReportExecution(AgentRunId(NodeId("n2"),run1),Some("n2_run1"),true)
-        , ReportExecution(AgentRunId(NodeId("n1"),run1),Some("n1_run1"),true)
+        , ReportExecution(AgentRunId(NodeId("n2"),run1),Some(NodeConfigVersion("n2_run1")),true)
+        , ReportExecution(AgentRunId(NodeId("n1"),run1),Some(NodeConfigVersion("n1_run1")),true)
         , ReportExecution(AgentRunId(NodeId("n1"),run3),None,false)
         , ReportExecution(AgentRunId(NodeId("n0"),run1),None,true)
       )

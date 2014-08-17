@@ -437,8 +437,8 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
       val r = reports.distinct.map {
         case ReportExecution(id,Some(version),status) =>
           //check if we have the version and modify the report accordingly
-          version.trim match {
-            case nodeConfigVersionRegex(version) => ReportExecution(id, Some(version), status)
+          version match {
+            case nodeConfigVersionRegex(v) => ReportExecution(id, Some(NodeConfigVersion(v)), status)
             case _ => ReportExecution(id, None, status)
           }
         case x => x
@@ -511,7 +511,7 @@ object ReportsExecutionMapper extends RowMapper[ReportExecution] {
          AgentRunId(NodeId(rs.getString("nodeid")), new DateTime(rs.getTimestamp("executiontimestamp")))
        , {
            val s = rs.getString("nodeconfigversion")
-           if(s == null || s.trim == "") None else Some(s)
+           if(s == null || s.trim == "") None else Some(NodeConfigVersion(s))
          }
        , rs.getBoolean("complete")
      )

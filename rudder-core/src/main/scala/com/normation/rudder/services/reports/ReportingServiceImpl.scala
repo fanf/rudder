@@ -87,7 +87,7 @@ class ReportingServiceImpl(
    * @param ruleVal
    * @return
    */
-  override def updateExpectedReports(expandedRuleVals : Seq[ExpandedRuleVal], deleteRules : Seq[RuleId], updatedNodeConfigs: Map[NodeId, String]) : Box[Seq[RuleExpectedReports]] = {
+  override def updateExpectedReports(expandedRuleVals : Seq[ExpandedRuleVal], deleteRules : Seq[RuleId], updatedNodeConfigs: Map[NodeId, NodeConfigVersion]) : Box[Seq[RuleExpectedReports]] = {
     // All the rule and serial. Used to know which one are to be removed
     val currentConfigurationsToRemove =  MutMap[RuleId, (Int,  Map[NodeId, NodeConfigVersions])]() ++
       confExpectedRepo.findAllCurrentExpectedReportsWithNodesAndSerial()

@@ -52,6 +52,7 @@ import java.sql.ResultSet
 import org.specs2.matcher.BeEqualTo
 import org.specs2.specification.BeforeExample
 import com.normation.rudder.reports.execution.AgentRunId
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 
 /**
@@ -83,8 +84,8 @@ class ReportExecutionsTest extends DBCommon {
 
   "Execution repo" should {
     val runs = Seq(
-        ReportExecution(AgentRunId(n1, runMinus2), Some("nodeConfig_n1_v1"), true)
-      , ReportExecution(AgentRunId(n1, runMinus1), Some("nodeConfig_n1_v1"), false)
+        ReportExecution(AgentRunId(n1, runMinus2), Some(NodeConfigVersion("nodeConfig_n1_v1")), true)
+      , ReportExecution(AgentRunId(n1, runMinus1), Some(NodeConfigVersion("nodeConfig_n1_v1")), false)
     )
 
     "correctly insert" in {
@@ -107,9 +108,9 @@ class ReportExecutionsTest extends DBCommon {
 
 
   val initRuns = Seq(
-      ReportExecution(AgentRunId(n1, runMinus2.minusMinutes(5)), Some("nodeConfig_n1_v1"), true)
-    , ReportExecution(AgentRunId(n1, runMinus2), Some("nodeConfig_n1_v1"), true)
-    , ReportExecution(AgentRunId(n1, runMinus1), Some("nodeConfig_n1_v1"), false)
+      ReportExecution(AgentRunId(n1, runMinus2.minusMinutes(5)), Some(NodeConfigVersion("nodeConfig_n1_v1")), true)
+    , ReportExecution(AgentRunId(n1, runMinus2), Some(NodeConfigVersion("nodeConfig_n1_v1")), true)
+    , ReportExecution(AgentRunId(n1, runMinus1), Some(NodeConfigVersion("nodeConfig_n1_v1")), false)
   )
 
   /*
@@ -127,10 +128,10 @@ class ReportExecutionsTest extends DBCommon {
     "correctly close and let closed existing execution" in {
       val all = Seq(
           initRuns(0).copy(isCompleted = false) //not updated
-        , initRuns(1).copy(nodeConfigVersion = Some("nodeConfig_n1_v2"))
+        , initRuns(1).copy(nodeConfigVersion = Some(NodeConfigVersion("nodeConfig_n1_v2")))
         , initRuns(2).copy(isCompleted = true)
-        , ReportExecution(AgentRunId(n1, runMinus2.minusMinutes(10)), Some("nodeConfig_n1_v1"), true)
-        , ReportExecution(AgentRunId(n1, runMinus1.plusMinutes(5)), Some("nodeConfig_n1_v1"), false)
+        , ReportExecution(AgentRunId(n1, runMinus2.minusMinutes(10)), Some(NodeConfigVersion("nodeConfig_n1_v1")), true)
+        , ReportExecution(AgentRunId(n1, runMinus1.plusMinutes(5)), Some(NodeConfigVersion("nodeConfig_n1_v1")), false)
       )
 
       //only the first one should not be modified

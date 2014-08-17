@@ -56,6 +56,7 @@ import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import com.normation.rudder.domain.reports.NodeConfigVersions
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 /**
  *
@@ -129,7 +130,7 @@ System.setProperty("test.postgres", "true")
       val result = expectedRepostsRepo.getNodes(Set(1)).openOrThrowException("Test failed with exception")
       result.values.toSeq must contain(exactly(
           NodeConfigVersions(NodeId("n0"), List())
-        , NodeConfigVersions(NodeId("n1"), List("abc", "def", "ghi"))
+        , NodeConfigVersions(NodeId("n1"), List("abc", "def", "ghi").map(NodeConfigVersion(_)))
       ))
     }
   }

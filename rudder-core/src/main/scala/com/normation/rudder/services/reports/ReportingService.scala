@@ -41,8 +41,8 @@ import com.normation.rudder.domain.reports.DirectiveRuleStatusReport
 import com.normation.rudder.domain.reports.NodeConfigId
 import com.normation.rudder.domain.reports.NodeStatusReport
 import com.normation.rudder.domain.reports.RuleExpectedReports
-
 import net.liftweb.common.Box
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 /**
  * The reporting service. It is used to
@@ -64,7 +64,7 @@ trait ReportingService {
   def updateExpectedReports(
       expandedRuleVals  : Seq[ExpandedRuleVal]
     , deleteRules       : Seq[RuleId]
-    , updatedNodeConfigs: Map[NodeId, String]
+    , updatedNodeConfigs: Map[NodeId, NodeConfigVersion]
   ) : Box[Seq[RuleExpectedReports]]
 
 

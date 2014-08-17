@@ -92,7 +92,7 @@ final case class DirectiveStatusReport(
 final case class NodeStatusReport(
     nodeId              : NodeId
   , optAgentRunTime     : Option[DateTime]
-  , optNodeConfigVerion : Option[String]
+  , optNodeConfigVerion : Option[NodeConfigVersion]
   , ruleId              : RuleId
   , directives	         : Seq[DirectiveStatusReport]
   , unexpectedDirectives: Seq[DirectiveStatusReport] // for future use, not used yet

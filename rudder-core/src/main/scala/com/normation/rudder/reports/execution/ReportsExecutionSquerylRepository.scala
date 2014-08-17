@@ -35,19 +35,17 @@
 package com.normation.rudder.reports.execution
 
 import java.sql.Timestamp
-
 import org.joda.time.DateTime
 import org.squeryl.KeyedEntity
 import org.squeryl.PrimitiveTypeMode._
 import org.squeryl.Schema
 import org.squeryl.annotations.Column
 import org.squeryl.dsl.CompositeKey2
-
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
-
 import net.liftweb.common._
 import ExecutionRepositoryUtils._
+import com.normation.rudder.domain.reports.NodeConfigVersion
 
 case class RoReportsExecutionSquerylRepository (
     sessionProvider : SquerylConnectionProvider
@@ -194,11 +192,11 @@ object ExecutionRepositoryUtils {
   }
 
   implicit def toDB (execution : ReportExecution)  : DBReportExecution = {
-    DBReportExecution(execution.runId.nodeId.value, execution.runId.date, execution.nodeConfigVersion, execution.isCompleted)
+    DBReportExecution(execution.runId.nodeId.value, execution.runId.date, execution.nodeConfigVersion.map(_.value), execution.isCompleted)
   }
 
   implicit def fromDB (execution : DBReportExecution)  : ReportExecution = {
-    ReportExecution(AgentRunId(NodeId(execution.nodeId), new DateTime(execution.date)), execution.nodeConfigVersion, execution.isCompleted)
+    ReportExecution(AgentRunId(NodeId(execution.nodeId), new DateTime(execution.date)), execution.nodeConfigVersion.map(NodeConfigVersion(_)), execution.isCompleted)
   }
 }
 

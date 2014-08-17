@@ -153,7 +153,7 @@ class RuleExpectedReportsJdbcRepository(
    * DB and compare it with what is to be saved
    */
   private[this] final case class Comparator(
-      nodeConfigId : (NodeId, Option[String])
+      nodeConfigId : (NodeId, Option[NodeConfigVersion])
     , directiveId  : DirectiveId
     , componentName: String
   )
@@ -269,7 +269,7 @@ class RuleExpectedReportsJdbcRepository(
    * As we don't have other information, we will update "last"
    * (i.e row with the biggest nodeJoin key).
    */
-  override def updateNodeConfigVersion(toUpdate: Map[NodeId, String]): Box[Seq[(Int,NodeConfigVersions)]] = {
+  override def updateNodeConfigVersion(toUpdate: Map[NodeId, NodeConfigVersion]): Box[Seq[(Int,NodeConfigVersions)]] = {
 
     object NodeConfigVersionsMapper extends RowMapper[(Int,NodeConfigVersions)] {
       def mapRow(rs : ResultSet, rowNum: Int) : (Int,NodeConfigVersions) = {
@@ -483,7 +483,7 @@ case class ExpectedConfRuleMapping(
   , val nodeId: NodeId
   , val agentRunTime: Option[DateTime]
   , val isCompleted: Boolean
-  , val configVersions: List[String]
+  , val configVersions: List[NodeConfigVersion]
 ) extends HashcodeCaching
 
 
@@ -508,16 +508,16 @@ case class ExpectedConfRuleMapping(
 
 object NodeConfigVersionsSerializer {
 
-  def serialize(versions: List[String]): String = {
+  def serialize(versions: List[NodeConfigVersion]): String = {
     implicit val formats = Serialization.formats(NoTypeHints)
-    Serialization.write(versions.reverse.map(_.trim))
+    Serialization.write(versions.reverse.map(_.value.trim))
   }
 
-  def unserialize(versions: String): List[String] = {
+  def unserialize(versions: String): List[NodeConfigVersion] = {
     if(null == versions || versions == "") Nil
     else {
       implicit val formats = DefaultFormats
-      parse(versions).extract[List[String]].reverse.map(_.trim).filterNot( _.isEmpty)
+      parse(versions).extract[List[String]].reverse.map(_.trim).filterNot( _.isEmpty).map(NodeConfigVersion(_))
     }
   }
 }
