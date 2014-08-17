@@ -53,7 +53,7 @@ class ExecutionBatchTest extends Specification {
   private implicit def str2directiveId(s:String) = DirectiveId(s)
   private implicit def str2ruleId(s:String) = RuleId(s)
   private implicit def str2nodeId(s:String) = NodeId(s)
-  private implicit def str2nodeConfigId(s:String) = NodeConfigurationId(NodeId(s), "version_" + s)
+  private implicit def str2nodeConfigIds(ss:Seq[String]) = ss.map(s =>  (NodeId(s), Some("version_" + s))).toMap
 
 
 
@@ -252,12 +252,12 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one")
-              ,  Seq(
-                   DirectiveExpectedReports("policy"
-                     , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
-                   )
-                 )
+              , Seq("one")
+              , Seq(
+                  DirectiveExpectedReports("policy"
+                    , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
+                  )
+                )
             ))
         )
       , Seq[Reports](new ResultSuccessReport(DateTime.now(), "rule", "policy", "one", 12, "component", "value",DateTime.now(), "message"))
@@ -334,7 +334,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one")
+              , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy"
                     , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
@@ -387,7 +387,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one")
+              , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy"
                     , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
@@ -445,7 +445,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one", "two")
+              , Seq("one", "two")
               , Seq(
                   DirectiveExpectedReports("policy"
                     , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
@@ -494,7 +494,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one", "two", "three")
+              , Seq("one", "two", "three")
               , Seq(
                   DirectiveExpectedReports("policy"
                     , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
@@ -532,7 +532,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one", "two", "three")
+              , Seq("one", "two", "three")
               , Seq(
                     DirectiveExpectedReports("policy", Seq(
                          new ReportComponent("component", 1, Seq("value"), Seq() )
@@ -580,7 +580,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-               , Seq[NodeConfigurationId]("one", "two", "three")
+               , Seq("one", "two", "three")
                , Seq(
                      DirectiveExpectedReports("policy", Seq(
                          new ReportComponent("component", 1, Seq("value"), Seq() )
@@ -638,7 +638,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-               , Seq[NodeConfigurationId]("one", "two", "three")
+               , Seq("one", "two", "three")
                , Seq(
                    DirectiveExpectedReports("policy", Seq(
                        new ReportComponent("component", 1, Seq("value", "value2", "value3"), Seq() )
@@ -690,7 +690,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("one")
+              , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy", Seq(
                       new ReportComponent("component", 1, Seq("""some\"text"""), Seq("""some\text""") )
@@ -763,7 +763,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("nodeId")
+              , Seq("nodeId")
               , Seq(
                   DirectiveExpectedReports("policy", Seq(
                       new ReportComponent("component", 1, Seq("""${sys.workdir}/inputs/\"test"""), Seq() )
@@ -835,7 +835,7 @@ class ExecutionBatchTest extends Specification {
             "rule"
           , 1
           , Seq(DirectivesOnNodes(42
-              , Seq[NodeConfigurationId]("nodeId")
+              , Seq("nodeId")
               , Seq(
                   DirectiveExpectedReports("policy", Seq(
                     new ReportComponent("component", 1, Seq("""${sys.workdir}/inputs/"test"""), Seq("""${sys.workdir}/inputs/"test""") )

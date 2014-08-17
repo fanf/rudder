@@ -76,15 +76,15 @@ class RuleExpectedReportsJdbcRepository(
   val baseQuery = "select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate from expectedreports where 1=1 ";
 
 
-  override def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigurationId): Box[Seq[RuleExpectedReports]] = {
+  override def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigId): Box[Seq[RuleExpectedReports]] = {
     /*
      * Select agentRun join expectedReportsNodes join expectedreports
      */
 
-    val query = """select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate
+    val query = """select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate, J.nodeid, J.nodeconfigversion
       from expectedreports as A
       join (
-        select nodejoinkey from expectedreportsnodes as B
+        select nodejoinkey, nodeid, nodeconfigversion from expectedreportsnodes as B
         where B.nodeId = ? and B.nodeconfigversions like ?
       ) as J on A.nodejoinkey = J.nodejoinkey;"""
 
@@ -153,7 +153,7 @@ class RuleExpectedReportsJdbcRepository(
    * DB and compare it with what is to be saved
    */
   private[this] final case class Comparator(
-      nodeConfigId : NodeConfigurationId
+      nodeConfigId : (NodeId, Option[String])
     , directiveId  : DirectiveId
     , componentName: String
   )
@@ -167,7 +167,7 @@ class RuleExpectedReportsJdbcRepository(
       ruleId                  : RuleId
     , serial                  : Int
     , directiveExpectedReports: Seq[DirectiveExpectedReports]
-    , nodeConfigIds           : Seq[NodeConfigurationId]
+    , nodeConfigIds           : Seq[NodeConfigId]
   ) : Box[RuleExpectedReports] = {
      logger.debug("Saving expected report for rule {}", ruleId.value)
 // TODO : store also the unexpanded
@@ -179,7 +179,7 @@ class RuleExpectedReportsJdbcRepository(
          val toInsert = directiveExpectedReports.flatMap { case DirectiveExpectedReports(dir, comp) =>
            comp.map(x => (dir, x.componentName))
          }.flatMap { case (dir, compName) =>
-           nodeConfigIds.map(id => Comparator(id, dir, compName))
+           nodeConfigIds.map(id => Comparator((id.nodeId, Some(id.version)), dir, compName))
          }
 
          val comparator = x.directivesOnNodes.flatMap { case DirectivesOnNodes(_, configs, dirExp) =>
@@ -210,13 +210,14 @@ class RuleExpectedReportsJdbcRepository(
       ruleId                  : RuleId
     , serial                  : Int
     , directiveExpectedReports: Seq[DirectiveExpectedReports]
-    , nodeConfigIds           : Seq[NodeConfigurationId]
+    , nodeConfigIds           : Seq[NodeConfigId]
   ) : Box[RuleExpectedReports] = {
 
     transactionTemplate.execute(new TransactionCallback[Box[RuleExpectedReports]]() {
       def doInTransaction(status: TransactionStatus): Box[RuleExpectedReports] = {
         // Compute first the version id
-        val nodeJoinKey = getNextVersionId
+        val nodeJoinKey = jdbcTemplate.queryForInt("SELECT nextval('ruleVersionId')")
+
 
         // Create the lines for the mapping
         val list = for {
@@ -296,7 +297,7 @@ class RuleExpectedReportsJdbcRepository(
                        , new java.lang.Integer(c._1)
                        , c._2.nodeId
                          //no need to getOrElse, we have at least all the node id returned by the query in the map
-                       , NodeConfigVersionsSerializer.serialize(toUpdate(c._2.nodeId)::c._2.version)
+                       , NodeConfigVersionsSerializer.serialize(toUpdate(c._2.nodeId)::c._2.versions)
                    ))
                  }
     } yield {
@@ -353,9 +354,9 @@ class RuleExpectedReportsJdbcRepository(
         //merge version together based on nodejoin values
         (seq.reduce[(Int, NodeConfigVersions)] { case ( (maxK, versions), (newK, newConfigVersions) ) =>
           if(maxK >= newK) {
-            (maxK, versions.copy(version = versions.version ::: newConfigVersions.version))
+            (maxK, versions.copy(versions = versions.versions ::: newConfigVersions.versions))
           } else {
-            (newK, versions.copy(version = newConfigVersions.version ++ versions.version))
+            (newK, versions.copy(versions = newConfigVersions.versions ++ versions.versions))
           }
         })._2 //only keep the nodeConfigpart
       }
@@ -370,27 +371,12 @@ class RuleExpectedReportsJdbcRepository(
     }
   }
 
-
-  private def getNextVersionId() : Int = {
-    jdbcTemplate.queryForInt("SELECT nextval('ruleVersionId')")
-  }
-
-
   /**
    * Effectively convert lines from the DB to RuleExpectedReports
    */
   private[this] def toRuleExpectedReports(entries : Seq[ExpectedConfRuleMapping]) : Box[Seq[RuleExpectedReports]] = {
-//    // first, we fetch all the nodes, so that it's done once and for all
-//    val nodes = getNodes(entries.map(_.nodeJoinKey).toSet)
-//
-//    nodes.values.filter (x => !x.isDefined).headOption match {
-//      case Some(e:Failure) => Failure("Some nodes could not be fetched for expected reports, cause " + e.messageChain)
-//      case Some(_) => Failure("Some nodes could not be fetched for expected reports")
-//      case _ => // we don't have illegal values, we will be able to open the box later
-//        // group entries by Rule/serial
-
     //find nodeConfigId by nodeJoinKey
-    val nodeConfigIds = entries.groupBy( _.nodeJoinKey ).mapValues { _.map(x => NodeConfigurationId(x.nodeId, x.configVersions.headOption.getOrElse("NO VERSION"))) }
+    val nodeConfigIds = entries.groupBy( _.nodeJoinKey ).mapValues { _.map(x => (x.nodeId, x.configVersions.headOption)).toMap }
 
     Full(entries.groupBy( entry => SerialedRuleId(entry.ruleId, entry.serial)).map { case (key, seq) =>
       // now we need to group elements of the seq together,  based on nodeJoinKey

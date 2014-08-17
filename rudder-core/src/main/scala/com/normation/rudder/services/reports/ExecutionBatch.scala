@@ -125,7 +125,7 @@ object ExecutionBatch {
     (for {
       (ruleId, exr) <- expectedReports.groupBy( _.ruleId)
       expectedReport            <- exr
-      directivesOnNode          <- expectedReport.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _.nodeId == nodeId) )
+      directivesOnNode          <- expectedReport.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _._1 == nodeId) )
       directiveStatusReports    =  for {
                                     expectedDirective <- directivesOnNode.directiveExpectedReports
                                   } yield {
@@ -303,10 +303,10 @@ object ExecutionBatch {
     , complianceMode        : ComplianceMode
   ): Seq[NodeStatusReport] = {
     (for {
-      directiveOnNode                      <- ruleExpectedReports.directivesOnNodes
-      NodeConfigurationId(nodeId, version) <- directiveOnNode.nodeConfigurationIds
+      directiveOnNode   <- ruleExpectedReports.directivesOnNodes
+      (nodeId, version) <- directiveOnNode.nodeConfigurationIds
     } yield {
-      getNodeStatusReports(nodeId, None, Some(version), Seq(ruleExpectedReports), reportsParam, agentExecutionInterval, complianceMode)
+      getNodeStatusReports(nodeId, None, version, Seq(ruleExpectedReports), reportsParam, agentExecutionInterval, complianceMode)
     }).flatten
   }
 

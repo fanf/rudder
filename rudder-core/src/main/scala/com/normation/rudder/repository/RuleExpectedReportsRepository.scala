@@ -50,7 +50,7 @@ trait RuleExpectedReportsRepository {
    * nodeConfigurationId (several agent run may point to the
    * same nodeConfigurationId)
    */
-  def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigurationId): Box[Seq[RuleExpectedReports]]
+  def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigId): Box[Seq[RuleExpectedReports]]
 
   /**
    * Return all the expected reports between the two dates
@@ -70,7 +70,7 @@ trait RuleExpectedReportsRepository {
    * Return the ruleId currently opened, and their serial and list of nodes
    * It is only used to know which conf expected report we should close
    *
-   * For only the last version (and so only one NodeConfigurationId) is
+   * For only the last version (and so only one NodeConfigId) is
    * returned for each nodeJoinKey
    */
   def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Map[NodeId, NodeConfigVersions])]
@@ -103,7 +103,7 @@ trait RuleExpectedReportsRepository {
       ruleId                   : RuleId
     , serial                   : Int
     , directiveExpectedReports : Seq[DirectiveExpectedReports]
-    , nodeConfigurationVersions: Seq[NodeConfigurationId]
+    , nodeConfigurationVersions: Seq[NodeConfigId]
   ) : Box[RuleExpectedReports]
 
 

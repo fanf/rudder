@@ -204,7 +204,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
       baseNodePath           : String
     , backupNodePath         : String
     , node                   : NodeConfiguration
-    , rootNodeConfigurationId: NodeId
+    , rootNodeConfigId: NodeId
     , templates              : Map[Cf3PromisesFileTemplateId, Cf3PromisesFileTemplateCopyInfo]
   ): Box[Set[(NodeConfiguration, String, String, String)]] = {
 
@@ -218,7 +218,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
 
       val systemVariables = node.nodeContext + (varNova.spec.name -> varNova) + (varCommunity.spec.name -> varCommunity)
 
-      val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = if(rootNodeConfigurationId == node.nodeInfo.id) {
+      val (nodeRulePath, newNodePath, backupNodeRulePath, newNodeRulePath) = if(rootNodeConfigId == node.nodeInfo.id) {
         (pathComputer.getRootPath(agentType), pathComputer.getRootPath(agentType) + newPostfix, pathComputer.getRootPath(agentType) + backupPostfix, pathComputer.getRootPath(agentType) + newPostfix)
       } else {
         (baseNodePath, baseNodePath + newPostfix, backupNodePath, baseNodePath + newPostfix + "/rules" + agentType.toRulesPath()) // we'll want to move the root folders

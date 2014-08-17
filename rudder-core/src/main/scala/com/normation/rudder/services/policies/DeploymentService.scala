@@ -65,8 +65,8 @@ import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.NodeInventory
 import com.normation.rudder.domain.parameters.GlobalParameter
 import com.normation.rudder.services.policies.nodeconfig.NodeConfiguration
-import com.normation.rudder.domain.reports.NodeConfigurationId
-import com.normation.rudder.domain.reports.NodeConfigurationId
+import com.normation.rudder.domain.reports.NodeConfigId
+import com.normation.rudder.domain.reports.NodeConfigId
 import com.normation.inventory.domain.NodeId
 
 
@@ -732,12 +732,12 @@ trait DeploymentService_setExpectedReports extends DeploymentService {
    * From a nodeConfiguration, calculate the nodeConfigurationVersion
    * (and so, nodeConfigurationId) associated to the node.
    */
-  private[this] def generateNodeConfigVersion(nodeConfig: NodeConfiguration): NodeConfigurationId = {
+  private[this] def generateNodeConfigVersion(nodeConfig: NodeConfiguration): NodeConfigId = {
     //this is a dumb implementation.
     //A far better and reapeatable one would be to serialise that in a normalized
     //json data structure, and get an md5 of it. So, it could be checked and
     //calculated again from outside of Rudder.
-    NodeConfigurationId(nodeConfig.nodeInfo.id, nodeConfig.hashCode.toString)
+    NodeConfigId(nodeConfig.nodeInfo.id, nodeConfig.hashCode.toString)
   }
 
    /**

@@ -66,7 +66,7 @@ case class RuleExpectedReports(
  */
 case class DirectivesOnNodes(
     nodeJoinKey             : Int// id following a sequence used to join to the list of nodes
-  , nodeConfigurationIds    : Seq[NodeConfigurationId]
+  , nodeConfigurationIds    : Map[NodeId, Option[String]]
   , directiveExpectedReports: Seq[DirectiveExpectedReports]
 ) extends HashcodeCaching
 
@@ -98,13 +98,13 @@ final case class DirectiveExpectedReports (
   , components : Seq[ReportComponent]
 ) extends HashcodeCaching
 
-final case class NodeConfigurationId(
+final case class NodeConfigId(
     nodeId : NodeId
   , version: String
 )
  final case class NodeConfigVersions(
-     nodeId : NodeId
+     nodeId  : NodeId
      //the most recent version is the head
      //and the list can be empty
-   , version: List[String]
+   , versions: List[String]
  )

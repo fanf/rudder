@@ -38,7 +38,7 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports.DirectiveRuleStatusReport
-import com.normation.rudder.domain.reports.NodeConfigurationId
+import com.normation.rudder.domain.reports.NodeConfigId
 import com.normation.rudder.domain.reports.NodeStatusReport
 import com.normation.rudder.domain.reports.RuleExpectedReports
 

@@ -178,7 +178,7 @@ class ReportingServiceImpl(
 
     // here we group them by rule/serial/seq of node, so that we have the list of all DirectiveExpectedReports that apply to them
     val groupedContent = preparedValues.toSeq.map { case ((ruleId, serial, directive), nodes) => (ruleId, serial, directive, nodes) }.
-       groupBy[(RuleId, Int, Seq[NodeConfigurationId])]{ case (ruleId, serial, directive, nodes) => (ruleId, serial, nodes.toSeq)}.map {
+       groupBy[(RuleId, Int, Seq[NodeConfigId])]{ case (ruleId, serial, directive, nodes) => (ruleId, serial, nodes.toSeq)}.map {
          case (key, value) => (key -> value.map(x => x._3))
        }.toSeq
     // now we save them
@@ -189,7 +189,7 @@ class ReportingServiceImpl(
                                   }
       //we want to save updatedNodeConfiguration that were not already saved
       //in expected reports.
-      savedNodeConfigs         =  updatedExpectedReports.flatMap( _.directivesOnNodes.flatMap( _.nodeConfigurationIds.map(x=> (x.nodeId,x.version)))).toMap
+      savedNodeConfigs         =  updatedExpectedReports.flatMap( _.directivesOnNodes.flatMap( _.nodeConfigurationIds.map(x=> (x._1,x._2)))).toMap
       updatedNodeConfigVersion <- confExpectedRepo.updateNodeConfigVersion(updatedNodeConfigs.filterNot(x => savedNodeConfigs.isDefinedAt(x._1)))
     } yield {
       updatedExpectedReports
@@ -285,7 +285,7 @@ class ReportingServiceImpl(
                           }
                         case Some(version) =>
                           for {
-                            expected <- confExpectedRepo.findExpectedReportsByNodeConfigId(NodeConfigurationId(nodeId,version))
+                            expected <- confExpectedRepo.findExpectedReportsByNodeConfigId(NodeConfigId(nodeId,version))
                             reports  <- reportsRepository.findReportByAgentExecution(Set(run.runId))
                           } yield {
                             (Some(run.runId.date), Some(version), expected, reports)
