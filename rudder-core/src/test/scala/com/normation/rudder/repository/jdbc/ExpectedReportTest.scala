@@ -96,11 +96,16 @@ System.setProperty("test.postgres", "true")
   }
 
   "Finding nodes" should {
+
+    //note: in version, [a,b,c] means "c" is the most recent versions
+    //in the unzserialized object, the most recent version is the HEAD of the list.
+    //note: spaces are trimmed in version
     val expectedReportsNodes: Seq[SlickExpectedReportsNodes] = Seq(
         SlickExpectedReportsNodes(1, "n0", "")
-      , SlickExpectedReportsNodes(1, "n1", "abc , def , ghi")
-      , SlickExpectedReportsNodes(2, "n0", "cba")
-      , SlickExpectedReportsNodes(3, "n2", "xz")
+      , SlickExpectedReportsNodes(1, "n1", """[" abc" , "def " , "\nghi\t"]""")
+      , SlickExpectedReportsNodes(2, "n0", """["cba"]""")
+      , SlickExpectedReportsNodes(3, "n2", """["xz"]""")
+      , SlickExpectedReportsNodes(4, "n1", """["mno" , "pqr"]""")
     )
     step {
       slickExec { implicit s =>
@@ -122,15 +127,25 @@ System.setProperty("test.postgres", "true")
         val i = 1
         val res = sql"select nodeid, nodeconfigversions from expectedreportsnodes where nodeJoinKey = ${i}".as[(String, String)].list
 
-        res must contain(exactly( ("n0", ""), ("n1", "abc , def , ghi")  ))
+        res must contain(exactly( ("n0", ""), ("n1", """[" abc" , "def " , "\nghi\t"]""")  ))
       }
     }
 
-    "find the last reports for node0" in {
+    "find the last reports for nodejoinkey" in {
       val result = expectedRepostsRepo.getNodes(Set(1)).openOrThrowException("Test failed with exception")
       result.values.toSeq must contain(exactly(
           NodeConfigVersions(NodeId("n0"), List())
-        , NodeConfigVersions(NodeId("n1"), List("abc", "def", "ghi").map(NodeConfigVersion(_)))
+          //the order of values is important, as head is most recent
+        , NodeConfigVersions(NodeId("n1"), List("ghi", "def", "abc").map(NodeConfigVersion(_)))
+      ))
+    }
+
+    "correctly sort version for a node and several nodejoinkey" in {
+      val result = expectedRepostsRepo.getNodes(Set(1,4)).openOrThrowException("Test failed with exception")
+      result.values.toSeq must contain(exactly(
+          NodeConfigVersions(NodeId("n0"), List())
+          //the order of values is important, as head is most recent
+        , NodeConfigVersions(NodeId("n1"), List("pqr","mno","ghi", "def", "abc").map(NodeConfigVersion(_)))
       ))
     }
   }

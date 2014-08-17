@@ -57,6 +57,7 @@ import org.springframework.transaction.support.TransactionCallback
 import org.springframework.transaction.PlatformTransactionManager
 import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.reports.execution.AgentRunId
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 
 class RuleExpectedReportsJdbcRepository(
     jdbcTemplate      : JdbcTemplate
@@ -347,9 +348,8 @@ class RuleExpectedReportsJdbcRepository(
   private[jdbc] def getNodes(nodeJoinKeys : Set[Int]) : Box[Map[NodeId, NodeConfigVersions]] = {
     tryo {
       jdbcTemplate.query(
-          "select nodejoinkey, nodeid, nodeconfigversions from expectedreportsnodes where nodeJoinKey in ?"
-        , Array[AnyRef](nodeJoinKeys.mkString("(", ",", ")"))
-        ,  NodeJoinKeyConfigMapper
+          s"select nodejoinkey, nodeid, nodeconfigversions from expectedreportsnodes where nodejoinkey in ${nodeJoinKeys.mkString("(", ",", ")")}"
+        , NodeJoinKeyConfigMapper
       ).groupBy(_._2.nodeId).mapValues { seq => //seq cannot be empty due to groupBy
         //merge version together based on nodejoin values
         (seq.reduce[(Int, NodeConfigVersions)] { case ( (maxK, versions), (newK, newConfigVersions) ) =>

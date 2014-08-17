@@ -437,7 +437,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
       val r = reports.distinct.map {
         case ReportExecution(id,Some(version),status) =>
           //check if we have the version and modify the report accordingly
-          version match {
+          version.value match {
             case nodeConfigVersionRegex(v) => ReportExecution(id, Some(NodeConfigVersion(v)), status)
             case _ => ReportExecution(id, None, status)
           }
