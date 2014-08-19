@@ -98,6 +98,15 @@ object ExecutionBatch {
     , complianceMode        : ComplianceMode
   ) : Seq[NodeStatusReport] = {
 
+
+    /**
+     * Question: what to do if no expected reports ?
+     * Shouldn't we mark each received reports as "unexpected / error" ?
+     * The historical interpretation is to not process that case.
+     */
+    if(expectedReports.isEmpty) return Seq()
+
+
     /**
      * NoAnswer is interpreted the same for all reports
      * of ONE node.
@@ -106,7 +115,7 @@ object ExecutionBatch {
       complianceMode match {
         case FullCompliance =>
           //in that case, we should have gotten report after a "reasonable" amount of time
-          //after the last rule update, i.e the most recent "begin date" among execpted reports
+          //after the last rule update, i.e the most recent "begin date" among expected reports
           val lastExpectReportModification = expectedReports.map( _.beginDate).maxBy( _.getMillis)
 
           //the "reasonable" time is 2 times the agent interval, in minutes.

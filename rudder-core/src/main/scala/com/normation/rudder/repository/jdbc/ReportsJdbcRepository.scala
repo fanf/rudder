@@ -396,7 +396,7 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
                             |on T.nodeid = C.nodeid and T.executiontimestamp = C.executiontimestamp""".stripMargin
                             //TODO: also get start execution
 
-    val nodeConfigVersionRegex = """.+\[(\w+)\].*""".r
+    val nodeConfigVersionRegex = """.+\[([^\]]*)\].*""".r
 
     val array = Buffer[AnyRef](new java.lang.Long(id), new Timestamp(endDate.getMillis))
 

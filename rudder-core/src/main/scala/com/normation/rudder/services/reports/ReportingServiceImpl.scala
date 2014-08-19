@@ -67,6 +67,7 @@ import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.reports.ComplianceMode
+import com.normation.rudder.domain.policies.ExpandedRuleVal
 
 class ReportingServiceImpl(
     confExpectedRepo   : RuleExpectedReportsRepository
@@ -88,9 +89,12 @@ class ReportingServiceImpl(
    * @return
    */
   override def updateExpectedReports(expandedRuleVals : Seq[ExpandedRuleVal], deleteRules : Seq[RuleId], updatedNodeConfigs: Map[NodeId, NodeConfigVersion]) : Box[Seq[RuleExpectedReports]] = {
+
+    val openExepectedReports = confExpectedRepo.findAllCurrentExpectedReportsWithNodesAndSerial()
+
     // All the rule and serial. Used to know which one are to be removed
-    val currentConfigurationsToRemove =  MutMap[RuleId, (Int,  Map[NodeId, NodeConfigVersions])]() ++
-      confExpectedRepo.findAllCurrentExpectedReportsWithNodesAndSerial()
+    val currentConfigurationsToRemove =  MutMap[RuleId, (Int, Int, Map[NodeId, NodeConfigVersions])]() ++ openExepectedReports
+
 
     val confToClose = MutSet[RuleId]()
     val confToCreate = Buffer[ExpandedRuleVal]()
@@ -103,7 +107,7 @@ class ReportingServiceImpl(
           logger.debug("New rule %s".format(ruleId))
           confToCreate += conf
 
-        case Some((serial, nodeConfigMap)) if ((serial == newSerial)&&(configs.size > 0)) =>
+        case Some((serial, nodeJoinKey, nodeConfigMap)) if ((serial == newSerial)&&(configs.size > 0)) =>
             // no change if same serial and some config appliable, that's ok, trace level
             logger.trace(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed and cache up-to-date: nothing to do")
             // must check that their are no differents nodes in the DB than in the new reports
@@ -114,12 +118,14 @@ class ReportingServiceImpl(
               logger.debug("Same serial %s for ruleId %s, but not same node set, it need to be closed and created".format(serial, ruleId))
               confToCreate += conf
               confToClose += ruleId
-            }
+            } else
+
             currentConfigurationsToRemove.remove(ruleId)
 
-        case Some((serial, nodeSet)) if ((serial == newSerial)&&(configs.size == 0)) => // same serial, but no targets
+        case Some((serial, nodeJoinKey, nodeSet)) if ((serial == newSerial)&&(configs.size == 0)) => // same serial, but no targets
             // if there is not target, then it need to be closed
           logger.debug(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was not changed BUT no previous configuration known: update expected reports for that rule")
+          confToClose += ruleId
 
         case Some(serial) => // not the same serial
           logger.debug(s"Serial number (${serial}) for expected reports for rule '${ruleId.value}' was changed: update expected reports for that rule")
@@ -130,13 +136,11 @@ class ReportingServiceImpl(
       }
     }
 
-
     // close the expected reports that don't exist anymore
-    for (closable <- currentConfigurationsToRemove.keys) {
-      confExpectedRepo.closeExpectedReport(closable)
-    }
-    // close the expected reports that need to be changed
-    for (closable <- confToClose) {
+    // and the ones that need to be changed
+    val allClosable = (currentConfigurationsToRemove.keys ++ confToClose).toSet
+
+    for (closable <- allClosable) {
       confExpectedRepo.closeExpectedReport(closable)
     }
 
@@ -173,26 +177,33 @@ class ReportingServiceImpl(
       directives.map (x => (ruleId, serial, nodeConfigId, x))
     }
 
-    val preparedValues = flatten.groupBy[(RuleId, Int, DirectiveExpectedReports)]{ case (ruleId, serial, nodeId, directive) =>
+    val preparedValues = flatten.groupBy[(RuleId, Int, DirectiveExpectedReports)]{ case (ruleId, serial, nodeConfigId, directive) =>
       (ruleId, serial, directive) }.map { case (key, value) => (key -> value.map(x=> x._3))}.toSeq
 
     // here we group them by rule/serial/seq of node, so that we have the list of all DirectiveExpectedReports that apply to them
-    val groupedContent = preparedValues.toSeq.map { case ((ruleId, serial, directive), nodes) => (ruleId, serial, directive, nodes) }.
-       groupBy[(RuleId, Int, Seq[NodeConfigId])]{ case (ruleId, serial, directive, nodes) => (ruleId, serial, nodes.toSeq)}.map {
+    val groupedContent = preparedValues.toSeq.map { case ((ruleId, serial, directive), nodeConfigIds) => (ruleId, serial, directive, nodeConfigIds) }.
+       groupBy[(RuleId, Int, Seq[NodeConfigId])]{ case (ruleId, serial, directive, nodeConfigIds) => (ruleId, serial, nodeConfigIds.toSeq)}.map {
          case (key, value) => (key -> value.map(x => x._3))
        }.toSeq
     // now we save them
 
     for {
-      updatedExpectedReports   <- sequence(groupedContent) { case ((ruleId, serial, nodes), directives) =>
-                                    confExpectedRepo.saveExpectedReports(ruleId, serial, directives, nodes)
+      createdExpectedReports   <- sequence(groupedContent) { case ((ruleId, serial, nodeConfigIds), directives) =>
+                                    confExpectedRepo.saveExpectedReports(ruleId, serial, directives, nodeConfigIds)
                                   }
       //we want to save updatedNodeConfiguration that were not already saved
       //in expected reports.
-      savedNodeConfigs         =  updatedExpectedReports.flatMap( _.directivesOnNodes.flatMap( _.nodeConfigurationIds.map(x=> (x._1,x._2)))).toMap
-      updatedNodeConfigVersion <- confExpectedRepo.updateNodeConfigVersion(updatedNodeConfigs.filterNot(x => savedNodeConfigs.isDefinedAt(x._1)))
+      newConfigId              =  expandedRuleVals.flatMap { case ExpandedRuleVal(_, map, _) => map.keySet.map{case NodeConfigId(id,v) => (id,v)}}.toMap
+      notUpdateNodeJoinKey     =  openExepectedReports.filterKeys(k => !allClosable.contains(k)).flatMap{ case(ruleId, (serial, nodeJoinKey, mapNodes)) =>
+                                    mapNodes.values.map { case NodeConfigVersions(nodeId, versions) =>
+                                      val lastVersion = newConfigId(nodeId)
+                                      val newVersions = if(versions.contains(lastVersion)) versions else lastVersion :: versions
+                                      (nodeJoinKey, NodeConfigVersions(nodeId, newVersions))
+                                    }
+                                  }.toSeq
+      updatedNodeConfigVersion <- confExpectedRepo.updateNodeConfigVersion(notUpdateNodeJoinKey)
     } yield {
-      updatedExpectedReports
+      createdExpectedReports
     }
   }
 

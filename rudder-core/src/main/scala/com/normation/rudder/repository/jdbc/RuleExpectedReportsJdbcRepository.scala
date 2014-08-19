@@ -83,42 +83,35 @@ class RuleExpectedReportsJdbcRepository(
       }
     }
 
-    /*
-     * Select agentRun join expectedReportsNodes join expectedreports
-     */
-
-    val nodeQuery = """select nodejoinkey from expectedreportsnodes where nodeid = ? and nodeconfigversions like ?"""
-
-
-    val expectedReportsQuery = """select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate
+    val expectedReportsQuery ="""
+      select pkid, nodejoinkey, ruleid, serial, directiveid, component, cardinality, componentsvalues, unexpandedComponentsValues, begindate, enddate
       from expectedreports
-      where nodejoinkey = ?"""
+      where nodejoinkey in (
+        select nodejoinkey from expectedreportsnodes where nodeid = ? and nodeconfigversions like ?
+      )"""
 
     for {
-      keys <- tryo(jdbcTemplate.query(nodeQuery, Array[AnyRef](nodeConfigId.nodeId.value, "%"+nodeConfigId.version+"%"), NodeJoinKeyMapper))
-      //we should not get more than ONE result. But if it's the case, just take the bigger nodejoinkey
-      reports <- keys.asScala.sorted.lastOption match {
-                   case None => Full(Seq())
-                   case Some(nodeJoinKey) =>
-                     val nodes = Map(nodeJoinKey -> Map(nodeConfigId.nodeId -> Some(nodeConfigId.version)))
-                     tryo(toRuleExpectedReports(
-                         jdbcTemplate.query(expectedReportsQuery, Array[AnyRef](new Integer(nodeJoinKey)), RuleExpectedReportsMapper).toSeq
-                       , nodes
-                     )) ?~! s"Error when getting expected report for node '${nodeConfigId.nodeId.value}' and configuration version '${nodeConfigId.version}'"
-                 }
+      reports   <- tryo(jdbcTemplate.query(
+                       expectedReportsQuery
+                     , Array[AnyRef](nodeConfigId.nodeId.value, s"%${nodeConfigId.version.value}%")
+                     , RuleExpectedReportsMapper
+                   ).toSeq) ?~! s"Error when getting expected report for node '${nodeConfigId.nodeId.value}' and configuration version '${nodeConfigId.version}'"
+      //we have only one node, so all nodeJoinKey are for it
+      nodes     =  reports.map(r => (r.nodeJoinKey -> Map(nodeConfigId.nodeId -> Some(nodeConfigId.version)))).toMap
+      expecteds =  toRuleExpectedReports(reports, nodes)
     } yield {
-      reports
+      expecteds
     }
   }
 
-  override def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Map[NodeId, NodeConfigVersions])] = {
+  override def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Int, Map[NodeId, NodeConfigVersions])] = {
     val composite = jdbcTemplate.query("select distinct ruleid, serial, nodejoinkey from expectedreports where enddate is null", RuleIdSerialNodeJoinKeyMapper)
 
     (for {
       (ruleId, serial, nodeJoin) <- composite
       nodeList <- getNodes(Set(nodeJoin))
     } yield {
-      (ruleId, (serial, nodeList(nodeJoin).map{case(nodeId, versions) => (nodeId, NodeConfigVersions(nodeId, versions))}.toMap ))
+      (ruleId, (serial, nodeJoin, nodeList(nodeJoin).map{case(nodeId, versions) => (nodeId, NodeConfigVersions(nodeId, versions))}.toMap ))
     }).toMap
 
   }
@@ -231,8 +224,7 @@ class RuleExpectedReportsJdbcRepository(
   )
 
   /**
-   * TODO: change this API !
-   * Save an expected reports.
+   * Insert new expectedReports in base.
    *
    */
   override def saveExpectedReports(
@@ -338,7 +330,7 @@ class RuleExpectedReportsJdbcRepository(
    * As we don't have other information, we will update "last"
    * (i.e row with the biggest nodeJoin key).
    */
-  override def updateNodeConfigVersion(toUpdate: Map[NodeId, NodeConfigVersion]): Box[Seq[(Int,NodeConfigVersions)]] = {
+  override def updateNodeConfigVersion(toUpdate: Seq[(Int, NodeConfigVersions)]): Box[Seq[(Int,NodeConfigVersions)]] = {
 
     object NodeConfigVersionsMapper extends RowMapper[(Int,NodeConfigVersions)] {
       def mapRow(rs : ResultSet, rowNum: Int) : (Int,NodeConfigVersions) = {
@@ -350,30 +342,19 @@ class RuleExpectedReportsJdbcRepository(
 
     if(toUpdate.isEmpty) Full(Seq())
     else {
-
-      val select = s"""select A.nodejoinkey, A.nodeid, A.nodeconfigversions
-            from expectedreportsnodes as A
-            inner join (
-              select max(C.nodejoinkey) as maxKey, C.nodeid
-              from expectedreportsnodes C
-              where C.nodeid in ${toUpdate.keys.map(_.value).mkString("('", "','" , "')")}
-              group by C.nodeid
-            ) B on A.nodejoinkey = B.maxKey and A.nodeid = B.nodeid"""
-
       val insert = """update expectedreportsnodes set nodeconfigversions = ? where nodejoinkey = ? and nodeid = ?"""
 
       for {
-        configs <- tryo(jdbcTemplate.query(select, NodeConfigVersionsMapper).toSeq)
-        updates <- sequence(configs) { c =>
+        updates <- sequence(toUpdate) { case(nodeJoinKey, NodeConfigVersions(nodeId, versions)) =>
                      tryo(jdbcTemplate.update(insert
-                         , NodeConfigVersionsSerializer.serialize(toUpdate(c._2.nodeId)::c._2.versions)
-                         , new java.lang.Integer(c._1)
-                         , c._2.nodeId.value
+                         , NodeConfigVersionsSerializer.serialize(versions)
+                         , new java.lang.Integer(nodeJoinKey)
+                         , nodeId.value
                            //no need to getOrElse, we have at least all the node id returned by the query in the map
                      ))
                    }
       } yield {
-        configs
+        toUpdate
       }
     }
   }

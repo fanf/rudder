@@ -73,7 +73,7 @@ trait RuleExpectedReportsRepository {
    * For only the last version (and so only one NodeConfigId) is
    * returned for each nodeJoinKey
    */
-  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Map[NodeId, NodeConfigVersions])]
+  def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Int, Map[NodeId, NodeConfigVersions])]
 
 
   /**
@@ -91,13 +91,9 @@ trait RuleExpectedReportsRepository {
   def closeExpectedReport(ruleId : RuleId) : Box[Unit]
 
   /**
-   * Save an expected reports.
-   * I'm not really happy with this API
-   * @param ruleId : the id of the rule (the main id)
-   * @param directiveId : the id of the directive (secondary id, used to check for the changes)
-   * @param nodes : the nodes that are expected to be the target of this rule
-   * @param cardinality : the cardinality of the expected reports
-   * @return
+   * Insert new expectedReports in base.
+   * Not that expectedReports are never "updated". Old
+   * one are closed and new one are created (aka saved')
    */
   def saveExpectedReports(
       ruleId                   : RuleId
@@ -110,5 +106,5 @@ trait RuleExpectedReportsRepository {
   /**
    * Update the list of nodeConfigVersion for the given nodes
    */
-  def updateNodeConfigVersion(toUpdate: Map[NodeId, NodeConfigVersion]): Box[Seq[(Int,NodeConfigVersions)]]
+  def updateNodeConfigVersion(toUpdate: Seq[(Int, NodeConfigVersions)]): Box[Seq[(Int,NodeConfigVersions)]]
 }
