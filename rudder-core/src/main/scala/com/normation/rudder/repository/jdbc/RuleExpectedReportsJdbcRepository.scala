@@ -360,16 +360,16 @@ class RuleExpectedReportsJdbcRepository(
               group by C.nodeid
             ) B on A.nodejoinkey = B.maxKey and A.nodeid = B.nodeid"""
 
-      val insert = """insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversions) values (?,?,?)"""
+      val insert = """update expectedreportsnodes set nodeconfigversions = ? where nodejoinkey = ? and nodeid = ?"""
 
       for {
         configs <- tryo(jdbcTemplate.query(select, NodeConfigVersionsMapper).toSeq)
         updates <- sequence(configs) { c =>
                      tryo(jdbcTemplate.update(insert
+                         , NodeConfigVersionsSerializer.serialize(toUpdate(c._2.nodeId)::c._2.versions)
                          , new java.lang.Integer(c._1)
                          , c._2.nodeId.value
                            //no need to getOrElse, we have at least all the node id returned by the query in the map
-                         , NodeConfigVersionsSerializer.serialize(toUpdate(c._2.nodeId)::c._2.versions)
                      ))
                    }
       } yield {
