@@ -300,13 +300,23 @@ class SystemVariableServiceImpl(
 
     logger.trace("System variables for node %s done".format(nodeInfo.id.value))
 
+    /*
+     * RUDDER_NODE_CONFIG_VERSION is a very special system variable:
+     * it must not be used to assess node config stability from
+     * run to run.
+     * So we set it to a default value and handle it specialy in
+     * RudderCf3PromisesFileWriterServiceImpl#prepareRulesForAgents
+     */
+    val varNodeConfigVersion = systemVariableSpecService.get("RUDDER_NODE_CONFIG_VERSION").toVariable(Seq("DUMMY NODE CONFIG VERSION"))
+
     Full(
          globalSystemVariables
-      ++ Map(
-             (varNodeRole.spec.name, varNodeRole)
-           , (varAllowedNetworks.spec.name, varAllowedNetworks)
-           , (varRudderServerRole.spec.name -> varRudderServerRole)
-         )
+      ++ Seq(
+             varNodeRole
+           , varAllowedNetworks
+           , varRudderServerRole
+           , varNodeConfigVersion
+         ).map(x => (x.spec.name, x))
       ++ policyServerVars
     )
 
