@@ -304,20 +304,7 @@ object ExecutionBatch {
     }
   }
 
-  def getNodeStatusReportsByRule(
-      ruleExpectedReports   : RuleExpectedReports
-    , reportsParam          : Seq[Reports]
-    // this is the agent execution interval, in minutes
-    , agentExecutionInterval: Int
-    , complianceMode        : ComplianceMode
-  ): Seq[NodeStatusReport] = {
-    (for {
-      directiveOnNode   <- ruleExpectedReports.directivesOnNodes
-      (nodeId, version) <- directiveOnNode.nodeConfigurationIds
-    } yield {
-      getNodeStatusReports(nodeId, None, version, Seq(ruleExpectedReports), reportsParam, agentExecutionInterval, complianceMode)
-    }).flatten
-  }
+
 
 
   /**
@@ -325,14 +312,8 @@ object ExecutionBatch {
    */
   def getRuleStatus(
       ruleExpectedReports   : RuleExpectedReports
-    , reportsParam          : Seq[Reports]
-    // this is the agent execution interval, in minutes
-    , agentExecutionInterval: Int
-    , complianceMode        : ComplianceMode
+    , nodeStatusReports     : Seq[NodeStatusReport]
   ) : Seq[DirectiveRuleStatusReport]={
-
-    //start by getting NodeStatusReports for all nodes involved
-    val nodeStatusReports = getNodeStatusReportsByRule(ruleExpectedReports, reportsParam, agentExecutionInterval, complianceMode)
 
     ruleExpectedReports.directivesOnNodes.flatMap { d  =>
       d.directiveExpectedReports

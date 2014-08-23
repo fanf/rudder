@@ -140,12 +140,11 @@ class SrvGrid(
   ) = {
 
       val lines = for {
-        node <- nodes
-        lastReport = roReportExecutionsRepository.getNodeLastExecution(node.id)
+        lastReports <- roReportExecutionsRepository.getNodesLastRun(nodes.map(_.id).toSet)
       } yield {
-        NodeLine(node,lastReport, callback)
+        nodes.map(node => NodeLine(node,lastReports.get(node.id), callback))
       }
-      JsTableData(lines.toList)
+      JsTableData(lines.openOr(List()).toList)
     }
 
   def refreshData (

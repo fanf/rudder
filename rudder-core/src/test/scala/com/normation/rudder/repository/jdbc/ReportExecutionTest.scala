@@ -93,16 +93,16 @@ class ReportExecutionsTest extends DBCommon {
     }
 
     "correctly find back" in {
-      roRunRepo.getNodeLastExecution(n1) must beEqualTo(Full(Some(runs(0))))
+      roRunRepo.getNodesLastRun(Set(n1)) must beEqualTo(Full(Map(n1 -> Some(runs(0)))))
     }
 
     "correctly update last" in {
       (woRunRepo.updateExecutions(runs) must beEqualTo( Full(Seq(runs(1))) )) and
-      (roRunRepo.getNodeLastExecution(n1) must beEqualTo(Full(Some(runs(1)))))
+      (roRunRepo.getNodesLastRun(Set(n1)) must beEqualTo(Full(Map(n1 -> Some(runs(1))))))
     }
 
     "don't find report when none was added" in {
-      roRunRepo.getNodeLastExecution(n2) must beEqualTo(Full(None))
+      roRunRepo.getNodesLastRun(Set(n2)) must beEqualTo(Full(Map(n2 -> None)))
     }
   }
 

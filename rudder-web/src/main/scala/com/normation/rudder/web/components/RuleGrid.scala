@@ -313,7 +313,7 @@ class RuleGrid(
 
     // we compute beforehand the compliance, so that we have a single big query
     // to the database
-    val complianceMap = computeCompliances(rules.toSet)
+    val complianceMap = computeCompliances(nodes.keySet, rules.map( _.id).toSet)
 
     rules.map { rule =>
 
@@ -355,7 +355,13 @@ class RuleGrid(
              case _:NotAppliedStatus =>
                Full(None)
              case _ =>
-               complianceMap.getOrElse(rule.id, Failure(s"Error when getting compliance for Rule ${rule.name}")).map(Some(_))
+               complianceMap match {
+                 case eb: EmptyBox => eb ?~! "Error when getting the compliance of rules"
+                 case Full(cm) => cm.get(rule.id) match {
+                   case None => Failure(s"Error when getting compliance for Rule ${rule.name}")
+                   case s@Some(_) => Full(s)
+                 }
+               }
            }
            compliance match {
              case e:EmptyBox =>
@@ -515,20 +521,17 @@ class RuleGrid(
 
   }
 
-  private[this] def computeCompliances(rules: Set[Rule]) : Map[RuleId, Box[ComplianceLevel]] = {
-    reportingService.findNodeStatusReportsByRules(rules.map(_.id)).map { case (ruleId, entry) =>
-      (ruleId,
-          entry match {
-            case e:EmptyBox => e
-            case Full(nodeReports) =>
-              if(nodeReports.size == 0 || nodeReports.exists(x => x.reportType == PendingReportType )) {
-                Full(Applying) // when we have a rule but nothing in the database, it means that it is currently being deployed
-              } else {
-                Full(new Compliance((100 * nodeReports.filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / nodeReports.size))
-              }
+  private[this] def computeCompliances(nodeIds: Set[NodeId], ruleIds: Set[RuleId]) : Box[Map[RuleId, ComplianceLevel]] = {
+    reportingService.findNodeStatusReports(nodeIds, ruleIds).map { _.groupBy( _.ruleId ).map { case (ruleId, nodeReports) =>
+      (
+          ruleId
+        , if(nodeReports.size == 0 || nodeReports.exists(x => x.reportType == PendingReportType )) {
+            Applying // when we have a rule but nothing in the database, it means that it is currently being deployed
+          } else {
+            new Compliance((100 * nodeReports.filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / nodeReports.size)
           }
       )
-    }
+    } }
   }
 
   private[this] def buildComplianceChart(level:Option[ComplianceLevel]) : (String,String) = {

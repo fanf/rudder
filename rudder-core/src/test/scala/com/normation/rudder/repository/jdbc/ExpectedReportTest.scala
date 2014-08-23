@@ -33,48 +33,24 @@
 */
 
 package com.normation.rudder.repository.jdbc
-
+import java.sql.BatchUpdateException
 import java.sql.Timestamp
-import org.junit.runner.RunWith
-import org.specs2.mutable._
-import org.specs2.runner.JUnitRunner
 import scala.slick.driver.PostgresDriver.simple._
 import org.joda.time.DateTime
+import org.junit.runner.RunWith
+import org.specs2.runner.JUnitRunner
+import org.specs2.mutable._
+import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.Reports
+import com.normation.rudder.domain.reports._
 import com.normation.rudder.migration.DBCommon
-import com.normation.rudder.reports.execution.AgentRunId
 import javax.sql.DataSource
-import net.liftweb.common.Loggable
-import java.sql.BatchUpdateException
-import com.normation.rudder.reports.execution.AgentRunId
-import com.normation.rudder.reports.execution.AgentRunId
-import com.normation.rudder.reports.execution.ReportExecution
-import com.normation.rudder.reports.execution.AgentRunId
-import com.normation.rudder.domain.reports.RuleExpectedReports
-import org.springframework.jdbc.datasource.DataSourceTransactionManager
-import com.normation.rudder.domain.reports.NodeConfigVersions
-import com.normation.rudder.domain.reports.NodeConfigVersion
-import com.normation.rudder.domain.reports.NodeConfigId
-import com.normation.rudder.domain.reports.NodeConfigVersion
-import com.normation.rudder.domain.reports.NodeConfigVersion
-import com.normation.rudder.domain.reports.DirectiveExpectedReports
-import com.normation.rudder.domain.policies.DirectiveId
-import com.normation.rudder.domain.reports.ReportComponent
-import com.normation.rudder.domain.reports.RuleExpectedReports
-import com.normation.rudder.domain.reports.RuleExpectedReports
-import com.normation.rudder.domain.reports.RuleExpectedReports
-import com.normation.rudder.domain.reports.DirectivesOnNodes
-import com.normation.rudder.domain.reports.NodeConfigVersion
-import com.normation.rudder.domain.reports.NodeConfigVersions
-import net.liftweb.common.Failure
+import net.liftweb.common._
 
 /**
- *
  * Test on database.
- *
  */
 @RunWith(classOf[JUnitRunner])
 class ExpectedReportsTest extends DBCommon {
@@ -86,7 +62,8 @@ System.setProperty("test.postgres", "true")
     jdbcTemplate.execute("DELETE FROM expectedReports; DELETE FROM expectedReportsNodes;")
   }
 
-  val expectedReportsRepo = new RuleExpectedReportsJdbcRepository(jdbcTemplate, new DataSourceTransactionManager(dataSource))
+  val findReports = new FindExpectedReportsJdbcRepository(jdbcTemplate)
+  val expectedReportsRepo = new UpdateExpectedReportsJdbcRepository(jdbcTemplate, new DataSourceTransactionManager(dataSource), findReports)
   val slick = new ExpectedReportsSchema(dataSource)
   import slick._
 

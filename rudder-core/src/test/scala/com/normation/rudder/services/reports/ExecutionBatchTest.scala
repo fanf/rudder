@@ -55,11 +55,23 @@ class ExecutionBatchTest extends Specification {
   private implicit def str2nodeId(s:String) = NodeId(s)
   private implicit def str2nodeConfigIds(ss:Seq[String]) = ss.map(s =>  (NodeId(s), Some(NodeConfigVersion("version_" + s)))).toMap
 
+  def getNodeStatusReportsByRule(
+      ruleExpectedReports   : RuleExpectedReports
+    , reportsParam          : Seq[Reports]
+    // this is the agent execution interval, in minutes
+    , agentExecutionInterval: Int
+    , complianceMode        : ComplianceMode
+  ): Seq[NodeStatusReport] = {
+    (for {
+      directiveOnNode   <- ruleExpectedReports.directivesOnNodes
+      (nodeId, version) <- directiveOnNode.nodeConfigurationIds
+    } yield {
+      ExecutionBatch.getNodeStatusReports(nodeId, None, version, Seq(ruleExpectedReports), reportsParam, agentExecutionInterval, complianceMode)
+    }).flatten
+  }
 
-
-  val getNodeStatusByRule = (ExecutionBatch.getNodeStatusReportsByRule _).tupled
-  val getRuleStatus = (ExecutionBatch.getRuleStatus _).tupled
-
+  val getNodeStatusByRule = (getNodeStatusReportsByRule _).tupled
+  val getRuleStatus = ExecutionBatch.getRuleStatus _
 
 
   // Test the component part
@@ -266,7 +278,7 @@ class ExecutionBatchTest extends Specification {
     )
 
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
 
     "have one detailed reports when we create it with one report" in {
@@ -348,7 +360,7 @@ class ExecutionBatchTest extends Specification {
     )
 
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
       nodeStatus.size ==1
@@ -403,7 +415,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it" in {
       nodeStatus.size ==1
@@ -458,7 +470,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have two detailed reports when we create it" in {
       nodeStatus.size == 2
@@ -510,7 +522,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed rule report" in {
       ruleStatus.size == 1
@@ -558,7 +570,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have two detailed rule report" in {
       ruleStatus.size must beEqualTo(2)
@@ -607,7 +619,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have two detailed rule report" in {
       ruleStatus.size must beEqualTo(2)
@@ -658,7 +670,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed rule report" in {
       ruleStatus.size must beEqualTo(1)
@@ -703,7 +715,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
       nodeStatus.size ===1
@@ -777,7 +789,7 @@ class ExecutionBatchTest extends Specification {
     )
 
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
      nodeStatus.size ===1
@@ -848,7 +860,7 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param)
+    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
      nodeStatus.size === 1

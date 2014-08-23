@@ -88,9 +88,12 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     }
   }
 
- override def findReportByAgentExecution(agentRunIds: Set[AgentRunId]): Box[Seq[Reports]] = {
-    val param = agentRunIds.map(x => s"('${x.nodeId.value}','${new Timestamp(x.date.getMillis)}'::timestamp)" ).mkString(",")
-
+ override def getExecutionReports(runs: Set[AgentRunId], filterByRules: Set[RuleId]): Box[Map[NodeId, Seq[Reports]]] = {
+   if(runs.isEmpty) Full(Map())
+   else {
+    val nodeParam = runs.map(x => s"('${x.nodeId.value}','${new Timestamp(x.date.getMillis)}'::timestamp)" ).mkString(",")
+    val ruleClause = if(filterByRules.isEmpty) ""
+                    else s"and ruleid in ${filterByRules.map(_.value).mkString("('", "','" , "')")}"
     /*
      * be careful in the number of parenthesis for "in values", it is:
      * ... in (VALUES ('a', 'b') );
@@ -103,12 +106,11 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
          from
            RudderSysEvents
          where
-          (nodeid, executiontimestamp) in (VALUES ${param})
-      """
+          (nodeid, executiontimestamp) in (VALUES ${nodeParam})
+      """ + ruleClause
 
-
-
-    boxed(s"get last run reports for ${agentRunIds.size} nodes")(jdbcTemplate.query(query, ReportsMapper).toSeq)
+      boxed(s"get last run reports for ${runs.size} nodes")(jdbcTemplate.query(query, ReportsMapper).toSeq.groupBy( _.nodeId))
+    }
   }
 
   override def findReportsByNode(nodeId   : NodeId) : Seq[Reports] = {

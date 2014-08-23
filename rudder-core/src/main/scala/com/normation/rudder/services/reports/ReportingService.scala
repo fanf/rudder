@@ -35,44 +35,27 @@
 package com.normation.rudder.services.reports
 
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports.DirectiveRuleStatusReport
-import com.normation.rudder.domain.reports.NodeConfigId
 import com.normation.rudder.domain.reports.NodeStatusReport
-import com.normation.rudder.domain.reports.RuleExpectedReports
+
 import net.liftweb.common.Box
-import com.normation.rudder.domain.reports.NodeConfigVersion
 
 /**
- * The reporting service. It is used to
- * - Save the new reports expectation date
- * - retrieve the expected reports between a time interval
- *
- * Caution, the retrieve part is only on the operation
- *
+ * That service allows to retrieve status of nodes or
+ * rules.
  */
 trait ReportingService {
 
   /**
-   * Update the list of expected reports when we do a deployment
-   *
-   * For each RuleVal, we check if it was present or modified
-   * If it was present and not changed, nothing is done for it
-   * If it changed, then the previous version is closed, and the new one is opened
+   * find rule status reports for a given rule.
    */
-  def updateExpectedReports(
-      expandedRuleVals  : Seq[ExpandedRuleVal]
-    , deleteRules       : Seq[RuleId]
-    , updatedNodeConfigs: Map[NodeId, NodeConfigVersion]
-  ) : Box[Seq[RuleExpectedReports]]
-
-
   def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]]
 
-  def findNodeStatusReportsByRules(rulesIds : Set[RuleId]) : Map[RuleId, Box[Seq[NodeStatusReport]]]
-
-  def findNodeStatusReportsByNode(nodeId: NodeId) : Box[Seq[NodeStatusReport]]
-
-
+  /**
+   * Retrieve a set of node status reports given the nodes Id.
+   * Optionally restrict the set to some rules if filterByRules is non empty (else,
+   * find node status reports for all rules)
+   */
+  def findNodeStatusReports(nodeIds: Set[NodeId], filterByRules : Set[RuleId]) : Box[Seq[NodeStatusReport]]
 }

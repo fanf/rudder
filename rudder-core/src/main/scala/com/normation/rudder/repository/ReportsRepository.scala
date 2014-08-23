@@ -51,6 +51,16 @@ import com.normation.rudder.reports.execution.AgentRunId
  */
 trait ReportsRepository {
 
+  /*
+   * now, for each node, three cases:
+   * - no last run => no exec report for node, only get LAST expected reports for it
+   * - a last run, no config version => get the execution reports of that run and the LAST expected reports (no other info)
+   * - a last run and a config => get the execution reports for that run and the expected reports for the config
+   *
+   * So: get reports for available execution, sort the result by nodes with a default of "no reports"
+   *
+   * Optimize the expected reports part because several nodes can have the same reports
+   */
 
   /**
    * Find the reports corresponding to the given agent executions,
@@ -59,7 +69,7 @@ trait ReportsRepository {
    * That method doesn't check if there is missing execution in
    * the result compared to inputs.
    */
-  def findReportByAgentExecution(agentRunId: Set[AgentRunId]): Box[Seq[Reports]]
+  def getExecutionReports(runs: Set[AgentRunId], filterByRules: Set[RuleId]): Box[Map[NodeId, Seq[Reports]]]
 
   /**
    * Return the last (really the last, serial wise, with full execution) reports for a rule

@@ -123,19 +123,19 @@ System.setProperty("test.postgres", "true")
     }
 
     "find the last reports for node0" in {
-      val result = repostsRepo.findReportByAgentExecution(Set(AgentRunId(NodeId("n0"), run1))).openOrThrowException("Test failed with exception")
-      result must contain(exactly(reports("n0")(0)))
+      val result = repostsRepo.getExecutionReports(Set(AgentRunId(NodeId("n0"), run1)), Set()).openOrThrowException("Test failed with exception")
+      result.values.flatten.toSeq must contain(exactly(reports("n0")(0)))
     }
 
     "find reports for node 0,1,2" in {
       val runs = Set(("n0", run1), ("n1", run1), ("n2", run1) )
-      val result = repostsRepo.findReportByAgentExecution(runs).openOrThrowException("Test failed with exception")
-      result must contain(exactly(reports("n0")++reports("n1").reverse.tail++reports("n2"):_*))
+      val result = repostsRepo.getExecutionReports(runs, Set() ).openOrThrowException("Test failed with exception")
+      result.values.flatten.toSeq must contain(exactly(reports("n0")++reports("n1").reverse.tail++reports("n2"):_*))
     }
 
     "not find report for none existing agent run id" in {
       val runs = Set( ("n2", run2), ("n3", run1))
-      val result = repostsRepo.findReportByAgentExecution(runs).openOrThrowException("Test failed with exception")
+      val result = repostsRepo.getExecutionReports(runs, Set() ).openOrThrowException("Test failed with exception")
       result must beEmpty
     }
   }

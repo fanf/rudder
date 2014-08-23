@@ -340,7 +340,7 @@ object RudderConfig extends Loggable {
   val eventLogDeploymentService: EventLogDeploymentService = eventLogDeploymentServiceImpl
   val allBootstrapChecks : BootstrapChecks = allChecks
   lazy val srvGrid = new SrvGrid(roReportsExecutionSquerylRepository)
-  val expectedReportRepository : RuleExpectedReportsRepository = configurationExpectedRepo
+  val findExpectedReportRepository : FindExpectedReportRepository = findExpectedRepo
   val historizationRepository : HistorizationRepository =  historizationJdbcRepository
   val roApiAccountRepository : RoApiAccountRepository = roLDAPApiAccountRepository
   val woApiAccountRepository : WoApiAccountRepository = woLDAPApiAccountRepository
@@ -1187,7 +1187,7 @@ object RudderConfig extends Loggable {
           systemVariableService,
           nodeConfigurationServiceImpl,
           nodeInfoServiceImpl,
-          reportingServiceImpl,
+          updateExpectedReports,
           historizationService,
           roNodeGroupRepository,
           roDirectiveRepository,
@@ -1232,15 +1232,19 @@ object RudderConfig extends Loggable {
   )
 //  private[this] lazy val licenseService: NovaLicenseService = new NovaLicenseServiceImpl(licenseRepository, ldapNodeConfigurationRepository, RUDDER_DIR_LICENSESFOLDER)
   private[this] lazy val reportingServiceImpl = new ReportingServiceImpl(
-        configurationExpectedRepo
+        findExpectedRepo
       , reportsRepositoryImpl
       , roReportsExecutionSquerylRepository
-      , new ComputeCardinalityOfDirectiveVal()
       , configService.agent_run_interval
       , configService.rudder_compliance_mode
   )
-  private[this] lazy val configurationExpectedRepo = new com.normation.rudder.repository.jdbc.RuleExpectedReportsJdbcRepository(jdbcTemplate, transactionManager)
-  private[this] lazy val reportsRepositoryImpl = new com.normation.rudder.repository.jdbc.ReportsJdbcRepository(jdbcTemplate)
+  private[this] lazy val updateExpectedReports = new ExpecetedReportsUpdateImpl(
+        updateExpectedRepo
+      , roReportsExecutionSquerylRepository
+  )
+  private[this] lazy val findExpectedRepo = new FindExpectedReportsJdbcRepository(jdbcTemplate)
+  private[this] lazy val updateExpectedRepo = new UpdateExpectedReportsJdbcRepository(jdbcTemplate, transactionManager, findExpectedRepo)
+  private[this] lazy val reportsRepositoryImpl = new ReportsJdbcRepository(jdbcTemplate)
   private[this] lazy val dataSourceProvider = new RudderDatasourceProvider(RUDDER_JDBC_DRIVER, RUDDER_JDBC_URL, RUDDER_JDBC_USERNAME, RUDDER_JDBC_PASSWORD)
   private[this] lazy val squerylDatasourceProvider = new SquerylConnectionProvider(dataSourceProvider.datasource)
   private[this] lazy val jdbcTemplate = {

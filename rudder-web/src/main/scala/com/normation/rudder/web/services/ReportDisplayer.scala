@@ -132,7 +132,7 @@ class ReportDisplayer(
 
     def refreshData : Box[JsCmd] = {
       for {
-        reports <- reportingService.findNodeStatusReportsByNode(node.id)
+        reports <- reportingService.findNodeStatusReports(Set(node.id), Set())
         data <- getComplianceData(reports)
       } yield {
         JsRaw(s"""refreshTable("reportsGrid",${data.json.toJsCmd});""")
@@ -162,7 +162,7 @@ class ReportDisplayer(
   }
 
   def displayReports(node : NodeInfo) : NodeSeq = {
-    reportingService.findNodeStatusReportsByNode(node.id) match {
+    reportingService.findNodeStatusReports(Set(node.id), Set()) match {
       case e:EmptyBox => <div class="error">Could not fetch reports information</div>
       case Full(reports) => display(reports, "reportsGrid", node)
     }

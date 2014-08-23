@@ -51,21 +51,24 @@ case class RoReportsExecutionSquerylRepository (
     sessionProvider : SquerylConnectionProvider
 ) extends RoReportsExecutionRepository with Loggable {
 
-  def getNodeLastExecution (nodeId : NodeId) : Box[Option[ReportExecution]] = {
-    try {  sessionProvider.ourTransaction {
-      val queryResult = from(Executions.executions)(entry =>
-        where(
-          entry.nodeId === nodeId.value
-        )
-        select(entry)
-        orderBy(entry.date desc)
-      ).page(0,1).headOption.map(fromDB)
-      Full(queryResult)
-    } } catch {
-          case e:Exception  =>
-            val msg = s"Error when trying to get report executions for node with Id '${nodeId.value}', reason is ${e.getMessage()}"
-            logger.error(msg, e)
-            Failure(msg)
+  override def getNodesLastRun(nodeIds: Set[NodeId]): Box[Map[NodeId, Option[ReportExecution]]] = {
+    if(nodeIds.isEmpty) Full(Map())
+    else {
+      try {  sessionProvider.ourTransaction {
+        val queryResult = from(Executions.executions)(entry =>
+          where(
+            entry.nodeId in nodeIds.map( _.value)
+          )
+          select(entry)
+          orderBy(entry.date desc)
+        ).map(fromDB)
+        Full(nodeIds.map(x => (x, queryResult.find(x.value == _.nodeId))).toMap)
+      } } catch {
+            case e:Exception  =>
+              val msg = s"Error when trying to get report executions for nodes with Id '${nodeIds.map( _.value).mkString(",")}', reason is ${e.getMessage()}"
+              logger.error(msg, e)
+              Failure(msg)
+      }
     }
   }
 }

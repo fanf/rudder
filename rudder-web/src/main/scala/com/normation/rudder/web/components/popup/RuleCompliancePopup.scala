@@ -57,7 +57,7 @@ import com.normation.rudder.web.services.ComplianceData
  *  That popup Display the compliance of a Rule by Node starting from different Scope ( Directive, Component, or a specific value)
  */
 class RuleCompliancePopup(
-    rule         :Rule
+    rule         : Rule
   , directiveLib : FullActiveTechniqueCategory
   , allNodeInfos : Map[NodeId, NodeInfo]
 ) extends Loggable {

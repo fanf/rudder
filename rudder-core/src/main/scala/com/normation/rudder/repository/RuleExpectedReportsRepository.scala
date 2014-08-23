@@ -33,39 +33,16 @@
 */
 
 package com.normation.rudder.repository
+import org.joda.time._
 
-import com.normation.rudder.domain.policies.DirectiveId
-import net.liftweb.common.Box
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports._
-import org.joda.time._
-import com.normation.rudder.reports.execution.AgentRunId
+
+import net.liftweb.common.Box
 
 
-trait RuleExpectedReportsRepository {
-
-  /**
-   * Find expected reports corresponding to a agent run, i.e to a
-   * nodeConfigurationId (several agent run may point to the
-   * same nodeConfigurationId)
-   */
-  def findExpectedReportsByNodeConfigId(nodeConfigId: NodeConfigId): Box[Seq[RuleExpectedReports]]
-
-  /**
-   * Return all the expected reports between the two dates
-   * //used by the advanced reporting module
-   */
-  def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]]
-
-
-  /**
-   * Return current expectedreports (the one still pending) for this Rule
-   * @param rule
-   * @return
-   */
-  def findCurrentExpectedReports(rule : RuleId) : Box[Option[RuleExpectedReports]]
-
+trait UpdateExpectedReportsRepository {
   /**
    * Return the ruleId currently opened, and their serial and list of nodes
    * It is only used to know which conf expected report we should close
@@ -73,21 +50,14 @@ trait RuleExpectedReportsRepository {
    * For only the last version (and so only one NodeConfigId) is
    * returned for each nodeJoinKey
    */
+  //only for update logic
   def findAllCurrentExpectedReportsWithNodesAndSerial(): Map[RuleId, (Int, Int, Map[NodeId, NodeConfigVersions])]
-
-
-  /**
-   * Return currents expectedreports (the one still pending) for this server, but in the
-   * case where we don't know the node config version
-   */
-  //only used in reporting service
-  def findLatestExpectedReportsByNode(nodeId : NodeId) : Box[Seq[RuleExpectedReports]]
 
 
  /**
    * Simply set the endDate for the expected report for this conf rule
-   * @param ruleId
    */
+  //only for update logic
   def closeExpectedReport(ruleId : RuleId) : Box[Unit]
 
   /**
@@ -95,6 +65,7 @@ trait RuleExpectedReportsRepository {
    * Not that expectedReports are never "updated". Old
    * one are closed and new one are created (aka saved')
    */
+  //only for update logic
   def saveExpectedReports(
       ruleId                   : RuleId
     , serial                   : Int
@@ -106,5 +77,37 @@ trait RuleExpectedReportsRepository {
   /**
    * Update the list of nodeConfigVersion for the given nodes
    */
+  //only for update logic
   def updateNodeConfigVersion(toUpdate: Seq[(Int, NodeConfigVersions)]): Box[Seq[(Int,NodeConfigVersions)]]
+}
+
+
+
+
+trait FindExpectedReportRepository {
+
+  /**
+   * Return all the expected reports between the two dates
+   * ## used by the advanced reporting module ##
+   */
+  def findExpectedReports(beginDate : DateTime, endDate : DateTime) : Box[Seq[RuleExpectedReports]]
+
+
+  /**
+   * Return current expectedreports (the one still pending) for this Rule
+   */
+  def findCurrentExpectedReports(rule : RuleId) : Box[Option[RuleExpectedReports]]
+
+
+  /*
+   * Retrieve the last expected reports for the nodes.
+   */
+  def getLastExpectedReports(nodeIds: Set[NodeId], filterByRules: Set[RuleId]): Box[Set[RuleExpectedReports]]
+
+  /*
+   * Retrieve the expected reports by config version of the nodes
+   */
+  def getExpectedReports(nodeConfigIds: Set[NodeConfigId], filterByRules: Set[RuleId]): Box[Set[RuleExpectedReports]]
+
+
 }
