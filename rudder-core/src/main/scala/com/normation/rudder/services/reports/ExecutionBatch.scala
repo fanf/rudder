@@ -37,7 +37,6 @@ package com.normation.rudder.services.reports
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.DirectiveId
-import scala.collection._
 import org.joda.time._
 import org.joda.time.format._
 import com.normation.rudder.domain.Constants
@@ -151,10 +150,10 @@ object ExecutionBatch {
                                                              checkExpectedComponentWithReports(expectedComponent, componentFilteredReports, noAnswerInterpretation)
                                                            }
 
-                                    DirectiveStatusReport(expectedDirective.directiveId, componentsStatus, Seq())
+                                    DirectiveStatusReport(expectedDirective.directiveId, componentsStatus.toSet, Set())
                                   }
     } yield {
-      NodeStatusReport(nodeId, optAgentRunTime, optNodeConfigVersion, ruleId, directiveStatusReports, Seq())
+      NodeStatusReport(nodeId, optAgentRunTime, optNodeConfigVersion, ruleId, directiveStatusReports.toSet, Set())
     }).toSeq
   }
 
@@ -212,13 +211,13 @@ object ExecutionBatch {
 
     ComponentStatusReport(
         expectedComponent.componentName
-      , componentValueStatusReports
+      , componentValueStatusReports.toSet
       , if(unexpectedCVSRs.size < 1) {
-          unexpectedReports.map(_.message).toList
-        } else {
           purgedReports.map(_.message).toList
+        } else {
+          unexpectedReports.map(_.message).toList
         }
-      , unexpectedCVSRs
+      , unexpectedCVSRs.toSet
     )
   }
 
@@ -322,7 +321,7 @@ object ExecutionBatch {
         val componentReports = nodeStatusReports.flatMap { nodeStatus =>
           // we filter by directiveId
           val directivesStatus = nodeStatus.directives.filter(_.directiveId == directiveId)
-          getComponentRuleStatus(nodeStatus.nodeId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus)
+          getComponentRuleStatus(nodeStatus.nodeId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus.toSeq)
         }.groupBy(_.component).map { case (componentName, componentReport) =>
           val componentValueReports = componentReport.flatMap(_.componentValues).
             groupBy(x=> (x.unexpandedComponentValue)).
@@ -370,8 +369,8 @@ object ExecutionBatch {
        val id = component.componentName
        val componentvalues = directive.flatMap{ nodestatus =>
          val components = nodestatus.components.filter(_.component==id)
-         getComponentValuesRuleStatus(nodeId, directiveid, id, component.groupedComponentValues,components) ++
-         getUnexpectedComponentValuesRuleStatus(nodeId, directiveid, id, components.flatMap(_.unexpectedCptValues))
+         getComponentValuesRuleStatus(nodeId, directiveid, id, component.groupedComponentValues,components.toSeq) ++
+         getUnexpectedComponentValuesRuleStatus(nodeId, directiveid, id, components.flatMap(_.unexpectedCptValues).toSeq)
        }
        ComponentRuleStatusReport(directiveid,id,componentvalues)
      }

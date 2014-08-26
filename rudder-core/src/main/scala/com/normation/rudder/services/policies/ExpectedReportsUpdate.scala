@@ -80,9 +80,8 @@ trait ExpectedReportsUpdate {
 }
 
 
-class ExpecetedReportsUpdateImpl(
+class ExpectedReportsUpdateImpl(
     confExpectedRepo   : UpdateExpectedReportsRepository
-  , agentRunRepository : RoReportsExecutionRepository
 ) extends ExpectedReportsUpdate with Loggable {
   /**
    * Update the list of expected reports when we do a deployment
@@ -104,7 +103,7 @@ class ExpecetedReportsUpdateImpl(
     val confToCreate = Buffer[ExpandedRuleVal]()
 
     // Then we need to compare each of them with the one stored
-    for (conf@ExpandedRuleVal(ruleId, configs, newSerial) <- expandedRuleVals) {
+    for (conf@ExpandedRuleVal(ruleId, newSerial, configs) <- expandedRuleVals) {
       currentConfigurationsToRemove.get(ruleId) match {
         // non existant, add it
         case None =>
@@ -151,7 +150,7 @@ class ExpecetedReportsUpdateImpl(
     // Now I need to unfold the configuration to create, so that I get for a given
     // set of ruleId, serial, DirectiveExpectedReports we have the list of  corresponding nodes
 
-    val expanded = confToCreate.map { case ExpandedRuleVal(ruleId, configs, serial) =>
+    val expanded = confToCreate.map { case ExpandedRuleVal(ruleId, serial, configs) =>
       configs.toSeq.map { case (nodeConfigId, directives) =>
         // each directive is converted into Seq[DirectiveExpectedReports]
         val directiveExpected = directives.map { directive =>
@@ -197,7 +196,7 @@ class ExpecetedReportsUpdateImpl(
                                   }
       //we want to save updatedNodeConfiguration that were not already saved
       //in expected reports.
-      newConfigId              =  expandedRuleVals.flatMap { case ExpandedRuleVal(_, map, _) => map.keySet.map{case NodeConfigId(id,v) => (id,v)}}.toMap
+      newConfigId              =  expandedRuleVals.flatMap { case ExpandedRuleVal(_, _, configs) => configs.keySet.map{case NodeConfigId(id,v) => (id,v)}}.toMap
       notUpdateNodeJoinKey     =  openExepectedReports.filterKeys(k => !allClosable.contains(k)).flatMap{ case(ruleId, (serial, nodeJoinKey, mapNodes)) =>
                                     mapNodes.values.map { case NodeConfigVersions(nodeId, versions) =>
                                       val lastVersion = newConfigId(nodeId)

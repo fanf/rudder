@@ -50,7 +50,7 @@ import com.normation.rudder.domain.policies.RuleId
 sealed trait StatusReport {
   def reportType : ReportType
 
-  def getWorseType(reports:Seq[StatusReport]) = {
+  def getWorseType(reports:Iterable[StatusReport]) = {
     ReportType.getWorseType(reports.map(_.reportType))
   }
 }
@@ -71,9 +71,9 @@ final case class ComponentValueStatusReport(
  */
 final case class ComponentStatusReport(
     component          : String
-  , componentValues    : Seq[ComponentValueStatusReport]
+  , componentValues    : Set[ComponentValueStatusReport]
   , message            : List[String]
-  , unexpectedCptValues: Seq[ComponentValueStatusReport]
+  , unexpectedCptValues: Set[ComponentValueStatusReport]
 ) extends StatusReport {
 
   val reportType = getWorseType(componentValues ++ unexpectedCptValues)
@@ -82,8 +82,8 @@ final case class ComponentStatusReport(
 
 final case class DirectiveStatusReport(
     directiveId         : DirectiveId
-  , components	         : Seq[ComponentStatusReport]
-  , unexpectedComponents: Seq[ComponentStatusReport] // for future use, not used yet
+  , components	         : Set[ComponentStatusReport]
+  , unexpectedComponents: Set[ComponentStatusReport] // for future use, not used yet
 ) extends StatusReport {
 
   val reportType = getWorseType(components ++ unexpectedComponents)
@@ -92,10 +92,10 @@ final case class DirectiveStatusReport(
 final case class NodeStatusReport(
     nodeId              : NodeId
   , optAgentRunTime     : Option[DateTime]
-  , optNodeConfigVerion : Option[NodeConfigVersion]
+  , optNodeConfigVersion: Option[NodeConfigVersion]
   , ruleId              : RuleId
-  , directives	         : Seq[DirectiveStatusReport]
-  , unexpectedDirectives: Seq[DirectiveStatusReport] // for future use, not used yet
+  , directives	         : Set[DirectiveStatusReport]
+  , unexpectedDirectives: Set[DirectiveStatusReport] // for future use, not used yet
 ) extends StatusReport {
 
   val reportType = getWorseType(directives ++ unexpectedDirectives)

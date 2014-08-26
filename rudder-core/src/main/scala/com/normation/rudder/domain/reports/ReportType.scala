@@ -74,7 +74,7 @@ case object PendingReportType extends ReportType{
 
 object ReportType {
 
-  def getWorseType(reportTypes : Seq[ReportType]) : ReportType = {
+  def getWorseType(reportTypes : Iterable[ReportType]) : ReportType = {
     if (reportTypes.isEmpty) {
       NoAnswerReportType
     } else {

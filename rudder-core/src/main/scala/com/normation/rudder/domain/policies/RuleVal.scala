@@ -191,9 +191,9 @@ case class ExpandedDirectiveVal(
 ) extends HashcodeCaching
 
 case class ExpandedRuleVal(
-  ruleId       : RuleId,
-  configs      : Map[NodeConfigId, Seq[ExpandedDirectiveVal]], // A map of NodeId->DirectiveId, where all vars are expanded
-  serial       : Int // the generation serial of the Rule
+    ruleId       : RuleId
+  , serial       : Int // the generation serial of the Rule
+  , configs      : Map[NodeConfigId, Seq[ExpandedDirectiveVal]] // A map of NodeId->DirectiveId, where all vars are expanded
 ) extends HashcodeCaching
 
 

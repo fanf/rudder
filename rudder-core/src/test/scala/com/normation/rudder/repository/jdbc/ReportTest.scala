@@ -72,7 +72,7 @@ System.setProperty("test.postgres", "true")
 
 
   val repostsRepo = new ReportsJdbcRepository(jdbcTemplate)
-  val slick = new ReportsSlick(dataSource)
+  val slick = new SlickSchema(dataSource)
 
   sequential
 
@@ -192,72 +192,4 @@ System.setProperty("test.postgres", "true")
 
   }
 
-}
-
-class ReportsSlick(datasource: DataSource) extends Loggable {
-
-  final case class SlickReports(
-      id                 : Option[Long]
-    , executionDate      : DateTime
-    , nodeId             : String
-    , directiveId        : String
-    , ruleId             : String
-    , serial             : Int
-    , component          : String
-    , keyValue           : String
-    , executionTimestamp : DateTime
-    , eventType          : String
-    , policy             : String
-    , msg                : String
-  )
-
-  implicit def date2dateTime = MappedColumnType.base[DateTime, Timestamp](
-      dt => new Timestamp(dt.getMillis)
-    , ts => new DateTime(ts.getTime)
-  )
-
-  class ReportsTable(tag: Tag) extends Table[SlickReports](tag, "ruddersysevents") {
-    def id = column[Long]("id", O.PrimaryKey, O.AutoInc) // This is the primary key column
-    def executionDate = column[DateTime]("executiondate")
-    def nodeId = column[String]("nodeid")
-    def directiveId = column[String]("directiveid")
-    def ruleId = column[String]("ruleid")
-    def serial = column[Int]("serial")
-    def component = column[String]("component")
-    def keyValue = column[String]("keyvalue")
-    def executionTimeStamp = column[DateTime]("executiontimestamp")
-    def eventType = column[String]("eventtype")
-    def policy = column[String]("policy")
-    def msg = column[String]("msg")
-
-    // Every table needs a * projection with the same type as the table's type parameter
-    def * = (
-        id.?, executionDate, nodeId, directiveId, ruleId, serial,
-        component, keyValue, executionTimeStamp, eventType, policy, msg
-    ) <> (SlickReports.tupled, SlickReports.unapply)
-  }
-
-  val reportsQuery = TableQuery[ReportsTable]
-
-  val slickDB = Database.forDataSource(datasource)
-
-  def toSlickReport(r:Reports): SlickReports = {
-    SlickReports(None, r.executionDate, r.nodeId.value, r.directiveId.value, r.ruleId.value, r.serial
-        , r.component, r.keyValue, r.executionTimestamp, r.severity, "policy", r.message)
-  }
-
-  def insertReports(reports: Seq[Reports]) = {
-    val slickReports = reports.map(toSlickReport(_))
-
-    try {
-      slickDB.withSession { implicit s =>
-        reportsQuery ++= slickReports
-      }
-    } catch {
-      case e: BatchUpdateException =>
-        logger.error("Error when inserting reports: " + e.getMessage)
-        logger.error(e.getNextException)
-        throw e
-    }
-  }
 }

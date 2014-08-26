@@ -126,7 +126,7 @@ class ReportingServiceImpl(
       //now get rule expected reports either by version or by last available
       nodesWithoutVersion  =  (runs.collect {
                                 case(nodeId, None) => nodeId
-                                case(nodeId, Some(x) ) if(x.nodeConfigVersion.nonEmpty) => nodeId
+                                case(nodeId, Some(x) ) if(x.nodeConfigVersion.isEmpty) => nodeId
                               }).toSet
       lastExpectedReports  <- confExpectedRepo.getLastExpectedReports(nodesWithoutVersion, ruleIds)
       allVersions          =  lastExpectedReports.flatMap( _.directivesOnNodes.flatMap( _.nodeConfigurationIds.flatMap( _._2 )))

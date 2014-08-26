@@ -38,7 +38,7 @@
 ALTER TABLE ReportsExecution ADD COLUMN nodeConfigVersion text;
 
 -- - one in ExpectedReportsNode, "nodeConfigVersions" (with 's')
-ALTER TABLE expectedReportsNodes ADD COLUMN nodeConfigVersions text;
+ALTER TABLE expectedReportsNodes ADD COLUMN nodeConfigVersions text[];
 
 
 

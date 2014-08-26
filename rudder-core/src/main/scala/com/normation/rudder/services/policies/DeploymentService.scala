@@ -788,8 +788,8 @@ trait DeploymentService_setExpectedReports extends DeploymentService {
 
       ExpandedRuleVal(
           rule.ruleId
-        ,  directives.toMap
         , rule.serial
+        , directives.toMap
       )
     }
   }

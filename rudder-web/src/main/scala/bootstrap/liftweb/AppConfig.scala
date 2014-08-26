@@ -1238,9 +1238,8 @@ object RudderConfig extends Loggable {
       , configService.agent_run_interval
       , configService.rudder_compliance_mode
   )
-  private[this] lazy val updateExpectedReports = new ExpecetedReportsUpdateImpl(
+  private[this] lazy val updateExpectedReports = new ExpectedReportsUpdateImpl(
         updateExpectedRepo
-      , roReportsExecutionSquerylRepository
   )
   private[this] lazy val findExpectedRepo = new FindExpectedReportsJdbcRepository(jdbcTemplate)
   private[this] lazy val updateExpectedRepo = new UpdateExpectedReportsJdbcRepository(jdbcTemplate, transactionManager, findExpectedRepo)

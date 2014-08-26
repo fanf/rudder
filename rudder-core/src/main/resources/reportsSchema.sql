@@ -155,16 +155,17 @@ CREATE TABLE expectedReportsNodes (
   nodeJoinKey        integer NOT NULL 
 , nodeId             varchar(50) NOT NULL CHECK (nodeId <> '')
   /*
-   * Node Config version is actually a comma-separated list
-   * of string used for node config version id. It can be 
-   * null or empty to accomodate pre-2.12 behaviour. 
+   * Node Config version is an array of string  used for node 
+   * config version id. It can be null or empty to accomodate 
+   * pre-2.12 behaviour. 
    * 
-   * Last version is the most recent one, so that in
-   * a, b, c, d
-   * d is the newest. Space will be trim
+   * The most recent version is put in first place of the
+   * array, so that in
+   * [v5, v4, v3, v2]
+   * v5 is the newest. Space will be trim in versions string
    * 
    */
-, nodeConfigVersions text
+, nodeConfigVersions text[]
 , PRIMARY KEY (nodeJoinKey, nodeId)
 );
 

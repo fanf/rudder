@@ -53,9 +53,14 @@ import net.liftweb.common._
 import net.liftweb.json._
 import net.liftweb.util.Helpers.tryo
 import org.joda.time.DateTime
+import org.springframework.jdbc.core.PreparedStatementCreator
+import java.sql.PreparedStatement
+import java.sql.Connection
 
 class FindExpectedReportsJdbcRepository(
-    jdbcTemplate      : JdbcTemplate
+    jdbcTemplate    : JdbcTemplate
+    //max number of element to switch from in (...) to in(values(...)) clause
+  , inClauseMaxNbElt: Int = 70
 ) extends FindExpectedReportRepository with Loggable {
 
   /*
@@ -68,12 +73,27 @@ class FindExpectedReportsJdbcRepository(
    * Does not build anything is the list of values is empty
    *
    */
-  private[this] val IN_CLAUSE_MAX_NB_ELT = 2 //should be ~70
   private[this] def in(attribute: String, values: Iterable[String]): String = {
+    //with values, we need more ()
     if(values.isEmpty) ""
-    else if(values.size < IN_CLAUSE_MAX_NB_ELT) s"${attribute} IN (${values.mkString("'", "','", "'")})"
+    else if(values.size < inClauseMaxNbElt) s"${attribute} IN (${values.mkString("'", "','", "'")})"
     //use IN ( VALUES (), (), ... )
-    else s"${attribute} IN(VALUES ${values.map(x => if(x.trim.startsWith("(")) x else s"('$x')").mkString(",")})"
+    else s"${attribute} IN(VALUES ${values.mkString("('","'),('","')")})"
+  }
+
+  private[this] def inT2(attribute: (String,String), values: Iterable[NodeConfigId]): String = {
+    //with values, we need more ()
+    if(values.isEmpty) ""
+    else {
+      val choice = "("+attribute._1+","+attribute._2+")"
+      val ins = values.map{ case NodeConfigId(NodeId(x), NodeConfigVersion(y)) =>
+        "('"+x+"','"+y+"')"
+      }.mkString(",")
+
+      if(values.size < inClauseMaxNbElt) s"${choice} IN (${ins})"
+      //use IN ( VALUES (), (), ... )
+      else s"${choice} IN(VALUES ${ins})"
+    }
   }
 
   /*
@@ -91,14 +111,35 @@ class FindExpectedReportsJdbcRepository(
 
   /*
    * Retrieve the expected reports by config version of the nodes
+   *
+   * The current version seems highly inefficient.
+   *
    */
   def getExpectedReports(nodeConfigIds: Set[NodeConfigId], filterByRules: Set[RuleId]): Box[Set[RuleExpectedReports]] = {
     if(nodeConfigIds.isEmpty) Full(Set())
     else {
-      val rulePredicate = if(filterByRules.isEmpty) "" else " and " + in("ruleid", filterByRules.map(_.value))
-      val where = s"""where ${in("(N.nodeid, N.nodeconfigversion)", nodeConfigIds.map(x => s"('${x.nodeId.value}','${x.version.value}')"))} ${rulePredicate}"""
+      val rulePredicate = if(filterByRules.isEmpty) "" else " where " + in("ruleid", filterByRules.map(_.value))
+      val query = s"""select
+            E.pkid, E.nodejoinkey, E.ruleid, E.directiveid, E.serial, E.component, E.componentsvalues
+          , E.unexpandedComponentsValues, E.cardinality, E.begindate, E.enddate
+          , NNN.nodeid, NNN.nodeconfigversions
+        from expectedreports E
+        inner join (
+          select NN.nodejoinkey, NN.nodeid, NN.nodeconfigversions
+          from (
+            select N.nodejoinkey, N.nodeid, N.nodeconfigversions, generate_subscripts(N.nodeconfigversions,1) as v
+            from expectedreportsnodes N
+          ) as NN
+          where ${inT2(("NN.nodeid","NN.nodeconfigversions[v]"), nodeConfigIds)}
+        ) as NNN
+        on E.nodejoinkey = NNN.nodejoinkey
+      """ + rulePredicate
 
-      getRuleExpectedReports(where, Array()).map(_.toSet)
+      for {
+        entries <- tryo ( jdbcTemplate.query(query, ReportAndNodeMapper).asScala )
+      } yield {
+        toExpectedReports(entries).toSet
+      }
     }
   }
 
@@ -209,7 +250,7 @@ class UpdateExpectedReportsJdbcRepository(
     object NodeJoinKeyConfigMapper extends RowMapper[(Int, NodeConfigVersions)] {
       def mapRow(rs : ResultSet, rowNum: Int) : (Int, NodeConfigVersions) = {
         val nodeId = new NodeId(rs.getString("nodeid"))
-        val versions = NodeConfigVersionsSerializer.unserialize(rs.getString("nodeconfigversions"))
+        val versions = NodeConfigVersionsSerializer.unserialize(rs.getArray("nodeconfigversions"))
         (rs.getInt("nodejoinkey"), NodeConfigVersions(nodeId, versions))
       }
     }
@@ -352,9 +393,15 @@ class UpdateExpectedReportsJdbcRepository(
 
         // save new nodeconfiguration - no need to check for existing version for them
         for (config <- nodeConfigIds) {
-          jdbcTemplate.update("insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversions) values (?,?,?)",
-            new java.lang.Integer(nodeJoinKey), config.nodeId.value, NodeConfigVersionsSerializer.serialize(List(config.version))
-          )
+          jdbcTemplate.update(new PreparedStatementCreator() {
+            override def createPreparedStatement(con: Connection): PreparedStatement = {
+              val ps = con.prepareStatement("insert into expectedreportsnodes ( nodejoinkey, nodeid, nodeconfigversions) values (?,?,?)")
+              ps.setInt(1, nodeJoinKey)
+              ps.setString(2, config.nodeId.value)
+              ps.setArray(3, con.createArrayOf("text", NodeConfigVersionsSerializer.serialize(List(config.version))))
+              ps
+            }
+          })
         }
 
         findReports.findCurrentExpectedReports(ruleId) match {
@@ -377,7 +424,7 @@ class UpdateExpectedReportsJdbcRepository(
     object NodeConfigVersionsMapper extends RowMapper[(Int,NodeConfigVersions)] {
       def mapRow(rs : ResultSet, rowNum: Int) : (Int,NodeConfigVersions) = {
         val k = rs.getInt("nodejoinkey")
-        val n = NodeConfigVersions(NodeId(rs.getString("nodeid")), NodeConfigVersionsSerializer.unserialize(rs.getString("nodeconfigversions")))
+        val n = NodeConfigVersions(NodeId(rs.getString("nodeid")), NodeConfigVersionsSerializer.unserialize(rs.getArray("nodeconfigversions")))
         (k,n)
       }
     }
@@ -436,28 +483,42 @@ case class ReportAndNodeMapping(
 ) extends HashcodeCaching
 
 object ReportAndNodeMapper extends RowMapper[ReportAndNodeMapping] {
+
+  //handler to raise exception on null: we DON'T have better means here,
+  //so be sure to handle the exception above
+
+
   def mapRow(rs : ResultSet, rowNum: Int) : ReportAndNodeMapping = {
-    // unexpandedcomponentsvalues may be null, as it was not defined before 2.6
-    val unexpandedcomponentsvalues = rs.getString("unexpandedcomponentsvalues") match {
-      case null => ""
-      case value => value
+    def notNullS[T](name: String): String = {
+      rs.getString(name) match {
+        case null => throw new IllegalArgumentException(s"Column '${name}' is null (illegal value)")
+        case x => x
+      }
     }
+    def notNullT(name: String): Timestamp = {
+      rs.getTimestamp(name) match {
+        case null => throw new IllegalArgumentException(s"Column '${name}' is null (illegal value)")
+        case x => x
+      }
+    }
+
     new ReportAndNodeMapping(
         rs.getInt("pkid")
       , rs.getInt("nodejoinkey")
-      , new RuleId(rs.getString("ruleid"))
+      , new RuleId(notNullS("ruleid"))
       , rs.getInt("serial")
-      , DirectiveId(rs.getString("directiveid"))
-      , rs.getString("component")
+      , DirectiveId(notNullS("directiveid"))
+      , notNullS("component")
       , rs.getInt("cardinality")
       , ComponentsValuesSerialiser.unserializeComponents(rs.getString("componentsvalues"))
-      , ComponentsValuesSerialiser.unserializeComponents(unexpandedcomponentsvalues)
-      , new DateTime(rs.getTimestamp("begindate"))
-      , if(rs.getTimestamp("enddate")!=null) {
-          Some(new DateTime(rs.getTimestamp("endDate")))
-        } else None
-      , NodeId(rs.getString("nodeid"))
-      , NodeConfigVersionsSerializer.unserialize(rs.getString("nodeconfigversions"))
+      , ComponentsValuesSerialiser.unserializeComponents(rs.getString("unexpandedcomponentsvalues"))
+      , new DateTime(notNullT("begindate"))
+      , rs.getTimestamp("enddate") match {
+          case null => None
+          case x    => Some(new DateTime(x))
+        }
+      , NodeId(notNullS("nodeid"))
+      , NodeConfigVersionsSerializer.unserialize(rs.getArray("nodeconfigversions"))
     )
   }
 }
@@ -480,23 +541,24 @@ object ComponentsValuesSerialiser {
    * Never fails, but returned an empty list.
    */
   def unserializeComponents(ids:String) : Seq[String] = {
-    implicit val formats = DefaultFormats
-    parse(ids).extract[List[String]]
+    if(null == ids || ids.trim == "") Seq()
+    else {
+      implicit val formats = DefaultFormats
+      parse(ids).extract[List[String]]
+    }
  }
 }
 
 object NodeConfigVersionsSerializer {
 
-  def serialize(versions: List[NodeConfigVersion]): String = {
-    implicit val formats = Serialization.formats(NoTypeHints)
-    Serialization.write(versions.reverse.map(_.value.trim))
+  def serialize(versions: List[NodeConfigVersion]): Array[Object] = {
+      versions.map(_.value.trim).toArray
   }
 
-  def unserialize(versions: String): List[NodeConfigVersion] = {
-    if(null == versions || versions == "") Nil
+  def unserialize(versions: java.sql.Array): List[NodeConfigVersion] = {
+    if(null == versions) Nil
     else {
-      implicit val formats = DefaultFormats
-      parse(versions).extract[List[String]].reverse.map(_.trim).filterNot( _.isEmpty).map(NodeConfigVersion(_))
+      versions.getArray.asInstanceOf[Array[String]].toList.map(NodeConfigVersion(_))
     }
   }
 }

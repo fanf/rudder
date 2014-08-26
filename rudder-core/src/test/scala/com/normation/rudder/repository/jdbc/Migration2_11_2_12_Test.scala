@@ -43,6 +43,7 @@ import scala.slick.jdbc.{GetResult, StaticQuery => Q}
 import Q.interpolation
 import com.normation.rudder.migration.DBCommon
 import java.sql.Timestamp
+import MyPostgresDriver.simple._
 
 /**
  *
@@ -57,7 +58,9 @@ System.setProperty("test.postgres", "true")
   //we don't want the default 2.12 tables to be created
   override def sqlInit : String = ""
 
-  val slickDB = Database.forDataSource(dataSource)
+  val db = new SlickSchema(dataSource)
+  import db._
+  import db.slickDB._
 
   sequential
 
@@ -82,7 +85,7 @@ System.setProperty("test.postgres", "true")
     }
 
     "allows to add an entry in reportsexecution with nodeConfiguration" in {
-      slickDB.withSession { implicit s =>
+      withSession { implicit s =>
         val t= ("node_1", new Timestamp(System.currentTimeMillis), false, "node_config_1")
 
         sqlu"""insert into  reportsexecution (nodeid, date, complete, nodeconfigversion) values (${t._1}, ${t._2}, ${t._3}, ${t._4});""".first
@@ -92,12 +95,14 @@ System.setProperty("test.postgres", "true")
     }
 
     "allows to add entry in expectedreportsnodes with node configuration" in {
-      slickDB.withSession { implicit s =>
-        val t= (42, "node_1", "node_config_1,node_config_2,node_config_3")
 
-        sqlu"""insert into  expectedreportsnodes (nodejoinkey, nodeid, nodeconfigversions) values (${t._1}, ${t._2}, ${t._3});""".first
+      val t= SlickExpectedReportsNodes(42, "node_1", List("node_config_1","node_config_2","node_config_3"))
 
-        sql"select * from expectedreportsnodes".as[(Int,String,String)].first === t
+      slickExec { implicit s =>
+
+        expectedReportsNodesTable +=  t
+
+        expectedReportsNodesTable.first === t
       }
     }
 

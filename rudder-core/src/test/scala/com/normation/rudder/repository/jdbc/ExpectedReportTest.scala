@@ -62,9 +62,9 @@ System.setProperty("test.postgres", "true")
     jdbcTemplate.execute("DELETE FROM expectedReports; DELETE FROM expectedReportsNodes;")
   }
 
-  val findReports = new FindExpectedReportsJdbcRepository(jdbcTemplate)
+  val findReports = new FindExpectedReportsJdbcRepository(jdbcTemplate, 2)
   val expectedReportsRepo = new UpdateExpectedReportsJdbcRepository(jdbcTemplate, new DataSourceTransactionManager(dataSource), findReports)
-  val slick = new ExpectedReportsSchema(dataSource)
+  val slick = new SlickSchema(dataSource)
   import slick._
 
   sequential
@@ -83,10 +83,6 @@ System.setProperty("test.postgres", "true")
   val run1 = DateTime.now.minusMinutes(5*5).withMillisOfSecond(123) //check that millis are actually used
   val run2 = DateTime.now.minusMinutes(5*4)
   val run3 = DateTime.now.minusMinutes(5*3)
-
-  implicit def toSlickExpectedReportsNodes(nodeJoin: Int, nodeId: String, nodeConfigVersions: String): SlickExpectedReportsNodes = {
-    SlickExpectedReportsNodes(nodeJoin, nodeId, nodeConfigVersions)
-  }
 
 
   def compareSlickER(report: SlickExpectedReports, expected: SlickExpectedReports) = {
@@ -110,15 +106,16 @@ System.setProperty("test.postgres", "true")
 
   "Finding nodes" should {
 
+    val strangeVersions = List(" abc" , "def " , "\nghi\t").map(NodeConfigVersion(_)).reverse //ghi is the most recent
     //note: in version, [a,b,c] means "c" is the most recent versions
     //in the unzserialized object, the most recent version is the HEAD of the list.
     //note: spaces are trimmed in version
     val expectedReportsNodes: Seq[SlickExpectedReportsNodes] = Seq(
-        SlickExpectedReportsNodes(1, "n0", "")
-      , SlickExpectedReportsNodes(1, "n1", """[" abc" , "def " , "\nghi\t"]""")
-      , SlickExpectedReportsNodes(2, "n0", """["cba"]""")
-      , SlickExpectedReportsNodes(3, "n2", """["xz"]""")
-      , SlickExpectedReportsNodes(4, "n1", """["mno" , "pqr"]""")
+        SlickExpectedReportsNodes(1, "n0", List())
+      , SlickExpectedReportsNodes(1, "n1", NodeConfigVersionsSerializer.serialize(strangeVersions).toList.map(_.asInstanceOf[String]))
+      , SlickExpectedReportsNodes(2, "n0", List("cba"))
+      , SlickExpectedReportsNodes(3, "n2", List("xz"))
+      , SlickExpectedReportsNodes(4, "n1", List("pqr", "mno"))
     )
     step {
       slickExec { implicit s =>
@@ -138,9 +135,11 @@ System.setProperty("test.postgres", "true")
       import Q.interpolation
       slickExec { implicit s =>
         val i = 1
+        //here, we get the Postgres string representation of ARRAYs
         val res = sql"select nodeid, nodeconfigversions from expectedreportsnodes where nodeJoinKey = ${i}".as[(String, String)].list
 
-        res must contain(exactly( ("n0", ""), ("n1", """[" abc" , "def " , "\nghi\t"]""")  ))
+        //the most recent must be in head of the array
+        res must contain(exactly( ("n0", "{}"), ("n1", "{ghi,def,abc}")  ))
       }
     }
 
@@ -199,8 +198,8 @@ System.setProperty("test.postgres", "true")
         compareER(inserted.openOrThrowException("Test failed"), RuleExpectedReports(r1, serial, directiveOnNodes, DateTime.now, None)) and
         reports.size === 1 and compareSlickER(reports(0), expected) and
         nodes.size === 2 and (nodes must contain(exactly(
-            SlickExpectedReportsNodes(100, "n1", """["n1_v1"]""")
-          , SlickExpectedReportsNodes(100, "n2", """["n2_v1"]""")
+            SlickExpectedReportsNodes(100, "n1", List("n1_v1"))
+          , SlickExpectedReportsNodes(100, "n2", List("n2_v1"))
         )))
       }
     }
@@ -215,8 +214,8 @@ System.setProperty("test.postgres", "true")
         inserted.isInstanceOf[Failure] and
         reports.size === 1 and compareSlickER(reports(0), expected) and
         nodes.size === 2 and (nodes must contain(exactly(
-            SlickExpectedReportsNodes(100, "n1", """["n1_v1"]""")
-          , SlickExpectedReportsNodes(100, "n2", """["n2_v1"]""")
+            SlickExpectedReportsNodes(100, "n1", List("n1_v1"))
+          , SlickExpectedReportsNodes(100, "n2", List("n2_v1"))
         )))
       }
     }
@@ -225,78 +224,3 @@ System.setProperty("test.postgres", "true")
 
 }
 
-class ExpectedReportsSchema(datasource: DataSource) extends Loggable {
-
-  final case class SlickExpectedReports(
-      pkId                      : Option[Int]
-    , nodeJoinKey               : Int
-    , ruleId                    : String
-    , serial                    : Int
-    , directiveId               : String
-    , component                 : String
-    , cardinality               : Int
-    , componentsValues          : String
-    , unexpandedComponentsValues: String
-    , beginDate                 : DateTime
-    , endDate                   : Option[DateTime]
-  )
-
-  final case class SlickExpectedReportsNodes(
-      nodeJoinKey        : Int
-    , nodeId             : String
-    , nodeConfigVersions : String
-  )
-
-  implicit def date2dateTime = MappedColumnType.base[DateTime, Timestamp](
-      dt => new Timestamp(dt.getMillis)
-    , ts => new DateTime(ts.getTime)
-  )
-
-  class ExpectedReportsTable(tag: Tag) extends Table[SlickExpectedReports](tag, "expectedreports") {
-    def pkId = column[Int]("pkid", O.PrimaryKey, O.AutoInc) // This is the primary key column
-    def nodeJoinKey = column[Int]("nodejoinkey")
-    def ruleId = column[String]("ruleid")
-    def serial = column[Int]("serial")
-    def directiveId = column[String]("directiveid")
-    def component = column[String]("component")
-    def cardinality = column[Int]("cardinality")
-    def componentsValues = column[String]("componentsvalues")
-    def unexpandedComponentsValues = column[String]("unexpandedcomponentsvalues")
-    def beginDate = column[DateTime]("begindate")
-    def endDate = column[DateTime]("enddate", O.Nullable)
-
-    // Every table needs a * projection with the same type as the table's type parameter
-    def * = (
-        pkId.?, nodeJoinKey, ruleId, serial, directiveId, component,
-        cardinality, componentsValues, unexpandedComponentsValues, beginDate, endDate.?
-    ) <> (SlickExpectedReports.tupled, SlickExpectedReports.unapply)
-  }
-
-  class ExpectedReportsNodesTable(tag: Tag) extends Table[SlickExpectedReportsNodes](tag, "expectedreportsnodes") {
-    def nodeJoinKey = column[Int]("nodejoinkey")
-    def nodeId = column[String]("nodeid")
-    def nodeConfigVersions = column[String]("nodeconfigversions")
-
-    // Every table needs a * projection with the same type as the table's type parameter
-    def * = (
-        nodeJoinKey, nodeId, nodeConfigVersions
-        ) <> (SlickExpectedReportsNodes.tupled, SlickExpectedReportsNodes.unapply)
-    def pk = primaryKey("pk_expectedreportsnodes", (nodeJoinKey, nodeId))
-  }
-
-  val expectedReportsTable = TableQuery[ExpectedReportsTable]
-  val expectedReportsNodesTable = TableQuery[ExpectedReportsNodesTable]
-
-  val slickDB = Database.forDataSource(datasource)
-
-  def slickExec[A](body: Session => A): A = {
-    try {
-      slickDB.withSession { s => body(s) }
-    } catch {
-      case e: BatchUpdateException =>
-        logger.error("Error when inserting reports: " + e.getMessage)
-        logger.error(e.getNextException)
-        throw e
-    }
-  }
-}
