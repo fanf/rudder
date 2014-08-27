@@ -52,6 +52,7 @@ import com.normation.rudder.reports.ComplianceMode
 import com.normation.utils.Control.sequence
 import com.normation.rudder.reports.FullCompliance
 import com.normation.rudder.reports.ErrorOnly
+import com.normation.rudder.reports.execution.AgentRunId
 
 /**
  * An execution batch contains the node reports for a given Rule / Directive at a given date
@@ -77,6 +78,38 @@ object ExecutionBatch {
     , complianceMode        : ComplianceMode
   )
 
+
+  /**
+   * Method to check if an "date" is experied or no (compared to a reference
+   * time, usually now), given:
+   * - the compliance mode,
+   * - the agent run frequency
+   *
+   * We ASSUME that the time to check and the reference one are comparable, i.e
+   * that the machine they come from have a clock correctly configured & synchronized.
+   * This is important for complianceMode = FullCompliance only.
+   * See for example: http://www.rudder-project.org/redmine/issues/5272
+   *
+   * "Expiration" happen after a time of min(runInterval, 5 min)+runInterval
+   * (i.e, we let the agent a full run interval to actually runs, and then again
+   *  5 min to let bits find there way)
+   *
+   * The reference point is "now".
+   * GenTime        +1 interval +5 min
+   *    |--------------|---------|--------|
+   *           |             |        |
+   *         "now" 1       "now" 2   "now" 3
+   *
+   *  now1 and now2 imply that reports may be pending
+   *  now3 implies that reports are in no answer
+   */
+  def isExpired(time: DateTime, complianceMode: ComplianceMode, agentExecutionInterval: Int, referenceTime: DateTime = DateTime.now) : Boolean = {
+    complianceMode match {
+      case ErrorOnly => false
+      case FullCompliance => time.plusMinutes(agentExecutionInterval + Math.min(agentExecutionInterval,5)).isBefore(referenceTime)
+    }
+  }
+
   /**
    * This is the main entry point to get the detailed reporting
    * It returns a Sequence of NodeStatusReport which gives, for
@@ -87,15 +120,28 @@ object ExecutionBatch {
    *
    */
   def getNodeStatusReports(
-      nodeId                : NodeId
-    , optAgentRunTime       : Option[DateTime]
-    , optNodeConfigVersion  : Option[NodeConfigVersion]
-    , expectedReports       : Seq[RuleExpectedReports]
-    , agentExecutionReports : Seq[Reports]
+      nodeId                 : NodeId
+      // time reported by the run -- can be empty if there is actually no run
+    , optAgentRunTime        : Option[DateTime]
+      //config version reported by the run
+    , optRunNodeConfigVersion: Option[NodeConfigVersion]
+    , expectedReports        : Seq[RuleExpectedReports]
+    , agentExecutionReports  : Seq[Reports]
     // this is the agent execution interval, in minutes
-    , agentExecutionInterval: Int
-    , complianceMode        : ComplianceMode
+    , agentExecutionInterval : Int
+    , complianceMode         : ComplianceMode
   ) : Seq[NodeStatusReport] = {
+
+    /*
+     * we define two comptatible option(nodeconfig version) as:
+     * if we know both, they must be equals, else they are compatible
+     */
+    def compatibleVersions(x:Option[NodeConfigVersion], y:Option[NodeConfigVersion]) = {
+      (x,y) match {
+        case (Some(v1), Some(v2)) => v1 == v2
+        case _ => true
+      }
+    }
 
 
     /**
@@ -117,12 +163,12 @@ object ExecutionBatch {
           //after the last rule update, i.e the most recent "begin date" among expected reports
           val lastExpectReportModification = expectedReports.map( _.beginDate).maxBy( _.getMillis)
 
-          //the "reasonable" time is 2 times the agent interval, in minutes.
-          if (lastExpectReportModification.plus(agentExecutionInterval*2*1000*60).isAfter(DateTime.now())) {
-            PendingReportType
-          } else {
+          if(isExpired(lastExpectReportModification, complianceMode, agentExecutionInterval)) {
             NoAnswerReportType
+          } else {
+            PendingReportType
           }
+
         case ErrorOnly =>
           //in that mode, an answer is a SUCCESS that should be display
           //to the user as "No change"
@@ -131,9 +177,14 @@ object ExecutionBatch {
     }
 
     (for {
-      (ruleId, exr) <- expectedReports.groupBy( _.ruleId)
+      (ruleId, exr)             <- expectedReports.groupBy( _.ruleId)
       expectedReport            <- exr
-      directivesOnNode          <- expectedReport.directivesOnNodes.filter(x => x.nodeConfigurationIds.exists( _._1 == nodeId) )
+      ((nodeId, optV), directivesOnNode) <- expectedReport.directivesOnNodes.collect { x =>
+                                     x.nodeConfigurationIds.find( _._1 == nodeId) match {
+                                       case None => None
+                                       case Some(nodeConfigId) => Some((nodeConfigId, x))
+                                     }
+                                   }.flatten
       directiveStatusReports    =  for {
                                     expectedDirective <- directivesOnNode.directiveExpectedReports
                                   } yield {
@@ -141,11 +192,21 @@ object ExecutionBatch {
                                     val componentsStatus = for {
                                                              expectedComponent <- expectedDirective.components
                                                            } yield {
-                                                             val componentFilteredReports = agentExecutionReports.filter(x =>
-                                                               x.nodeId == nodeId &&
-                                                               x.directiveId == expectedDirective.directiveId &&
-                                                               x.component == expectedComponent.componentName
-                                                             )
+                                                             //we are using a check on version two say that in fact,
+                                                             //the report you get were not for the version needed
+
+                                                             val componentFilteredReports = {
+                                                               if(compatibleVersions(optRunNodeConfigVersion, optV)) {
+                                                                 agentExecutionReports.filter(x =>
+                                                                   x.nodeId == nodeId &&
+                                                                   x.serial == expectedReport.serial &&
+                                                                   x.directiveId == expectedDirective.directiveId &&
+                                                                   x.component == expectedComponent.componentName
+                                                                 )
+                                                               } else {
+                                                                 Seq()
+                                                               }
+                                                             }
 
                                                              checkExpectedComponentWithReports(expectedComponent, componentFilteredReports, noAnswerInterpretation)
                                                            }
@@ -153,7 +214,7 @@ object ExecutionBatch {
                                     DirectiveStatusReport(expectedDirective.directiveId, componentsStatus.toSet, Set())
                                   }
     } yield {
-      NodeStatusReport(nodeId, optAgentRunTime, optNodeConfigVersion, ruleId, directiveStatusReports.toSet, Set())
+      NodeStatusReport(nodeId, optAgentRunTime, optV, ruleId, directiveStatusReports.toSet, Set())
     }).toSeq
   }
 
@@ -321,16 +382,17 @@ object ExecutionBatch {
         val componentReports = nodeStatusReports.flatMap { nodeStatus =>
           // we filter by directiveId
           val directivesStatus = nodeStatus.directives.filter(_.directiveId == directiveId)
-          getComponentRuleStatus(nodeStatus.nodeId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus.toSeq)
+          getComponentRuleStatus(nodeStatus.nodeId, directiveId, directiveExpectedReports.flatMap(x=> x.components), directivesStatus)
         }.groupBy(_.component).map { case (componentName, componentReport) =>
           val componentValueReports = componentReport.flatMap(_.componentValues).
             groupBy(x=> (x.unexpandedComponentValue)).
             flatMap { case (unexpandedComponentValue, componentValueReport) =>
               // if unexpandedComponentValue exists, then we may have different values, hence the worst type
               // has to be computed there; else it has to be computed on the values level
+              val componentValueReportSet =  componentValueReport.toSet
               unexpandedComponentValue match {
                 case Some(unexpended) =>
-                  componentValueReport.groupBy(x => x.componentValue).map { case (componentValue, reports) =>
+                  componentValueReportSet.groupBy(x => x.componentValue).map { case (componentValue, reports) =>
                     ComponentValueRuleStatusReport(
                         directiveId
                       , componentName
@@ -340,7 +402,7 @@ object ExecutionBatch {
                     )
                   }
                 case None =>
-                  componentValueReport.groupBy(x => x.componentValue).map { case (componentValue, reports) =>
+                  componentValueReportSet.groupBy(x => x.componentValue).map { case (componentValue, reports) =>
                     ComponentValueRuleStatusReport(
                         directiveId
                       , componentName
@@ -350,9 +412,9 @@ object ExecutionBatch {
                     )
                   }
               }
-           }.toSeq
+           }.toSet
            ComponentRuleStatusReport(directiveId,componentName,componentValueReports)
-        }.toSeq
+        }.toSet
         DirectiveRuleStatusReport(directiveId,componentReports)
       }.toSeq
   }
@@ -364,12 +426,12 @@ object ExecutionBatch {
    * components  : Expected component report format
    * directive   : Latest directive reports
    */
-  private[this] def getComponentRuleStatus(nodeId: NodeId, directiveid:DirectiveId, components:Seq[ReportComponent], directive:Seq[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
+  private[this] def getComponentRuleStatus(nodeId: NodeId, directiveid:DirectiveId, components:Seq[ReportComponent], directive:Set[DirectiveStatusReport]) : Seq[ComponentRuleStatusReport]={
      components.map{ component =>
        val id = component.componentName
        val componentvalues = directive.flatMap{ nodestatus =>
          val components = nodestatus.components.filter(_.component==id)
-         getComponentValuesRuleStatus(nodeId, directiveid, id, component.groupedComponentValues,components.toSeq) ++
+         getComponentValuesRuleStatus(nodeId, directiveid, id, component.groupedComponentValues,components) ++
          getUnexpectedComponentValuesRuleStatus(nodeId, directiveid, id, components.flatMap(_.unexpectedCptValues).toSeq)
        }
        ComponentRuleStatusReport(directiveid,id,componentvalues)
@@ -383,7 +445,7 @@ object ExecutionBatch {
    * values      : Expected values format
    * components  : Latest components report
    */
- private[this] def getComponentValuesRuleStatus(nodeId: NodeId, directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Seq[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
+ private[this] def getComponentValuesRuleStatus(nodeId: NodeId, directiveid:DirectiveId, component:String, values:Seq[(String, Option[String])], components:Set[ComponentStatusReport]) : Seq[ComponentValueRuleStatusReport]={
      values.map{
        case (value, unexpanded) =>
          val componentValues = components.flatMap(_.componentValues.filter(_.componentValue==value))
@@ -407,7 +469,7 @@ object ExecutionBatch {
  private[this] def getUnexpectedComponentValuesRuleStatus(nodeId: NodeId, directiveid:DirectiveId, component:String, values:Seq[ComponentValueStatusReport]) : Seq[ComponentValueRuleStatusReport]={
      values.map{
        value =>
-         val nodes = Seq(NodeReport(nodeId, value.reportType, value.message))
+         val nodes = Set(NodeReport(nodeId, value.reportType, value.message))
          ComponentValueRuleStatusReport(
              directiveid
            , component

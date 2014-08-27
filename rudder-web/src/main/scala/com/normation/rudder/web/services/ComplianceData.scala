@@ -77,13 +77,13 @@ case class ComplianceData(
     val components : Seq[ComponentRuleStatusReport] = {
       report match {
         case DirectiveRuleStatusReport(_, components) => {
-          components
+          components.toSeq
         }
         case component : ComponentRuleStatusReport => {
           Seq(component)
         }
         case value: ComponentValueRuleStatusReport => {
-          val component = ComponentRuleStatusReport(value.directiveId, value.component, Seq(value))
+          val component = ComponentRuleStatusReport(value.directiveId, value.component, Set(value))
           Seq(component)
         }
       }
@@ -120,7 +120,7 @@ case class ComplianceData(
       nodeInfo <- allNodeInfos.get(nodeId)
     } yield {
       val severity = ReportType.getSeverityFromStatus(ReportType.getWorseType(componentReports.map(_.reportType)))
-      val details = getComponentsComplianceDetails(componentReports, rule, true)
+      val details = getComponentsComplianceDetails(componentReports.toSet, rule, true)
       val status = getDisplayStatusFromSeverity(severity)
       NodeComplianceLine(
           nodeInfo
@@ -203,7 +203,7 @@ case class ComplianceData(
 
   // From Node Point of view
   def getDirectivesComplianceDetails (
-    directivesReport: Seq[DirectiveStatusReport]
+    directivesReport: Set[DirectiveStatusReport]
   ) : JsTableData[DirectiveComplianceLine] = {
     val directivesComplianceData = for {
       directiveStatus <- directivesReport
@@ -238,7 +238,7 @@ case class ComplianceData(
    * Get compliance details of Components of a Directive
    */
   def getComponentsComplianceDetails (
-      components : Seq[ComponentRuleStatusReport]
+      components : Set[ComponentRuleStatusReport]
     , rule : Rule
     , includeMessage : Boolean
   ) : JsTableData[ComponentComplianceLine] = {
@@ -280,7 +280,7 @@ case class ComplianceData(
 
   // From Node Point of view
   def getComponentsComplianceDetails (
-      components : Seq[ComponentStatusReport]
+      components : Set[ComponentStatusReport]
   ) : JsTableData[ComponentComplianceLine] = {
 
     val componentsComplianceData = for {
@@ -314,7 +314,7 @@ case class ComplianceData(
    * Get compliance details of Value of a Component
    */
   def getValuesComplianceDetails (
-      values : Seq[ComponentValueRuleStatusReport]
+      values : Set[ComponentValueRuleStatusReport]
     , rule : Rule
     , includeMessage : Boolean
   ) : JsTableData[ValueComplianceLine] = {
@@ -325,7 +325,7 @@ case class ComplianceData(
         ComponentRuleStatusReport (
             entries.head.directiveId // can't fail because we are in a groupBy
           , entries.head.component  // can't fail because we are in a groupBy
-          , entries
+          , entries.toSet
         )
       severity = ReportType.getSeverityFromStatus(component.reportType)
       status = getDisplayStatusFromSeverity(severity)
@@ -357,7 +357,7 @@ case class ComplianceData(
 
   // From Node Point of view
   def getValuesComplianceDetails (
-      values : Seq[ComponentValueStatusReport]
+      values : Set[ComponentValueStatusReport]
   ) : JsTableData[ValueComplianceLine] = {
     val valuesComplianceData = for {
       value <- values

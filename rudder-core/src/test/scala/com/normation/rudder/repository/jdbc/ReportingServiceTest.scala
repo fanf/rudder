@@ -33,37 +33,27 @@
 */
 
 package com.normation.rudder.repository.jdbc
+
 import scala.slick.driver.PostgresDriver.simple._
 import org.joda.time.DateTime
 import org.junit.runner.RunWith
-import org.specs2.runner.JUnitRunner
+import org.specs2.matcher.MatchResult
 import org.specs2.mutable._
+import org.specs2.runner.JUnitRunner
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
+import net.liftweb.common.Full
+
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.ComponentStatusReport
-import com.normation.rudder.domain.reports.ComponentValueStatusReport
-import com.normation.rudder.domain.reports.DirectiveStatusReport
-import com.normation.rudder.domain.reports.NodeConfigVersion
-import com.normation.rudder.domain.reports.NodeStatusReport
-import com.normation.rudder.domain.reports.ReportType
-import com.normation.rudder.domain.reports.Reports
-import com.normation.rudder.domain.reports.SuccessReportType
+import com.normation.rudder.domain.reports._
 import com.normation.rudder.migration.DBCommon
 import com.normation.rudder.reports.ErrorOnly
-import com.normation.rudder.reports.execution.AgentRunId
-import com.normation.rudder.reports.execution.ReportExecution
-import com.normation.rudder.reports.execution.ReportsExecutionService
-import com.normation.rudder.reports.execution.RoReportsExecutionSquerylRepository
-import com.normation.rudder.reports.execution.WoReportsExecutionSquerylRepository
+import com.normation.rudder.reports.execution._
 import com.normation.rudder.reports.status.StatusUpdateSquerylRepository
+import com.normation.rudder.reports.FullCompliance
 import com.normation.rudder.services.reports.ExpectedReportsUpdateImpl
 import com.normation.rudder.services.reports.ReportingServiceImpl
-import net.liftweb.common.Full
-import com.normation.rudder.domain.reports.NodeConfigId
-import com.normation.rudder.domain.reports.NodeConfigId
-import com.normation.rudder.domain.reports.NodeConfigVersion
 
 /**
  *
@@ -89,19 +79,21 @@ System.setProperty("test.postgres", "true")
   val roAgentRun = new RoReportsExecutionSquerylRepository(squerylConnectionProvider)
   val woAgentRun = new WoReportsExecutionSquerylRepository(roAgentRun)
 
-  val reportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ErrorOnly))
-
   val updateRuns = new ReportsExecutionService(reportsRepo, woAgentRun, new StatusUpdateSquerylRepository(squerylConnectionProvider), 1)
 
   import slick._
 
-  sequential
 
+  //help differentiate run number with the millis
+  //perfect case: generation are followe by runs one minute latter
 
-  val run1 = DateTime.now.minusMinutes(5*2).withMillisOfSecond(123) //check that millis are actually used
-  val run2 = DateTime.now.minusMinutes(5*1)
+  val gen1 = DateTime.now.minusMinutes(5*2).withMillisOfSecond(1)
+  val run1 = gen1.plusMinutes(1)
+  val gen2 = gen1.plusMinutes(5).withMillisOfSecond(2)
+  val run2 = gen2.plusMinutes(1)
   //now
-  val run3 = DateTime.now.minusMinutes(5*0)
+//  val gen3 = gen2.plusMinutes(5).withMillisOfSecond(3)
+//  val run3 = gen3.minusMinutes(1)
 
 /*
  * We need 5 nodes
@@ -132,18 +124,18 @@ System.setProperty("test.postgres", "true")
   val expecteds = (
     Map[SlickExpectedReports, Seq[SlickExpectedReportsNodes]]()
     ++ expect("r0", 1)( //r0 @ t1
-        (1, "r0_d0", "r0_d0_c0", 1, """["r0_d0_c0_v0"]""", run1, Some(run2), allNodes_t1 )
-      , (1, "r0_d0", "r0_d0_c1", 1, """["r0_d0_c1_v0"]""", run1, Some(run2), allNodes_t1 )
+        (1, "r0_d0", "r0_d0_c0", 1, """["r0_d0_c0_v0"]""", gen1, Some(gen2), allNodes_t1 )
+      , (1, "r0_d0", "r0_d0_c1", 1, """["r0_d0_c1_v0"]""", gen1, Some(gen2), allNodes_t1 )
     )
     ++ expect("r1", 1)( //r1 @ t1
-        (2, "r1_d1", "r1_d1_c0", 1, """["r1_d1_c0_v0"]""", run1, Some(run2), allNodes_t1 )
+        (2, "r1_d1", "r1_d1_c0", 1, """["r1_d1_c0_v0"]""", gen1, Some(gen2), allNodes_t1 )
     )
     ++ expect("r0", 2)( //r0 @ t2
-        (3, "r0_d0", "r0_d0_c0", 1, """["r0_d0_c0_v1"]""", run2, None, allNodes_t2 )
-      , (3, "r0_d0", "r0_d0_c1", 1, """["r0_d0_c1_v1"]""", run2, None, allNodes_t2 )
+        (3, "r0_d0", "r0_d0_c0", 1, """["r0_d0_c0_v1"]""", gen2, None, allNodes_t2 )
+      , (3, "r0_d0", "r0_d0_c1", 1, """["r0_d0_c1_v1"]""", gen2, None, allNodes_t2 )
     )
     ++ expect("r2", 1)( //r2 @ t2
-        (4, "r2_d2", "r2_d2_c0", 1, """["r2_d2_c0_v0"]""", run2, None, allNodes_t2 )
+        (4, "r2_d2", "r2_d2_c0", 1, """["r2_d2_c0_v0"]""", gen2, None, allNodes_t2 )
     )
   )
 
@@ -192,23 +184,20 @@ System.setProperty("test.postgres", "true")
     )
   )
 
+  sequential
+
   step {
     slick.insertReports(reports.values.toSeq.flatten)
     slickExec { implicit session =>
-
       expectedReportsTable ++= expecteds.keySet
       expectedReportsNodesTable ++= expecteds.values.toSet.flatten
-
     }
-
     updateRuns.findAndSaveExecutions(42)
-    updateRuns.findAndSaveExecutions(43)
-
-
+    updateRuns.findAndSaveExecutions(43) //need to be done one time for init, one time for actual work
   }
 
 
-  "Testing expected reports" should {  //be in ExpectedReportsTest!
+  "Testing set-up for expected reports and agent run" should {  //be in ExpectedReportsTest!
     //essentially test the combination of in/in(values clause
 
     "be correct for in(tuple) clause" in {
@@ -230,10 +219,6 @@ System.setProperty("test.postgres", "true")
       val res = findExpected.getLastExpectedReports(nodes("n1","n2"), Set()).openOrThrowException("'Test failled'")
       res.size must beEqualTo(2)
     }
-  }
-
-  "Finding reports status" should {
-
 
     "contains runs for node" in {
       val res = roAgentRun.getNodesLastRun(Set("n0", "n1", "n2", "n3", "n4").map(NodeId(_))).openOrThrowException("test failed")
@@ -248,23 +233,353 @@ System.setProperty("test.postgres", "true")
 
     }
 
+  }
+
+  /////////////////////////////////////////////////////////////////
+  /////////////////////// RuleStatusReports ///////////////////////
+  /////////////////////////////////////////////////////////////////
+
+  ///////////////////////////////// error only mode /////////////////////////////////
+
+  "Finding rule status reports for the error only mode" should {
+    val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ErrorOnly))
+
+    val currentNodeReports = Set(
+                      NodeReport(NodeId("n0"), SuccessReportType,List())
+                    , NodeReport(NodeId("n1"), SuccessReportType,List())
+                    , NodeReport(NodeId("n2"), SuccessReportType,List())
+                    , NodeReport(NodeId("n3"), SuccessReportType,List("msg"))
+                    , NodeReport(NodeId("n4"), SuccessReportType,List("msg"))
+                  )
 
 
-    "find the last reports for node 1" in {
-      val r = reportingService.findNodeStatusReports(nodes("n2"), Set("r0"))
+    "get r0" in {
+      val r = errorOnlyReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r0"))
       val result = r.openOrThrowException("'Test failled'")
-      result must contain(exactly(
+
+      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r0_d0"), Set(
+              ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1", Set(
+                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1","r0_d0_c1_v1",Some("r0_d0_c1_v1"), currentNodeReports)
+               ))
+             , ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0",Set(
+                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0","r0_d0_c0_v1",Some("r0_d0_c0_v1"), currentNodeReports)
+               ))
+         )))
+      result must beEqualTo(expected)
+    }
+
+    "get r1" in {
+      val r = errorOnlyReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r1"))
+      val result = r.openOrThrowException("'Test failled'")
+      result must beEqualTo(List())
+    }
+
+    "get r2" in {
+      val r = errorOnlyReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r2"))
+      val result = r.openOrThrowException("'Test failled'")
+
+      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r2_d2"),Set(
+          ComponentRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0",Set(
+              ComponentValueRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0","r2_d2_c0_v0",Some("r2_d2_c0_v0"), currentNodeReports)
+            ))
+      )))
+      result must beEqualTo(expected)
+    }
+  }
+
+  ///////////////////////////////// full compliance mode /////////////////////////////////
+
+  "Finding rule status reports for the error only mode" should {
+    val complianceReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(FullCompliance))
+
+    val currentNodeReports = Set(
+                      NodeReport(NodeId("n0"), PendingReportType,List())
+                    , NodeReport(NodeId("n1"), PendingReportType,List())
+                    , NodeReport(NodeId("n2"), PendingReportType,List())
+                    , NodeReport(NodeId("n3"), SuccessReportType,List("msg"))
+                    , NodeReport(NodeId("n4"), SuccessReportType,List("msg"))
+                  )
+
+
+    "get r0" in {
+      val r = complianceReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r0"))
+      val result = r.openOrThrowException("'Test failled'")
+
+      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r0_d0"), Set(
+              ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1", Set(
+                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1","r0_d0_c1_v1",Some("r0_d0_c1_v1"), currentNodeReports)
+               ))
+             , ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0",Set(
+                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0","r0_d0_c0_v1",Some("r0_d0_c0_v1"), currentNodeReports)
+               ))
+         )))
+      result must beEqualTo(expected)
+    }
+
+    "get r1" in {
+      val r = complianceReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r1"))
+      val result = r.openOrThrowException("'Test failled'")
+      result must beEqualTo(List())
+    }
+
+    "get r2" in {
+      val r = complianceReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r2"))
+      val result = r.openOrThrowException("'Test failled'")
+
+      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r2_d2"),Set(
+          ComponentRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0",Set(
+              ComponentValueRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0","r2_d2_c0_v0",Some("r2_d2_c0_v0"), currentNodeReports)
+            ))
+      )))
+      result must beEqualTo(expected)
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////
+  /////////////////////// NodeStatusReports ///////////////////////
+  /////////////////////////////////////////////////////////////////
+
+  ///////////////////////////////// error only mode /////////////////////////////////
+
+  "Finding node status reports for the error only mode" should {
+    val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ErrorOnly))
+
+    "get success for node 0 on gen2 data (without msg) even if it didn't send reports" in {
+      val r = errorOnlyReportingService.findNodeStatusReports(nodes("n0"), Set())
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n0", None, Some("n0_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+              )
+          ))
+        , nodeStatus("n0", None, Some("n0_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List()))
+              )
+          ))
+      ))
+    }
+
+    "report success for node 1 on gen2 data, without messages, even if no reports exists for run2" in {
+      val r = errorOnlyReportingService.findNodeStatusReports(nodes("n1"), Set("r0"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+              )
+          ))
+      ))
+    }
+
+    "find the correct, older that agent frequency, last report based on configuration for node 2" in {
+      val r = errorOnlyReportingService.findNodeStatusReports(nodes("n2"), Set("r0", "r1", "r2"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
           nodeStatus("n2", Some(run1), Some("n2_t1"), "r0",
               ("r0_d0", Seq(
                   compStatus("r0_d0_c0", ("r0_d0_c0_v0", SuccessReportType, List("msg")))
                 , compStatus("r0_d0_c1", ("r0_d0_c1_v0", SuccessReportType, List("msg")))
               )
           ))
+        , nodeStatus("n2", Some(run1), Some("n2_t1"), "r1",
+              ("r1_d1", Seq(
+                  compStatus("r1_d1_c0", ("r1_d1_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
+      ))
+    }
+
+    "find the correct last report based on last expectation for node 3" in {
+      val r = errorOnlyReportingService.findNodeStatusReports(nodes("n3"), Set("r0","r1"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n3", Some(run2), Some("n3_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+      ))
+    }
+
+    "find the correct last report based on configuration for node 4" in {
+      val r = errorOnlyReportingService.findNodeStatusReports(nodes("n4"), Set("r0", "r2"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n4", Some(run2), Some("n4_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+        , nodeStatus("n4", Some(run2), Some("n4_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
       ))
     }
   }
 
+  ///////////////////////////////// full compliance mode /////////////////////////////////
+
+  "Finding node status reports for the compliance mode" should {
+    val complianceReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(FullCompliance))
+
+    "get pending for node 0 on gen2 data (without msg)" in {
+      val r = complianceReportingService.findNodeStatusReports(nodes("n0"), Set("r0"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n0", None, Some("n0_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+      ))
+    }
+
+    "report 'pending' for node 1 even if we can find the correct reports for run1 and they are not expired" in {
+      val r = complianceReportingService.findNodeStatusReports(nodes("n1"), Set())
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+        , nodeStatus("n1", Some(run1), Some("n1_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List()))
+              )
+          ))
+      ))
+    }
+
+
+    /*
+     * This case is a little touchy because node2 sent reports for gen1/run1,
+     * but not for gen2 (current expectation).
+     * But reports from run1 don't have expired (they are not too far from now),
+     * they are older than gen-time. And we can compare on nodeconfigversion,
+     * and on serial
+     *
+     * So here, we really expect data from gen2, and we get pending because the
+     * expiration time is not spent for now.
+     */
+    "report 'pending' for node 2 even if we can find the correct reports and they are not expired" in {
+      val r = complianceReportingService.findNodeStatusReports(nodes("n2"), Set("r0", "r1"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n2", Some(run1), Some("n2_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+      ))
+    }
+
+    "find the correct last report based last expectation for node 3" in {
+      val r = complianceReportingService.findNodeStatusReports(nodes("n3"), Set("r0"))
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n3", Some(run2), Some("n3_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+      ))
+    }
+
+    "find the correct last report based on configuration for node 4" in {
+      val r = complianceReportingService.findNodeStatusReports(nodes("n4"), Set())
+      val result = r.openOrThrowException("'Test failled'")
+      compareNodeStatus(result, Seq(
+          nodeStatus("n4", Some(run2), Some("n4_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+        , nodeStatus("n4", Some(run2), Some("n4_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
+      ))
+    }
+
+    /*
+     * TODO: a case for a node where the report sent are from the n-1 expectation
+     * BUT they where sent AFTER the n expectation time, so they could be OK.
+     * The check must happen on NodeConfigVersion for that case if we don't
+     * want to have unexpected reports (what we get if we check on serial).
+     * The case can even be set so that the reports look OK (same serial, same values)
+     * but in fact, they are from a previous nodeConfigVersion (because one other directive
+     * changed).
+     */
+
+  }
+
   ////////// utility methods //////////////
+
+  /*
+   * A comparator for NodeStatusReport that allows to more
+   * quickly understand what is the problem
+   */
+  def compareNodeStatus(results:Seq[NodeStatusReport], expecteds:Seq[NodeStatusReport]) = {
+    //compare nodestatus for each rules
+    val resultByNodeAndRule = results.groupBy(x => (x.nodeId, x.ruleId))
+    val expectedByNodeAndRule = expecteds.groupBy(x => (x.nodeId, x.ruleId))
+
+    val compareNodeAndRule = resultByNodeAndRule.keySet must contain(exactly(expectedByNodeAndRule.keySet.toSeq:_*))
+    val sameNodeAndRules = resultByNodeAndRule.keySet.intersect(expectedByNodeAndRule.keySet)
+
+    def matchOneNodeStatus(k:(NodeId,RuleId)):MatchResult[Any] = {
+      (resultByNodeAndRule(k).toList, expectedByNodeAndRule(k).toList) match {
+        case (result :: Nil, expected:: Nil) =>
+          val resultDirectives = result.directives.groupBy( _.directiveId)
+          val expectedDirectives = expected.directives.groupBy( _.directiveId)
+
+          val sameDirectives = resultDirectives.keySet.intersect(expectedDirectives.keySet)
+
+
+          val baseProps = (
+                (result.optAgentRunTime === expected.optAgentRunTime)
+            and (result.optNodeConfigVersion === expected.optNodeConfigVersion)
+            and (resultDirectives.keySet must contain(exactly(expectedDirectives.keySet.toSeq:_*)))
+          )
+
+          def matchOneDirectiveStatus(k:DirectiveId): MatchResult[Any] = {
+            (resultDirectives(k).toList, expectedDirectives(k).toList) match {
+              case (x::Nil, y::Nil) =>
+
+                (x.components must contain(exactly(y.components.toSeq:_*))) and
+                (x.unexpectedComponents must contain(exactly(y.unexpectedComponents.toSeq:_*)))
+
+              case (x::Nil, y) => ko(s"Expected several DirectiveStatusReport for a given directive '${k.value}', which is not suppoted")
+              case (x,_)       => ko(s"We got several DirectiveStatusReport for directive '${k.value}': " + x.toString)
+            }
+          }
+
+          baseProps and (matchOneDirectiveStatus _).foreach(sameDirectives)
+
+
+        case (x::Nil, y) => ko("Expecting several NodeStatusReports for one node and one rule, which is not supported")
+        case (x,_)       => ko("We got several NodeStatusReport for one node and one rule: " + x.toString)
+      }
+    }
+
+    compareNodeAndRule and (matchOneNodeStatus _).foreach(sameNodeAndRules)
+
+  }
 
   implicit def nodes(ids:String*):Set[NodeId] = ids.map( NodeId(_) ).toSet
   implicit def configs(ids:(String,String)*): Set[NodeConfigId] = {
@@ -310,10 +625,6 @@ System.setProperty("test.postgres", "true")
     (nodeId, lines.map(t => toReport((t._6, t._1, t._3, nodeId, t._2,t._4,t._5,t._6,t._7,t._8))))
   }
 
-  implicit def toAgentIds(ids:Set[(String, DateTime)]): Set[AgentRunId] = {
-    ids.map(t => AgentRunId(NodeId(t._1), t._2))
-  }
-
   implicit def toRuleId(id: String): RuleId = RuleId(id)
 
   implicit def agentRuns(runs:(String, Option[(DateTime, Option[String], Boolean)])*): Map[NodeId, Option[ReportExecution]] = {
@@ -321,8 +632,4 @@ System.setProperty("test.postgres", "true")
       NodeId(id) -> opt.map(e => ReportExecution(AgentRunId(NodeId(id), e._1), e._2.map(NodeConfigVersion(_)), e._3))
     }.toMap
   }
-
-
-
-
 }

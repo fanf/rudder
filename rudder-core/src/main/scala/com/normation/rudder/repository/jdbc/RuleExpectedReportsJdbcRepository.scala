@@ -431,16 +431,10 @@ class UpdateExpectedReportsJdbcRepository(
 
     if(toUpdate.isEmpty) Full(Seq())
     else {
-      val insert = """update expectedreportsnodes set nodeconfigversions = ? where nodejoinkey = ? and nodeid = ?"""
 
       for {
-        updates <- sequence(toUpdate) { case(nodeJoinKey, NodeConfigVersions(nodeId, versions)) =>
-                     tryo(jdbcTemplate.update(insert
-                         , NodeConfigVersionsSerializer.serialize(versions)
-                         , new java.lang.Integer(nodeJoinKey)
-                         , nodeId.value
-                           //no need to getOrElse, we have at least all the node id returned by the query in the map
-                     ))
+        updates <- sequence(toUpdate) { case(nodeJoinKey, config) =>
+                     updateNodeConfig(nodeJoinKey, config)
                    }
       } yield {
         toUpdate
@@ -448,20 +442,25 @@ class UpdateExpectedReportsJdbcRepository(
     }
   }
 
+  private[this] def updateNodeConfig(nodeJoinKey: Int, config: NodeConfigVersions) = {
+    tryo(jdbcTemplate.update(new PreparedStatementCreator() {
+       override def createPreparedStatement(con: Connection) = {
+         val ps = con.prepareStatement("update expectedreportsnodes set nodeconfigversions = ? where nodejoinkey = ? and nodeid = ?")
+         ps.setArray(1, con.createArrayOf("text", config.versions.map(_.value).toArray[AnyRef]))
+         ps.setInt(2, nodeJoinKey)
+         ps.setString(3, config.nodeId.value)
+         ps
+       }
+     }))
+  }
+
   /**
    * Save the server list in the database
    */
   private[this] def updateNodes(configs: Seq[(Int,NodeConfigVersions)]): Box[Seq[(Int,NodeConfigVersions)]] = {
-    tryo {
-      for ((nodeJoinKey, NodeConfigVersions(nodeId, versions)) <- configs) {
-        val versionsString = NodeConfigVersionsSerializer.serialize(versions)
-        jdbcTemplate.update(
-            "update expectedreportsnodes set nodeconfigversions = ? where nodejoinkey = ? and nodeid = ?"
-          ,  versionsString, new java.lang.Integer(nodeJoinKey), nodeId.value
-        )
-      }
-      configs
-    }
+    sequence(configs) { case(nodeJoinKey, config) =>
+      updateNodeConfig(nodeJoinKey,config)
+    }.map(_ => configs)
   }
 
 }

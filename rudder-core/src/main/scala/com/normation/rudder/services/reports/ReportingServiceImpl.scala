@@ -70,6 +70,11 @@ import com.normation.rudder.reports.ComplianceMode
 import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.rudder.reports.execution.ReportExecution
 import scala.tools.nsc.transform.Flatten
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.FullCompliance
+import com.normation.rudder.reports.ErrorOnly
+import com.normation.rudder.reports.execution.ReportExecution
+import com.normation.rudder.reports.execution.AgentRunId
 
 class ReportingServiceImpl(
     confExpectedRepo   : FindExpectedReportRepository
@@ -78,6 +83,7 @@ class ReportingServiceImpl(
   , getAgentRunInterval: () => Int
   , getComplianceMode  : () => Box[ComplianceMode]
 ) extends ReportingService with Loggable {
+
 
 
   override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]] = {
@@ -93,13 +99,8 @@ class ReportingServiceImpl(
                          val nodeIds = expected.directivesOnNodes.flatMap( _.nodeConfigurationIds.keySet ).toSet
                          for {
                            runs    <- agentRunRepository.getNodesLastRun(nodeIds)
-                           runIds  =  (runs.collect { case(_, Some(ReportExecution(runId, _, _))) => runId }).toSet
-                           reports <- reportsRepository.getExecutionReports(runIds, Set(ruleId))
+                           nodeStatusReports <- buildNodeStatusReports(runs, Seq(expected), Set(ruleId), compliance, agentRunInterval)
                          } yield {
-                           val nodeVersions =  runs.flatMap( _._2.flatMap( x => x.nodeConfigVersion.map(v => ((x.runId.nodeId, v)) ) )).toMap
-                           val nodeStatusReports = reports.map { case(nodeId, reportsForNode) =>
-                             ExecutionBatch.getNodeStatusReports(nodeId, getExecTime(runIds, nodeId), nodeVersions.get(nodeId), optExpected.toSeq, reportsForNode, agentRunInterval, compliance)
-                           }.flatten.toSeq
                            ExecutionBatch.getRuleStatus(expected,nodeStatusReports)
                          }
                      }
@@ -115,7 +116,7 @@ class ReportingServiceImpl(
     runIds.find( _.nodeId == nodeId).map( _.date)
   }
 
-  override def findNodeStatusReports(nodeIds: Set[NodeId], ruleIds : Set[RuleId]) : Box[Seq[NodeStatusReport]] = {
+  override def findNodeStatusReports(nodeIds: Set[NodeId], ruleIds: Set[RuleId]) : Box[Seq[NodeStatusReport]] = {
     //TODO: interval by node for the interpretation
     val agentRunInterval = getAgentRunInterval()
 
@@ -123,32 +124,78 @@ class ReportingServiceImpl(
       compliance           <- getComplianceMode()
       runs                 <- agentRunRepository.getNodesLastRun(nodeIds)
 
-      //now get rule expected reports either by version or by last available
-      nodesWithoutVersion  =  (runs.collect {
-                                case(nodeId, None) => nodeId
-                                case(nodeId, Some(x) ) if(x.nodeConfigVersion.isEmpty) => nodeId
-                              }).toSet
-      lastExpectedReports  <- confExpectedRepo.getLastExpectedReports(nodesWithoutVersion, ruleIds)
-      allVersions          =  lastExpectedReports.flatMap( _.directivesOnNodes.flatMap( _.nodeConfigurationIds.flatMap( _._2 )))
-      expectedByVersion    =  runs.collect {
-                                case(nodeId, Some(ReportExecution(_, Some(version), _))) if(!allVersions.contains(version)) => NodeConfigId(nodeId, version)
-                              }.toSet
-      otherExpectedReports <- confExpectedRepo.getExpectedReports(expectedByVersion, ruleIds)
+      /*
+       * We want to find what nodes need to get their
+       * expected reports based on the last available or by version,
+       * and what runs are ok given that
+       */
+      nodesForOpenExpected = compliance match {
+                               //in full compliance, only the open expected reports are meaningful
+                               //even if we could get them by version, we prefer to do only one request
+                               //on the underlying Db
+                               case FullCompliance => runs.keySet
+                               case ErrorOnly => (runs.collect {
+                                 case(nodeId, None) => nodeId
+                                 case(nodeId, Some(x) ) if(x.nodeConfigVersion.isEmpty) => nodeId
+                               }).toSet
+                             }
+      //get nodeConfigId for nodes not in the nodesForOpenExpected and with a config version
+      nodesByConfigId      = runs.collect { case (nodeId, Some(ReportExecution(_,Some(v),_))) if(!nodesForOpenExpected.contains(nodeId)) =>
+                               NodeConfigId(nodeId, v)
+                             }.toSet
+      lastExpectedReports  <- confExpectedRepo.getLastExpectedReports(nodesForOpenExpected, ruleIds)
 
-      //now get reports for agent rules
-      runIds               =  (runs.collect { case(_, Some(ReportExecution(runId, _, _))) => runId }).toSet
+      byVersionExpectedReports <- confExpectedRepo.getExpectedReports(nodesByConfigId, ruleIds)
 
+      allExpected =  (byVersionExpectedReports ++ lastExpectedReports).toSeq
+
+      nodeStatusReports <- buildNodeStatusReports(runs, allExpected, ruleIds, compliance, agentRunInterval)
+    } yield {
+      nodeStatusReports
+    }
+  }
+
+  /*
+   * Given a set of agen runs and expected reports, retrieve the corresponding
+   * execution reports and then nodestatusreports, being smart about what to
+   * query for
+   */
+  private[this] def buildNodeStatusReports(
+      runs              : Map[NodeId,Option[ReportExecution]]
+    , allExpectedReports: Seq[RuleExpectedReports]
+    , ruleIds           : Set[RuleId]
+    , compliance        : ComplianceMode
+    , agentRunInterval  : Int
+  ): Box[Seq[NodeStatusReport]] = {
+
+    val now = DateTime.now
+    val runIds = (runs.collect { case(_, Some(ReportExecution(runId, _, _)))
+                   if(!ExecutionBatch.isExpired(runId.date, compliance, agentRunInterval, now) ) => runId
+                 }).toSet
+
+    for {
+      /*
+       * now get reports for agent rules.
+       * We don't want to reach for node reports that are out of date, i.e in full compliance mode,
+       * reports older that agent's run interval + 5 minutes compare to now
+       */
       reports              <- reportsRepository.getExecutionReports(runIds, ruleIds)
-
     } yield {
 
       val nodeVersions =  runs.flatMap( _._2.flatMap( x => x.nodeConfigVersion.map(v => ((x.runId.nodeId, v)) ) )).toMap
 
-      val allExpected = (otherExpectedReports ++ lastExpectedReports).toSeq
-
-      reports.map { case(nodeId, reportsForNode) =>
-        ExecutionBatch.getNodeStatusReports(nodeId, getExecTime(runIds, nodeId), nodeVersions.get(nodeId), allExpected, reportsForNode, agentRunInterval, compliance)
-      }.flatten.toSeq
+      //we want to have nodeStatus for all asked node, not only the ones with reports
+      runs.keySet.toSeq.flatMap { nodeId =>
+        ExecutionBatch.getNodeStatusReports(
+              nodeId
+            , getExecTime(runIds, nodeId)
+            , nodeVersions.get(nodeId)
+            , allExpectedReports
+            , reports.getOrElse(nodeId, Seq())
+            , agentRunInterval
+            , compliance
+        )
+      }
     }
   }
 

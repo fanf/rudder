@@ -117,7 +117,7 @@ final case class MessageReport(
 
 sealed trait RuleStatusReport {
 
-  def nodesReport : Seq[NodeReport]
+  def nodesReport : Set[NodeReport]
 
   lazy val reportType = {
     val reports = nodesReport.map(_.reportType)
@@ -148,7 +148,7 @@ final case class ComponentValueRuleStatusReport(
   , component               : String
   , componentValue          : String
   , unexpandedComponentValue: Option[String]
-  , nodesReport             : Seq[NodeReport]
+  , nodesReport             : Set[NodeReport]
 ) extends RuleStatusReport {
 
 
@@ -156,14 +156,14 @@ final case class ComponentValueRuleStatusReport(
   val key = unexpandedComponentValue.getOrElse(componentValue)
 
   def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport] ={
-    nodesReport.filter(filter).map(MessageReport(_,component,componentValue, unexpandedComponentValue))
+    nodesReport.toSeq.filter(filter).map(MessageReport(_,component,componentValue, unexpandedComponentValue))
   }
 }
 
 final case class ComponentRuleStatusReport (
     directiveId    : DirectiveId
   , component      : String
-  , componentValues: Seq[ComponentValueRuleStatusReport]
+  , componentValues: Set[ComponentValueRuleStatusReport]
 ) extends RuleStatusReport {
 
   override val nodesReport = componentValues.flatMap(_.nodesReport)
@@ -189,13 +189,13 @@ final case class ComponentRuleStatusReport (
   }
 
   def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport] = {
-    componentValues.flatMap( value => value.processMessageReport(filter))
+    componentValues.toSeq.flatMap( value => value.processMessageReport(filter))
   }
 }
 
 final case class DirectiveRuleStatusReport(
     directiveId: DirectiveId
-  , components : Seq[ComponentRuleStatusReport]
+  , components : Set[ComponentRuleStatusReport]
 ) extends RuleStatusReport {
 
   override val nodesReport = components.flatMap(_.nodesReport)
@@ -209,7 +209,7 @@ final case class DirectiveRuleStatusReport(
       None
 
   def processMessageReport(filter: NodeReport => Boolean): Seq[MessageReport] = {
-    components.flatMap( component => component.processMessageReport(filter))
+    components.toSeq.flatMap( component => component.processMessageReport(filter))
   }
 }
 
