@@ -54,6 +54,19 @@ import com.normation.rudder.web.model.WBTextAreaField
 import com.normation.rudder.web.model.WBSelectField
 import com.normation.rudder.web.services.ComplianceData
 
+
+
+object RuleCompliance {
+
+  private def details =
+    (for {
+      xml <- Templates("templates-hidden" :: "components" :: "ComponentRuleEditForm" :: Nil)
+    } yield {
+      chooseTemplate("component", "details", xml)
+    }) openOr Nil
+
+}
+
 /**
  *   This component display the compliance of a Rule by showing compliance of every Directive
  *   It generates all Data and put them in a DataTable
@@ -90,23 +103,23 @@ class RuleCompliance (
 
   /*
    * For each table : the subtable is contained in td : details
-   * when + is clicked: it gets the content of td details then process it has a datatable
+   * when + is clicked: it gets the content of td details then process it
+   * as a datatable
    */
   def showCompliance : NodeSeq = {
-    val complianceData = ComplianceData(directiveLib,allNodeInfos)
 
     reportingService.findDirectiveRuleStatusReportsByRule(rule.id) match {
       case e: EmptyBox => <div class="error">Error while fetching report information</div>
       case Full(reports) =>
         val directivesReport = reports.filter(dir => rule.directiveIds.contains(dir.directiveId))
-        val data = complianceData.getDirectivesComplianceDetails(directivesReport,rule,false).json.toJsCmd
+        val data = ComplianceData.getRuleDirectivesComplianceDetails(directivesReport, rule, allNodeInfos, directiveLib).json.toJsCmd
 
         <div>
           <hr class="spacer" />
          <table id="reportsGrid" cellspacing="0">  </table>
         </div> ++
         Script(JsRaw(s"""
-          createDirectiveTable(true,true,"${S.contextPath}")("reportsGrid",${data},${refresh().toJsCmd});
+          createDirectiveTable(true,"${S.contextPath}")("reportsGrid",${data},${refresh().toJsCmd});
           createTooltip();
         """))
       }
@@ -120,10 +133,9 @@ class RuleCompliance (
             updatedNodes <- getAllNodeInfos().map(_.toMap)
             updatedDirectives <- getFullDirectiveLib()
         } yield {
-          val complianceData = ComplianceData(directiveLib,allNodeInfos)
           val directivesReport = reports.filter(dir => updatedRule.directiveIds.contains(dir.directiveId))
 
-          complianceData.getDirectivesComplianceDetails(directivesReport,updatedRule,false).json.toJsCmd
+          ComplianceData.getRuleDirectivesComplianceDetails(directivesReport, updatedRule, allNodeInfos, directiveLib).json.toJsCmd
         }
 
         JsRaw(s"""refreshTable("reportsGrid",${result.getOrElse("[]")});
@@ -134,13 +146,3 @@ class RuleCompliance (
   }
 }
 
-object RuleCompliance {
-
-  private def details =
-    (for {
-      xml <- Templates("templates-hidden" :: "components" :: "ComponentRuleEditForm" :: Nil)
-    } yield {
-      chooseTemplate("component", "details", xml)
-    }) openOr Nil
-
-}

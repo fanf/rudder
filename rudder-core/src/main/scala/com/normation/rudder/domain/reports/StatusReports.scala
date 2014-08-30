@@ -47,8 +47,66 @@ import com.normation.rudder.domain.policies.RuleId
  *
  */
 
+//simple data structure to hold percentages of different compliance
+//the ints are actual numbers, percents are computed with the pc_ variants
+case class ComplianceLevel(
+    pending      : Int = 0
+  , success      : Int = 0
+  , repaired     : Int = 0
+  , error        : Int = 0
+  , noAnswer     : Int = 0
+  , notApplicable: Int = 0
+) {
+  val total = pending+success+repaired+error+noAnswer+notApplicable
+
+  private[this] def pc(i:Int) = if(total == 0) 0 else i * 100 / total
+
+  val pc_pending       = pc(pending)
+  val pc_success       = pc(success)
+  val pc_repaired      = pc(repaired)
+  val pc_error         = pc(error)
+  val pc_noAnswer      = pc(noAnswer)
+  val pc_notApplicable = pc(notApplicable)
+
+  def +(compliance: ComplianceLevel): ComplianceLevel = {
+    ComplianceLevel(
+        this.pending + compliance.pending
+      , this.success + compliance.success
+      , this.repaired + compliance.repaired
+      , this.error + compliance.error
+      , this.noAnswer + compliance.noAnswer
+      , this.notApplicable + compliance.notApplicable
+    )
+  }
+
+  def +(report: ReportType): ComplianceLevel = this+ComplianceLevel.compute(Seq(report))
+  def +(reports: Iterable[ReportType]): ComplianceLevel = this+ComplianceLevel.compute(reports)
+}
+
+object ComplianceLevel {
+ def compute(reports: Iterable[ReportType]): ComplianceLevel = {
+    if(reports.isEmpty) { ComplianceLevel(notApplicable = 100)}
+    else reports.foldLeft(ComplianceLevel()) { case (compliance, report) =>
+      report match {
+        case NotApplicableReportType => compliance.copy(notApplicable = compliance.notApplicable + 1)
+        case SuccessReportType => compliance.copy(success = compliance.success + 1)
+        case RepairedReportType => compliance.copy(repaired = compliance.repaired + 1)
+        case ErrorReportType | UnknownReportType => compliance.copy(error = compliance.error + 1)
+        case NoAnswerReportType => compliance.copy(noAnswer = compliance.noAnswer + 1)
+        case PendingReportType => compliance.copy(pending = compliance.pending + 1)
+      }
+    }
+  }
+
+ def sum(compliances: Iterable[ComplianceLevel]): ComplianceLevel = {
+   if(compliances.isEmpty) ComplianceLevel()
+   else compliances.reduce( _ + _)
+ }
+}
+
 sealed trait StatusReport {
   def reportType : ReportType
+  def compliance : ComplianceLevel
 
   def getWorseType(reports:Iterable[StatusReport]) = {
     ReportType.getWorseType(reports.map(_.reportType))
@@ -63,7 +121,9 @@ final case class ComponentValueStatusReport(
   , unexpandedComponentValue: Option[String]
   , reportType              : ReportType
   , message                 : List[String]
-) extends StatusReport
+) extends StatusReport {
+  override val compliance = ComplianceLevel.compute(Seq(reportType))
+}
 
 /**
  * For a component, store the report status, as the worse status of the component
@@ -77,6 +137,7 @@ final case class ComponentStatusReport(
 ) extends StatusReport {
 
   val reportType = getWorseType(componentValues ++ unexpectedCptValues)
+  override val compliance = ComplianceLevel.sum(componentValues.map(_.compliance) ++ unexpectedCptValues.map(_.compliance))
 }
 
 
@@ -87,6 +148,7 @@ final case class DirectiveStatusReport(
 ) extends StatusReport {
 
   val reportType = getWorseType(components ++ unexpectedComponents)
+  override val compliance = ComplianceLevel.sum(components.map(_.compliance) ++ unexpectedComponents.map(_.compliance))
 }
 
 final case class NodeStatusReport(
@@ -99,6 +161,7 @@ final case class NodeStatusReport(
 ) extends StatusReport {
 
   val reportType = getWorseType(directives ++ unexpectedDirectives)
+  override val compliance = ComplianceLevel.sum(directives.map(_.compliance) ++ unexpectedDirectives.map(_.compliance))
 }
 
 final case class NodeReport (
@@ -119,28 +182,9 @@ sealed trait RuleStatusReport {
 
   def nodesReport : Set[NodeReport]
 
-  lazy val reportType = {
-    val reports = nodesReport.map(_.reportType)
-    ReportType.getWorseType(reports)
-  }
-
   def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport]
 
-  def computeCompliance : Option[Int] = {
-    if (nodesReport.size>0){
-      val reportsSize = nodesReport.size.toDouble
-      Some((nodesReport.map(report => report.reportType match {
-        case SuccessReportType => 1
-        case NotApplicableReportType    => 1
-        case _                 => 0
-    }):\ 0)((res:Int,value:Int) => res+value) * 100 / reportsSize).map{ res =>
-      BigDecimal(res).setScale(0,BigDecimal.RoundingMode.HALF_UP).toInt
-      }
-    }
-    else {
-      None
-    }
-  }
+  lazy val compliance : ComplianceLevel = ComplianceLevel.compute(nodesReport.map(_.reportType))
 }
 
 final case class ComponentValueRuleStatusReport(
@@ -168,25 +212,25 @@ final case class ComponentRuleStatusReport (
 
   override val nodesReport = componentValues.flatMap(_.nodesReport)
 
-  // since we have "exploded" ComponentValue, we need to regroup them
-  override def computeCompliance = {
-   if (componentValues.size>0){
-     // we need to group the compliances per unexpandedComponentValue
-     val aggregatedComponents = componentValues.groupBy { entry => entry.unexpandedComponentValue.getOrElse(entry.componentValue)}.map { case (key, entries) =>
-       ComponentValueRuleStatusReport(
-             entries.head.directiveId // can't fail because we are in a groupBy
-           , entries.head.component  // can't fail because we are in a groupBy
-           , key
-           , None
-           , entries.flatMap(_.nodesReport)
-          )
-     }
-     Some((aggregatedComponents.map(_.computeCompliance.getOrElse(0))
-         :\ 100)((res:Int,value:Int) => if(value>res)res else value))
-   }
-    else
-      None
-  }
+//  // since we have "exploded" ComponentValue, we need to regroup them
+//  override def computeCompliance = {
+//   if (componentValues.size>0){
+//     // we need to group the compliances per unexpandedComponentValue
+//     val aggregatedComponents = componentValues.groupBy { entry => entry.unexpandedComponentValue.getOrElse(entry.componentValue)}.map { case (key, entries) =>
+//       ComponentValueRuleStatusReport(
+//             entries.head.directiveId // can't fail because we are in a groupBy
+//           , entries.head.component  // can't fail because we are in a groupBy
+//           , key
+//           , None
+//           , entries.flatMap(_.nodesReport)
+//          )
+//     }
+//     Some((aggregatedComponents.map(_.computeCompliance.getOrElse(0))
+//         :\ 100)((res:Int,value:Int) => if(value>res)res else value))
+//   }
+//    else
+//      None
+//  }
 
   def processMessageReport(filter: NodeReport => Boolean):Seq[MessageReport] = {
     componentValues.toSeq.flatMap( value => value.processMessageReport(filter))
@@ -199,14 +243,6 @@ final case class DirectiveRuleStatusReport(
 ) extends RuleStatusReport {
 
   override val nodesReport = components.flatMap(_.nodesReport)
-
-  override def computeCompliance =
-   if (components.size>0){
-     Some((components.map(_.computeCompliance.getOrElse(0))
-         :\ 100)((res:Int,value:Int) => if(value>res)res else value))
-   }
-    else
-      None
 
   def processMessageReport(filter: NodeReport => Boolean): Seq[MessageReport] = {
     components.toSeq.flatMap( component => component.processMessageReport(filter))

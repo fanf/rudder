@@ -34,6 +34,48 @@
 
 var anOpen = [];
 
+
+/*
+ * A function that build a compliance bar with colored zone for compliance
+ * status cases based on Twitter Bootstrap: http://getbootstrap.com/components/#progress
+ * 
+ * Await a JSArray:
+ * (pending, success, repaired, error, noAnswer, notApplicable)
+ * 
+ */
+function buildComplianceBar(compliance) {
+  var content = $('<div class="tw-bs progress"></div>')
+
+  var pending = compliance[0]
+  if(pending != 0) {
+    content.append('<div class="progress-bar progress-bar-info progress-bar-striped" style="width: '+pending+'%"><span title="applying">'+pending+'%</span></div>')
+  }
+  var success = compliance[1]
+  if(success != 0) {
+    content.append('<div class="progress-bar progress-bar-success" style="width: '+success+'%"><span title="success">'+success+'%</span></div>')
+  }
+  var repaired = compliance[2]
+  if(repaired != 0) {
+    content.append('<div class="progress-bar progress-warning" style="width: '+repaired+'%"><span title="repaired">'+repaired+'%</span></div>')
+  }
+  var error = compliance[3]
+  if(error != 0) {
+    content.append('<div class="progress-bar progress-bar-danger" style="width: '+error+'%"><span title="error">'+error+'%</span></div>')
+  }
+  var noanswer = compliance[4]
+  if(noanswer != 0) {
+    content.append('<div class="progress-bar progress-bar-no-answer" style="width: '+noanswer+'%"><span title="no answer">'+noanswer+'%</span></div>')
+  }
+  var notapplicable = compliance[5]
+  if(notapplicable != 0) {
+    content.append('<div class="progress-bar progress-bar-not-applicable" style="width: '+notapplicable+'%"><span title="no answer">'+notapplicable+'%</span></div>')
+  }
+  
+  return content
+  
+}
+
+
 /* Create Rule table
  *
  *   data:
@@ -43,7 +85,7 @@ var anOpen = [];
  *   , "applying": Is the rule applying the Directive, used in Directive page [Boolean]
  *   , "category" : Rule category [String]
  *   , "status" : Status of the Rule, "enabled", "disabled" or "N/A" [String]
- *   , "compliance" : Percent of compliance of the Rule [String]
+ *   , "compliance" : Percent of compliance of the Rule [Array[String]](success, pending, repaired, error, noAnswer, notApplicable)
  *   , "complianceClass" : Class to apply on the compliance td [String]
  *   , "trClass" : Class to apply on the whole line (disabled ?) [String]
  *   , "callback" : Function to use when clicking on one of the line link, takes a parameter to define which tab to open, not always present [ Function ]
@@ -169,19 +211,18 @@ function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallba
     , "sWidth": "40px"
     , "sTitle": "Compliance"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        var data = oData;
         var elem = $("<a></a>");
-        if("callback" in data) {
+        if("callback" in oData) {
             elem.click( function() {
-                data.callback("showForm");
+                oData.callback("showForm");
               } );
             elem.attr("href","javascript://");
         } else {
-            elem.attr("href",contextPath+'/secure/configurationManager/ruleManagement#{"ruleId":"'+data.id+'"}');
+            elem.attr("href",contextPath+'/secure/configurationManager/ruleManagement#{"ruleId":"'+oData.id+'"}');
         }
-        elem.text(sData);
+        elem.append(buildComplianceBar(oData.compliance));
         $(nTd).empty();
-        $(nTd).addClass(data.complianceClass+ " compliance");
+//        $(nTd).addClass("complianceBar");
         $(nTd).prepend(elem);
       }
   };
@@ -263,26 +304,14 @@ function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallba
  *   , "message" : Message linked to that value, only used in message popup [ Array[String] ]
  *   }
  */
-function createComponentValueTable (isTopLevel, addCompliance, contextPath) {
+function createComponentValueTable (isTopLevel, contextPath) {
 
   if (isTopLevel) {
-    var statusWidth = "16.4%";
-    var complianceWidth = "11.1%";
-    if (addCompliance) {
-      var componentSize = "72.5%";
-    } else {
-      var componentSize = "20%";
-      var messageWidth = "63.6%";
-    }
+    var complianceWidth = "27.5%";
+    var componentSize = "72.5%";
   } else {
-    var statusWidth = "17.6%";
-    var complianceWidth = "11.8%";
-    if (addCompliance) {
-      var componentSize = "70.6%";
-    } else {
-      var componentSize = "20%";
-      var messageWidth = "62.4%";
-    }
+    var complianceWidth = "29.4%";
+    var componentSize = "70.6%";
   }
   var columns = [ {
       "sWidth": componentSize
@@ -306,16 +335,8 @@ function createComponentValueTable (isTopLevel, addCompliance, contextPath) {
       }
   } ];
 
-  var status = {
-      "sWidth": statusWidth
-    , "mDataProp": "status"
-    , "sTitle": "Status"
-    , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        $(nTd).addClass("center "+oData.statusClass);
-      }
-  }
 
-  if (addCompliance) {
+  if (true) {
 
     var compliance = {
         "sWidth": complianceWidth
@@ -324,16 +345,23 @@ function createComponentValueTable (isTopLevel, addCompliance, contextPath) {
       , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
           var elem = $("<a></a>");
           elem.attr("href","javascript://");
-          elem.addClass("right noexpand");
-          elem.text(sData);
+          elem.addClass("noexpand");
+          elem.append(buildComplianceBar(oData.compliance));
           elem.click(function() {oData.callback()});
           $(nTd).empty();
           $(nTd).append(elem);
         }
     };
-    columns.push(status);
     columns.push(compliance);
   } else {
+//  var status = {
+//  "sWidth": statusWidth
+//, "mDataProp": "status"
+//, "sTitle": "Status"
+//, "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+//    $(nTd).addClass("center "+oData.statusClass);
+//  }
+//}
     var message = {
         "sWidth": messageWidth
       , "mDataProp": "message"
@@ -377,24 +405,14 @@ function createComponentValueTable (isTopLevel, addCompliance, contextPath) {
  *   , "callback" : Function to when clicking on compliance percent, not used in message popup [ Function ]
  *   }
  */
-function createComponentTable (isTopLevel, addCompliance, contextPath) {
+function createComponentTable (isTopLevel, contextPath) {
 
   if (isTopLevel) {
-    var statusWidth = "15.8%";
-    var complianceWidth = "10.5%";
-    if (addCompliance) {
-      var componentSize = "73.7%";
-    } else {
-      var componentSize = "84.2%";
-    }
+    var complianceWidth = "26.3%";
+    var componentSize = "73.7%";
   } else {
-    var statusWidth = "16.8%";
-    var complianceWidth = "11.1%";
-    if (addCompliance) {
-      var componentSize = "72.4%";
-    } else {
-      var componentSize = "82.6%";
-    }
+    var complianceWidth = "27.9%";
+    var componentSize = "72.4%";
   }
   var columns = [ {
       "sWidth": componentSize
@@ -408,32 +426,19 @@ function createComponentTable (isTopLevel, addCompliance, contextPath) {
         }
       }
   } , {
-      "sWidth": statusWidth
-    , "mDataProp": "status"
-    , "sTitle": "Status"
-    , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        $(nTd).addClass("center "+oData.statusClass);
-      }
-  } ];
-
-  var compliance = {
       "sWidth": complianceWidth
     , "mDataProp": "compliance"
     , "sTitle": "Compliance"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
         var elem = $("<a></a>");
-        elem.addClass("right noexpand");
+        elem.addClass("noexpand");
         elem.attr("href","javascript://");
-        elem.text(sData);
+        elem.append(buildComplianceBar(oData.compliance));
         elem.click(function() {oData.callback()});
         $(nTd).empty();
         $(nTd).append(elem);
       }
-  }
-
-  if (addCompliance) {
-    columns.push(compliance)
-  }
+  } ];
 
   var params = {
       "bFilter" : false
@@ -442,7 +447,7 @@ function createComponentTable (isTopLevel, addCompliance, contextPath) {
     , "bInfo" : false
     , "aaSorting": [[ 0, "asc" ]]
     , "fnDrawCallback" : function( oSettings ) {
-        createInnerTable(this, createComponentValueTable(isTopLevel, addCompliance, contextPath));
+        createInnerTable(this, createComponentValueTable(isTopLevel, contextPath));
       }
   }
 
@@ -462,24 +467,14 @@ function createComponentTable (isTopLevel, addCompliance, contextPath) {
  *   , "callback" : Function to when clicking on compliance percent [ Function ]
  *   }
  */
-function createDirectiveTable (isTopLevel, addCompliance, contextPath) {
+function createDirectiveTable (isTopLevel, contextPath) {
 
   if (isTopLevel) {
-    var statusWidth = "15%";
-    var complianceWidth = "10%";
-    if (addCompliance) {
-      var directiveWidth = "75%";
-    } else {
-      var directiveWidth = "85%";
-    }
+    var complianceWidth = "25%";
+    var directiveWidth = "75%";
   } else {
-    var statusWidth = "15.8%";
-    var complianceWidth = "10.5%";
-    if (addCompliance) {
-      var directiveWidth = "73.7%";
-    } else {
-      var directiveWidth = "82.2%";
-    }
+    var complianceWidth = "26.3%";
+    var directiveWidth = "73.7%";
   }
 
   var columns = [ {
@@ -513,32 +508,19 @@ function createDirectiveTable (isTopLevel, addCompliance, contextPath) {
         $(nTd).append(editLink);
       }
   } , {
-      "sWidth": statusWidth
-    , "mDataProp": "status"
-    , "sTitle": "Status"
-    , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        $(nTd).addClass("center "+oData.statusClass);
-       }
-  } ];
-  
-  var compliance = {
       "sWidth": complianceWidth
     , "mDataProp": "compliance"
     , "sTitle": "Compliance"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
         var elem = $("<a></a>");
-        elem.addClass("right noExpand");
+        elem.addClass("noExpand");
         elem.attr("href","javascript://");
-        elem.text(sData);
+        elem.append(buildComplianceBar(oData.compliance));
         elem.click(function() {oData.callback()});
         $(nTd).empty();
         $(nTd).append(elem);
       }
-  }
-
-  if (addCompliance) {
-    columns.push(compliance)
-  }
+  } ];
 
   var params = {
       "bFilter" : isTopLevel
@@ -548,7 +530,7 @@ function createDirectiveTable (isTopLevel, addCompliance, contextPath) {
     , "sPaginationType": "full_numbers"
     , "aaSorting": [[ 0, "asc" ]]
     , "fnDrawCallback" : function( oSettings ) {
-        createInnerTable(this, createComponentTable(isTopLevel, addCompliance, contextPath), contextPath);
+        createInnerTable(this, createComponentTable(isTopLevel, contextPath), contextPath);
       }
   };
 
@@ -617,7 +599,7 @@ function createRuleComplianceTable (gridId, data, contextPath, refresh) {
       }
     , "aaSorting": [[ 0, "asc" ]]
     , "fnDrawCallback" : function( oSettings ) {
-        createInnerTable(this, createDirectiveTable(false, false, contextPath), contextPath);
+        createInnerTable(this, createDirectiveTable(false, contextPath), contextPath);
       }
     , "sDom": '<"dataTables_wrapper_top newFilter"f<"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
   };
@@ -675,7 +657,7 @@ function createNodeComplianceTable (gridId, data, contextPath, refresh) {
       }
     , "aaSorting": [[ 0, "asc" ]]
     , "fnDrawCallback" : function( oSettings ) {
-        createInnerTable(this,createComponentTable(true, false, contextPath));
+        createInnerTable(this,createComponentTable(true, contextPath));
       }
     , "sDom": '<"dataTables_wrapper_top newFilter"f<"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
   };

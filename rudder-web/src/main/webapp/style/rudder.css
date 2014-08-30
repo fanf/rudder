@@ -2906,3 +2906,18 @@ li.targetExcluded a{
 .simplemodal-wrap{
 	overflow:auto !important
 }
+
+/*
+ *some more colours for progress bars
+ */
+.tw-bs .progress-bar-pending {
+  background-color: #d9534f;
+}
+.tw-bs .progress-bar-no-answer {
+  background-color: #FFAC26;
+}
+.tw-bs .progress-bar-not-applicable {
+  background-color: #A1BAFF;
+}
+
+

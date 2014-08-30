@@ -38,6 +38,8 @@ import net.liftweb.http.js.JsExp
 import net.liftweb.http.js.JsObj
 import scala.collection.TraversableLike
 import net.liftweb.http.js.JE.JsArray
+import com.normation.rudder.domain.reports.ComplianceLevel
+import net.liftweb.http.js.JE
 
 
 /*
@@ -47,6 +49,16 @@ trait JsTableLine {
 
   def json : JsObj
 
+  //transform the compliance percent to a list with a given order:
+  //pc_pending, pc_success, pc_repaired, pc_error, pc_noAnswer, pc_notApplicable
+  def jsCompliance(compliance: ComplianceLevel) = JsArray(
+      JE.Num(compliance.pc_pending)
+    , JE.Num(compliance.pc_success)
+    , JE.Num(compliance.pc_repaired)
+    , JE.Num(compliance.pc_error)
+    , JE.Num(compliance.pc_noAnswer)
+    , JE.Num(compliance.pc_notApplicable)
+  )
 }
 
 /*

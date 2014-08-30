@@ -316,27 +316,17 @@ class ExecutionBatchTest extends Specification {
 
     "have one detailed rule success directive when we create it with one success report" in {
       ruleStatus.head.directiveId === DirectiveId("policy") and
-      ruleStatus.head.reportType === SuccessReportType
+      ruleStatus.head.compliance === ComplianceLevel(success = 100)
     }
 
-    "have no detailed rule repaired directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-
-    "have no detailed rule error directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
-
-    "have no detailed rule unknown directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-    "have no detailed rule no answer directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == NoAnswerReportType).size === 0)
-    }
-
-    "have no detailed rule no pending directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == PendingReportType).size === 0)
+    "have no detailed rule non-success directive when we create it with one success report" in {
+      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      )
     }
   }
 
@@ -492,7 +482,7 @@ class ExecutionBatchTest extends Specification {
       ruleStatus.size == 1
     }
     "have one pending directive" in {
-      ruleStatus.exists(x => x.reportType == PendingReportType)
+      ruleStatus.exists(x => x.compliance.pending > 0)
     }
     "have one success, and one pending node, in the component detail of the rule" in {
       (ruleStatus.head.components.head.componentValues.head.nodesReport.size == 2) and
@@ -528,13 +518,13 @@ class ExecutionBatchTest extends Specification {
       ruleStatus.size == 1
     }
     "have one pending directive" in {
-      ruleStatus.exists(x => x.reportType == PendingReportType)
+      ruleStatus.exists(x => x.compliance.pending > 0)
     }
     "have one detailed rule report with a 67% compliance" in {
-      ruleStatus.head.computeCompliance must beSome(67)
+      ruleStatus.head.compliance.success must beEqualTo(67)
     }
     "have one detailed rule report with a component of 67% compliance" in {
-      ruleStatus.head.components.head.computeCompliance must beSome(67)
+      ruleStatus.head.components.head.compliance must beEqualTo(67)
     }
   }
 
@@ -576,13 +566,13 @@ class ExecutionBatchTest extends Specification {
       ruleStatus.size must beEqualTo(2)
     }
     "have two pending directives" in {
-      ruleStatus.filter(x => x.reportType == PendingReportType).size must beEqualTo(2)
+      ruleStatus.filter(x => x.compliance.pending > 0).size must beEqualTo(2)
     }
     "have detailed rule report for policy of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.computeCompliance must beSome(67)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.compliance.success must beEqualTo(67)
     }
     "have detailed rule report for policy2 of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.computeCompliance must beSome(33)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.compliance.success must beEqualTo(33)
     }
   }
 
@@ -625,22 +615,22 @@ class ExecutionBatchTest extends Specification {
       ruleStatus.size must beEqualTo(2)
     }
     "have two pending directives" in {
-      ruleStatus.filter(x => x.reportType == PendingReportType).size must beEqualTo(2)
+      ruleStatus.filter(x => x.compliance.pending > 0).size must beEqualTo(2)
     }
     "have detailed rule report for policy of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.computeCompliance must beSome(67)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.compliance.success must beEqualTo(67)
     }
     "have detailed rule report for policy2 of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.computeCompliance must beSome(33)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.compliance.success must beEqualTo(33)
     }
     "have detailed rule report for policy-component of 100%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.computeCompliance must beSome(100)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.compliance.success must beEqualTo(100)
     }
     "have detailed rule report for policy-component2 of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component2").head.computeCompliance must beSome(67)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component2").head.compliance.success must beEqualTo(67)
     }
     "have detailed rule report for policy2-component2 of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.components.filter(x => x.component == "component2").head.computeCompliance must beSome(33)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.components.filter(x => x.component == "component2").head.compliance.success must beEqualTo(33)
     }
   }
 
@@ -676,22 +666,22 @@ class ExecutionBatchTest extends Specification {
       ruleStatus.size must beEqualTo(1)
     }
     "have one pending directives" in {
-      ruleStatus.filter(x => x.reportType == PendingReportType).size must beEqualTo(1)
+      ruleStatus.filter(x => x.compliance.pending > 0).size must beEqualTo(1)
     }
     "have detailed rule report for policy of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.computeCompliance must beSome(33)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.compliance.success must beEqualTo(33)
     }
     "have detailed rule report for policy-component of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.computeCompliance must beSome(33)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.compliance.success must beEqualTo(33)
     }
     "have detailed rule report for policy-component-value of 100%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value").head.computeCompliance must beSome(100)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value").head.compliance.success must beEqualTo(100)
     }
     "have detailed rule report for policy-component-value2 of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value2").head.computeCompliance must beSome(67)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value2").head.compliance.success must beEqualTo(67)
     }
     "have detailed rule report for policy-component-value of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value3").head.computeCompliance must beSome(33)
+      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value3").head.compliance.success must beEqualTo(33)
     }
   }
 
@@ -745,26 +735,18 @@ class ExecutionBatchTest extends Specification {
 
     "have one detailed rule success directive when we create it with one success report" in {
       ruleStatus.head.directiveId === DirectiveId("policy") &&
-      ruleStatus.head.reportType === SuccessReportType
+      ruleStatus.head.compliance.pc_success === 100
     }
 
-    "have no detailed rule repaired directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-    "have no detailed rule error directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
+    "have no detailed rule non-success directive when we create it with one success report" in {
+      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
 
-    "have no detailed rule unknown directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-    "have no detailed rule no answer directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == NoAnswerReportType).size === 0)
-    }
-
-    "have no detailed rule no pending directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == PendingReportType).size === 0)
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      )
     }
   }
 
@@ -819,26 +801,18 @@ class ExecutionBatchTest extends Specification {
 
     "have one detailed rule success directive when we create it with one success report" in {
       ruleStatus.head.directiveId === DirectiveId("policy") &&
-      ruleStatus.head.reportType === SuccessReportType
+      ruleStatus.head.compliance.success === 100
     }
 
-    "have no detailed rule repaired directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-    "have no detailed rule error directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
+    "have no detailed rule non-success directive when we create it with one success report" in {
+      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
 
-    "have no detailed rule unknown directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-    "have no detailed rule no answer directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == NoAnswerReportType).size === 0)
-    }
-
-    "have no detailed rule no pending directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == PendingReportType).size === 0)
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      )
     }
   }
   "An execution Batch, with one component, one node, but with a component value being a cfengine variable with {, and a quote as well" should {
@@ -890,27 +864,20 @@ class ExecutionBatchTest extends Specification {
 
     "have one detailed rule success directive when we create it with one success report" in {
       ruleStatus.head.directiveId === DirectiveId("policy") and
-      ruleStatus.head.reportType === SuccessReportType
+      ruleStatus.head.compliance.success === 100
     }
 
-    "have no detailed rule repaired directive when we create it with one success report" in {
-      ruleStatus.filter(x => x.reportType == RepairedReportType).size === 0
-    }
-    "have no detailed rule error directive when we create it with one success report" in {
-      ruleStatus.filter(x => x.reportType == ErrorReportType).size === 0
+    "have no detailed rule non-success directive when we create it with one success report" in {
+      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
+
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      )
     }
 
-    "have no detailed rule unknown directive when we create it with one success report" in {
-      ruleStatus.filter(x => x.reportType == UnknownReportType).size === 0
-    }
-
-    "have no detailed rule no answer directive when we create it with one success report" in {
-      ruleStatus.filter(x => x.reportType == NoAnswerReportType).size === 0
-    }
-
-    "have no detailed rule no pending directive when we create it with one success report" in {
-      (ruleStatus.filter(x => x.reportType == PendingReportType).size == 0)
-    }
   }
 
    // Test the component part - with NotApplicable

@@ -70,6 +70,7 @@ import net.liftweb.http.js.JE.JsArray
 import com.normation.rudder.web.services.JsTableLine
 import com.normation.rudder.web.services.JsTableData
 import net.liftweb.http.js.JE.AnonFunc
+import com.normation.rudder.web.services.NodeComplianceLine
 
 
 
@@ -202,9 +203,9 @@ class RuleGrid(
   def refresh(popup:Boolean = false, linkCompliancePopup:Boolean = true) =  AnonFunc(SHtml.ajaxCall(JsNull, (s) => {
           ( for {
               rules        <- roRuleRepository.getAll(false)
-              nodeInfo     = getAllNodeInfos()
-              groupLib     = getFullNodeGroupLib()
-              directiveLib = getFullDirectiveLib()
+              nodeInfo     =  getAllNodeInfos()
+              groupLib     =  getFullNodeGroupLib()
+              directiveLib =  getFullDirectiveLib()
               newData      <- getRulesTableData(popup,rules,linkCompliancePopup, nodeInfo, groupLib, directiveLib)
             } yield {
               JsRaw(s"""refreshTable("${htmlId_rulesGridId}",${newData.json.toJsCmd});""")
@@ -246,7 +247,7 @@ class RuleGrid(
         val allcheckboxCallback = AnonFunc("checked",SHtml.ajaxCall(JsVar("checked"), (in : String) => selectAllVisibleRules(in.toBoolean)))
         val onLoad =
           s"""createRuleTable (
-                  "${htmlId_rulesGridId}"
+                 "${htmlId_rulesGridId}"
                 , ${tableData.json.toJsCmd}
                 , ${showCheckboxColumn}
                 , ${popup}
@@ -449,10 +450,13 @@ class RuleGrid(
     }
 
     // Compliance percent and class to apply to the td
-    val (complianceClass,compliancePercent) = {
+    val compliancePercent = {
       line match {
-        case line : OKLine => buildComplianceChart(line.compliance)
-        case _ => ("noCompliance","N/A")
+        case line : OKLine => line.compliance match {
+          case None => ComplianceLevel()
+          case Some(c) => c
+        }
+        case _ => ComplianceLevel()
       }
     }
 
@@ -512,7 +516,6 @@ class RuleGrid(
       , category
       , status
       , compliancePercent
-      , complianceClass
       , cssClass
       , callback
       , checkboxCallback
@@ -525,29 +528,11 @@ class RuleGrid(
     reportingService.findNodeStatusReports(nodeIds, ruleIds).map { _.groupBy( _.ruleId ).map { case (ruleId, nodeReports) =>
       (
           ruleId
-        , if(nodeReports.size == 0 || nodeReports.exists(x => x.reportType == PendingReportType )) {
-            Applying // when we have a rule but nothing in the database, it means that it is currently being deployed
-          } else {
-            new Compliance((100 * nodeReports.filter(x => (x.reportType == SuccessReportType || x.reportType == NotApplicableReportType)).size) / nodeReports.size)
-          }
+        , ComplianceLevel.sum(nodeReports.map(_.compliance))
       )
     } }
   }
 
-  private[this] def buildComplianceChart(level:Option[ComplianceLevel]) : (String,String) = {
-      level match {
-        case None => ("noCompliance","N/A")
-        case Some(Applying) => ("applyingCompliance","Applying")
-        case Some(NoAnswer) => ("noCompliance","No answer")
-        case Some(Compliance(percent)) =>
-          val complianceClass =  if (percent <= 10 ) "redCompliance"
-            else if(percent >= 90) "greenCompliance"
-              else "orangeCompliance"
-          val text = percent.toString + "%"
-
-          (complianceClass,text)
-      }
-  }
 }
 
   /*
@@ -573,16 +558,15 @@ case class RuleLine (
   , applying         : Boolean
   , category         : String
   , status           : String
-  , compliance       : String
-  , complianceClass  : String
+  , compliance       : ComplianceLevel
   , trClass          : String
   , callback         : Option[AnonFunc]
   , checkboxCallback : Option[AnonFunc]
   , reasons          : Option[String]
 ) extends JsTableLine {
 
-    /* Would love to have a reflexive way to generate that map ...  */
-    override val json  = {
+  /* Would love to have a reflexive way to generate that map ...  */
+  override val json  = {
 
       val reasonField =  reasons.map(r => ( "reasons" -> Str(r)))
 
@@ -599,16 +583,14 @@ case class RuleLine (
         , ( "applying",  applying )
         , ( "category", category )
         , ( "status", status )
-        , ( "compliance", compliance )
-        , ( "complianceClass", complianceClass )
+        , ( "compliance", jsCompliance(compliance) )
         , ( "trClass", trClass )
       )
 
       base +* JsObj(optFields:_*)
     }
 }
-sealed trait ComplianceLevel
-case object Applying extends ComplianceLevel
-case object NoAnswer extends ComplianceLevel
-case class Compliance(val percent:Int) extends ComplianceLevel with HashcodeCaching
+
+
+
 

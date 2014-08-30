@@ -66,7 +66,6 @@ class RuleCompliancePopup(
   val htmlId_reportsPopup = "popup_" + htmlId_rulesGridZone
   val htmlId_modalReportsPopup = "modal_" + htmlId_rulesGridZone
 
-  val complianceData = ComplianceData(directiveLib,allNodeInfos)
 
   import RuleCompliancePopup._
 
@@ -155,7 +154,7 @@ class RuleCompliancePopup(
       reports: RuleStatusReport
   ): NodeSeq = {
 
-    val data = complianceData.getNodeComplianceDetails(reports,rule)
+    val data = ComplianceData.getNodeComplianceDetails(reports, rule, allNodeInfos, directiveLib)
 
     <table id="reportsDetailGrid" cellspacing="0" style="clear:both"/>
     <br/> ++

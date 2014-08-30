@@ -105,12 +105,12 @@ class ReportDisplayer(
 
   def getComplianceData(reportStatus: Seq[NodeStatusReport]) = {
     for {
-      directiveLib <-directiveRepository.getFullDirectiveLibrary
+      directiveLib <- directiveRepository.getFullDirectiveLibrary
       allNodeInfos <- getAllNodeInfos()
+      rules        <- ruleRepository.getAll(true)
     } yield {
-      val complianceData = ComplianceData(directiveLib,allNodeInfos)
 
-      complianceData.getRuleComplianceDetails(reportStatus)
+      ComplianceData.getRuleComplianceDetails(reportStatus, allNodeInfos, directiveLib, rules)
 
     }
   }
