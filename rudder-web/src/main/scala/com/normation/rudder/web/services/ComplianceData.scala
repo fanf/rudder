@@ -78,7 +78,7 @@ case class RuleComplianceLine (
   val json = {
     JsObj (
         ( "rule" ->  name )
-      , ( "status" -> jsCompliance(compliance) )
+      , ( "compliance" -> jsCompliance(compliance) )
       , ( "id" -> id.value )
       , ( "details" -> details.json )
     )

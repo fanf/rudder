@@ -579,13 +579,19 @@ function createRuleComplianceTable (gridId, data, contextPath, refresh) {
         $(nTd).append(editLink);
       }
   } , {
-      "sWidth": "15%"
-    , "mDataProp": "status"
-    , "sTitle": "Status"
-    , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        $(nTd).addClass("center "+oData.statusClass);
-      }
-  } ];
+    "sWidth": "15%"
+      , "mDataProp": "compliance"
+      , "sTitle": "Compliance"
+      , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+          var elem = $("<a></a>");
+          elem.addClass("noExpand");
+          elem.attr("href","javascript://");
+          elem.append(buildComplianceBar(oData.compliance));
+          elem.click(function() {oData.callback()});
+          $(nTd).empty();
+          $(nTd).append(elem);
+        }
+    } ];
 
   var params = {
       "bFilter" : true
@@ -638,10 +644,16 @@ function createNodeComplianceTable (gridId, data, contextPath, refresh) {
       }
   } , {
       "sWidth": "15%"
-    , "mDataProp": "status"
-    , "sTitle": "Status"
+    , "mDataProp": "compliance"
+    , "sTitle": "Compliance"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        $(nTd).addClass("center "+oData.statusClass);
+        var elem = $("<a></a>");
+        elem.addClass("noExpand");
+        elem.attr("href","javascript://");
+        elem.append(buildComplianceBar(oData.compliance));
+        elem.click(function() {oData.callback()});
+        $(nTd).empty();
+        $(nTd).append(elem);
       }
   } ];
 
