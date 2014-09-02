@@ -119,7 +119,7 @@ class RuleCompliance (
          <table id="reportsGrid" cellspacing="0">  </table>
         </div> ++
         Script(JsRaw(s"""
-          createDirectiveTable(true,"${S.contextPath}")("reportsGrid",${data},${refresh().toJsCmd});
+          createDirectiveTable(true, false, "${S.contextPath}")("reportsGrid",${data},${refresh().toJsCmd});
           createTooltip();
         """))
       }

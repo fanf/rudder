@@ -200,7 +200,8 @@ class RuleGrid(
 
 
   // Build refresh function for Rule grid
-  def refresh(popup:Boolean = false, linkCompliancePopup:Boolean = true) =  AnonFunc(SHtml.ajaxCall(JsNull, (s) => {
+  def refresh(popup:Boolean = false, linkCompliancePopup:Boolean = true) =  {
+    AnonFunc(SHtml.ajaxCall(JsNull, (s) => {
           ( for {
               rules        <- roRuleRepository.getAll(false)
               nodeInfo     =  getAllNodeInfos()
@@ -208,7 +209,7 @@ class RuleGrid(
               directiveLib =  getFullDirectiveLib()
               newData      <- getRulesTableData(popup,rules,linkCompliancePopup, nodeInfo, groupLib, directiveLib)
             } yield {
-              JsRaw(s"""refreshTable("${htmlId_rulesGridId}",${newData.json.toJsCmd});""")
+              JsRaw(s"""refreshTable("${htmlId_rulesGridId}", ${newData.json.toJsCmd});""")
             }
           ) match {
             case Full(cmd) => cmd
@@ -217,7 +218,8 @@ class RuleGrid(
               logger.error(s"Could not refresh Rule table data cause is: ${fail.msg}")
               JsRaw(s"""$$("#ruleTableError").text("Could not refresh Rule table data cause is: ${fail.msg}");""")
           }
-        } ))
+    } ) )
+  }
 
   def rulesGrid(
       allNodeInfos: Box[Map[NodeId, NodeInfo]]

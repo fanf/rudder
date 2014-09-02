@@ -119,7 +119,6 @@ class ReportDisplayer(
 
     val data = getComplianceData(reports).map(_.json).getOrElse(JsArray())
 
-
     reportsGridXml++
         Script(JsRaw(s"""
           createRuleComplianceTable("reportsGrid",${data.toJsCmd},"${S.contextPath}", ${refreshReportDetail(node).toJsCmd});

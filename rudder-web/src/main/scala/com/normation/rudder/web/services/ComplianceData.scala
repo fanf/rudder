@@ -274,6 +274,10 @@ case class RuleValueComplianceLine (
 object ComplianceData {
 
   /**
+   *
+   * Change the compliance hierarchy from a rule starting point
+   * to nodes one.
+   *
    * From a report:
    * - Transform it into components reports we can use
    * - Find all Nodes concerned in it
