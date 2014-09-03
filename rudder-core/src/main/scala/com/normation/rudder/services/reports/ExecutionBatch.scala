@@ -231,6 +231,20 @@ object ExecutionBatch extends Loggable {
   }
 
 
+  private[this] case class ValueKind(
+      none  : Seq[(String, Option[String])] = Seq()
+    , simple: Seq[(String, Option[String])] = Seq()
+    , cfeVar: Seq[(String, Option[String])] = Seq()
+  )
+
+  private[this] def getUnexpanded(seq: Seq[Option[String]]): Option[String] = {
+    val unexpanded = seq.toSet
+    if(unexpanded.size > 1) {
+      logger.debug("Several same looking expected component values have different unexpanded value, which is not supported: " + unexpanded.mkString(","))
+    }
+    unexpanded.head
+  }
+
   /**
    * Allows to calculate the status of component for a node.
    * We don't deal with interpretation at that level,
@@ -278,13 +292,6 @@ object ExecutionBatch extends Loggable {
 
     }
 
-
-    case class ValueKind(
-        none  : Seq[(String, Option[String])] = Seq()
-      , simple: Seq[(String, Option[String])] = Seq()
-      , cfeVar: Seq[(String, Option[String])] = Seq()
-    )
-
     //now, we group values by what they look like: None, cfengine variable, simple value
     val valueKind = (ValueKind()/:expectedComponent.groupedComponentValues) {
       case (kind,  n@("None", _)) => kind.copy(none = kind.none :+ n)
@@ -295,41 +302,41 @@ object ExecutionBatch extends Loggable {
         }
     }
 
-    def getUnexpanded(seq: Seq[Option[String]]): Option[String] = {
-      val unexpanded = seq.toSet
-      if(unexpanded.size > 1) {
-        logger.debug("Several same looking expected component values have different unexpanded value, which is not supported: " + unexpanded.mkString(","))
-      }
-      unexpanded.head
-    }
-
+    //non report and simple values are pairs of
+    //ComponentValueStatus / reports used
     val noneReport = if(valueKind.none.isEmpty){
-      Seq()
+      (Seq(), Seq())
     } else {
-      Seq(buildComponentValueStatus(
+      val reports = purgedReports.filter(r => r.keyValue == "None")
+      (Seq(buildComponentValueStatus(
           "None"
-        , purgedReports.filter(r => r.keyValue == "None")
-        , unexpectedStatusReports.nonEmpty
+        , reports
+        , unexpectedStatusReports.isEmpty
         , valueKind.none.size
         , noAnswerType
         , getUnexpanded(valueKind.none.map( _._2))
-      ))
+      )), reports)
     }
 
     val simpleValueReports = {
       for {
-        (value, seq) <- valueKind.simple.groupBy( _._1 )
+        (value, seq) <- valueKind.simple.groupBy( _._1 ).toSeq
       } yield {
-        buildComponentValueStatus(
+        val reports = purgedReports.filter(r => r.keyValue == value)
+        val status = buildComponentValueStatus(
             value
-          , purgedReports.filter(r => r.keyValue == value)
-          , unexpectedStatusReports.nonEmpty
+          , reports
+          , unexpectedStatusReports.isEmpty
           , seq.size
           , noAnswerType
           , getUnexpanded(seq.map( _._2))
         )
+        (status, reports)
       }
     }
+
+    val usedReports = noneReport._2 ++ simpleValueReports.map( _._2).flatten
+    val remainingReports = purgedReports.filterNot(x => usedReports.exists(y => x == y))
 
     val cfeVarReports = for {
       (pattern, seq) <- valueKind.cfeVar.groupBy( x => replaceCFEngineVars(x._1) )
@@ -344,11 +351,11 @@ object ExecutionBatch extends Loggable {
        * Else, randomly assign values to source pattern
        */
 
-      val matchingReports = purgedReports.filter(r => r.keyValue.matches(pattern))
+      val matchingReports = remainingReports.filter(r => r.keyValue.matches(pattern))
 
       if(matchingReports.size > seq.size) {
         seq.map { case (value, unexpanded) =>
-          ComponentValueStatusReport(value, unexpanded, MessageStatusReport(ErrorReportType, None)::Nil)
+          ComponentValueStatusReport(value, unexpanded, MessageStatusReport(UnknownReportType, None)::Nil)
         }
       } else {
         //seq is >= matchingReports
@@ -364,7 +371,7 @@ object ExecutionBatch extends Loggable {
 
     ComponentStatusReport(
         expectedComponent.componentName
-      , ComponentValueStatusReport.merge(unexpectedStatusReports ++ noneReport ++ simpleValueReports ++ cfeVarReports.flatten)
+      , ComponentValueStatusReport.merge(unexpectedStatusReports ++ noneReport._1 ++ simpleValueReports.map(_._1) ++ cfeVarReports.flatten)
     )
   }
 
@@ -375,7 +382,7 @@ object ExecutionBatch extends Loggable {
   private[this] def buildComponentValueStatus(
       currentValue        : String
     , filteredReports     : Seq[Reports]
-    , hasUnexpectedReports: Boolean
+    , noUnexpectedReports : Boolean
     , cardinality         : Int
     , noAnswerType        : ReportType
     , unexpandedValue     : Option[String]
@@ -388,7 +395,7 @@ object ExecutionBatch extends Loggable {
           case _ => {
             filteredReports.size match {
               /* Nothing was received at all for that component so : No Answer or Pending */
-              case 0 if hasUnexpectedReports =>  MessageStatusReport(noAnswerType, None) :: Nil
+              case 0 if noUnexpectedReports =>  MessageStatusReport(noAnswerType, None) :: Nil
               /* Reports were received for that component, but not for that key, that's a missing report */
               case 0 =>  MessageStatusReport(UnknownReportType, None) :: Nil
               //check if cardinality is ok

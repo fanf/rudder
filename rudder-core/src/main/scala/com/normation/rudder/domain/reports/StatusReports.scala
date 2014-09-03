@@ -124,7 +124,11 @@ final case class AggregatedStatusReport(
   /**
    * rebuild all the trees from the available status
    */
-  val directives: Map[DirectiveId, DirectiveStatusReport] = DirectiveStatusReport.merge(reports.flatMap( _.directives.values))
+  val directives: Map[DirectiveId, DirectiveStatusReport] = {
+    //toSeq is mandatory; here, we may have some directive only different
+    //by rule or node and we don't want to loose the weight
+    DirectiveStatusReport.merge(reports.toSeq.flatMap( _.directives.values))
+  }
   val compliance = ComplianceLevel.sum(directives.map(_._2.compliance))
 }
 
