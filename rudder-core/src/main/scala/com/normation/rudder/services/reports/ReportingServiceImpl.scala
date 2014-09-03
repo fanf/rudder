@@ -53,7 +53,6 @@ import com.normation.rudder.services.reports._
 import com.normation.rudder.repository._
 import com.normation.rudder.domain.policies.RuleVal
 import com.normation.rudder.domain.reports.DirectiveExpectedReports
-import com.normation.rudder.domain.reports.ReportComponent
 import com.normation.cfclerk.xmlparsers.CfclerkXmlConstants._
 import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.utils.Control._
@@ -86,7 +85,7 @@ class ReportingServiceImpl(
 
 
 
-  override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[DirectiveRuleStatusReport]] = {
+  override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Seq[RuleNodeStatusReport]] = {
 
     val agentRunInterval = getAgentRunInterval()
 
@@ -101,7 +100,7 @@ class ReportingServiceImpl(
                            runs    <- agentRunRepository.getNodesLastRun(nodeIds)
                            nodeStatusReports <- buildNodeStatusReports(runs, Seq(expected), Set(ruleId), compliance, agentRunInterval)
                          } yield {
-                           ExecutionBatch.getRuleStatus(expected,nodeStatusReports)
+                           nodeStatusReports
                          }
                      }
     } yield {
@@ -116,7 +115,7 @@ class ReportingServiceImpl(
     runIds.find( _.nodeId == nodeId).map( _.date)
   }
 
-  override def findNodeStatusReports(nodeIds: Set[NodeId], ruleIds: Set[RuleId]) : Box[Seq[NodeStatusReport]] = {
+  override def findNodeStatusReports(nodeIds: Set[NodeId], ruleIds: Set[RuleId]) : Box[Seq[RuleNodeStatusReport]] = {
     //TODO: interval by node for the interpretation
     val agentRunInterval = getAgentRunInterval()
 
@@ -166,7 +165,7 @@ class ReportingServiceImpl(
     , ruleIds           : Set[RuleId]
     , compliance        : ComplianceMode
     , agentRunInterval  : Int
-  ): Box[Seq[NodeStatusReport]] = {
+  ): Box[Seq[RuleNodeStatusReport]] = {
 
     val now = DateTime.now
     val runIds = (runs.collect { case(_, Some(ReportExecution(runId, _, _)))

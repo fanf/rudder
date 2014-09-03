@@ -70,12 +70,29 @@ case class DirectivesOnNodes(
   , directiveExpectedReports: Seq[DirectiveExpectedReports]
 ) extends HashcodeCaching
 
+
+/**
+ * A Directive may have several components
+ */
+final case class DirectiveExpectedReports (
+    directiveId: DirectiveId
+  , components : Seq[ComponentExpectedReport]
+) extends HashcodeCaching
+
+final case class NodeConfigId(
+    nodeId : NodeId
+  , version: NodeConfigVersion
+)
+
 /**
  * The Cardinality is per Component
  */
-case class ReportComponent(
+case class ComponentExpectedReport(
     componentName             : String
   , cardinality               : Int
+
+  //TODO: change that to have a Seq[(String, Option[String]).
+  //or even better, un Seq[ExpectedValue] where expectedValue is the pair
   , componentsValues          : Seq[String]
   , unexpandedComponentsValues: Seq[String]
 ) extends HashcodeCaching {
@@ -89,19 +106,6 @@ case class ReportComponent(
     }
   }
 }
-
-/**
- * A Directive may have several components
- */
-final case class DirectiveExpectedReports (
-    directiveId: DirectiveId
-  , components : Seq[ReportComponent]
-) extends HashcodeCaching
-
-final case class NodeConfigId(
-    nodeId : NodeId
-  , version: NodeConfigVersion
-)
 
 final case class NodeConfigVersion(value: String)
 

@@ -55,13 +55,14 @@ class ExecutionBatchTest extends Specification {
   private implicit def str2nodeId(s:String) = NodeId(s)
   private implicit def str2nodeConfigIds(ss:Seq[String]) = ss.map(s =>  (NodeId(s), Some(NodeConfigVersion("version_" + s)))).toMap
 
+
   def getNodeStatusReportsByRule(
       ruleExpectedReports   : RuleExpectedReports
     , reportsParam          : Seq[Reports]
     // this is the agent execution interval, in minutes
     , agentExecutionInterval: Int
     , complianceMode        : ComplianceMode
-  ): Seq[NodeStatusReport] = {
+  ): Seq[RuleNodeStatusReport] = {
     (for {
       directiveOnNode   <- ruleExpectedReports.directivesOnNodes
       (nodeId, version) <- directiveOnNode.nodeConfigurationIds
@@ -71,10 +72,10 @@ class ExecutionBatchTest extends Specification {
   }
 
   val getNodeStatusByRule = (getNodeStatusReportsByRule _).tupled
-  val getRuleStatus = ExecutionBatch.getRuleStatus _
 
 
-  // Test the component part
+
+   //Test the component part
   "A component, with two different keys" should {
     val executionTimestamp = new DateTime()
     val reports = Seq[Reports](
@@ -88,7 +89,7 @@ class ExecutionBatchTest extends Specification {
         new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component", "bar", executionTimestamp, "message")
     )
 
-    val expectedComponent = new ReportComponent(
+    val expectedComponent = new ComponentExpectedReport(
         "component"
       , 2
       , Seq("foo", "bar")
@@ -98,35 +99,34 @@ class ExecutionBatchTest extends Specification {
     val getComponentStatus = (r:Seq[Reports]) => ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, r, NoAnswerReportType)
 
     "return a component globally repaired " in {
-      getComponentStatus(reports).reportType === RepairedReportType
+      getComponentStatus(reports).compliance === ComplianceLevel(success = 1, repaired = 1)
     }
     "return a component with two key values " in {
       getComponentStatus(reports).componentValues.size === 2
     }
     "return a component with the key values foo which is repaired " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "foo").size === 1 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "foo").head.reportType ===  RepairedReportType
-     }
-     "return a component with the key values bar which is a success " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "bar").size === 1 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "bar").head.reportType ===  SuccessReportType
-     }
+      getComponentStatus(reports).componentValues("foo").messages.size === 1 and
+      getComponentStatus(reports).componentValues("foo").messages.head.reportType ===  RepairedReportType
+    }
+    "return a component with the key values bar which is a success " in {
+      getComponentStatus(reports).componentValues("bar").messages.size === 1 and
+      getComponentStatus(reports).componentValues("bar").messages.head.reportType ===  SuccessReportType
+    }
 
-     " with bad reports return a component globally unknwon" in {
-      getComponentStatus(badReports).reportType === UnknownReportType
-     }
-     "with bad reports return a component with two key values " in {
+    " with bad reports return a component globally unknwon" in {
+      getComponentStatus(badReports).compliance === ComplianceLevel(success = 1, unknown = 2)
+    }
+    "with bad reports return a component with two key values " in {
       getComponentStatus(badReports).componentValues.size === 2
     }
     "with bad reports return a component with the key values foo which is unknwon " in {
-      getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "foo").size === 1 and
-       getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "foo").head.reportType ===  UnknownReportType
-     }
-     "with bad reports return a component with the key values bar which is a success " in {
-      getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "bar").size === 1 and
-       getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "bar").head.reportType ===  SuccessReportType
-     }
-
+      getComponentStatus(badReports).componentValues("foo").messages.size === 2 and
+      getComponentStatus(badReports).componentValues("foo").messages.head.reportType ===  UnknownReportType
+    }
+    "with bad reports return a component with the key values bar which is a success " in {
+      getComponentStatus(badReports).componentValues("bar").messages.size === 1 and
+      getComponentStatus(badReports).componentValues("bar").messages.head.reportType ===  SuccessReportType
+    }
   }
 
   // Test the component part
@@ -143,34 +143,35 @@ class ExecutionBatchTest extends Specification {
         new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component", "None", executionTimestamp, "message")
     )
 
-    val expectedComponent = new ReportComponent(
+    val expectedComponent = new ComponentExpectedReport(
         "component"
       , 2
       , Seq("None", "None")
       , Seq("None", "None")
     )
-    val getComponentStatus = (r:Seq[Reports]) => ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, r, NoAnswerReportType)
+    val withGood = ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, reports, NoAnswerReportType)
+    val witBad   = ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, badReports, NoAnswerReportType)
 
     "return a component globally repaired " in {
-      getComponentStatus(reports).reportType === RepairedReportType
+      withGood.compliance === ComplianceLevel(success = 1, repaired = 1)
     }
     "return a component with two key values " in {
-      getComponentStatus(reports).componentValues.size === 2
+      withGood.componentValues.size === 1
     }
     "return a component with both None key repaired " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "None").size === 2 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "None").forall(x => x.reportType === RepairedReportType)
+      withGood.componentValues("None").messages.size === 2 and
+      withGood.componentValues("None").compliance === ComplianceLevel(success = 1, repaired = 1)
     }
 
     "with bad reports return a component globally unknown " in {
-      getComponentStatus(badReports).reportType === UnknownReportType
+      witBad.compliance === ComplianceLevel(unknown = 3)
     }
     "with bad reports return a component with two key values " in {
-      getComponentStatus(badReports).componentValues.size === 2
+      witBad.componentValues.size === 1
     }
     "with bad reports return a component with both None key unknown " in {
-      getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "None").size === 2 and
-       getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "None").forall(x => x.reportType === UnknownReportType)
+      witBad.componentValues("None").messages.size === 3 and
+      witBad.componentValues("None").messages.forall(x => x.reportType === UnknownReportType)
     }
   }
 
@@ -188,21 +189,22 @@ class ExecutionBatchTest extends Specification {
         new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component", "/var/cfengine", executionTimestamp, "message")
     )
 
-    val expectedComponent = new ReportComponent("component", 2
+    val expectedComponent = new ComponentExpectedReport("component", 2
       , Seq("${sys.bla}", "${sys.foo}")
       , Seq("${sys.bla}", "${sys.foo}")
     )
-    val getComponentStatus = (r:Seq[Reports]) => ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, r, NoAnswerReportType)
+
+    val withGood = ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, reports, NoAnswerReportType)
+    val witBad   = ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, badReports, NoAnswerReportType)
 
     "return a component globally repaired " in {
-      getComponentStatus(reports).reportType === RepairedReportType
+      withGood.compliance === ComplianceLevel(success = 1, repaired = 1)
     }
     "return a component with two key values " in {
-      getComponentStatus(reports).componentValues.size === 2
+      withGood.componentValues.size === 2
     }
     "return a component with both cfengine keys repaired " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "${sys.bla}").size === 1 and
-       getComponentStatus(reports).componentValues.forall(x => x.reportType === RepairedReportType)
+      withGood.componentValues("${sys.bla}").messages.size === 1
     }
   }
 
@@ -220,7 +222,7 @@ class ExecutionBatchTest extends Specification {
         new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component", "bar", executionTimestamp, "message")
     )
 
-    val expectedComponent = new ReportComponent("component", 2
+    val expectedComponent = new ComponentExpectedReport("component", 2
       , Seq("${sys.bla}", "bar")
       , Seq("${sys.bla}", "bar")
     )
@@ -228,32 +230,32 @@ class ExecutionBatchTest extends Specification {
     val getComponentStatus = (r:Seq[Reports]) => ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, r, NoAnswerReportType)
 
     "return a component globally repaired " in {
-      getComponentStatus(reports).reportType === RepairedReportType
+      getComponentStatus(reports).compliance === ComplianceLevel(success = 1, repaired = 1)
     }
     "return a component with two key values " in {
       getComponentStatus(reports).componentValues.size === 2
     }
     "return a component with the cfengine keys repaired " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "${sys.bla}").size === 1 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "${sys.bla}").forall(x => x.reportType === RepairedReportType)
+      getComponentStatus(reports).componentValues("${sys.bla}").messages.size === 1 and
+       getComponentStatus(reports).componentValues("${sys.bla}").messages.forall(x => x.reportType === RepairedReportType)
     }
     "return a component with the bar key success " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "bar").size === 1 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType === SuccessReportType)
+      getComponentStatus(reports).componentValues("bar").messages.size === 1 and
+       getComponentStatus(reports).componentValues("bar").messages.forall(x => x.reportType === SuccessReportType)
     }
     "with bad reports return a component globally unknown " in {
-      getComponentStatus(badReports).reportType === UnknownReportType
+      getComponentStatus(badReports).compliance ===  ComplianceLevel(unknown = 2)
     }
     "with bad reports return a component with two key values " in {
       getComponentStatus(badReports).componentValues.size === 2
     }
     "with bad reports return a component with bar as a success " in {
-      getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "bar").size === 1 and
-       getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType === SuccessReportType)
+      getComponentStatus(badReports).componentValues("bar").messages.size === 1 and
+       getComponentStatus(badReports).componentValues("bar").messages.forall(x => x.reportType === SuccessReportType)
     }
     "with bad reports return a component with the cfengine key as unknown " in {
-      getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "${sys.bla}").size === 1 and
-       getComponentStatus(badReports).componentValues.filter(x => x.componentValue == "${sys.bla}").forall(x => x.reportType === UnknownReportType)
+      getComponentStatus(badReports).componentValues("${sys.bla}").messages.size === 1 and
+       getComponentStatus(badReports).componentValues("${sys.bla}").messages.forall(x => x.reportType === UnknownReportType)
     }
   }
 
@@ -267,7 +269,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy"
-                    , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
+                    , Seq(new ComponentExpectedReport("component", 1, Seq("value"), Seq() ))
                   )
                 )
             ))
@@ -277,8 +279,9 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
 
-    val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
+
+
+    val nodeStatus = (getNodeStatusReportsByRule _).tupled(param)
 
 
     "have one detailed reports when we create it with one report" in {
@@ -286,46 +289,23 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed success node when we create it with one success report" in {
-      nodeStatus.head.nodeId === str2nodeId("one") and
-      nodeStatus.head.reportType === SuccessReportType
+      nodeStatus.head.nodeId === str2nodeId("one")
     }
 
-    "have no detailed repaired node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-
-    "have no detailed error node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
-
-    "have no detailed unknown node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-    "have no detailed no answer node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == NoAnswerReportType).size === 0)
-    }
-
-    "have no detailed no pending node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == PendingReportType).size == 0)
-    }
-
-    "have one detailed rule reports when we create it with one report" in {
-      ruleStatus.size ===1
-    }
 
     "have one detailed rule success directive when we create it with one success report" in {
-      ruleStatus.head.directiveId === DirectiveId("policy") and
-      ruleStatus.head.compliance === ComplianceLevel(success = 100)
+      nodeStatus.head.directives.head._1 === DirectiveId("policy")
     }
 
     "have no detailed rule non-success directive when we create it with one success report" in {
-      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
+      val c = AggregatedStatusReport(nodeStatus.toSet).compliance
       (   (c.pc_error === 0)
       and (c.pc_noAnswer === 0)
       and (c.pc_notApplicable === 0)
       and (c.pc_repaired === 0)
       and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 100)
       )
     }
   }
@@ -339,7 +319,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy"
-                    , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
+                    , Seq(new ComponentExpectedReport("component", 1, Seq("value"), Seq() ))
                   )
                 )
             ))
@@ -350,35 +330,21 @@ class ExecutionBatchTest extends Specification {
     )
 
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
       nodeStatus.size ==1
     }
 
     "have a pending node when we create it with one wrong success report right now" in {
-      nodeStatus.head.nodeId === str2nodeId("one") and
-      nodeStatus.head.reportType === PendingReportType
-    }
-
-    "have no detailed success node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == SuccessReportType).size === 0)
-    }
-
-    "have no detailed repaired node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-
-    "have no detailed error node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
-
-    "have no detailed unknown node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-    "have no detailed no answer node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == NoAnswerReportType).size === 0)
+      val c = AggregatedStatusReport(nodeStatus.toSet).compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 100)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 0)
+      ) and nodeStatus.head.nodeId === str2nodeId("one")
     }
   }
 
@@ -392,7 +358,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy"
-                    , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
+                    , Seq(new ComponentExpectedReport("component", 1, Seq("value"), Seq() ))
                   )
                 )
             ))
@@ -405,39 +371,21 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it" in {
       nodeStatus.size ==1
     }
 
     "have one unknown node when we create it with one success report" in {
-      nodeStatus.head.nodeId === str2nodeId("one") and
-      nodeStatus.head.reportType === UnknownReportType
-    }
-
-    "have no detailed repaired node when we create it with one extra success report" in {
-      (nodeStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-
-    "have no detailed error node when we create it with  one extra success report" in {
-      (nodeStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
-
-    "have no detailed success node when we create it with  one extra success report" in {
-      (nodeStatus.filter(x => x.reportType == SuccessReportType).size === 0)
-    }
-
-    "have no detailed no answer node when we create it with  one extra success report" in {
-      (nodeStatus.filter(x => x.reportType == NoAnswerReportType).size === 0)
-    }
-
-    "have no detailed no pending node when we create it with  one extra success report" in {
-      (nodeStatus.filter(x => x.reportType == PendingReportType).size === 0)
-    }
-
-    "have one rule detailed reports when we create it" in {
-      ruleStatus.size ==1
+      val c = AggregatedStatusReport(nodeStatus.toSet).compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 100)
+      ) and  nodeStatus.head.nodeId === str2nodeId("one")
     }
   }
 
@@ -450,7 +398,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("one", "two")
               , Seq(
                   DirectiveExpectedReports("policy"
-                    , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
+                    , Seq(new ComponentExpectedReport("component", 1, Seq("value"), Seq() ))
                   )
                 )
            ))
@@ -460,33 +408,13 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have two detailed reports when we create it" in {
       nodeStatus.size == 2
     }
 
-    "have one success node" in {
-      nodeStatus.exists(x => x.reportType == SuccessReportType)
-    }
-    "have one pending node" in {
-      nodeStatus.exists(x => x.reportType == PendingReportType)
-    }
-    "have one component per node" in {
-      nodeStatus.
-            filter(x => x.reportType == SuccessReportType).head.
-            directives.head.components.head.componentValues.size == 1
-    }
-
-    "have one detailed rule report" in {
-      ruleStatus.size == 1
-    }
-    "have one pending directive" in {
-      ruleStatus.exists(x => x.compliance.pending > 0)
-    }
     "have one success, and one pending node, in the component detail of the rule" in {
-      (ruleStatus.head.components.head.componentValues.head.nodesReport.size == 2) and
-      (ruleStatus.head.components.head.componentValues.head.nodesReport.exists(x => x.node == NodeId("one") && x.reportType == SuccessReportType))
+      AggregatedStatusReport(nodeStatus.toSet).compliance === ComplianceLevel(success = 1, repaired = 1)
     }
   }
 
@@ -499,7 +427,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("one", "two", "three")
               , Seq(
                   DirectiveExpectedReports("policy"
-                    , Seq(new ReportComponent("component", 1, Seq("value"), Seq() ))
+                    , Seq(new ComponentExpectedReport("component", 1, Seq("value"), Seq() ))
                   )
                 )
            ))
@@ -512,19 +440,21 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed rule report" in {
-      ruleStatus.size == 1
-    }
-    "have one pending directive" in {
-      ruleStatus.exists(x => x.compliance.pending > 0)
+      nodeStatus.size == 1
     }
     "have one detailed rule report with a 67% compliance" in {
-      ruleStatus.head.compliance.success must beEqualTo(67)
-    }
-    "have one detailed rule report with a component of 67% compliance" in {
-      ruleStatus.head.components.head.compliance must beEqualTo(67)
+      val c = AggregatedStatusReport(nodeStatus.toSet).compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
+
     }
   }
 
@@ -537,12 +467,12 @@ class ExecutionBatchTest extends Specification {
               , Seq("one", "two", "three")
               , Seq(
                     DirectiveExpectedReports("policy", Seq(
-                         new ReportComponent("component", 1, Seq("value"), Seq() )
-                       , new ReportComponent("component2", 1, Seq("value"), Seq() )
+                         new ComponentExpectedReport("component", 1, Seq("value"), Seq() )
+                       , new ComponentExpectedReport("component2", 1, Seq("value"), Seq() )
                      ))
                    , DirectiveExpectedReports("policy2", Seq(
-                         new ReportComponent("component", 1, Seq("value"), Seq() )
-                       , new ReportComponent("component2", 1, Seq("value"), Seq() )
+                         new ComponentExpectedReport("component", 1, Seq("value"), Seq() )
+                       , new ComponentExpectedReport("component2", 1, Seq("value"), Seq() )
                      ))
                 )
             ))
@@ -560,19 +490,32 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
+    val aggregated = AggregatedStatusReport(nodeStatus.toSet)
 
     "have two detailed rule report" in {
-      ruleStatus.size must beEqualTo(2)
-    }
-    "have two pending directives" in {
-      ruleStatus.filter(x => x.compliance.pending > 0).size must beEqualTo(2)
+      nodeStatus.size must beEqualTo(2)
     }
     "have detailed rule report for policy of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.compliance.success must beEqualTo(67)
+      val c = aggregated.directives("policy").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
     "have detailed rule report for policy2 of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.compliance.success must beEqualTo(33)
+      val c = aggregated.directives("policy2").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
   }
 
@@ -585,12 +528,12 @@ class ExecutionBatchTest extends Specification {
                , Seq("one", "two", "three")
                , Seq(
                      DirectiveExpectedReports("policy", Seq(
-                         new ReportComponent("component", 1, Seq("value"), Seq() )
-                       , new ReportComponent("component2", 1, Seq("value"), Seq() )
+                         new ComponentExpectedReport("component", 1, Seq("value"), Seq() )
+                       , new ComponentExpectedReport("component2", 1, Seq("value"), Seq() )
                      ))
                    , DirectiveExpectedReports("policy2",Seq(
-                         new ReportComponent("component", 1, Seq("value"), Seq() )
-                       , new ReportComponent("component2", 1, Seq("value"), Seq() )
+                         new ComponentExpectedReport("component", 1, Seq("value"), Seq() )
+                       , new ComponentExpectedReport("component2", 1, Seq("value"), Seq() )
                      ))
                  )
             ))
@@ -609,28 +552,65 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
+    val aggregated = AggregatedStatusReport(nodeStatus.toSet)
 
     "have two detailed rule report" in {
-      ruleStatus.size must beEqualTo(2)
-    }
-    "have two pending directives" in {
-      ruleStatus.filter(x => x.compliance.pending > 0).size must beEqualTo(2)
+      nodeStatus.size must beEqualTo(2)
     }
     "have detailed rule report for policy of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.compliance.success must beEqualTo(67)
+      val c = aggregated.directives("policy").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
     "have detailed rule report for policy2 of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.compliance.success must beEqualTo(33)
+      val c = aggregated.directives("policy2").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
     "have detailed rule report for policy-component of 100%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.compliance.success must beEqualTo(100)
+      val c = aggregated.directives("policy").components("component").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 100)
+      )
     }
     "have detailed rule report for policy-component2 of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component2").head.compliance.success must beEqualTo(67)
+      val c = aggregated.directives("policy").components("component").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
     "have detailed rule report for policy2-component2 of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy2")).head.components.filter(x => x.component == "component2").head.compliance.success must beEqualTo(33)
+      val c = aggregated.directives("policy2").components("component2").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 33)
+      )
     }
   }
 
@@ -643,7 +623,7 @@ class ExecutionBatchTest extends Specification {
                , Seq("one", "two", "three")
                , Seq(
                    DirectiveExpectedReports("policy", Seq(
-                       new ReportComponent("component", 1, Seq("value", "value2", "value3"), Seq() )
+                       new ComponentExpectedReport("component", 1, Seq("value", "value2", "value3"), Seq() )
                    ))
                  )
             ))
@@ -660,32 +640,69 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
+    val aggregated = AggregatedStatusReport(nodeStatus.toSet)
 
-    "have one detailed rule report" in {
-      ruleStatus.size must beEqualTo(1)
+    "have two detailed rule report" in {
+      nodeStatus.size must beEqualTo(2)
     }
-    "have one pending directives" in {
-      ruleStatus.filter(x => x.compliance.pending > 0).size must beEqualTo(1)
+    "have detailed rule report for policy of 67%" in {
+      val c = aggregated.directives("policy").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
-    "have detailed rule report for policy of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.compliance.success must beEqualTo(33)
+    "have detailed rule report for policy2 of 33%" in {
+      val c = aggregated.directives("policy2").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 33)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
-    "have detailed rule report for policy-component of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.compliance.success must beEqualTo(33)
+    "have detailed rule report for policy-component of 100%" in {
+      val c = aggregated.directives("policy").components("component").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 100)
+      )
     }
-    "have detailed rule report for policy-component-value of 100%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value").head.compliance.success must beEqualTo(100)
+    "have detailed rule report for policy-component2 of 67%" in {
+      val c = aggregated.directives("policy").components("component").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 67)
+      )
     }
-    "have detailed rule report for policy-component-value2 of 67%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value2").head.compliance.success must beEqualTo(67)
-    }
-    "have detailed rule report for policy-component-value of 33%" in {
-      ruleStatus.filter(x => x.directiveId == new DirectiveId("policy")).head.components.filter(x => x.component == "component").head.componentValues.filter(_.componentValue == "value3").head.compliance.success must beEqualTo(33)
+    "have detailed rule report for policy2-component2 of 33%" in {
+      val c = aggregated.directives("policy2").components("component2").compliance
+      (   (c.pc_error === 0)
+      and (c.pc_noAnswer === 0)
+      and (c.pc_notApplicable === 0)
+      and (c.pc_repaired === 0)
+      and (c.pc_pending === 0)
+      and (c.pc_unknown === 0)
+      and (c.pc_success === 33)
+      )
     }
   }
 
-   "An execution Batch, with one component with a quote in its value, cardinality one, one node" should {
+  "An execution Batch, with one component with a quote in its value, cardinality one, one node" should {
 
     val param = (
         RuleExpectedReports(
@@ -695,7 +712,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("one")
               , Seq(
                   DirectiveExpectedReports("policy", Seq(
-                      new ReportComponent("component", 1, Seq("""some\"text"""), Seq("""some\text""") )
+                      new ComponentExpectedReport("component", 1, Seq("""some\"text"""), Seq("""some\text""") )
                   ))
                 )
             ))
@@ -705,49 +722,16 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
       nodeStatus.size ===1
     }
 
     "have one detailed success node when we create it with one success report" in {
-      nodeStatus.head.nodeId === str2nodeId("one") &&
-      nodeStatus.head.reportType === SuccessReportType
+      nodeStatus.head.nodeId === str2nodeId("one") and
+      nodeStatus.head.compliance.pc_success === 100
     }
 
-    "have no detailed repaired node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-
-    "have no detailed error node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
-
-    "have no detailed unknown node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-
-     "have one detailed rule reports when we create it with one report" in {
-      ruleStatus.size ===1
-    }
-
-    "have one detailed rule success directive when we create it with one success report" in {
-      ruleStatus.head.directiveId === DirectiveId("policy") &&
-      ruleStatus.head.compliance.pc_success === 100
-    }
-
-    "have no detailed rule non-success directive when we create it with one success report" in {
-      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
-
-      (   (c.pc_error === 0)
-      and (c.pc_noAnswer === 0)
-      and (c.pc_notApplicable === 0)
-      and (c.pc_repaired === 0)
-      and (c.pc_pending === 0)
-      )
-    }
   }
 
  "An execution Batch, with one component, one node, but with a component value being a cfengine variable with {, and a an escaped quote as well" should {
@@ -760,7 +744,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("nodeId")
               , Seq(
                   DirectiveExpectedReports("policy", Seq(
-                      new ReportComponent("component", 1, Seq("""${sys.workdir}/inputs/\"test"""), Seq() )
+                      new ComponentExpectedReport("component", 1, Seq("""${sys.workdir}/inputs/\"test"""), Seq() )
                   ))
                 )
             ))
@@ -771,50 +755,17 @@ class ExecutionBatchTest extends Specification {
     )
 
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
      nodeStatus.size ===1
     }
 
     "have one detailed success node when we create it with one success report" in {
-     nodeStatus.head.nodeId === str2nodeId("nodeId") &&
-     nodeStatus.head.reportType === SuccessReportType
-    }
-
-    "have no detailed repaired node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == RepairedReportType).size === 0)
-    }
-
-    "have no detailed error node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == ErrorReportType).size === 0)
-    }
-
-    "have no detailed unknown node when we create it with one success report" in {
-      (nodeStatus.filter(x => x.reportType == UnknownReportType).size === 0)
-    }
-
-
-     "have one detailed rule reports when we create it with one report" in {
-      ruleStatus.size ===1
-    }
-
-    "have one detailed rule success directive when we create it with one success report" in {
-      ruleStatus.head.directiveId === DirectiveId("policy") &&
-      ruleStatus.head.compliance.success === 100
-    }
-
-    "have no detailed rule non-success directive when we create it with one success report" in {
-      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
-
-      (   (c.pc_error === 0)
-      and (c.pc_noAnswer === 0)
-      and (c.pc_notApplicable === 0)
-      and (c.pc_repaired === 0)
-      and (c.pc_pending === 0)
-      )
+     nodeStatus.head.nodeId === str2nodeId("nodeId") and
+     nodeStatus.head.compliance.pc_success === 100
     }
   }
+
   "An execution Batch, with one component, one node, but with a component value being a cfengine variable with {, and a quote as well" should {
     val param = (
         RuleExpectedReports(
@@ -824,7 +775,7 @@ class ExecutionBatchTest extends Specification {
               , Seq("nodeId")
               , Seq(
                   DirectiveExpectedReports("policy", Seq(
-                    new ReportComponent("component", 1, Seq("""${sys.workdir}/inputs/"test"""), Seq("""${sys.workdir}/inputs/"test""") )
+                    new ComponentExpectedReport("component", 1, Seq("""${sys.workdir}/inputs/"test"""), Seq("""${sys.workdir}/inputs/"test""") )
                   ))
                 )
            ))
@@ -834,7 +785,6 @@ class ExecutionBatchTest extends Specification {
       , FullCompliance
     )
     val nodeStatus = getNodeStatusByRule(param)
-    val ruleStatus = getRuleStatus(param._1, nodeStatus)
 
     "have one detailed reports when we create it with one report" in {
      nodeStatus.size === 1
@@ -842,42 +792,8 @@ class ExecutionBatchTest extends Specification {
 
     "have one detailed success node when we create it with one success report" in {
      nodeStatus.head.nodeId === str2nodeId("nodeId") and
-     nodeStatus.head.reportType === SuccessReportType
+     nodeStatus.head.compliance.pc_success === 100
     }
-
-    "have no detailed repaired node when we create it with one success report" in {
-      nodeStatus.filter(x => x.reportType == RepairedReportType).size === 0
-    }
-
-    "have no detailed error node when we create it with one success report" in {
-      nodeStatus.filter(x => x.reportType == ErrorReportType).size === 0
-    }
-
-    "have no detailed unknown node when we create it with one success report" in {
-      nodeStatus.filter(x => x.reportType == UnknownReportType).size === 0
-    }
-
-
-     "have one detailed rule reports when we create it with one report" in {
-      ruleStatus.size === 1
-    }
-
-    "have one detailed rule success directive when we create it with one success report" in {
-      ruleStatus.head.directiveId === DirectiveId("policy") and
-      ruleStatus.head.compliance.success === 100
-    }
-
-    "have no detailed rule non-success directive when we create it with one success report" in {
-      val c = ComplianceLevel.sum(ruleStatus.map(_.compliance))
-
-      (   (c.pc_error === 0)
-      and (c.pc_noAnswer === 0)
-      and (c.pc_notApplicable === 0)
-      and (c.pc_repaired === 0)
-      and (c.pc_pending === 0)
-      )
-    }
-
   }
 
    // Test the component part - with NotApplicable
@@ -888,7 +804,7 @@ class ExecutionBatchTest extends Specification {
         new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component", "bar", executionTimestamp, "message")
               )
 
-    val expectedComponent = new ReportComponent(
+    val expectedComponent = new ComponentExpectedReport(
         "component"
       , 2
       , Seq("/var/cfengine", "bar")
@@ -898,18 +814,18 @@ class ExecutionBatchTest extends Specification {
     val getComponentStatus = (r:Seq[Reports]) => ExecutionBatch.checkExpectedComponentWithReports(expectedComponent, r, NoAnswerReportType)
 
     "return a component globally success " in {
-      getComponentStatus(reports).reportType == SuccessReportType
+      getComponentStatus(reports).compliance.pc_success === 100
     }
     "return a component with two key values " in {
-      getComponentStatus(reports).componentValues.size == 2
+      getComponentStatus(reports).componentValues.size === 2
     }
     "return a component with the /var/cfengine in NotApplicable " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "/var/cfengine").size == 1 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "/var/cfengine").forall(x => x.reportType == NotApplicableReportType)
+      getComponentStatus(reports).componentValues("/var/cfengine").componentValue.size === 1 and
+      getComponentStatus(reports).componentValues("/var/cfengine").compliance.pc_notApplicable === 100
     }
     "return a component with the bar key success " in {
-      getComponentStatus(reports).componentValues.filter(x => x.componentValue == "bar").size == 1 and
-       getComponentStatus(reports).componentValues.filter(x => x.componentValue == "bar").forall(x => x.reportType == SuccessReportType)
+      getComponentStatus(reports).componentValues("bar").componentValue.size == 1 and
+      getComponentStatus(reports).componentValues("bar").compliance.pc_success === 100
     }
   }
 

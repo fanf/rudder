@@ -177,7 +177,7 @@ System.setProperty("test.postgres", "true")
     val r1 = RuleId("r1")
     val serial = 42
     val nodeConfigIds = Seq( ("n1", "n1_v1"), ("n2", "n2_v1") )
-    val c1 = ReportComponent("c1", 1, Seq("c1_v1"), Seq())
+    val c1 = ComponentExpectedReport("c1", 1, Seq("c1_v1"), Seq())
     val d1 = DirectiveExpectedReports(DirectiveId("d1"),Seq(c1))
     val directiveExpectedReports = Seq(d1)
 

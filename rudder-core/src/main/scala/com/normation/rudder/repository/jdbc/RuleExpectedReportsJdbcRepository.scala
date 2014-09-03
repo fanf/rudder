@@ -200,7 +200,7 @@ class FindExpectedReportsJdbcRepository(
           // here I am on the directiveId level, all lines that have the same RuleId, Serial, NodeJoinKey, DirectiveId are
           // for the same directive, and must be put together
           DirectiveExpectedReports(directiveId, lines.map( x =>
-            ReportComponent(x.component, x.cardinality, x.componentsValues, x.unexpandedCptsValues)
+            ComponentExpectedReport(x.component, x.cardinality, x.componentsValues, x.unexpandedCptsValues)
           ).distinct /* because we have the cardinality for that */ )
         }
         val nodeConfigurationIds = mappedEntries.groupBy( _.nodeId).mapValues { lines =>

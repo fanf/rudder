@@ -37,9 +37,7 @@ package com.normation.rudder.services.reports
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.ExpandedRuleVal
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.DirectiveRuleStatusReport
 import com.normation.rudder.domain.reports.NodeConfigId
-import com.normation.rudder.domain.reports.NodeStatusReport
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import net.liftweb.common.Box
 import com.normation.rudder.domain.reports.NodeConfigVersion
@@ -51,11 +49,11 @@ import com.normation.rudder.reports.ComplianceMode
 import scala.collection.mutable.Buffer
 import scala.collection.mutable.{Set => MutSet}
 import scala.collection.mutable.{Map => MutMap}
-import com.normation.rudder.domain.reports.ReportComponent
 import com.normation.rudder.domain.reports.NodeConfigVersions
 import com.normation.utils.Control.sequence
 import com.normation.rudder.domain.policies.ExpandedDirectiveVal
 import com.normation.rudder.repository.UpdateExpectedReportsRepository
+import com.normation.rudder.domain.reports.ComponentExpectedReport
 
 /**
  * The purpose of that service is to handle the update of
@@ -160,7 +158,7 @@ class ExpectedReportsUpdateImpl(
                           DirectiveExpectedReports(
                               directive.directiveId
                             , Seq(
-                                ReportComponent(
+                                ComponentExpectedReport(
                                     componentName
                                   , componentsValues.size
                                   , componentsValues

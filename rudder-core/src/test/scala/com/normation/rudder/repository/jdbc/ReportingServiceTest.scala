@@ -244,27 +244,44 @@ System.setProperty("test.postgres", "true")
   "Finding rule status reports for the error only mode" should {
     val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ChangesOnly))
 
-    val currentNodeReports = Set(
-                      NodeReport(NodeId("n0"), SuccessReportType,List())
-                    , NodeReport(NodeId("n1"), SuccessReportType,List())
-                    , NodeReport(NodeId("n2"), SuccessReportType,List())
-                    , NodeReport(NodeId("n3"), SuccessReportType,List("msg"))
-                    , NodeReport(NodeId("n4"), SuccessReportType,List("msg"))
-                  )
-
-
     "get r0" in {
       val r = errorOnlyReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r0"))
       val result = r.openOrThrowException("'Test failled'")
 
-      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r0_d0"), Set(
-              ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1", Set(
-                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1","r0_d0_c1_v1",Some("r0_d0_c1_v1"), currentNodeReports)
-               ))
-             , ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0",Set(
-                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0","r0_d0_c0_v1",Some("r0_d0_c0_v1"), currentNodeReports)
-               ))
-         )))
+      val expected = Seq(
+          nodeStatus("n0", None, Some("n0_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+              )
+          ))
+        , nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+        , nodeStatus("n2", Some(run1), Some("n2_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+        , nodeStatus("n3", Some(run2), Some("n3_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+        , nodeStatus("n4", Some(run2), Some("n4_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+      )
+
+
       result must beEqualTo(expected)
     }
 
@@ -278,11 +295,25 @@ System.setProperty("test.postgres", "true")
       val r = errorOnlyReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r2"))
       val result = r.openOrThrowException("'Test failled'")
 
-      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r2_d2"),Set(
-          ComponentRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0",Set(
-              ComponentValueRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0","r2_d2_c0_v0",Some("r2_d2_c0_v0"), currentNodeReports)
-            ))
-      )))
+      val expected = Seq(
+          nodeStatus("n0", None, Some("n0_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List()))
+              )
+          ))
+        , nodeStatus("n1", Some(run1), Some("n1_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List()))
+              )
+          ))
+
+        , nodeStatus("n4", Some(run2), Some("n4_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
+
+      )
       result must beEqualTo(expected)
     }
   }
@@ -292,27 +323,43 @@ System.setProperty("test.postgres", "true")
   "Finding rule status reports for the error only mode" should {
     val complianceReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(FullCompliance))
 
-    val currentNodeReports = Set(
-                      NodeReport(NodeId("n0"), PendingReportType,List())
-                    , NodeReport(NodeId("n1"), PendingReportType,List())
-                    , NodeReport(NodeId("n2"), PendingReportType,List())
-                    , NodeReport(NodeId("n3"), SuccessReportType,List("msg"))
-                    , NodeReport(NodeId("n4"), SuccessReportType,List("msg"))
-                  )
-
 
     "get r0" in {
       val r = complianceReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r0"))
       val result = r.openOrThrowException("'Test failled'")
 
-      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r0_d0"), Set(
-              ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1", Set(
-                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c1","r0_d0_c1_v1",Some("r0_d0_c1_v1"), currentNodeReports)
-               ))
-             , ComponentRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0",Set(
-                  ComponentValueRuleStatusReport(DirectiveId("r0_d0"),"r0_d0_c0","r0_d0_c0_v1",Some("r0_d0_c0_v1"), currentNodeReports)
-               ))
-         )))
+      val expected = Seq(
+          nodeStatus("n0", None, Some("n0_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+              )
+          ))
+        , nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+        , nodeStatus("n2", Some(run1), Some("n2_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+              )
+          ))
+        , nodeStatus("n3", Some(run2), Some("n3_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+        , nodeStatus("n4", Some(run2), Some("n4_t2"), "r0",
+              ("r0_d0", Seq(
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("msg")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("msg")))
+              )
+          ))
+      )
       result must beEqualTo(expected)
     }
 
@@ -326,11 +373,25 @@ System.setProperty("test.postgres", "true")
       val r = complianceReportingService.findDirectiveRuleStatusReportsByRule(RuleId("r2"))
       val result = r.openOrThrowException("'Test failled'")
 
-      val expected = Seq(DirectiveRuleStatusReport(DirectiveId("r2_d2"),Set(
-          ComponentRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0",Set(
-              ComponentValueRuleStatusReport(DirectiveId("r2_d2"),"r2_d2_c0","r2_d2_c0_v0",Some("r2_d2_c0_v0"), currentNodeReports)
-            ))
-      )))
+      val expected = Seq(
+          nodeStatus("n0", None, Some("n0_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List()))
+              )
+          ))
+        , nodeStatus("n1", Some(run1), Some("n1_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List()))
+              )
+          ))
+
+        , nodeStatus("n4", Some(run2), Some("n4_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
+
+      )
       result must beEqualTo(expected)
     }
   }
@@ -534,7 +595,7 @@ System.setProperty("test.postgres", "true")
    * A comparator for NodeStatusReport that allows to more
    * quickly understand what is the problem
    */
-  def compareNodeStatus(results:Seq[NodeStatusReport], expecteds:Seq[NodeStatusReport]) = {
+  def compareNodeStatus(results:Seq[RuleNodeStatusReport], expecteds:Seq[RuleNodeStatusReport]) = {
     //compare nodestatus for each rules
     val resultByNodeAndRule = results.groupBy(x => (x.nodeId, x.ruleId))
     val expectedByNodeAndRule = expecteds.groupBy(x => (x.nodeId, x.ruleId))
@@ -545,28 +606,20 @@ System.setProperty("test.postgres", "true")
     def matchOneNodeStatus(k:(NodeId,RuleId)):MatchResult[Any] = {
       (resultByNodeAndRule(k).toList, expectedByNodeAndRule(k).toList) match {
         case (result :: Nil, expected:: Nil) =>
-          val resultDirectives = result.directives.groupBy( _.directiveId)
-          val expectedDirectives = expected.directives.groupBy( _.directiveId)
+          val resultDirectives = result.directives
+          val expectedDirectives = expected.directives
 
           val sameDirectives = resultDirectives.keySet.intersect(expectedDirectives.keySet)
 
 
           val baseProps = (
-                (result.optAgentRunTime === expected.optAgentRunTime)
-            and (result.optNodeConfigVersion === expected.optNodeConfigVersion)
+                (result.agentRunTime === expected.agentRunTime)
+            and (result.configId === expected.configId)
             and (resultDirectives.keySet must contain(exactly(expectedDirectives.keySet.toSeq:_*)))
           )
 
           def matchOneDirectiveStatus(k:DirectiveId): MatchResult[Any] = {
-            (resultDirectives(k).toList, expectedDirectives(k).toList) match {
-              case (x::Nil, y::Nil) =>
-
-                (x.components must contain(exactly(y.components.toSeq:_*))) and
-                (x.unexpectedComponents must contain(exactly(y.unexpectedComponents.toSeq:_*)))
-
-              case (x::Nil, y) => ko(s"Expected several DirectiveStatusReport for a given directive '${k.value}', which is not suppoted")
-              case (x,_)       => ko(s"We got several DirectiveStatusReport for directive '${k.value}': " + x.toString)
-            }
+            resultDirectives(k).components must contain(exactly(expectedDirectives(k).components.toSeq:_*))
           }
 
           baseProps and (matchOneDirectiveStatus _).foreach(sameDirectives)
@@ -595,16 +648,21 @@ System.setProperty("test.postgres", "true")
   }
 
   def compStatus(id: String, values: (String, ReportType, List[String])*): ComponentStatusReport = {
-    val v = values.map { case(value, tpe, msgs) => ComponentValueStatusReport(value, Some(value), tpe, msgs) }
-    ComponentStatusReport(id, v.toSet, v.flatMap(_.message).toList, Set())
+    val v = values.map { case(value, tpe, msgs) =>
+      val messages = msgs.map(m => MessageStatusReport(tpe, m))
+      ComponentValueStatusReport(value, Some(value), messages)
+    }
+    ComponentStatusReport(id, ComponentValueStatusReport.merge(v))
   }
 
   def nodeStatus(id: String, run:Option[DateTime], version: Option[String], ruleId: String
       , directives: (String, Seq[ComponentStatusReport])*
-  ): NodeStatusReport = {
-    NodeStatusReport(NodeId(id), run, version.map(NodeConfigVersion(_)), RuleId(ruleId)
-        , directives.map(d => DirectiveStatusReport(DirectiveId(d._1), d._2.toSet, Set())).toSet
-        , Set()
+  ): RuleNodeStatusReport = {
+    RuleNodeStatusReport(
+          NodeId(id), RuleId(ruleId), 0, run, version.map(NodeConfigVersion(_))
+        , DirectiveStatusReport.merge(directives.map(d =>
+            DirectiveStatusReport(DirectiveId(d._1), ComponentStatusReport.merge(d._2))
+          ))
     )
   }
 
