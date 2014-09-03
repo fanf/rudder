@@ -251,20 +251,20 @@ System.setProperty("test.postgres", "true")
       val expected = Seq(
           nodeStatus("n0", None, Some("n0_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("")))
               )
           ))
         , nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("")))
               )
           ))
         , nodeStatus("n2", Some(run1), Some("n2_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("")))
               )
           ))
         , nodeStatus("n3", Some(run2), Some("n3_t2"), "r0",
@@ -280,9 +280,7 @@ System.setProperty("test.postgres", "true")
               )
           ))
       )
-
-
-      result must beEqualTo(expected)
+      compareNodeStatus(result, expected)
     }
 
     "get r1" in {
@@ -298,15 +296,24 @@ System.setProperty("test.postgres", "true")
       val expected = Seq(
           nodeStatus("n0", None, Some("n0_t2"), "r2",
               ("r2_d2", Seq(
-                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List()))
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("")))
               )
           ))
         , nodeStatus("n1", Some(run1), Some("n1_t2"), "r2",
               ("r2_d2", Seq(
-                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List()))
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("")))
               )
           ))
-
+        , nodeStatus("n2", Some(run1), Some("n2_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("")))
+              )
+          ))
+        , nodeStatus("n3", Some(run2), Some("n3_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
         , nodeStatus("n4", Some(run2), Some("n4_t2"), "r2",
               ("r2_d2", Seq(
                   compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
@@ -314,13 +321,13 @@ System.setProperty("test.postgres", "true")
           ))
 
       )
-      result must beEqualTo(expected)
+      compareNodeStatus(result, expected)
     }
   }
 
   ///////////////////////////////// full compliance mode /////////////////////////////////
 
-  "Finding rule status reports for the error only mode" should {
+  "Finding rule status reports for the compliance mode" should {
     val complianceReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(FullCompliance))
 
 
@@ -331,20 +338,20 @@ System.setProperty("test.postgres", "true")
       val expected = Seq(
           nodeStatus("n0", None, Some("n0_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List("")))
               )
           ))
         , nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List("")))
               )
           ))
         , nodeStatus("n2", Some(run1), Some("n2_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List("")))
               )
           ))
         , nodeStatus("n3", Some(run2), Some("n3_t2"), "r0",
@@ -360,7 +367,7 @@ System.setProperty("test.postgres", "true")
               )
           ))
       )
-      result must beEqualTo(expected)
+      compareNodeStatus(result, expected)
     }
 
     "get r1" in {
@@ -376,15 +383,24 @@ System.setProperty("test.postgres", "true")
       val expected = Seq(
           nodeStatus("n0", None, Some("n0_t2"), "r2",
               ("r2_d2", Seq(
-                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List()))
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List("")))
               )
           ))
         , nodeStatus("n1", Some(run1), Some("n1_t2"), "r2",
               ("r2_d2", Seq(
-                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List()))
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List("")))
               )
           ))
-
+        , nodeStatus("n2", Some(run1), Some("n2_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List("")))
+              )
+          ))
+        , nodeStatus("n3", Some(run2), Some("n3_t2"), "r2",
+              ("r2_d2", Seq(
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
+              )
+          ))
         , nodeStatus("n4", Some(run2), Some("n4_t2"), "r2",
               ("r2_d2", Seq(
                   compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("msg")))
@@ -392,7 +408,7 @@ System.setProperty("test.postgres", "true")
           ))
 
       )
-      result must beEqualTo(expected)
+      compareNodeStatus(result, expected)
     }
   }
 
@@ -411,13 +427,13 @@ System.setProperty("test.postgres", "true")
       compareNodeStatus(result, Seq(
           nodeStatus("n0", None, Some("n0_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("")))
               )
           ))
         , nodeStatus("n0", None, Some("n0_t2"), "r2",
               ("r2_d2", Seq(
-                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List()))
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", SuccessReportType, List("")))
               )
           ))
       ))
@@ -429,8 +445,8 @@ System.setProperty("test.postgres", "true")
       compareNodeStatus(result, Seq(
           nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", SuccessReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", SuccessReportType, List("")))
               )
           ))
       ))
@@ -497,8 +513,8 @@ System.setProperty("test.postgres", "true")
       compareNodeStatus(result, Seq(
           nodeStatus("n0", None, Some("n0_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List("")))
               )
           ))
       ))
@@ -510,13 +526,13 @@ System.setProperty("test.postgres", "true")
       compareNodeStatus(result, Seq(
           nodeStatus("n1", Some(run1), Some("n1_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List("")))
               )
           ))
         , nodeStatus("n1", Some(run1), Some("n1_t2"), "r2",
               ("r2_d2", Seq(
-                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List()))
+                  compStatus("r2_d2_c0", ("r2_d2_c0_v0", PendingReportType, List("")))
               )
           ))
       ))
@@ -539,8 +555,8 @@ System.setProperty("test.postgres", "true")
       compareNodeStatus(result, Seq(
           nodeStatus("n2", Some(run1), Some("n2_t2"), "r0",
               ("r0_d0", Seq(
-                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List()))
-                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List()))
+                  compStatus("r0_d0_c0", ("r0_d0_c0_v1", PendingReportType, List("")))
+                , compStatus("r0_d0_c1", ("r0_d0_c1_v1", PendingReportType, List("")))
               )
           ))
       ))
@@ -618,11 +634,11 @@ System.setProperty("test.postgres", "true")
             and (resultDirectives.keySet must contain(exactly(expectedDirectives.keySet.toSeq:_*)))
           )
 
-          def matchOneDirectiveStatus(k:DirectiveId): MatchResult[Any] = {
-            resultDirectives(k).components must contain(exactly(expectedDirectives(k).components.toSeq:_*))
+          def matchOneDirectiveStatus(d:DirectiveId): MatchResult[Any] = {
+            (resultDirectives(d).components must contain(exactly(expectedDirectives(d).components.toSeq:_*))).updateMessage(s => s"Error for ${k} in directive $d: " + s)
           }
 
-          baseProps and (matchOneDirectiveStatus _).foreach(sameDirectives)
+          baseProps and ((matchOneDirectiveStatus _).foreach(sameDirectives)).updateMessage(s => s"Error for ${k}: " + s)
 
 
         case (x::Nil, y) => ko("Expecting several NodeStatusReports for one node and one rule, which is not supported")
@@ -630,7 +646,7 @@ System.setProperty("test.postgres", "true")
       }
     }
 
-    compareNodeAndRule and (matchOneNodeStatus _).foreach(sameNodeAndRules)
+    compareNodeAndRule and ((matchOneNodeStatus _).foreach(sameNodeAndRules)).updateMessage(s => s"Error for plop "+ s)
 
   }
 
