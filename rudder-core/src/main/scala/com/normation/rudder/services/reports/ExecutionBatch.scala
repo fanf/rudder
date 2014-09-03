@@ -51,7 +51,7 @@ import com.normation.rudder.domain.reports._
 import com.normation.rudder.reports.ComplianceMode
 import com.normation.utils.Control.sequence
 import com.normation.rudder.reports.FullCompliance
-import com.normation.rudder.reports.ErrorOnly
+import com.normation.rudder.reports.ChangesOnly
 import com.normation.rudder.reports.execution.AgentRunId
 
 /**
@@ -105,7 +105,7 @@ object ExecutionBatch {
    */
   def isExpired(time: DateTime, complianceMode: ComplianceMode, agentExecutionInterval: Int, referenceTime: DateTime = DateTime.now) : Boolean = {
     complianceMode match {
-      case ErrorOnly => false
+      case ChangesOnly => false
       case FullCompliance => time.plusMinutes(agentExecutionInterval + Math.min(agentExecutionInterval,5)).isBefore(referenceTime)
     }
   }
@@ -169,7 +169,7 @@ object ExecutionBatch {
             PendingReportType
           }
 
-        case ErrorOnly =>
+        case ChangesOnly =>
           //in that mode, an answer is a SUCCESS that should be display
           //to the user as "No change"
           SuccessReportType

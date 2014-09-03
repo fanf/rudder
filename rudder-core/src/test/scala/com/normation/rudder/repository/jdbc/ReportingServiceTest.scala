@@ -48,7 +48,7 @@ import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports._
 import com.normation.rudder.migration.DBCommon
-import com.normation.rudder.reports.ErrorOnly
+import com.normation.rudder.reports.ChangesOnly
 import com.normation.rudder.reports.execution._
 import com.normation.rudder.reports.status.StatusUpdateSquerylRepository
 import com.normation.rudder.reports.FullCompliance
@@ -242,7 +242,7 @@ System.setProperty("test.postgres", "true")
   ///////////////////////////////// error only mode /////////////////////////////////
 
   "Finding rule status reports for the error only mode" should {
-    val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ErrorOnly))
+    val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ChangesOnly))
 
     val currentNodeReports = Set(
                       NodeReport(NodeId("n0"), SuccessReportType,List())
@@ -342,7 +342,7 @@ System.setProperty("test.postgres", "true")
   ///////////////////////////////// error only mode /////////////////////////////////
 
   "Finding node status reports for the error only mode" should {
-    val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ErrorOnly))
+    val errorOnlyReportingService = new ReportingServiceImpl(findExpected, reportsRepo, roAgentRun, () => 5, () => Full(ChangesOnly))
 
     "get success for node 0 on gen2 data (without msg) even if it didn't send reports" in {
       val r = errorOnlyReportingService.findNodeStatusReports(nodes("n0"), Set())

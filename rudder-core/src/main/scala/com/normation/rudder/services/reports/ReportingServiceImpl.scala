@@ -72,7 +72,7 @@ import com.normation.rudder.reports.execution.ReportExecution
 import scala.tools.nsc.transform.Flatten
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.reports.FullCompliance
-import com.normation.rudder.reports.ErrorOnly
+import com.normation.rudder.reports.ChangesOnly
 import com.normation.rudder.reports.execution.ReportExecution
 import com.normation.rudder.reports.execution.AgentRunId
 
@@ -134,7 +134,7 @@ class ReportingServiceImpl(
                                //even if we could get them by version, we prefer to do only one request
                                //on the underlying Db
                                case FullCompliance => runs.keySet
-                               case ErrorOnly => (runs.collect {
+                               case ChangesOnly => (runs.collect {
                                  case(nodeId, None) => nodeId
                                  case(nodeId, Some(x) ) if(x.nodeConfigVersion.isEmpty) => nodeId
                                }).toSet
