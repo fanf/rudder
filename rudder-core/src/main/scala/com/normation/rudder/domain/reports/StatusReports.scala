@@ -143,6 +143,24 @@ final case class RuleNodeStatusReport(
   , directives  : Map[DirectiveId, DirectiveStatusReport]
 ) extends StatusReport {
   override val compliance = ComplianceLevel.sum(directives.map(_._2.compliance) )
+
+  def getValues(predicate: ComponentValueStatusReport => Boolean): Seq[(DirectiveId, String, ComponentValueStatusReport)] = {
+      directives.values.flatMap( _.getValues(predicate)).toSeq
+  }
+
+  def withFilteredElements(
+      directive: DirectiveStatusReport => Boolean
+    , component: ComponentStatusReport => Boolean
+    , values   : ComponentValueStatusReport => Boolean
+  ): Option[RuleNodeStatusReport] = {
+    val dirs = (
+        directives.values.filter(directive(_))
+        .flatMap(_.withFilteredElements(component, values))
+        .map(x => (x.directiveId, x)).toMap
+    )
+    if(dirs.isEmpty) None
+    else Some(this.copy(directives = dirs))
+  }
 }
 
 final case class DirectiveStatusReport(
@@ -151,6 +169,23 @@ final case class DirectiveStatusReport(
   , components : Map[String, ComponentStatusReport]
 ) extends StatusReport {
   override val compliance = ComplianceLevel.sum(components.map(_._2.compliance) )
+  def getValues(predicate: ComponentValueStatusReport => Boolean): Seq[(DirectiveId, String, ComponentValueStatusReport)] = {
+      components.values.flatMap( _.getValues(predicate) ).toSeq.map { case(s,v) => (directiveId,s,v) }
+  }
+
+  def withFilteredElements(
+      component: ComponentStatusReport => Boolean
+    , values   : ComponentValueStatusReport => Boolean
+  ): Option[DirectiveStatusReport] = {
+    val cpts = (
+        components.values.filter(component(_))
+        .flatMap( _.withFilteredElement(values))
+        .map(x => (x.componentName, x)).toMap
+    )
+
+    if(cpts.isEmpty) None
+    else Some(this.copy(components = cpts))
+  }
 }
 
 object DirectiveStatusReport {
@@ -173,6 +208,21 @@ final case class ComponentStatusReport(
   , componentValues    : Map[String, ComponentValueStatusReport]
 ) extends StatusReport {
   override val compliance = ComplianceLevel.sum(componentValues.map(_._2.compliance) )
+  /*
+   * Get all values matching the predicate
+   */
+  def getValues(predicate: ComponentValueStatusReport => Boolean): Seq[(String, ComponentValueStatusReport)] = {
+      componentValues.values.filter(predicate(_)).toSeq.map(x => (componentName, x))
+  }
+
+  /*
+   * Rebuild a componentStatusReport, keeping only values matching the predicate
+   */
+  def withFilteredElement(predicate: ComponentValueStatusReport => Boolean): Option[ComponentStatusReport] = {
+    val values = componentValues.filter { case (k,v) => predicate(v) }
+    if(values.isEmpty) None
+    else Some(this.copy(componentValues = values))
+  }
 }
 
 object ComponentStatusReport extends Loggable {
@@ -194,6 +244,12 @@ final case class ComponentValueStatusReport(
   , messages                : List[MessageStatusReport]
 ) extends StatusReport {
   override val compliance = ComplianceLevel.compute(messages.map( _.reportType))
+
+  /*
+   * It can be argued that a status for a value may make sense,
+   * even in the case where several nodes contributed to it
+   */
+  val status = ReportType.getWorseType(messages.map(_.reportType))
 }
 
 object ComponentValueStatusReport extends Loggable {

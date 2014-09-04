@@ -259,6 +259,19 @@ function createRuleTable(gridId, data, needCheckbox, isPopup, allCheckboxCallbac
 ////////////////////////////////////////////////////////////////
 ///////////////////  Rule compliance details ///////////////////
 ////////////////////////////////////////////////////////////////
+
+
+/*
+ * We have 3 ways of displaying compliance details:
+ * 
+ *  1/ for ONE node, by rules -> directives -> components -> values status with messages
+ *  2/ for ONE rule, by directives -> components -> values compliance
+ *  3/ for ONE rule, by nodes -> directives -> components -> values status with messages
+ *  
+ *  For 1/ and 3/, the value line looks like: [ VALUE | MESSAGES | STATUS ]
+ *  For 2/, they looks like: [ VALUE | COMPLIANCE ]
+ */
+
 /*
  *   The table of rules compliance for a node (in the node details
  *   page, reports tab)
@@ -569,7 +582,7 @@ function createComponentTable(isTopLevel, isNodeView, contextPath) {
  *   , "status" : Worst status of the Directive [String]
  *   , "statusClass" : Class to use on status cell [String]
  *   , "callback" : Function to when clicking on compliance percent, not used in message popup [ Function ]
- *   , "message" : Message linked to that value, only used in message popup [ Array[String] ]
+ *   , "messages" : Message linked to that value, only used in message popup [ Array[String] ]
  *   }
  */
 function createNodeComponentValueTable(contextPath) {
@@ -596,8 +609,8 @@ function createNodeComponentValueTable(contextPath) {
       }
   } , {
       "sWidth": "62.4%"
-    , "mDataProp": "message"
-    , "sTitle": "Message"
+    , "mDataProp": "messages"
+    , "sTitle": "Messages"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
         var list = $("<ul></ul>");
         for (index in sData) {
@@ -629,14 +642,14 @@ function createNodeComponentValueTable(contextPath) {
 
 }
 
-/*   Details of a value for a rule. 
+/*   Details of a value for component in a directive in a rule details. 
  *   We don't have a status, but a compliance (composite values)
  *   
  *   Javascript object containing all data to create a line in the DataTable
  *   { "value" : value of the key [String]
  *   , "compliance" : compliance percent as String, not used in message popup [String]
  *   , "callback" : Function to when clicking on compliance percent, not used in message popup [ Function ]
- *   , "message" : Message linked to that value, only used in message popup [ Array[String] ]
+ *   , "messages" : Message linked to that value, only used in message popup [ Array[String] ]
  *   }
  */
 function createRuleComponentValueTable (contextPath) {

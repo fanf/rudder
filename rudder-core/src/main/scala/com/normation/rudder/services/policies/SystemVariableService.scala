@@ -135,7 +135,7 @@ class SystemVariableServiceImpl(
 
     val storeAllCentralizedLogsInFile = getProp("STORE_ALL_CENTRALIZED_LOGS_IN_FILE", getStoreAllCentralizedLogsInFile)
 
-    val minimalReportsMode = {
+    val varReportMode = {
 
       //we want an actual valide string, defined in the "name" of compliance mode object
       getProp("RUDDER_REPORT_MODE", () => getComplianceMode().map( _.name ))
@@ -167,7 +167,7 @@ class SystemVariableServiceImpl(
       , (modifiedFilesTtl.spec.name, modifiedFilesTtl)
       , (cfengineOutputsTtl.spec.name, cfengineOutputsTtl)
       , (storeAllCentralizedLogsInFile.spec.name, storeAllCentralizedLogsInFile)
-      , (minimalReportsMode.spec.name, minimalReportsMode)
+      , (varReportMode.spec.name, varReportMode)
       )
     }
   }
@@ -301,13 +301,13 @@ class SystemVariableServiceImpl(
     logger.trace("System variables for node %s done".format(nodeInfo.id.value))
 
     /*
-     * RUDDER_NODE_CONFIG_VERSION is a very special system variable:
+     * RUDDER_NODE_CONFIG_ID is a very special system variable:
      * it must not be used to assess node config stability from
      * run to run.
      * So we set it to a default value and handle it specialy in
      * RudderCf3PromisesFileWriterServiceImpl#prepareRulesForAgents
      */
-    val varNodeConfigVersion = systemVariableSpecService.get("RUDDER_NODE_CONFIG_VERSION").toVariable(Seq("DUMMY NODE CONFIG VERSION"))
+    val varNodeConfigVersion = systemVariableSpecService.get("RUDDER_NODE_CONFIG_ID").toVariable(Seq("DUMMY NODE CONFIG VERSION"))
 
     Full(
          globalSystemVariables

@@ -219,7 +219,7 @@ class RudderCf3PromisesFileWriterServiceImpl(
     for (agentType <- node.nodeInfo.agentsName) {
       val varNova      = systemVariableSpecService.get("NOVA"     ).toVariable(if(agentType == NOVA_AGENT     ) Seq("true") else Seq())
       val varCommunity = systemVariableSpecService.get("COMMUNITY").toVariable(if(agentType == COMMUNITY_AGENT) Seq("true") else Seq())
-      val varNodeConfigVersion = systemVariableSpecService.get("RUDDER_NODE_CONFIG_VERSION").toVariable(Seq(nodeConfigVersion.value))
+      val varNodeConfigVersion = systemVariableSpecService.get("RUDDER_NODE_CONFIG_ID").toVariable(Seq(nodeConfigVersion.value))
 
       val systemVariables = (node.nodeContext
                             + (varNova.spec.name -> varNova)

@@ -48,7 +48,6 @@ import net.liftweb.http.js.JsCmds._
 import net.liftweb.http.js.JE._
 import net.liftweb.http.js.JsCmd
 import bootstrap.liftweb.RudderConfig
-import com.normation.rudder.web.components.popup.RuleCompliancePopup
 import com.normation.rudder.web.model.WBTextField
 import com.normation.rudder.web.model.WBTextAreaField
 import com.normation.rudder.web.model.WBSelectField
@@ -79,11 +78,10 @@ class RuleCompliance (
 ) extends Loggable {
 
   private[this] val reportingService = RudderConfig.reportingService
-  private[this] val categoryHierarchyDisplayer = RudderConfig.categoryHierarchyDisplayer
-  private[this] val roCategoryRepository = RudderConfig.roRuleCategoryRepository
-  private[this] val roRuleRepository = RudderConfig.roRuleRepository
-  private[this] val categoryService      = RudderConfig.ruleCategoryService
+  private[this] val categoryService  = RudderConfig.ruleCategoryService
 
+  //fresh value when refresh
+  private[this] val roRuleRepository    = RudderConfig.roRuleRepository
   private[this] val getFullDirectiveLib = RudderConfig.roDirectiveRepository.getFullDirectiveLibrary _
   private[this] val getAllNodeInfos     = RudderConfig.nodeInfoService.getAll _
 
@@ -111,8 +109,7 @@ class RuleCompliance (
     reportingService.findDirectiveRuleStatusReportsByRule(rule.id) match {
       case e: EmptyBox => <div class="error">Error while fetching report information</div>
       case Full(reports) =>
-        val directivesReport = reports.filter(dir => rule.directiveIds.contains(dir.directiveId))
-        val data = ComplianceData.getRuleDirectivesComplianceDetails(directivesReport, rule, allNodeInfos, directiveLib).json.toJsCmd
+        val data = ComplianceData.getRuleByDirectivesComplianceDetails(reports, rule, allNodeInfos, directiveLib).json.toJsCmd
 
         <div>
           <hr class="spacer" />
@@ -133,9 +130,8 @@ class RuleCompliance (
             updatedNodes <- getAllNodeInfos().map(_.toMap)
             updatedDirectives <- getFullDirectiveLib()
         } yield {
-          val directivesReport = reports.filter(dir => updatedRule.directiveIds.contains(dir.directiveId))
 
-          ComplianceData.getRuleDirectivesComplianceDetails(directivesReport, updatedRule, allNodeInfos, directiveLib).json.toJsCmd
+          ComplianceData.getRuleByDirectivesComplianceDetails(reports, updatedRule, allNodeInfos, directiveLib).json.toJsCmd
         }
 
         JsRaw(s"""refreshTable("reportsGrid",${result.getOrElse("[]")});

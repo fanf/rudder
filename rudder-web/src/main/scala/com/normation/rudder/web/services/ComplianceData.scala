@@ -73,7 +73,7 @@ case class RuleComplianceLine (
     name        : String
   , id          : RuleId
   , compliance  : ComplianceLevel
-  , details     : JsTableData[DirectiveComplianceLine[ValueComplianceLine]]
+  , details     : JsTableData[DirectiveComplianceLine]
 ) extends JsTableLine {
   val json = {
     JsObj (
@@ -96,13 +96,13 @@ case class RuleComplianceLine (
  *   , "callback" : Function to when clicking on compliance percent, not used in message popup [ Function ]
  *   }
  */
-case class DirectiveComplianceLine[T <: ValueLine] (
+case class DirectiveComplianceLine (
     directive        : String
   , id               : DirectiveId
   , techniqueName    : String
   , techniqueVersion : TechniqueVersion
   , compliance       : ComplianceLevel
-  , details          : JsTableData[ComponentComplianceLine[T]]
+  , details          : JsTableData[ComponentComplianceLine]
   , callback         : Option[AnonFunc]
 ) extends JsTableLine {
 
@@ -138,7 +138,7 @@ case class DirectiveComplianceLine[T <: ValueLine] (
 case class NodeComplianceLine (
     nodeInfo   : NodeInfo
   , compliance : ComplianceLevel
-  , details    : JsTableData[ComponentComplianceLine[RuleValueComplianceLine]]
+  , details    : JsTableData[ComponentComplianceLine]
 ) extends JsTableLine {
   val json = {
     JsObj (
@@ -160,21 +160,17 @@ case class NodeComplianceLine (
  *   , "callback" : Function to when clicking on compliance percent, not used in message popup [ Function ]
  *   }
  */
-case class ComponentComplianceLine[X <: ValueLine] (
+case class ComponentComplianceLine (
     component   : String
   , id          : String
   , compliance  : ComplianceLevel
-  , details     : JsTableData[X]
-  , noExpand    : Option[Boolean]
+  , details     : JsTableData[ValueComplianceLine]
+  , noExpand    : Boolean
   , callback    : Option[AnonFunc]
 ) extends JsTableLine {
 
-  val noExpandField = noExpand.map(cb => ( "noExpand" -> boolToJsExp(cb)))
-
   val callbackField = callback.map(cb => ( "callback" -> cb))
-
-  val optFields : Seq[(String,JsExp)]= noExpandField.toSeq ++ callbackField
-
+  val optFields : Seq[(String,JsExp)]= callbackField.toSeq
 
   val baseFields = {
     JsObj (
@@ -182,21 +178,11 @@ case class ComponentComplianceLine[X <: ValueLine] (
       , ( "id"          -> id )
       , ( "compliance"  -> jsCompliance(compliance))
       , ( "details"     -> details.json )
+      , ( "noExpand"    -> noExpand )
     )
   }
 
-   val json = baseFields +* JsObj(optFields:_*)
-}
-
-
-
-/*
- * Trait that englobe both node value and rule value
- */
-sealed trait ValueLine extends JsTableLine {
-    def value       : String
-    def callback    : Option[AnonFunc]
-    def messages    : Option[List[String]]
+  val json = baseFields +* JsObj(optFields:_*)
 }
 
 /*
@@ -211,137 +197,59 @@ sealed trait ValueLine extends JsTableLine {
  */
 case class ValueComplianceLine (
     value       : String
-  , compliance  : Option[ComplianceLevel]
+  , messages    : List[String]
+  , compliance  : ComplianceLevel
   , status      : String
   , statusClass : String
   , callback    : Option[AnonFunc]
-  , messages    : Option[List[String]]
-) extends ValueLine {
-
-  val complianceField =  compliance.map(r => ( "compliance" -> jsCompliance(r)))
-
-  val messageField = messages.map(msgs => ( "message" -> JsArray(msgs.map(Str))))
+) extends JsTableLine {
 
   val callbackField = callback.map(cb => ( "callback" -> cb))
 
-  val optFields : Seq[(String,JsExp)]= complianceField.toSeq ++ messageField ++ callbackField
+  val optFields : Seq[(String,JsExp)]= callbackField.toSeq
 
   val baseFields = {
     JsObj (
         ( "value"       -> value )
       , ( "status"      -> status )
       , ( "statusClass" -> statusClass )
+      , ( "messages"    -> JsArray(messages.map(Str)))
+      , ( "compliance"  -> jsCompliance(compliance))
     )
   }
 
   val json = baseFields +* JsObj(optFields:_*)
 }
-
-/*
- *   Javascript object containing all data to create a line in the DataTable
- *   { "value" : value of the key [String]
- *   , "compliance" : compliance percent as String, not used in message popup [String]
- *   , "callback" : Function to when clicking on compliance percent, not used in message popup [ Function ]
- *   , "message" : Message linked to that value, only used in message popup [ Array[String] ]
- *   }
- */
-case class RuleValueComplianceLine (
-    value       : String
-  , compliance  : ComplianceLevel
-  , callback    : Option[AnonFunc]
-  , messages    : Option[List[String]]
-) extends ValueLine {
-
-
-  val messageField = messages.map(msgs => ( "message" -> JsArray(msgs.map(Str))))
-
-  val callbackField = callback.map(cb => ( "callback" -> cb))
-
-  val optFields : Seq[(String,JsExp)]= messageField.toSeq ++ callbackField
-
-  val baseFields = {
-    JsObj (
-        ( "value"      -> value )
-      , ( "compliance" -> jsCompliance(compliance))
-    )
-  }
-
-  val json = baseFields +* JsObj(optFields:_*)
-}
-
 
 
 object ComplianceData {
 
-  /**
+  /*
+   * For a given rule, display compliance by nodes.
+   * For each node, elements displayed are restraint
    *
-   * Change the compliance hierarchy from a rule starting point
-   * to nodes one.
    *
-   * From a report:
-   * - Transform it into components reports we can use
-   * - Find all Nodes concerned in it
-   * - Regroup those components reports by Node
-   * - Compute node compliance detail
    */
-  def getNodeComplianceDetails(
-      report      : RuleStatusReport
-    , rule        : Rule
+  def getRuleByNodeComplianceDetails(
+      directiveId : DirectiveId
+    , reports     : Seq[RuleNodeStatusReport]
     , allNodeInfos: Map[NodeId, NodeInfo]
-    , directiveLib: FullActiveTechniqueCategory
   ) : JsTableData[NodeComplianceLine]= {
 
-    // Transform report into components reports we can use
-    val components : Seq[ComponentRuleStatusReport] = {
-      report match {
-        case DirectiveRuleStatusReport(_, components) => {
-          components.toSeq
-        }
-        case component : ComponentRuleStatusReport => {
-          Seq(component)
-        }
-        case value: ComponentValueRuleStatusReport => {
-          val component = ComponentRuleStatusReport(value.directiveId, value.component, Set(value))
-          Seq(component)
-        }
-      }
-    }
-
-    // Find all Nodes concerned in it
-    val nodes = components.flatMap(_.componentValues.flatMap(_.nodesReport.map(_.node)))
-
-    // Regroup those components reports by Node
-    val componentsByNode : Map[NodeId, Seq[ComponentRuleStatusReport]] = {
-      ( for {
-        node <- nodes
-      } yield {
-        val componentsByNode =
-          for {
-            component <- components
-          } yield {
-            val valuesByNode =
-              for {
-                value <- component.componentValues
-                nodeReports = value.nodesReport.filter(_.node == node)
-              } yield {
-                value.copy(nodesReport = nodeReports)
-              }
-            component.copy(componentValues = valuesByNode)
-          }
-        (node,componentsByNode)
-      } ).toMap
-    }
+    //sort reports by node, aggregate result
+    val aggregates = reports.groupBy( _.nodeId).map { case(nodeId, seq) => (nodeId, AggregatedStatusReport(seq.toSet)) }
 
     // Compute node compliance detail
     val nodeComplianceLine = for {
-      (nodeId,componentReports) <- componentsByNode
-      nodeInfo <- allNodeInfos.get(nodeId)
+      (nodeId, aggregate) <- aggregates
+      nodeInfo            <- allNodeInfos.get(nodeId)
+      //here, we are only interested on the report for directiveId
+      directiveReport     <- aggregate.directives.get(directiveId)
     } yield {
-      val details = getRuleComponentsComplianceDetails(componentReports.toSet, rule, allNodeInfos, directiveLib, true)
-      val compliance = ComplianceLevel.sum(componentReports.map(_.compliance))
+      val details = getComponentsComplianceDetails(directiveReport.components.values.toSet, None, true)
       NodeComplianceLine(
           nodeInfo
-        , compliance
+        , directiveReport.compliance
         , details
       )
     }
@@ -350,29 +258,32 @@ object ComplianceData {
   }
 
 
-  ////////////// Rule compliance ///////////
-
   /*
-   * Get compliance details of Rule
+   * For a given unique node, create the "by rule"
+   * tree structure of compliance elements.
+   * (rule -> directives -> components -> value with messages and status)
    */
-  def getRuleComplianceDetails (
-      reports     : Seq[NodeStatusReport]
+  def getNodeByRuleComplianceDetails (
+      nodeId      : NodeId
+    , reports     : Seq[RuleNodeStatusReport]
     , allNodeInfos: Map[NodeId, NodeInfo]
     , directiveLib: FullActiveTechniqueCategory
     , rules       : Seq[Rule]
   ) : JsTableData[RuleComplianceLine] = {
 
+    //aggregate by rules
+    val aggregates = reports.filter( _.nodeId == nodeId).groupBy( _.ruleId).map { case(ruleId, seq) => (ruleId, AggregatedStatusReport(seq.toSet)) }
+
     val ruleComplianceLine = for {
-      report <- reports
-      rule   <- rules.find( _.id == report.ruleId )
+      (ruleId, aggregate) <- aggregates
+      rule                <- rules.find( _.id == ruleId )
     } yield {
-      val compliance = ComplianceLevel.sum(reports.map(_.compliance))
-      val details = getNodeDirectivesComplianceDetails(report.directives, directiveLib)
+      val details = getDirectivesComplianceDetails(aggregate.directives.values.toSet, directiveLib, None)
 
       RuleComplianceLine (
           rule.name
         , rule.id
-        , compliance
+        , aggregate.compliance
         , details
       )
 
@@ -383,52 +294,65 @@ object ComplianceData {
 
   //////////////// Directive Report ///////////////
 
+  type DirCallback = DirectiveId => Option[String] => Option[String] => AnonFunc
+  type CptCallback = Option[String] => Option[String] => AnonFunc
+  type ValCallback = Option[String] => AnonFunc
+
+  private[this] def buildCallback(
+      allNodeInfos: Map[NodeId, NodeInfo]
+    , directiveLib: FullActiveTechniqueCategory
+    , reports     : Seq[RuleNodeStatusReport]
+    , ruleName    : String
+  ): DirCallback = {
+    (directiveId: DirectiveId) => (componentName: Option[String]) => (valueName: Option[String]) =>
+      AnonFunc("", SHtml.ajaxCall(JsNull, (s) => (new RuleCompliancePopup(directiveLib, allNodeInfos)).
+          showPopup(reports, ruleName, directiveId, componentName, valueName))
+      )
+  }
+
 
   // From Rule Point of view
-  def getRuleDirectivesComplianceDetails (
-      directivesReport: Seq[DirectiveRuleStatusReport]
+  def getRuleByDirectivesComplianceDetails (
+      directivesReport: Seq[RuleNodeStatusReport]
     , rule            : Rule
     , allNodeInfos    : Map[NodeId, NodeInfo]
     , directiveLib    : FullActiveTechniqueCategory
-  ) : JsTableData[DirectiveComplianceLine[RuleValueComplianceLine]] = {
-    val directivesComplianceData = for {
-      directiveStatus                  <- directivesReport
-      (fullActiveTechnique, directive) <- directiveLib.allDirectives.get(directiveStatus.directiveId)
-    } yield {
-      val ajaxCall = SHtml.ajaxCall(JsNull, (s) => (new RuleCompliancePopup(rule, directiveLib, allNodeInfos)).showPopup(directiveStatus))
-      val callback = AnonFunc("",ajaxCall)
-      val techniqueName    = fullActiveTechnique.techniques.get(directive.techniqueVersion).map(_.name).getOrElse("Unknown technique")
-      val techniqueVersion = directive.techniqueVersion;
-      val components = getRuleComponentsComplianceDetails (directiveStatus.components, rule, allNodeInfos, directiveLib, false)
+  ) : JsTableData[DirectiveComplianceLine] = {
 
-      DirectiveComplianceLine (
-          directive.name
-        , directive.id
-        , techniqueName
-        , techniqueVersion : TechniqueVersion
-        , directiveStatus.compliance
-        , components
-        , Some(callback)
-      )
-    }
+    val callback = buildCallback(allNodeInfos, directiveLib, directivesReport, rule.name)
 
-    JsTableData(directivesComplianceData.toList)
+    //we want to provide an aggregated view for the rule
+    val aggregated = AggregatedStatusReport(directivesReport.toSet)
+
+    getDirectivesComplianceDetails(aggregated.directives.values.toSet, directiveLib, Some(callback))
   }
 
   // From Node Point of view
-  private[this] def getNodeDirectivesComplianceDetails (
+  private[this] def getDirectivesComplianceDetails (
       directivesReport: Set[DirectiveStatusReport]
     , directiveLib    : FullActiveTechniqueCategory
-  ) : JsTableData[DirectiveComplianceLine[ValueComplianceLine]] = {
+    , optCallback     : Option[DirCallback]
+  ) : JsTableData[DirectiveComplianceLine] = {
     val directivesComplianceData = for {
       directiveStatus <- directivesReport
       (fullActiveTechnique, directive) <- directiveLib.allDirectives.get(directiveStatus.directiveId)
-      techniqueName    = fullActiveTechnique.techniques.get(directive.techniqueVersion).map(_.name).getOrElse("Unknown technique")
-      techniqueVersion = directive.techniqueVersion;
-      severity   = ReportType.getSeverityFromStatus(directiveStatus.reportType)
-      status     = getDisplayStatusFromSeverity(directiveStatus.reportType)
-      components = getNodeComponentsComplianceDetails (directiveStatus.components)
     } yield {
+      val techniqueName    = fullActiveTechnique.techniques.get(directive.techniqueVersion).map(_.name).getOrElse("Unknown technique")
+      val techniqueVersion = directive.techniqueVersion;
+
+      val (components, cb) = optCallback match {
+        case Some(callback) =>
+          val cptCallback = callback(directiveStatus.directiveId)
+          (
+              getComponentsComplianceDetails(directiveStatus.components.values.toSet, Some(cptCallback), false)
+            , Some(cptCallback(None)(None))
+          )
+        case None =>
+          (
+              getComponentsComplianceDetails(directiveStatus.components.values.toSet, None, true)
+            , None
+          )
+      }
 
       DirectiveComplianceLine (
           directive.name
@@ -437,7 +361,7 @@ object ComplianceData {
         , techniqueVersion : TechniqueVersion
         , directiveStatus.compliance
         , components
-        , None
+        , cb
       )
     }
 
@@ -446,59 +370,31 @@ object ComplianceData {
   //////////////// Component Report ///////////////
 
 
-  // From Rule Point of view
-  /*
-   * Get compliance details of Components of a Directive
-   */
-  private[this] def getRuleComponentsComplianceDetails (
-      components    : Set[ComponentRuleStatusReport]
-    , rule          : Rule
-    , allNodeInfos  : Map[NodeId, NodeInfo]
-    , directiveLib  : FullActiveTechniqueCategory
+  // From Node Point of view
+  private[this] def getComponentsComplianceDetails (
+      components    : Set[ComponentStatusReport]
+    , callback      : Option[CptCallback]
     , includeMessage: Boolean
-  ) : JsTableData[ComponentComplianceLine[RuleValueComplianceLine]] = {
+  ) : JsTableData[ComponentComplianceLine] = {
 
     val componentsComplianceData = components.map { component =>
 
-      val (optCallback, optNoExpand) = {
-        if (includeMessage) {
-          (None,None)
-        } else {
-          val ajaxCall = SHtml.ajaxCall(JsNull, (s) => (new RuleCompliancePopup(rule, directiveLib, allNodeInfos)).showPopup(component))
-          val callback = AnonFunc("",ajaxCall)
-          // do not display details of the components if there is no value to display (all equals to None)
-          val noExpand  = component.componentValues.forall( x => x.componentValue =="None")
-          (Some(callback),Some(noExpand))
-        }
+      val (optCallback, noExpand, values) = if(!includeMessage) {
+        (None, true, getValuesComplianceDetails(component.componentValues.values.toSet, None))
+      } else {
+        val noExpand  = component.componentValues.forall( x => x._1 == "None")
+        val valCallback = callback.map(c => c(Some(component.componentName)))
+
+        (valCallback, noExpand, getValuesComplianceDetails(component.componentValues.values.toSet, valCallback))
       }
 
-      ComponentComplianceLine (
-          component.component
+      ComponentComplianceLine(
+          component.componentName
         , Helpers.nextFuncName
         , component.compliance
-        , getRuleValuesComplianceDetails(component.componentValues, rule, allNodeInfos, directiveLib, includeMessage)
-        , optNoExpand
-        , optCallback
-      )
-
-    }
-
-    JsTableData(componentsComplianceData.toList)
-  }
-
-  // From Node Point of view
-  private[this] def getNodeComponentsComplianceDetails (
-      components : Set[ComponentStatusReport]
-  ) : JsTableData[ComponentComplianceLine[ValueComplianceLine]] = {
-
-    val componentsComplianceData = components.map { component =>
-      ComponentComplianceLine[ValueComplianceLine](
-          component.component
-        , Helpers.nextFuncName
-        , component.compliance
-        , getValuesComplianceDetails(component.componentValues)
-        , None
-        , None
+        , values
+        , noExpand
+        , optCallback.map(c => c(None))
       )
     }
 
@@ -508,71 +404,28 @@ object ComplianceData {
   //////////////// Value Report ///////////////
 
 
-  // From Rule Point of view
-  /*
-   * Get compliance details of Value of a Component
-   */
-  private[this] def getRuleValuesComplianceDetails (
-      values        : Set[ComponentValueRuleStatusReport]
-    , rule          : Rule
-    , allNodeInfos  : Map[NodeId, NodeInfo]
-    , directiveLib  : FullActiveTechniqueCategory
-    , includeMessage: Boolean
-  ) : JsTableData[RuleValueComplianceLine] = {
-    val valuesComplianceData = for {
-      // we need to group all reports by their key ( if there is several reports with the same key)
-      (key,entries) <- values.groupBy { entry => entry.key }
-      component =
-        ComponentRuleStatusReport (
-            entries.head.directiveId // can't fail because we are in a groupBy
-          , entries.head.component  // can't fail because we are in a groupBy
-          , entries.toSet
-        )
-    } yield {
-      val (optCallback, optMessage) = {
-        if (includeMessage) {
-          val messages = component.componentValues.flatMap(_.nodesReport.flatMap(_.message))
-          (None, Some(messages.toList))
-        } else {
-          val ajaxCall = SHtml.ajaxCall(JsNull, (s) => (new RuleCompliancePopup(rule, directiveLib, allNodeInfos)).showPopup(component))
-          val callback = AnonFunc("",ajaxCall)
-          // do not display details of the components if there is no value to display (all equals to None)
-          val noExpand  = component.componentValues.forall( x => x.componentValue =="None")
-          (Some(callback), None)
-        }
-      }
-      RuleValueComplianceLine(
-          key
-        , component.compliance
-        , optCallback
-        , optMessage
-      )
-    }
-
-    JsTableData(valuesComplianceData.toList)
-  }
-
   // From Node Point of view
   private[this] def getValuesComplianceDetails (
-      values : Set[ComponentValueStatusReport]
+      values  : Set[ComponentValueStatusReport]
+    , callback: Option[ValCallback]
   ) : JsTableData[ValueComplianceLine] = {
     val valuesComplianceData = for {
       value <- values
-      severity = ReportType.getSeverityFromStatus(value.reportType)
-      status = getDisplayStatusFromSeverity(severity)
     } yield {
+      val severity = ReportType.getWorseType(value.messages.map( _.reportType))
+      val status = getDisplayStatusFromSeverity(severity)
       val key = value.unexpandedComponentValue.getOrElse(value.componentValue)
-      val message = Some(value.message)
+      val messages = value.messages.flatMap( _.message)
+
       ValueComplianceLine(
           key
-        , None
+        , messages
+        , value.compliance
         , status
         , severity
-        , None
-        , message
+        , callback.map(cb => cb(Some(value.componentValue)))
       )
     }
-
     JsTableData(valuesComplianceData.toList)
   }
 

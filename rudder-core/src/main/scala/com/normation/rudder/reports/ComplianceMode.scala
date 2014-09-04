@@ -55,13 +55,18 @@ final case object ChangesOnly      extends ComplianceMode {
 }
 
 
-object ComplianceMode {
+object ComplianceMode extends Loggable {
 
-  def parse(s: String): Box[ComplianceMode] = {
+  /*
+   * If we can't parse the compliance, default to full-compliance
+   */
+  def parse(s: String): ComplianceMode = {
     s.toLowerCase match {
-      case FullCompliance.name  => Full(FullCompliance)
-      case ChangesOnly.name => Full(ChangesOnly)
-      case _ => Failure(s"Unable to parse the compliance mode. I was expecting '${FullCompliance.name}' or '${ChangesOnly.name}' (case unsensitive) and got '${s}'")
+      case FullCompliance.name  => FullCompliance
+      case ChangesOnly.name => ChangesOnly
+      case _ =>
+        logger.error(s"Unable to parse the compliance mode. I was expecting '${FullCompliance.name}' or '${ChangesOnly.name}' (case unsensitive) and got '${s}'. Defaulting to full-compliance mode")
+        FullCompliance
     }
   }
 

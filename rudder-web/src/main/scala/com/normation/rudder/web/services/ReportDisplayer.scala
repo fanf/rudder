@@ -36,7 +36,6 @@ package com.normation.rudder.web.services
 
 import scala.xml.NodeSeq
 import scala.xml.NodeSeq.seqToNodeSeq
-
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.exceptions.TechnicalException
 import com.normation.rudder.domain.nodes.NodeInfo
@@ -44,7 +43,6 @@ import com.normation.rudder.domain.reports._
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.RoRuleRepository
 import com.normation.rudder.services.reports.ReportingService
-
 import bootstrap.liftweb.RudderConfig
 import net.liftweb.common._
 import net.liftweb.http.S
@@ -54,6 +52,9 @@ import net.liftweb.http.js.JE._
 import net.liftweb.http.js.JsCmd
 import net.liftweb.http.js.JsCmds._
 import net.liftweb.util.Helpers._
+import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.policies.Rule
+import com.normation.rudder.repository.FullActiveTechniqueCategory
 
 /**
  * Display the last reports of a server
@@ -78,61 +79,35 @@ class ReportDisplayer(
   def reportByNodeTemplate = chooseTemplate("batches", "list", templateByNode)
   def directiveDetails = chooseTemplate("directive", "foreach", templateByNode)
 
-  var staticReportsSeq : Seq[NodeStatusReport] = Seq()
 
-  def display(reportsSeq : Seq[NodeStatusReport], tableId:String, node : NodeInfo): NodeSeq = {
 
-    staticReportsSeq = reportsSeq.filter( x => ruleRepository.get(x.ruleId).isDefined  )
-    bind("lastReportGrid",reportByNodeTemplate,
-           "intro" ->  (staticReportsSeq.filter(x => (
-                               (x.reportType == ErrorReportType) ||
-                               (x.reportType == RepairedReportType) ||
-                               (x.reportType == NoAnswerReportType)
-                        )
-          ).toList match {
-             case x if (x.size > 0) => <div>There are {x.size} out of {staticReportsSeq.size} reports that require our attention</div>
-             case _ => if (staticReportsSeq.filter(x => (x.reportType == PendingReportType)).size>0) {
-                     <div>Policy update in progress</div>
-                   } else {
-                     <div>All the last execution reports for this server are ok</div>
-                   }
-           } ),
-           "grid" -> showReportDetail(staticReportsSeq, node),
-           "missing" -> showMissingReports(staticReportsSeq),
-           "unexpected" -> showUnexpectedReports(staticReportsSeq)
-           )
+  /**
+   * Main entry point to display the tab with reports of a node.
+   * It build up to 3 tables:
+   * - general compliance table (displayed by rules)
+   * - missing reports table if such reports exists
+   * - unknown reports table if such reports exists
+   */
+  def asyncDisplay(node : NodeInfo) : NodeSeq = {
+      Script(OnLoad(JsRaw("""
+              | $("#%s").bind( "show", function(event, ui) {
+              | if(ui.panel.id== '%s') { %s; }
+              | });
+              """.stripMargin('|').format("node_tabs",
+            "node_reports",
+            SHtml.ajaxCall(JsRaw(""),(v:String) => SetHtml("reportsDetails",displayReports(node)) )._2.toJsCmd
+       )))
+      )
   }
 
-  def getComplianceData(reportStatus: Seq[NodeStatusReport]) = {
-    for {
-      directiveLib <- directiveRepository.getFullDirectiveLibrary
-      allNodeInfos <- getAllNodeInfos()
-      rules        <- ruleRepository.getAll(true)
-    } yield {
-
-      ComplianceData.getRuleComplianceDetails(reportStatus, allNodeInfos, directiveLib, rules)
-
-    }
-  }
-
-  def showReportDetail(reports : Seq[NodeStatusReport], node : NodeInfo) : NodeSeq = {
-
-    val data = getComplianceData(reports).map(_.json).getOrElse(JsArray())
-
-    reportsGridXml++
-        Script(JsRaw(s"""
-          createRuleComplianceTable("reportsGrid",${data.toJsCmd},"${S.contextPath}", ${refreshReportDetail(node).toJsCmd});
-          createTooltip();
-        """))
-
-  }
-
-  def refreshReportDetail (node : NodeInfo) = {
-
+  /**
+   * Refresh the main compliance table
+   */
+  def refreshReportDetail(node : NodeInfo) = {
     def refreshData : Box[JsCmd] = {
       for {
         reports <- reportingService.findNodeStatusReports(Set(node.id), Set())
-        data <- getComplianceData(reports)
+        data    <- getComplianceData(node.id, reports)
       } yield {
         JsRaw(s"""refreshTable("reportsGrid",${data.json.toJsCmd});""")
       }
@@ -148,33 +123,89 @@ class ReportDisplayer(
     AnonFunc(ajaxCall)
   }
 
-  def asyncDisplay(node : NodeInfo) : NodeSeq = {
-      Script(OnLoad(JsRaw("""
-              | $("#%s").bind( "show", function(event, ui) {
-              | if(ui.panel.id== '%s') { %s; }
-              | });
-              """.stripMargin('|').format("node_tabs",
-            "node_reports",
-            SHtml.ajaxCall(JsRaw(""),(v:String) => SetHtml("reportsDetails",displayReports(node)) )._2.toJsCmd
-       )))
-      )
-  }
 
-  def displayReports(node : NodeInfo) : NodeSeq = {
-    reportingService.findNodeStatusReports(Set(node.id), Set()) match {
+  private[this] def displayReports(node : NodeInfo) : NodeSeq = {
+    val boxXml = (
+      for {
+        reports <- reportingService.findNodeStatusReports(Set(node.id), Set())
+        rules   <- ruleRepository.getAll(true)
+        directiveLib <- directiveRepository.getFullDirectiveLibrary
+      } yield {
+        val filteredReports = reports.filter( x => rules.exists(r => r.id == x.ruleId)  )
+        val aggregated = AggregatedStatusReport(filteredReports.toSet)
+
+        //what we print before all the tables
+        val nbAttention = aggregated.compliance.noAnswer + aggregated.compliance.error + aggregated.compliance.repaired
+        val intro = if(nbAttention > 0) {
+          <div>There are {nbAttention} out of {aggregated.compliance.total} reports that require our attention</div>
+        } else if(aggregated.compliance.pc_pending > 0) {
+          <div>Policy update in progress</div>
+        } else {
+          <div>All the last execution reports for this server are ok</div>
+        }
+        val unexpected = getUnexpectedComponents(filteredReports, directiveLib)
+        bind("lastReportGrid",reportByNodeTemplate
+          , "intro"      ->  intro
+          , "grid"       -> showReportDetail(filteredReports, node)
+          , "missing"    -> showMissingReports(unexpected)
+          , "unexpected" -> showUnexpectedReports(unexpected)
+        )
+      }
+    )
+
+    boxXml match {
       case e:EmptyBox => <div class="error">Could not fetch reports information</div>
-      case Full(reports) => display(reports, "reportsGrid", node)
+      case Full(xml) => xml
     }
   }
 
-  def reportsGridXml : NodeSeq = {
-    <table id="reportsGrid" class="fixedlayout tablewidth" cellspacing="0">
-    </table>
+
+  private[this] def showReportDetail(reports: Seq[RuleNodeStatusReport], node: NodeInfo): NodeSeq = {
+    val data = getComplianceData(node.id, reports).map(_.json).getOrElse(JsArray())
+
+    <table id="reportsGrid" class="fixedlayout tablewidth" cellspacing="0"></table> ++
+    Script(JsRaw(s"""
+      createRuleComplianceTable("reportsGrid",${data.toJsCmd},"${S.contextPath}", ${refreshReportDetail(node).toJsCmd});
+      createTooltip();
+    """))
   }
 
-  def missingGridXml : NodeSeq = {
+  private[this] def getComplianceData(nodeId: NodeId, reportStatus: Seq[RuleNodeStatusReport]) = {
+    for {
+      directiveLib <- directiveRepository.getFullDirectiveLibrary
+      allNodeInfos <- getAllNodeInfos()
+      rules        <- ruleRepository.getAll(true)
+    } yield {
+      ComplianceData.getNodeByRuleComplianceDetails(nodeId, reportStatus, allNodeInfos, directiveLib, rules)
+    }
+  }
 
-     <h3>Missing reports</h3>
+
+  def showMissingReports(reports:Seq[((String,String,List[String]),String,String)]) : NodeSeq = {
+    def showMissingReport(report:((String,String, List[String]),String,String)) : NodeSeq = {
+      val techniqueName =report._2
+      val techniqueVersion = report._3
+      val reportValue = report._1
+
+      ( "#technique *" #>  "%s (%s)".format(techniqueName,techniqueVersion)
+      & "#component *" #>  reportValue._1
+      & "#value *"     #>  reportValue._2
+      ) (
+        <tr>
+          <td id="technique"></td>
+          <td id="component"></td>
+          <td id="value"></td>
+        </tr>
+      )
+    }
+
+    /*
+     * NOTE : a missing report is an unknown report with no message
+     */
+    val missingComponents = reports.filter(r => r._1._3.isEmpty)
+    if (missingComponents.size >0){
+      ( "#reportLine" #> missingComponents.flatMap(showMissingReport(_) )).apply(
+      <h3>Missing reports</h3>
       <div>The following reports are what Rudder expected to receive, but did not. This usually indicates a bug in the Technique being used.</div>
       <table id="missingGrid"  cellspacing="0" style="clear:both">
         <thead>
@@ -189,80 +220,43 @@ class ReportDisplayer(
         </tbody>
       </table>
       <br/>
+      ) ++
+      buildTable(
+          "missing"
+         ,"missingGrid"
+         , """{ "sWidth": "150px" },
+              { "sWidth": "150px" },
+              { "sWidth": "150px" }"""
+      )
+    } else {
+      NodeSeq.Empty
+    }
+  }
+
+
+  def showUnexpectedReports(reports:Seq[((String,String,List[String]),String,String)]) : NodeSeq = {
+    def showUnexpectedReport(report:((String,String,List[String]),String,String)) : NodeSeq = {
+      val techniqueName =report._2
+      val techniqueVersion = report._3
+      val reportValue = report._1
+
+      ( "#technique *"  #>  "%s (%s)".format(techniqueName,techniqueVersion)
+      &  "#component *" #>  reportValue._1
+      & "#value *"      #>  reportValue._2
+      & "#message *"    #>  <ul>{reportValue._3.map(msg => <li>{msg}</li>)}</ul>
+      ) (
+        <tr><td id="technique"></td><td id="component"></td><td id="value"></td><td id="message"></td></tr>
+      )
     }
 
-  def missingLineXml : NodeSeq = {
-      <tr>
-        <td id="technique"></td>
-        <td id="component"></td>
-        <td id="value"></td>
-      </tr>
-    }
-
-    def showMissingReports(nodeStatusReports: Seq[NodeStatusReport]) : NodeSeq = {
-      def showMissingReport(report:((String,String),String,String)) : NodeSeq = {
-        val techniqueName =report._2
-        val techniqueVersion = report._3
-        val reportValue = report._1
-              ( "#technique *" #>  "%s (%s)".format(techniqueName,techniqueVersion)&
-                "#component *" #>  reportValue._1&
-                "#value *" #>  reportValue._2
-              ) ( missingLineXml )
-      }
-
-      /*
-       * To get missing reports we have to find them in each node report
-       * So we have to go the value level and also get technique details at directive level for each report
-       * we could add more information at each level (directive name? rule name?)
-       * NOTE : a missing report is an unknown report with no message
-       */
-      val reports = nodeStatusReports.filter(_.reportType==UnknownReportType).flatMap { reports =>
-        val techniqueComponentsReports = reports.directives.filter(_.reportType==UnknownReportType).flatMap{dir =>
-          val componentsReport = dir.components.filter(_.reportType==UnknownReportType).flatMap{component =>
-            val values = (component.componentValues++component.unexpectedCptValues).filter(value => value.reportType==UnknownReportType&&value.message.size==0)
-            values.map(value => (component.component,value.componentValue))
-            }
-          val tech = directiveRepository.getActiveTechnique(dir.directiveId).map(tech => techniqueRepository.getLastTechniqueByName(tech.techniqueName).map(_.name).getOrElse("Unknown Technique")).getOrElse("Unknown Technique")
-          val techVersion = directiveRepository.getDirective(dir.directiveId).map(_.techniqueVersion.toString).getOrElse("N/A")
-          componentsReport.map(compo=> (compo,tech,techVersion))}
-        techniqueComponentsReports }
-
-      if (reports.size >0){
-          ( "#reportLine" #> reports.flatMap(showMissingReport(_) )
-          ).apply(missingGridXml ) ++
-            Script( JsRaw("""
-             var oTable%1$s = $('#%2$s').dataTable({
-               "asStripeClasses": [ 'color1', 'color2' ],
-               "bAutoWidth": false,
-               "bFilter" : true,
-               "bPaginate" : true,
-               "bLengthChange": true,
-               "bStateSave": true,
-               "sCookiePrefix": "Rudder_DataTables_",
-               "sPaginationType": "full_numbers",
-               "bJQueryUI": true,
-               "oLanguage": {
-                 "sSearch": ""
-               },
-               "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>',
-               "aaSorting": [[ 0, "asc" ]],
-               "aoColumns": [
-                 { "sWidth": "150px" },
-                 { "sWidth": "150px" },
-                 { "sWidth": "150px" }
-               ]
-             } );
-         """.format("missing","missingGrid") ) ) }
-        else
-          NodeSeq.Empty
-        }
-
-   def unexpectedGridXml : NodeSeq = {
-
-     <h3>Unexpected reports</h3>
-
-     <div>The following reports were received by Rudder, but did not match the reports declared by the Technique. This usually indicates a bug in the Technique being used.</div>
-
+   /*
+    * Note: unexpected reports are only the one with messages
+    */
+    val missingComponents = reports.filter(r => r._1._3.nonEmpty)
+    if (missingComponents.size >0){
+      ( "#reportLine" #> missingComponents.flatMap(showUnexpectedReport(_) )).apply(
+      <h3>Unexpected reports</h3>
+      <div>The following reports were received by Rudder, but did not match the reports declared by the Technique. This usually indicates a bug in the Technique being used.</div>
       <table id="unexpectedGrid"  cellspacing="0" style="clear:both">
         <thead>
           <tr class="head">
@@ -276,75 +270,68 @@ class ReportDisplayer(
           <div id="reportLine"/>
         </tbody>
       </table>
-      <br/>
+      <br/> ) ++
+      buildTable("unexpected"
+        ,"unexpectedGrid"
+        , """{ "sWidth": "100px" },
+             { "sWidth": "100px" },
+             { "sWidth": "100px" },
+             { "sWidth": "200px" }"""
+      )
+    } else {
+     NodeSeq.Empty
     }
+  }
 
-    def unexpectedLineXml : NodeSeq = {
-      <tr>
-        <td id="technique"></td>
-        <td id="component"></td>
-        <td id="value"></td>
-        <td id="message"></td>
-      </tr>
+
+  private[this] def getUnexpectedComponents(nodeStatusReports: Seq[RuleNodeStatusReport], directiveLib: FullActiveTechniqueCategory) = {
+   /*
+    * Note:
+    * - missing reports ar unexpected without error message
+    * - unexpected reports are only the one with messages
+    *
+    * To get unexpected reports we have to find them in each node report
+    * So we have to go the value level, get the messages
+    * and also get technique details at directive level for each report
+    * we could add more information at each level (directive name? rule name?)
+    */
+    for {
+      ruleNodeReport  <- nodeStatusReports
+      directiveReport <- ruleNodeReport.directives.values
+      cptReport       <- directiveReport.components.values
+      valueReport     <- cptReport.componentValues.values
+      if(valueReport.status == UnknownReportType && valueReport.messages.exists(m => m.message.nonEmpty))
+    } yield {
+      val (techName, techVersion) = directiveLib.allDirectives.get(directiveReport.directiveId).map { case(tech,dir) =>
+        (tech.techniqueName.value, dir.techniqueVersion.toString)
+      }.getOrElse(("Unknown technique", "N/A"))
+
+      ((cptReport.componentName, valueReport.componentValue, valueReport.messages.flatMap(_.message)), techName, techVersion)
     }
+  }
 
-    def showUnexpectedReports(nodeStatusReports: Seq[NodeStatusReport]) : NodeSeq = {
-       def showUnexpectedReport(report:((String,String,List[String]),String,String)) : NodeSeq = {
-        val techniqueName =report._2
-        val techniqueVersion = report._3
-        val reportValue = report._1
-              (  "#technique *" #>  "%s (%s)".format(techniqueName,techniqueVersion)&
-                "#component *" #>  reportValue._1 &
-                "#value *" #>  reportValue._2 &
-                "#message *" #>  <ul>{reportValue._3.map(msg => <li>{msg}</li>)}</ul>
-              ) ( unexpectedLineXml )
-            }
-
-      /*
-       * To get unexpected reports we have to find them in each node report
-       * So we have to go the value level, get the messages
-       * and also get technique details at directive level for each report
-       * we could add more information at each level (directive name? rule name?)
-       */
-      val reports = nodeStatusReports.filter(_.reportType==UnknownReportType).flatMap { reports =>
-        val techniqueComponentsReports = reports.directives.filter(_.reportType==UnknownReportType).flatMap{dir =>
-          val componentsReport = dir.components.filter(_.reportType==UnknownReportType).flatMap{component =>
-            val values = (component.componentValues++component.unexpectedCptValues).filter(value => value.reportType==UnknownReportType&&value.message.size!=0)
-            values.map(value => (component.component,value.componentValue,value.message))
-            }
-          val tech = directiveRepository.getActiveTechnique(dir.directiveId).map(tech => techniqueRepository.getLastTechniqueByName(tech.techniqueName).map(_.name).getOrElse("Unknown Technique")).getOrElse("Unknown Technique")
-          val techVersion = directiveRepository.getDirective(dir.directiveId).map(_.techniqueVersion.toString).getOrElse("N/A")
-          componentsReport.map(compo=> (compo,tech,techVersion))}
-        techniqueComponentsReports }
-       if (reports.size >0){
-         ( "#reportLine" #> reports.flatMap(showUnexpectedReport(_) )
-         ).apply(unexpectedGridXml ) ++
-            Script( JsRaw("""
-             var oTable%1$s = $('#%2$s').dataTable({
-               "asStripeClasses": [ 'color1', 'color2' ],
-               "bAutoWidth": false,
-               "bFilter" : true,
-               "bPaginate" : true,
-               "bLengthChange": true,
-               "bStateSave": true,
-               "sCookiePrefix": "Rudder_DataTables_",
-               "sPaginationType": "full_numbers",
-               "bJQueryUI": true,
-               "oLanguage": {
-                 "sSearch": ""
-               },
-               "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>',
-               "aaSorting": [[ 0, "asc" ]],
-               "aoColumns": [
-                 { "sWidth": "100px" },
-                 { "sWidth": "100px" },
-                 { "sWidth": "100px" },
-                 { "sWidth": "200px" }
-               ]
-             } );
-         """.format("unexpected","unexpectedGrid") ) ) }
-        else
-          NodeSeq.Empty
-        }
+  private[this] def buildTable(name1: String, name2: String, colums: String): NodeSeq = {
+    Script( JsRaw(s"""
+     var oTable${name1} = $$('#${name2}').dataTable({
+       "asStripeClasses": [ 'color1', 'color2' ],
+       "bAutoWidth": false,
+       "bFilter" : true,
+       "bPaginate" : true,
+       "bLengthChange": true,
+       "bStateSave": true,
+       "sCookiePrefix": "Rudder_DataTables_",
+       "sPaginationType": "full_numbers",
+       "bJQueryUI": true,
+       "oLanguage": {
+         "sSearch": ""
+       },
+       "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>',
+       "aaSorting": [[ 0, "asc" ]],
+       "aoColumns": [
+         ${colums}
+       ]
+     } );
+    """) )
+  }
 
 }

@@ -228,9 +228,8 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
   private[this] implicit def toComplianceMode(x: Box[RudderWebProperty]) : Box[ComplianceMode] = {
     for {
       value <- x
-      res <- ComplianceMode.parse(value)
     } yield {
-      res
+      ComplianceMode.parse(value)
     }
   }
 

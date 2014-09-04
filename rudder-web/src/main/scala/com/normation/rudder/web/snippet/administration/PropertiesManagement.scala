@@ -687,7 +687,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
 
   def complianceModeConfiguration = { xml : NodeSeq =>
     // form value, defaulted to save value
-    // the semantifc is "Use compliance mode", i.e checkbox checked (true) => fullCompliance
+    // the semantic is "Use compliance mode", i.e checkbox checked (true) => fullCompliance
     var complianceMode = configService.rudder_compliance_mode
 
     def submit() = {
