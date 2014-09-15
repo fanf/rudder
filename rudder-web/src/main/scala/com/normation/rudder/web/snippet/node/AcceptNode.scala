@@ -87,9 +87,12 @@ class AcceptNode {
   val rudderDit            = RudderConfig.rudderDit
   val serverGrid           = RudderConfig.nodeGrid
   val serverSummaryService = RudderConfig.nodeSummaryService
+  val diffRepos            = RudderConfig.inventoryHistoryLogRepository
+  val logRepository        = RudderConfig.eventLogRepository
   val acceptedNodesDit     = RudderConfig.acceptedNodesDit
   val pendingNodeDit       = RudderConfig.pendingNodesDit
   val uuidGen              = RudderConfig.stringUuidGenerator
+  val asyncDeploymentAgent = RudderConfig.asyncDeploymentAgent
 
   val gridHtmlId = "acceptNodeGrid"
 
@@ -144,20 +147,67 @@ class AcceptNode {
       S.params("serverids").map(x => NodeId(x))
     }
 
-
+    /**
+     * Retrieve the last inventory for the selected server
+     */
+    def retrieveLastVersions(uuid : NodeId) : Option[DateTime] = {
+      diffRepos.versions(uuid) match {
+        case Full(list) if (list.size > 0) => Some(list.head)
+        case _ => None
+      }
+    }
 
     def addNodes(listNode : Seq[NodeId]) : Unit = {
+      var atLeastOneAccepted = false
+
       val modId = ModificationId(uuidGen.newUuid)
       //TODO : manage error message
       S.clearCurrentNotices
-      val actorIp = S.containerRequest.map(_.remoteAddress).openOr("Unknown IP")
-      newNodeManager.accept(listNode, modId, CurrentUser.getActor,actorIp) match {
+      listNode.foreach { id => newNodeManager.accept(id, modId, CurrentUser.getActor) match {
+        case f:Failure =>
+          S.error(
+            <span class="error">
+              {f.messageChain}
+            </span>
+          )
         case e:EmptyBox =>
-          val msg = s"Add new nodes '${listNode.map(_.value).mkString("[",", ","]")}' lead to Failure."
-          val fail = e ?~ msg
-          logger.error(fail.messageChain)
+          logger.error("Add new node '%s' lead to Failure.".format(id.value.toString), e)
           S.error(<span class="error">Error while accepting node(s).</span>)
         case Full(inventory) =>
+          // TODO : this will probably move to the NewNodeManager, when we'll know
+          // how we handle the user
+          atLeastOneAccepted = true
+          val version = retrieveLastVersions(id)
+          version match {
+            case Some(x) =>
+              serverSummaryService.find(acceptedNodesDit,id) match {
+                case Full(srvs) if (srvs.size==1) =>
+                    val srv = srvs.head
+                    val entry = AcceptNodeEventLog.fromInventoryLogDetails(
+                        principal        = authedUser
+                      , inventoryDetails = InventoryLogDetails(
+                            nodeId           = srv.id
+                          , inventoryVersion = x
+                          , hostname         = srv.hostname
+                          , fullOsName       = srv.osFullName
+                          , actorIp          = S.containerRequest.map(_.remoteAddress).openOr("Unknown IP")
+                        )
+                    )
+
+                    logRepository.saveEventLog(modId, entry) match {
+                        case Full(_) => logger.debug("Successfully added node '%s'".format(id.value.toString))
+                        case _ => logger.warn("Node '%s'added, but the action couldn't be logged".format(id.value.toString))
+                    }
+
+                case _ => logger.error("Something bad happened while searching for node %s to log the acceptation, search %s".format(id.value.toString, id.value))
+              }
+
+            case None => logger.warn("Node '%s'added, but couldn't find it's inventory %s".format(id.value.toString, id.value))
+          }
+      } }
+
+      if(atLeastOneAccepted) {
+        asyncDeploymentAgent ! AutomaticStartDeployment(modId, authedUser)
       }
 
     }
@@ -166,14 +216,35 @@ class AcceptNode {
       //TODO : manage error message
       S.clearCurrentNotices
       val modId = ModificationId(uuidGen.newUuid)
-      val actorIp = S.containerRequest.map(_.remoteAddress).openOr("Unknown IP")
-      newNodeManager.refuse(listNode, modId, CurrentUser.getActor,actorIp) match {
+      listNode.foreach { id => newNodeManager.refuse(id, modId, CurrentUser.getActor) match {
         case e:EmptyBox =>
-          val msg = s"Refuse nodes '${listNode.map(_.value).mkString("[",", ","]")}' lead to Failure."
-          val fail = e ?~ msg
-          logger.error(fail.messageChain)
+          logger.error("Refuse node '%s' lead to Failure.".format(id.value.toString), e)
           S.error(<span class="error">Error while refusing node(s).</span>)
         case Full(srv) =>
+          // TODO : this will probably move to the NewNodeManager, when we'll know
+          // how we handle the user
+          val version = retrieveLastVersions(srv.id)
+          version match {
+            case Some(x) =>
+              val entry = RefuseNodeEventLog.fromInventoryLogDetails(
+                  principal        = authedUser
+                , inventoryDetails = InventoryLogDetails(
+                      nodeId           = srv.id
+                    , inventoryVersion = x
+                    , hostname         = srv.hostname
+                    , fullOsName       = srv.osFullName
+                    , actorIp          = S.containerRequest.map(_.remoteAddress).openOr("Unknown IP")
+                  )
+              )
+
+              logRepository.saveEventLog(modId, entry) match {
+                case Full(_) => logger.debug("Successfully refused node '%s'".format(id.value.toString))
+                case _ => logger.warn("Node '%refused, but the action couldn't be logged".format(id.value.toString))
+              }
+
+            case None => logger.warn("Node '%s' refused, but couldn't find it's inventory %s".format(id.value.toString, id.value))
+          }
+        }
       }
     }
 
