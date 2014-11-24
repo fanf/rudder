@@ -134,6 +134,8 @@ import com.normation.rudder.appconfig._
 import com.normation.rudder.rule.category._
 import com.normation.rudder.rule.category.GitRuleCategoryArchiverImpl
 import com.normation.rudder.services.policies.nodeconfig._
+import com.normation.rudder.reports.ComplianceModeService
+import com.normation.rudder.reports.ComplianceModeServiceImpl
 
 /**
  * Define a resource for configuration.
@@ -1122,6 +1124,11 @@ object RudderConfig extends Loggable {
   )
 
 
+  private[this] lazy val complianceModeService : ComplianceModeService =
+    new ComplianceModeServiceImpl(
+        configService.rudder_compliance_mode_name _
+      , configService.rudder_compliance_heartbeatFrequency
+    )
   private[this] lazy val systemVariableService: SystemVariableService = new SystemVariableServiceImpl(
       licenseRepository
     , systemVariableSpecService
@@ -1147,7 +1154,7 @@ object RudderConfig extends Loggable {
     , configService.cfengine_modified_files_ttl _
     , configService.cfengine_outputs_ttl _
     , configService.rudder_store_all_centralized_logs_in_file _
-    , configService.rudder_compliance_mode _
+    , complianceModeService.getComplianceMode _
   )
   private[this] lazy val rudderCf3PromisesFileWriterService = new RudderCf3PromisesFileWriterServiceImpl(
     techniqueRepositoryImpl,
@@ -1252,7 +1259,7 @@ object RudderConfig extends Loggable {
     , RoReportsExecutionJdbcRepository
     , findExpectedRepo
     , configService.agent_run_interval
-    , configService.rudder_compliance_mode
+    , complianceModeService.getComplianceMode _
   )
   private[this] lazy val updateExpectedReports = new ExpectedReportsUpdateImpl(
       updateExpectedRepo

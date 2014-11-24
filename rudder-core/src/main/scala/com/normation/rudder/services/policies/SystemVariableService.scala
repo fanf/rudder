@@ -54,6 +54,8 @@ import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.Constants
 import com.normation.rudder.services.servers.PolicyServerManagementService
 import com.normation.rudder.reports.ComplianceMode
+import com.normation.rudder.reports.FullCompliance
+import com.normation.rudder.reports.ChangesOnly
 
 trait SystemVariableService {
   def getGlobalSystemVariables():  Box[Map[String, Variable]]
@@ -136,9 +138,17 @@ class SystemVariableServiceImpl(
     val storeAllCentralizedLogsInFile = getProp("STORE_ALL_CENTRALIZED_LOGS_IN_FILE", getStoreAllCentralizedLogsInFile)
 
     val varReportMode = {
-
-      //we want an actual valide string, defined in the "name" of compliance mode object
-      getProp("RUDDER_REPORT_MODE", () => getComplianceMode().map( _.name ))
+      getComplianceMode().map {
+        case FullCompliance =>
+          systemVariableSpecService.get("RUDDER_REPORT_MODE").toVariable().copyWithSavedValue(FullCompliance.name)  ::
+          // For full compliance heartbeat interval is one
+          systemVariableSpecService.get("RUDDER_HEARTBEAT_INTERVAL").toVariable().copyWithSavedValue(interval.toString)  ::
+          Nil
+        case ChangesOnly(frequency) =>
+          systemVariableSpecService.get("RUDDER_REPORT_MODE").toVariable().copyWithSavedValue(ChangesOnly.name)  ::
+          systemVariableSpecService.get("RUDDER_HEARTBEAT_INTERVAL").toVariable().copyWithSavedValue((interval * frequency).toString)  ::
+          Nil
+      }
     }
 
 
@@ -147,6 +157,7 @@ class SystemVariableServiceImpl(
       agentRunStartMinute <- getAgentRunStartMinute() ?~! "Could not retrieve the configure value for the run start minute"
       agentRunSplaytime <- getAgentRunSplaytime() ?~! "Could not retrieve the configure value for the run splay time"
       schedule <- ComputeSchedule.computeSchedule(agentRunStartHour, agentRunStartMinute, interval) ?~! "Could not compute the run schedule"
+      complianceModeVars <- varReportMode  ?~! "Could not compute global compliance mode"
     } yield {
 
       val varAgentRunSchedule = systemVariableSpecService.get("AGENT_RUN_SCHEDULE").toVariable().copyWithSavedValue(schedule)
@@ -167,8 +178,7 @@ class SystemVariableServiceImpl(
       , (modifiedFilesTtl.spec.name, modifiedFilesTtl)
       , (cfengineOutputsTtl.spec.name, cfengineOutputsTtl)
       , (storeAllCentralizedLogsInFile.spec.name, storeAllCentralizedLogsInFile)
-      , (varReportMode.spec.name, varReportMode)
-      )
+      ) ++ complianceModeVars.map(sysVar => (sysVar.spec.name,sysVar))
     }
   }
 
@@ -189,6 +199,8 @@ class SystemVariableServiceImpl(
     // Set the roles of the nodes
     val nodeConfigurationRoles = collection.mutable.Set[ServerRole]() ++ nodeInfo.serverRoles
 
+    // global agent run interval is defined in globalSystemVariables, get it from here
+    val globalAgentRunInterval = globalSystemVariables.get("AGENT_RUN_INTERVAL").flatMap(_.values.headOption.map(_.toInt)).getOrElse(5)
 
     // Define the mapping of roles/hostnames, only if the node has a role
     val varRoleMappingValue = if (nodeConfigurationRoles.size > 0) {
@@ -262,8 +274,8 @@ class SystemVariableServiceImpl(
 
     val agentRunParams =
       if (nodeInfo.isPolicyServer) {
-        Full(( "5"
-             , "5"
+        Full(( 5
+             , 5
              , """ "Min00", "Min05", "Min10", "Min15", "Min20", "Min25", "Min30", "Min35", "Min40", "Min45", "Min50", "Min55" """
         ) )
       } else {
@@ -272,22 +284,72 @@ class SystemVariableServiceImpl(
             for {
               schedule <- ComputeSchedule.computeSchedule(nodeRunInterval.startHour, nodeRunInterval.startMinute, nodeRunInterval.interval) ?~! s"Could not compute the run schedule for node ${nodeInfo.id.value}"
             } yield {
-              ( nodeRunInterval.interval.toString
-              , nodeRunInterval.splaytime.toString
+              ( nodeRunInterval.interval
+              , nodeRunInterval.splaytime
               , schedule
               )
           }
           case _ => Empty
         }
       }
+
     val AgentRunVariables = ( agentRunParams.map {
       case (runInterval,splayTime,schedule) =>
-          val vars = systemVariableSpecService.get("AGENT_RUN_INTERVAL").toVariable().copyWithSavedValue(runInterval) ::
-          systemVariableSpecService.get("AGENT_RUN_SPLAYTIME").toVariable().copyWithSavedValue(splayTime)  ::
-          systemVariableSpecService.get("AGENT_RUN_SCHEDULE").toVariable().copyWithSavedValue(schedule) ::
-          Nil
 
-          vars.map(v => v.spec.name -> v ).toMap
+
+        // This function is to update global heartbeat with a new value of run interval
+        def copyGlobalHeartbeatWithNewRunInterval() = {
+          // Get global value
+          globalSystemVariables.get("RUDDER_HEARTBEAT_INTERVAL")  match {
+            case Some(frequencyVar) =>
+              frequencyVar.values.headOption match {
+                // Value is defined, need to update it
+                case Some(globalFrequency) =>
+                  // value stored is "globalFrequency * globalAgentRun) we need to divide by globalAgentRun to get the base frequency
+                  val heartBeatInterval = (globalFrequency.toInt / globalAgentRunInterval * runInterval)
+                  frequencyVar.copyWithSavedValue(heartBeatInterval.toString) ::
+                  Nil
+                case None =>
+                  // No value stored, use default value for frequency (1)
+                  frequencyVar.copyWithSavedValue(runInterval.toString) :: Nil
+              }
+            case None => Nil
+          }
+        }
+
+        val varHeartbeat = {
+          // Hearbeat value depend on global compliance mode
+          globalSystemVariables.get("RUDDER_REPORT_MODE") match {
+            case Some(globalComplianceModeVar) =>
+              globalComplianceModeVar.values.headOption match {
+                // Full compliance, use default value for frequency (1) * runInterval
+                case Some(FullCompliance.name) =>
+                  systemVariableSpecService.get("RUDDER_HEARTBEAT_INTERVAL").toVariable().copyWithSavedValue(runInterval.toString) ::
+                  Nil
+                // Changes Only mode, we need to check if the frequency of the node overrides the global one
+                case Some(ChangesOnly.name) =>
+                  nodeInfo.nodeReportingConfiguration.heartbeatRunFrequency match {
+                    // It overrides! use it to compute the new heartbeatInterval
+                    case Some(hbFrequency) if hbFrequency.overrides =>
+                      val heartBeatInterval = (hbFrequency.heartbeatRunFrequency * runInterval)
+                      systemVariableSpecService.get("RUDDER_HEARTBEAT_INTERVAL").toVariable().copyWithSavedValue(heartBeatInterval.toString) ::
+                      Nil
+                    // It does not override, get the frequency value from the global variables
+                    case _ => copyGlobalHeartbeatWithNewRunInterval()
+                  }
+                case _ => Nil
+              }
+            case _ => Nil
+          }
+        }
+
+        val vars = {
+          systemVariableSpecService.get("AGENT_RUN_INTERVAL").toVariable().copyWithSavedValue(runInterval.toString) ::
+          systemVariableSpecService.get("AGENT_RUN_SPLAYTIME").toVariable().copyWithSavedValue(runInterval.toString)  ::
+          systemVariableSpecService.get("AGENT_RUN_SCHEDULE").toVariable().copyWithSavedValue(schedule) ::
+          varHeartbeat
+        }
+        vars.map(v => v.spec.name -> v ).toMap
     } )
 
     // If we are facing a policy server, we have to allow each child to connect, plus the policy parent,

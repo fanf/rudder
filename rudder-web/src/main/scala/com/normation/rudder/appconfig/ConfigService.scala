@@ -45,6 +45,8 @@ import net.liftweb.common.Failure
 import net.liftweb.common.Loggable
 import com.normation.rudder.reports.ComplianceMode
 import com.normation.rudder.domain.appconfig.RudderWebProperty
+import com.normation.rudder.reports.FullCompliance
+import com.normation.rudder.reports.ChangesOnly
 
 /**
  * A service that Read mutable (runtime) configuration properties
@@ -103,7 +105,19 @@ trait ReadConfigService {
    *   back from node to server, and taken into account for compliance reports,
    * - "error_only": only error and repaired are going to the server.
    */
-  def rudder_compliance_mode(): Box[ComplianceMode]
+  def rudder_compliance_mode(): Box[(String,Int)] = {
+    for {
+        name <- rudder_compliance_mode_name
+        frequency <- rudder_compliance_heartbeatFrequency
+    } yield {
+      (name,frequency)
+    }
+  }
+
+  def rudder_compliance_mode_name(): Box[String]
+
+  def rudder_compliance_heartbeatFrequency(): Box[Int]
+
 
 }
 
@@ -151,7 +165,22 @@ trait UpdateConfigService {
   /**
    * Set the compliance mode
    */
-  def set_rudder_compliance_mode(value: ComplianceMode): Box[Unit]
+  def set_rudder_compliance_mode(name : String, frequency : Int): Box[Unit] = {
+    for {
+      _ <- set_rudder_compliance_mode_name(name)
+      u <- name match {
+             case ChangesOnly.name =>  set_rudder_compliance_heartbeatFrequency(frequency)
+             case _ => Full()
+           }
+    } yield {
+      u
+    }
+
+  }
+
+  def set_rudder_compliance_mode_name(name : String) : Box[Unit]
+
+  def set_rudder_compliance_heartbeatFrequency(frequency : Int) : Box[Unit]
 }
 
 class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workflowUpdate: AsyncWorkflowInfo) extends ReadConfigService with UpdateConfigService with Loggable {
@@ -162,7 +191,7 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
   var cacheExecutionInterval: Option[Int] = None
 
   val defaultConfig =
-    """rudder.ui.changeMessage.enabled=true
+    s"""rudder.ui.changeMessage.enabled=true
        rudder.ui.changeMessage.mandatory=false
        rudder.ui.changeMessage.explanation=Please enter a reason explaining this change.
        rudder.workflow.enabled=false
@@ -177,7 +206,8 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
        cfengine.modified.files.ttl=30
        cfengine.outputs.ttl=7
        rudder.store.all.centralized.logs.in.file=true
-       rudder.compliance.mode=full-compliance
+       rudder.compliance.mode=${FullCompliance.name}
+       rudder.compliance.heartbeatFrequency=1
     """
 
   val configWithFallback = configFile.withFallback(ConfigFactory.parseString(defaultConfig))
@@ -224,7 +254,7 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
       case ex:NumberFormatException => Failure(ex.getMessage)
     }
   }
-
+/*
   private[this] implicit def toComplianceMode(x: Box[RudderWebProperty]) : Box[ComplianceMode] = {
     for {
       value <- x
@@ -232,7 +262,7 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
       ComplianceMode.parse(value)
     }
   }
-
+*/
   def rudder_ui_changeMessage_enabled() = get("rudder_ui_changeMessage_enabled")
   def rudder_ui_changeMessage_mandatory() = get("rudder_ui_changeMessage_mandatory")
   def rudder_ui_changeMessage_explanation() = get("rudder_ui_changeMessage_explanation")
@@ -305,12 +335,14 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
 
   /**
    * Compliance mode
-   *
    */
-  def rudder_compliance_mode(): Box[ComplianceMode] = get("rudder_compliance_mode")
-  def set_rudder_compliance_mode(value: ComplianceMode): Box[Unit] = {
-    val p = RudderWebProperty(RudderWebPropertyName("rudder_compliance_mode"), value.name, "")
-    repos.saveConfigParameter(p)
-  }
+  def rudder_compliance_mode_name(): Box[String] = get("rudder_compliance_mode")
+  def set_rudder_compliance_mode_name(value: String): Box[Unit] = save("rudder_compliance_mode", value)
+
+  /**
+   * Heartbeat frequency mode
+   */
+  def rudder_compliance_heartbeatFrequency(): Box[Int] = get("rudder_compliance_heartbeatFrequency")
+  def set_rudder_compliance_heartbeatFrequency(value: Int): Box[Unit] = save("rudder_compliance_heartbeatFrequency", value)
 
 }

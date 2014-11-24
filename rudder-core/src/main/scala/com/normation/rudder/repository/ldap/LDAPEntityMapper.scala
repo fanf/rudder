@@ -108,6 +108,11 @@ class LDAPEntityMapper(
       case Some(interval) => entry +=! (A_SERIALIZED_AGENT_RUN_INTERVAL, Printer.compact(JsonAST.render(serializeAgentRunInterval(interval))))
       case _ =>
     }
+
+    node.nodeReportingConfiguration.heartbeatRunFrequency match {
+      case Some(interval) => entry +=! (A_SERIALIZED_HEARTBEAT_RUN_FREQUENCY, Printer.compact(JsonAST.render(interval.json)))
+      case _ =>
+    }
     entry
   }
 
@@ -127,6 +132,13 @@ class LDAPEntityMapper(
     parse(value).extract[AgentRunInterval]
   }
 
+  def unserializeNodeHeartbeatConfiguration(value:String): NodeHeartbeatConfiguration = {
+    import net.liftweb.json.JsonParser._
+    implicit val formats = DefaultFormats
+
+    parse(value).extract[NodeHeartbeatConfiguration]
+  }
+
   def entryToNode(e:LDAPEntry) : Box[Node] = {
     if(e.isA(OC_RUDDER_NODE)||e.isA(OC_POLICY_SERVER_NODE)) {
       //OK, translate
@@ -135,6 +147,7 @@ class LDAPEntityMapper(
         name             = e(A_NAME).getOrElse("")
         description      = e(A_DESCRIPTION).getOrElse("")
         agentRunInterval = e(A_SERIALIZED_AGENT_RUN_INTERVAL).map(unserializeAgentRunInterval(_))
+        heartbeatConf = e(A_SERIALIZED_HEARTBEAT_RUN_FREQUENCY).map(unserializeNodeHeartbeatConfiguration(_))
       } yield {
         Node(
             id
@@ -145,6 +158,7 @@ class LDAPEntityMapper(
           , e.isA(OC_POLICY_SERVER_NODE)
           , ReportingConfiguration(
               agentRunInterval
+            , heartbeatConf
           )
         )
       }
@@ -196,6 +210,7 @@ class LDAPEntityMapper(
       serverRoles = inventoryEntry.valuesFor(A_SERVER_ROLE).map(ServerRole(_)).toSet
       // get the ReportingConfiguration
       agentRunInterval = nodeEntry(A_SERIALIZED_AGENT_RUN_INTERVAL).map(unserializeAgentRunInterval(_))
+      heartbeatConf = nodeEntry(A_SERIALIZED_HEARTBEAT_RUN_FREQUENCY).map(unserializeNodeHeartbeatConfiguration(_))
 
     } yield {
       // fetch the inventory datetime of the object
@@ -223,7 +238,8 @@ class LDAPEntityMapper(
         , nodeEntry.isA(OC_POLICY_SERVER_NODE)
         , serverRoles
         , ReportingConfiguration(
-            agentRunInterval
+              agentRunInterval
+            , heartbeatConf
           )
       )
     }

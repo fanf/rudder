@@ -41,11 +41,23 @@ import net.liftweb.json.JBool
  * Class that contains all relevant information about the reporting configuration:
  * * agent run interval
  * * compliance mode (soon)
- * * heartbeat (soon)
+ * * heartbeat configuration
  */
 final case class ReportingConfiguration(
     agentRunInterval : Option[AgentRunInterval]
+  , heartbeatRunFrequency : Option[NodeHeartbeatConfiguration]
 ) extends HashcodeCaching
+
+final case class NodeHeartbeatConfiguration(
+   overrides : Boolean
+ , heartbeatRunFrequency : Int
+) {
+  def json = {
+    import net.liftweb.json.JsonDSL._
+    ( "overrides"  , overrides ) ~
+    ( "heartbeatRunFrequency" , heartbeatRunFrequency)
+  }
+}
 
 final case class AgentRunInterval(
     overrides  : Option[Boolean]
@@ -55,7 +67,7 @@ final case class AgentRunInterval(
   , splaytime  : Int
 ) extends HashcodeCaching {
 
- def json = {
+ def json() = {
 
    val overrideValue = overrides.map(_.toString).getOrElse("null")
    val splayHour = splaytime / 60

@@ -669,7 +669,7 @@ class AcceptFullInventoryInNodeOu(
       , false
       , false
       , isPolicyServer
-      , ReportingConfiguration(None) // use global schedule
+      , ReportingConfiguration(None,None) // use global schedule
     )
 
     val entry = ldapEntityMapper.nodeToEntry(node)
