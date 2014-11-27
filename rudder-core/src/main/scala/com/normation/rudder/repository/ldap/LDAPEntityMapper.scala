@@ -75,6 +75,7 @@ import com.normation.rudder.rule.category.RuleCategoryId
 import net.liftweb.json._
 import JsonDSL._
 import com.normation.rudder.reports._
+import com.normation.rudder.reports.JsonSerialisation._
 
 /**
  * Map objects from/to LDAPEntries
@@ -105,7 +106,7 @@ class LDAPEntityMapper(
     entry +=! (A_IS_SYSTEM, node.isSystem.toLDAPString)
 
     node.nodeReportingConfiguration.agentRunInterval match {
-      case Some(interval) => entry +=! (A_SERIALIZED_AGENT_RUN_INTERVAL, Printer.compact(JsonAST.render(serializeAgentRunInterval(interval))))
+      case Some(interval) => entry +=! (A_SERIALIZED_AGENT_RUN_INTERVAL, Printer.compact(JsonAST.render(interval.json)))
       case _ =>
     }
 
@@ -116,28 +117,7 @@ class LDAPEntityMapper(
     entry
   }
 
-  def serializeAgentRunInterval(agentInterval: AgentRunInterval) : JObject = {
-    import net.liftweb.json.JsonDSL._
-    ( "overrides"  , agentInterval.overrides ) ~
-    ( "interval"   , agentInterval.interval ) ~
-    ( "startMinute", agentInterval.startMinute ) ~
-    ( "startHour"  , agentInterval.startHour ) ~
-    ( "splaytime"  , agentInterval.splaytime )
-  }
 
-  def unserializeAgentRunInterval(value:String): AgentRunInterval = {
-    import net.liftweb.json.JsonParser._
-    implicit val formats = DefaultFormats
-
-    parse(value).extract[AgentRunInterval]
-  }
-
-  def unserializeNodeHeartbeatConfiguration(value:String): NodeHeartbeatConfiguration = {
-    import net.liftweb.json.JsonParser._
-    implicit val formats = DefaultFormats
-
-    parse(value).extract[NodeHeartbeatConfiguration]
-  }
 
   def entryToNode(e:LDAPEntry) : Box[Node] = {
     if(e.isA(OC_RUDDER_NODE)||e.isA(OC_POLICY_SERVER_NODE)) {

@@ -51,13 +51,8 @@ final case class ReportingConfiguration(
 final case class NodeHeartbeatConfiguration(
    overrides : Boolean
  , heartbeatRunFrequency : Int
-) {
-  def json = {
-    import net.liftweb.json.JsonDSL._
-    ( "overrides"  , overrides ) ~
-    ( "heartbeatRunFrequency" , heartbeatRunFrequency)
-  }
-}
+)
+
 
 final case class AgentRunInterval(
     overrides  : Option[Boolean]
@@ -65,22 +60,49 @@ final case class AgentRunInterval(
   , startMinute: Int
   , startHour  : Int
   , splaytime  : Int
-) extends HashcodeCaching {
+) extends HashcodeCaching
 
- def json() = {
 
-   val overrideValue = overrides.map(_.toString).getOrElse("null")
-   val splayHour = splaytime / 60
-   val splayMinute = splaytime % 60
+object JsonSerialisation {
+  import net.liftweb.json._
+  import net.liftweb.json.JsonDSL._
+  import net.liftweb.json.JsonAST._
 
-   s"""{ 'overrides'   : ${overrideValue}
-       , 'interval'    : ${interval}
-       , 'startHour'   : ${startHour}
-       , 'startMinute' : ${startMinute}
-       , 'splayHour'   : ${splayHour}
-       , 'splayMinute' : ${splayMinute}
-       }"""
- }
+  def unserializeNodeHeartbeatConfiguration(value:String): NodeHeartbeatConfiguration = {
+    implicit val formats = DefaultFormats
+
+    parse(value).extract[NodeHeartbeatConfiguration]
+  }
+
+  implicit class JsonNodeHeartbeatConfiguration(x:NodeHeartbeatConfiguration) {
+    def json: JObject = {
+      ( "overrides"  , x.overrides ) ~
+      ( "heartbeatRunFrequency" , x.heartbeatRunFrequency)
+    }
+  }
+
+  def unserializeAgentRunInterval(value:String): AgentRunInterval = {
+    implicit val formats = DefaultFormats
+
+    parse(value).extract[AgentRunInterval]
+  }
+
+  implicit class JsonAgentRunInterval(x: AgentRunInterval) {
+
+    def json(): JObject = {
+
+      val overrideValue = x.overrides.map(_.toString).getOrElse("null")
+      val splayHour = x.splaytime / 60
+      val splayMinute = x.splaytime % 60
+
+      ("overrides", overrideValue) ~
+      ("interval", x.interval) ~
+      ("startHour", x.startHour) ~
+      ("startMinute", x.startMinute ) ~
+      ("splayHour", splayHour) ~
+      ("splayMinute", splayMinute)
+    }
+  }
 }
 
 

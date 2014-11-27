@@ -50,6 +50,7 @@ import net.liftweb.util.Helpers
 import net.liftweb.util.Helpers._
 import net.liftweb.http.Templates
 import com.normation.rudder.reports.AgentRunInterval
+import com.normation.rudder.reports.JsonSerialisation._
 import net.liftweb.util.PassThru
 import net.liftweb.util.ClearNodes
 

@@ -52,7 +52,7 @@ final case object FullCompliance extends ComplianceMode {
   val name = "full-compliance"
 }
 final case class ChangesOnly (
-  heartbeatFrequency: Integer
+  heartbeatFrequency: Int
 )extends ComplianceMode {
   val name = ChangesOnly.name
 }
@@ -74,17 +74,11 @@ class ComplianceModeServiceImpl (
      readComplianceMode() match {
        case Full(FullCompliance.name) =>  Full(FullCompliance)
        case Full(ChangesOnly.name) =>
-         readHeartbeatFreq() match {
-           case Full(freq) => Full(ChangesOnly(freq))
-           case eb : EmptyBox =>
-             val fail = eb ?~! "Could not get heartbeat frequency"
-             fail
-         }
+         readHeartbeatFreq().map( ChangesOnly(_) ) ?~! "Could not get heartbeat frequency"
        case Full(value) =>
          Failure(s"Unable to parse the compliance mode name. was expecting '${FullCompliance.name}' or '${ChangesOnly.name}' and got '${value}'")
        case eb : EmptyBox =>
-         val fail = eb ?~! "Could not get compliance mode name"
-         fail
+         eb ?~! "Could not get compliance mode name"
      }
   }
 }
