@@ -184,6 +184,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
                   , Some(onClickActiveTechnique)
                   , Some(onClickDirective(workflowEnabled))
                   , false
+                  , Map()
                 )
               }</ul>
             case (x, y) =>

@@ -61,6 +61,7 @@ import com.normation.rudder.domain.policies.DirectiveId
 import net.liftweb.http.js.JE.JsRaw
 import net.liftweb.http.S
 import com.normation.cfclerk.domain.Technique
+import com.normation.rudder.web.model.JsInitContextLinkUtil._
 
 /**
  *
@@ -84,6 +85,8 @@ object DisplayDirectiveTree extends Loggable {
     , onClickTechnique: Option[(FullActiveTechniqueCategory, FullActiveTechnique) => JsCmd]
     , onClickDirective: Option[(FullActiveTechniqueCategory, FullActiveTechnique, Directive) => JsCmd]
     , addEditLink     : Boolean
+    , directiveActions: Map[String, Directive => JsCmd]
+    , included        : Set[DirectiveId] = Set()
     , keepCategory    : FullActiveTechniqueCategory => Boolean = _ => true
     , keepTechnique   : FullActiveTechnique => Boolean = _ => true
     , keepDirective   : Directive => Boolean = _ => true
@@ -241,16 +244,28 @@ object DisplayDirectiveTree extends Loggable {
            """))
 
       override def body = {
-        val tooltipId = Helpers.nextFuncName
 
-        val actions = {
+        val editButton = {
           if (addEditLink && ! directive.isSystem) {
-              <img src="/images/icPen.png" class="treeActions treeAction noRight" /> ++ Script(JsRaw(s"""
-                $$('#${htmlId} .treeActions').on("mouseup", function(e) {
-                  redirectTo('${S.contextPath}/secure/configurationManager/directiveManagement#{"directiveId":"${directive.id.value}"}',e);
-                } );"""))
+            val tooltipId = Helpers.nextFuncName
+            <span class="treeActions">
+              <img src="/images/icPen.png" class="tooltipable treeAction noRight directiveDetails" tooltipid={tooltipId} title="" onclick={redirectToDirectiveLink(directive.id).toJsCmd}/>
+						  <div class="tooltipContent" id={tooltipId}><div>Configure this Directive.</div></div>
+						</span>
           } else {
             NodeSeq.Empty
+          }
+        }
+
+        val actions = {
+          directiveActions.get("include") match {
+            case Some (include) =>
+              val tooltipId = Helpers.nextFuncName
+              <span class="treeActions">
+                <img src="/images/ic_add.png" class="tooltipable treeAction noRight" tooltipid={tooltipId} title="" onclick={include(directive).toJsCmd}/>
+                <div class="tooltipContent" id={tooltipId}><div>Apply this Directive to Rule target.</div></div>
+              </span>
+            case None => NodeSeq.Empty
           }
         }
 
@@ -264,25 +279,26 @@ object DisplayDirectiveTree extends Loggable {
             </div>
           case None => NodeSeq.Empty
         }
-        val xml  = (
-                    <span class="treeDirective tooltipable tw-bs" tooltipid={tooltipId} title="" style="float:left">
-                     {deprecated} [{directive.techniqueVersion.toString}] {directive.name}
-                    </span>
-                    ++ {
-                        if(isAssignedTo <= 0) {
-                          <span style="float:left; padding-left:5px"><img style="margin:0;padding:0" src="/images/icWarn.png" witdth="14" height="14" /></span>
-                        } else {
-                          NodeSeq.Empty
-                        }
-                    } ++ actions ++
-                    <div class="tooltipContent" id={tooltipId}>
-                      <h3>{directive.name}</h3>
-                      <div>{directive.shortDescription}</div>
-                      <div>Technique version: {directive.techniqueVersion.toString}</div>
-                      <div>{s"Used in ${isAssignedTo} rules" }</div>
-                      { if(!directive.isEnabled) <div>Disable</div> }
-                    </div>++jsInitFunction
-        )
+        val xml  = {
+          val tooltipId = Helpers.nextFuncName
+          <span class="treeDirective tooltipable tw-bs" tooltipid={tooltipId} title="" style="float:left">
+            {deprecated} [{directive.techniqueVersion.toString}] {directive.name}
+          </span> ++
+          {
+              if(isAssignedTo <= 0) {
+                <span style="float:left; padding-left:5px"><img style="margin:0;padding:0" src="/images/icWarn.png" witdth="14" height="14" /></span>
+              } else {
+                NodeSeq.Empty
+              }
+          } ++ actions ++ editButton ++
+          <div class="tooltipContent" id={tooltipId}>
+            <h3>{directive.name}</h3>
+            <div>{directive.shortDescription}</div>
+            <div>Technique version: {directive.techniqueVersion.toString}</div>
+            <div>{s"Used in ${isAssignedTo} rules" }</div>
+              { if(!directive.isEnabled) <div>Disable</div> }
+            </div>++jsInitFunction
+        }
 
         onClickDirective match {
           case None                     => <a style="cursor:default">{xml}</a>
