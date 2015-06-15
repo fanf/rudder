@@ -261,12 +261,10 @@ class RuleEditForm(
 
   private[this] def showCrForm(groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory) : NodeSeq = {
 
+    //is't there an other way to do that? We already have the target/name
+    //in the tree, so there's just the existing id to find back
     val maptarget = groupLib.allTargets.map{
       case (gt,fg) => s" ${encJs(gt.target)} : ${encJs(fg.name)}"
-    }.toList.mkString("{",",","}")
-
-    val mapdirective = directiveLib.allDirectives.map {
-      case (_,(_,d)) => s" ${encJs(d.id.value)} : ${encJs(d.name)}"
     }.toList.mkString("{",",","}")
 
     val includedTarget = ruleTarget.includedTarget.targets
