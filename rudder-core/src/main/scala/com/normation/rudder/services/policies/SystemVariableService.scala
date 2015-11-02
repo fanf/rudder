@@ -89,6 +89,8 @@ class SystemVariableServiceImpl(
   , rudderServerRoleDb       : String
   , rudderServerRoleRelayTop : String
   , rudderServerRoleWeb      : String
+  , rudderServerRolePromisesOnlyRelay    : String
+  , rudderServerRoleCFEngineMissionPortal: String
   //denybadclocks and skipIdentify are runtime properties
   , getDenyBadClocks: () => Box[Boolean]
   , getSkipIdentify : () => Box[Boolean]
@@ -128,7 +130,9 @@ class SystemVariableServiceImpl(
   lazy val definedRudderServerRoleDb       = parseRoleContent(rudderServerRoleDb)
   lazy val definedRudderServerRoleRelayTop = parseRoleContent(rudderServerRoleRelayTop)
   lazy val definedRudderServerRoleWeb      = parseRoleContent(rudderServerRoleWeb)
-  lazy val definedRudderServerRoleInventoryEnpoint = parseRoleContent(rudderServerRoleInventoryEndpoint)
+  lazy val definedRudderServerRoleInventoryEnpoint      = parseRoleContent(rudderServerRoleInventoryEndpoint)
+  lazy val definedRudderServerRolePromisesOnlyRelay     = parseRoleContent(rudderServerRolePromisesOnlyRelay)
+  lazy val definedRudderServerRoleCFEngineMissionPortal = parseRoleContent(rudderServerRoleCFEngineMissionPortal)
 
   // compute all the global system variable (so that need to be computed only once in a deployment)
 
@@ -235,12 +239,25 @@ class SystemVariableServiceImpl(
         case Some(seq) => seq
         case None => getNodesWithRole(allNodeInfosSet, ServerRole("rudder-web"))
       }
+      
+      val nodesWithRolePromisesOnlyRelay = definedRudderServerRolePromisesOnlyRelay match {
+        case Some(seq) => seq
+        case None => getNodesWithRole(allNodeInfosSet, ServerRole("rudder-promises-only-relay"))
+      }
+            
+      val nodesWithRoleCFEngineMissionPortal = definedRudderServerRoleCFEngineMissionPortal match {
+        case Some(seq) => seq
+        case None => getNodesWithRole(allNodeInfosSet, ServerRole("rudder-cfengine-mission-portal"))
+      }
 
+      
       writeNodesWithRole(nodesWithRoleLdap, "rudder-ldap") +
       writeNodesWithRole(nodesWithRoleInventoryEndpoint, "rudder-inventory-endpoint") +
       writeNodesWithRole(nodesWithRoleDb, "rudder-db") +
       writeNodesWithRole(nodesWithRoleRelayTop, "rudder-relay-top") +
-      writeNodesWithRole(nodesWithRoleWeb, "rudder-web")
+      writeNodesWithRole(nodesWithRoleWeb, "rudder-web") +
+      writeNodesWithRole(nodesWithRolePromisesOnlyRelay, "rudder-promises-only-relay") +
+      writeNodesWithRole(nodesWithRoleCFEngineMissionPortal, "rudder-cfengine-mission-portal")
     } else {
       ""
     }

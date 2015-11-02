@@ -311,11 +311,14 @@ object RudderConfig extends Loggable {
   val RUDDER_DEBUG_NODE_CONFIGURATION_PATH = config.getString("rudder.debug.nodeconfiguration.path")
 
   // Roles definitions
-  val RUDDER_SERVER_ROLES_LDAP  = config.getString("rudder.server-roles.ldap")
-  val RUDDER_SERVER_ROLES_INVENTORY_ENDPOINT = config.getString("rudder.server-roles.inventory-endpoint")
-  val RUDDER_SERVER_ROLES_DB    = config.getString("rudder.server-roles.db")
-  val RUDDER_SERVER_ROLES_FRONT = config.getString("rudder.server-roles.relay-top")
-  val RUDDER_SERVER_ROLES_WEBAPP= config.getString("rudder.server-roles.web")
+  val RUDDER_SERVER_ROLES_LDAP                    = config.getString("rudder.server-roles.ldap")
+  val RUDDER_SERVER_ROLES_INVENTORY_ENDPOINT      = config.getString("rudder.server-roles.inventory-endpoint")
+  val RUDDER_SERVER_ROLES_DB                      = config.getString("rudder.server-roles.db")
+  val RUDDER_SERVER_ROLES_FRONT                   = config.getString("rudder.server-roles.relay-top")
+  val RUDDER_SERVER_ROLES_WEBAPP                  = config.getString("rudder.server-roles.web")
+  val RUDDER_SERVER_ROLES_PROMISES_ONLY_RELAY     = config.getString("rudder.server-roles.relay-promises-only")
+  val RUDDER_SERVER_ROLES_CFENGINE_MISSION_PORTAL = config.getString("rudder.server-roles.cfengine-mission-portal")
+  
 
   val licensesConfiguration = "licenses.xml"
   val logentries = "logentries.xml"
@@ -1315,6 +1318,8 @@ object RudderConfig extends Loggable {
     , RUDDER_SERVER_ROLES_DB
     , RUDDER_SERVER_ROLES_FRONT
     , RUDDER_SERVER_ROLES_WEBAPP
+    , RUDDER_SERVER_ROLES_PROMISES_ONLY_RELAY
+    , RUDDER_SERVER_ROLES_CFENGINE_MISSION_PORTAL
     , configService.cfengine_server_denybadclocks _
     , configService.cfengine_server_skipidentify _
     , configService.agent_run_interval
