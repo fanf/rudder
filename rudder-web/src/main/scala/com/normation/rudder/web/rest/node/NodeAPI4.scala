@@ -47,6 +47,7 @@ import com.normation.rudder.web.rest.RestExtractorService
 import com.normation.rudder.web.rest.RestUtils._
 import net.liftweb.common._
 import net.liftweb.json.JsonDSL._
+import com.normation.rudder.web.rest.ApiVersion
 
 
 class NodeAPI4 (
@@ -69,6 +70,7 @@ class NodeAPI4 (
     }
   }
 
-  val requestDispatch : PartialFunction[Req, () => Box[LiftResponse]] = v4Dispatch orElse apiV2.requestDispatch
-
+  override def requestDispatch(apiVersion: ApiVersion) : PartialFunction[Req, () => Box[LiftResponse]] = {
+     v4Dispatch orElse apiV2.requestDispatch(apiVersion)
+  }
 }
