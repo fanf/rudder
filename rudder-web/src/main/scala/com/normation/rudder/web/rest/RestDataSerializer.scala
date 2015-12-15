@@ -55,8 +55,6 @@ import com.normation.rudder.rule.category.RuleCategory
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.rudder.repository.FullNodeGroupCategory
 
-
-
 /**
  *  Centralize all function to serialize datas as valid answer for API Rest
  */
@@ -140,7 +138,6 @@ case class RestDataSerializerImpl (
 
   }
 
-
   def serializeRule (rule:Rule , crId: Option[ChangeRequestId]): JValue = {
 
    (   ( "changeRequestId"  -> crId.map(_.value.toString))
@@ -187,17 +184,22 @@ case class RestDataSerializerImpl (
 
   override def serializeGroup (group : NodeGroup, crId: Option[ChangeRequestId], apiVersion: ApiVersion): JValue = {
     val query = group.query.map(query => query.toJSON)
-    (  ("changeRequestId" -> crId.map(_.value.toString))
-     ~ ("id"              -> group.id.value)
-     ~ ("displayName"     -> group.name)
-     ~ ("description"     -> group.description)
-     ~ ("query"           -> query)
-     ~ ("nodeIds"         -> group.serverList.map(_.value))
-     ~ ("isDynamic"       -> group.isDynamic)
-     ~ ("isEnabled"       -> group.isEnabled )
-     ~ ("isEnabled"       -> group.isEnabled )
-     ~ ("groupClass"      -> (if(apiVersion.value < 7) { Nil } else { List(group.id.value, group.name).map(RuleTarget.toCFEngineClassName _) }) )
+    val withoutClasses = (
+        ("changeRequestId" -> crId.map(_.value.toString))
+      ~ ("id"              -> group.id.value)
+      ~ ("displayName"     -> group.name)
+      ~ ("description"     -> group.description)
+      ~ ("query"           -> query)
+      ~ ("nodeIds"         -> group.serverList.map(_.value))
+      ~ ("isDynamic"       -> group.isDynamic)
+      ~ ("isEnabled"       -> group.isEnabled )
+      ~ ("isEnabled"       -> group.isEnabled )
     )
+   if (apiVersion.value < 7) {
+     withoutClasses
+   } else {
+     withoutClasses ~ ("groupClass" ->  List(group.id.value, group.name).map(RuleTarget.toCFEngineClassName _) )
+   }
   }
 
   override def serializeGroupCategory (category:FullNodeGroupCategory, parent: NodeGroupCategoryId, detailLevel : DetailLevel, apiVersion: ApiVersion): JValue = {
@@ -324,7 +326,6 @@ case class RestDataSerializerImpl (
       }
     }
   }
-
 
   def serializeGlobalParameterChange(change : GlobalParameterChange): Box[JValue] = {
 
@@ -488,7 +489,6 @@ case class RestDataSerializerImpl (
           (   ("action" -> modify)
             ~ ("change" -> result)
           )
-
 
       }
     }
