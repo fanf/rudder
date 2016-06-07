@@ -13,6 +13,7 @@
     <link type="text/css" rel="stylesheet" href="/images/themes/ui-lightness/jquery.ui.all.css" />
     <link type="text/css" rel="stylesheet" href="/style/jquery-rudder-bridge.css" />
     <link type="text/css" rel="stylesheet" href="/style/c3/c3-0.4.10.min.css" />
+    <link type="text/css" rel="stylesheet" href="/style/angucomplete-ie8-v0.1.2.css" media="screen" />
     <link type="text/css" rel="stylesheet" href="/style/rudder.css" media="screen" />
 
     <script type="text/javascript" src="/javascript/WeakMap.js"></script>
@@ -58,6 +59,9 @@
     <script type="text/javascript" src="/javascript/angular/angular.min.js" />
     <script type="text/javascript" src="/javascript/angular/angular-animate.min.js" />
     <script type="text/javascript" src="/javascript/angular/angular-datatables.js" />
+    <script type="text/javascript" src="/javascript/angular/angular-touch.min.js" />
+    <script type="text/javascript" src="/javascript/angular/angucomplete-ie8-v0.1.2.js"></script>
+    <script type="text/javascript" src="/javascript/rudder/angular/quicksearch.js"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/groupManagement.js" id="angular-groupManagement"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/ruleDirectives.js" id="angular-ruleDirectives"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/technique-version.js"></script>
@@ -79,6 +83,9 @@
       var bootstrapAffix = $.fn.affix.noConflict();
       var bootstrapModal = $.fn.modal.noConflict();
       $.fn.bsModal = bootstrapModal
+
+      //bootstrap quicksearch
+      angular.bootstrap('#quicksearch', ['quicksearch']);
       // ]]>
     </script>
 
@@ -111,6 +118,20 @@
         <span class="lift:BootstrapMenu?linkToSelf=true;expandAll=true"></span>
         <!-- Quick Search -->
         <lift:QuickSearchNode.render />
+        <!-- Quick Search 2 -->
+        <div ng-app="quicksearch" id="quicksearch" angucomplete-ie8=""
+             placeholder="Search nodes, rules, directives, groups..."
+             maxlength="50" pause="500"
+             selected-object="selectedCountry"
+             remote-url="/internal/quicksearch"
+             remote-url-request-formatter="remoteUrlRequestFn"
+             remote-url-data-field="items"
+             title-field="name"
+             description-field="description"
+             minlength="2"
+             input-class="form-control form-control-small"
+             match-class="highlight"
+        ></div>
         <!-- Right Menu -->
         <ul class="nav navbar-nav navbar-right">
           <!-- Change request -->
