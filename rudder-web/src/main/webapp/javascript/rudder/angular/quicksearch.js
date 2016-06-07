@@ -2,7 +2,13 @@ var quicksearch = angular.module('quicksearch', ["ngTouch", "angucomplete-ie8"])
 
 quicksearch.controller('QuicksearchCtrl', ['$scope', '$http', '$rootScope', function QuicksearchCtrl($scope, $http, $rootScope) {
 
-  alert("here we go");
+  $scope.setContextPath = function(path) {
+    $scope.contextPath = path;
+  }
+
+  $scope.getQuicksearchUrl = function() {
+    return "/rudder-web/secure/api/quicksearch/"
+  }
 
   $scope.remoteUrlRequestFn = function(str) {
     return {q: str};
@@ -14,10 +20,10 @@ quicksearch.controller('QuicksearchCtrl', ['$scope', '$http', '$rootScope', func
 
 // Helper function to access from outside angular scope
 
-function sometarget(target) {
-  var scope = angular.element($("#GroupCtrl")).scope();
+function initQuicksearchUrl(url) {
+  var scope = angular.element($("#quicksearch")).scope();
   scope.$apply(function() {
-    scope.addExclude(target);
+    scope.setContextPath(url);
   });
 };
 
