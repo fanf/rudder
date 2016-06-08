@@ -96,17 +96,15 @@ class QuicksearchService(
     //  id, name, description, isBroken, isSystem
     //, isPolicyServer <- this one is special and decided based on objectClasss rudderPolicyServer
     //, creationDate, nodeReportingConfiguration, properties
-      A_NODE_UUID, A_DESCRIPTION
+      A_NODE_UUID, A_NAME, A_DESCRIPTION
     , A_NODE_PROPERTY
 
     //node inventory, safe machine and node (above)
     //  hostname, ips, inventoryDate, publicKey
     //, osDetails
-    //, agentsName, policyServerId, localAdministratorAccountName
     //, serverRoles, archDescription, ram
     , A_HOSTNAME, A_LIST_OF_IP
     , A_OS_NAME, A_OS_FULL_NAME, A_OS_VERSION, A_OS_KERNEL_VERSION, A_OS_SERVICE_PACK, A_WIN_USER_DOMAIN, A_WIN_COMPANY, A_WIN_KEY, A_WIN_ID
-    , A_AGENTS_NAME, A_POLICY_SERVER_UUID, A_ROOT_USER
     , A_SERVER_ROLE, A_ARCH
 
     //directive
@@ -153,12 +151,12 @@ class QuicksearchService(
    */
   private[this] def toSearchResult(pattern: Pattern)(e: LDAPEntry): Option[QuicksearchResult] = {
     def getId(e: LDAPEntry): Option[QuicksearchResultId] = {
-      if       (e.isA(OC_NODE             )) { e(A_NODE_UUID).map( QRNodeId )
-      } else if(e.isA(OC_RUDDER_NODE      )) { e(A_NODE_UUID).map( QRRuleId )
-      } else if(e.isA(OC_RULE             )) { e(A_NODE_UUID).map( QRRuleId )
-      } else if(e.isA(OC_DIRECTIVE        )) { e(A_NODE_UUID).map( QRDirectiveId )
-      } else if(e.isA(OC_RUDDER_NODE_GROUP)) { e(A_NODE_UUID).map( QRGroupId )
-      } else if(e.isA(OC_PARAMETER        )) { e(A_NODE_UUID).map( QRParameterId )
+      if       (e.isA(OC_NODE             )) { e(A_NODE_UUID      ).map( QRNodeId      )
+      } else if(e.isA(OC_RUDDER_NODE      )) { e(A_NODE_UUID      ).map( QRNodeId      )
+      } else if(e.isA(OC_RULE             )) { e(A_RULE_UUID      ).map( QRRuleId      )
+      } else if(e.isA(OC_DIRECTIVE        )) { e(A_DIRECTIVE_UUID ).map( QRDirectiveId )
+      } else if(e.isA(OC_RUDDER_NODE_GROUP)) { e(A_NODE_GROUP_UUID).map( QRGroupId     )
+      } else if(e.isA(OC_PARAMETER        )) { e(A_PARAMETER_NAME ).map( QRParameterId )
       } else { None
       }
     }
@@ -168,10 +166,20 @@ class QuicksearchService(
     // if several, take only one at random. If none, that's strange, reject entry
     // also, don't look in objectClass to find the pattern
     for {
-      desc <- e.attributes.flatMap(a => if(a.getName == OC) Seq() else a.getValues).find( v => pattern.matcher(v).matches )
-      id   <- getId(e)
+      (attr, desc) <- (Option.empty[(String, String)] /: e.attributes) { (current, next) => (current, next ) match {
+                        case (Some(x), _) => Some(x)
+                        case (None   , a) => if(a.getName == A_OC) {
+                                            None
+                                          } else {
+                                            a.getValues.find(v => pattern.matcher(v).matches).map(v => (a.getName, v))
+                                          }
+                      } }
+      id           <- getId(e)
     } yield {
-      QuicksearchResult(id, e(A_NAME).getOrElse(id.value), desc)
+      println(s"name: '${e(A_NAME).getOrElse("")}': ${e}")
+      //prefer hostname for nodes
+      val name = e(A_HOSTNAME).orElse(e(A_NAME)).getOrElse(id.value)
+      QuicksearchResult(id, name, attr+":"+desc)
     }
   }
 
@@ -179,7 +187,7 @@ class QuicksearchService(
     for {
       ldap <- ldapConnection
     } yield {
-      val matches = toSearchResult(s"""?i.*${token}.*""".r.pattern) _
+      val matches = toSearchResult(s"""(?i).*${token}.*""".r.pattern) _
       val results = getEntries(ldap, token).flatMap(matches(_))
       println(s" ===> Found ${results.size} entries matchings search")
       //we can have duplicates ids, removes them

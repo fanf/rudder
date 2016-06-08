@@ -24,11 +24,11 @@ class RestQuicksearch (
     case Get("secure" :: "api" :: "quicksearch" :: token :: Nil, req) => {
 
       val error: JsExp = "error"
-      def toJs(results: List[QuicksearchResult]): JsExp = JArray(results.map(_.toJson))
+      def toJs(results: List[QuicksearchResult]): JValue = JArray(results.map(_.toJson))
 
       quicksearch.search(token) match {
         case eb: EmptyBox  => JsonResponse(error               , Nil, Nil, RestError.code)
-        case Full(results) => JsonResponse(toJs(results.toList), Nil, Nil, RestOk.code)
+        case Full(results) => toJsonResponse(None, toJs(results.toList))("quicksearch", false)
       }
 
     }
