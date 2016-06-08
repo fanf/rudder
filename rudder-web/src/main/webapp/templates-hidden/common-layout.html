@@ -65,11 +65,15 @@
     <script type="text/javascript" src="/javascript/rudder/angular/groupManagement.js" id="angular-groupManagement"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/ruleDirectives.js" id="angular-ruleDirectives"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/technique-version.js"></script>
+    <script type="text/javascript" src="/javascript/rudder/angular/complianceMode.js" id="angular-complianceMode"></script>
+    <script type="text/javascript" src="/javascript/rudder/angular/agentSchedule.js" id="angular-agentSchedule"></script>
 
 
-    <link type="text/css" rel="stylesheet" href="/bootstrap-3.2.0-dist/css/tw-bs-bootstrap.css" media="screen" />
-    <link type="text/css" rel="stylesheet" href="/style/bootstrap-rudder-bridge.css" media="screen" />
     <script type="text/javascript" src="/bootstrap-3.2.0-dist/js/bootstrap.js" />
+    <link type="text/css" rel="stylesheet" href="/bootstrap-3.2.0-dist/css/tw-bs-bootstrap.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/rudder-bootstrap.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/bootstrap-rudder-bridge.css" media="screen" />
+
     <script type="text/javascript">
       // <![CDATA[
       var bootstrapButton = $.fn.button.noConflict();
@@ -85,14 +89,11 @@
       $.fn.bsModal = bootstrapModal
 
       //bootstrap quicksearch
-      angular.bootstrap('#quicksearch', ['quicksearch']);
+      $(document).ready(angular.bootstrap('#quicksearch', ['quicksearch']));
       // ]]>
     </script>
 
 
-    <link type="text/css" rel="stylesheet" href="/style/rudder-bootstrap.css" media="screen" />
-    <script type="text/javascript" src="/javascript/rudder/angular/complianceMode.js" id="angular-complianceMode"></script>
-    <script type="text/javascript" src="/javascript/rudder/angular/agentSchedule.js" id="angular-agentSchedule"></script>
 
     <lift:SendMetricsPopup.display />
     <!--[if lt IE 7.]>
@@ -119,12 +120,12 @@
         <!-- Quick Search -->
         <lift:QuickSearchNode.render />
         <!-- Quick Search 2 -->
-        <div ng-app="quicksearch" id="quicksearch" angucomplete-ie8=""
+        <div ng-app="quicksearch" id="quicksearch" ng-controller="QuicksearchCtrl">
+        <div angucomplete-ie8=""
              placeholder="Search nodes, rules, directives, groups..."
              maxlength="50" pause="500"
-             selected-object="selectedCountry"
+             selected-object="selectedObject"
              remote-url="api/quicksearch/"
-             remote-url-request-formatter="remoteUrlRequestFn"
              remote-url-data-field="data"
              title-field="name"
              description-field="desc"
@@ -132,6 +133,13 @@
              input-class="form-control form-control-small"
              match-class="highlight"
         ></div>
+        <div class="result">
+          <span>Text acces scope: {{test}}</span>
+          <div ng-show="selectedObject">
+            {{selectedObject}}
+          </div>
+        </div>
+        </div>
         <!-- Right Menu -->
         <ul class="nav navbar-nav navbar-right">
           <!-- Change request -->

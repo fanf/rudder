@@ -1,29 +1,31 @@
+
 var quicksearch = angular.module('quicksearch', ["ngTouch", "angucomplete-ie8"]);
 
-quicksearch.controller('QuicksearchCtrl', ['$scope', '$http', '$rootScope', function QuicksearchCtrl($scope, $http, $rootScope) {
+quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope) {
 
-  $scope.setContextPath = function(path) {
-    $scope.contextPath = path;
+
+  $scope.test =  "test!!!";
+
+
+  $scope.selectedObject = function(selected) {
+    console.log("in selectedObject: " + selected.originalObject.name);
+    if(selected && selected.originalObject.url) {
+      eval(selected.originalObject.url);
+    } else {
+      //nothing
+    }
   }
 
-  $scope.getQuicksearchUrl = function() {
-    return "/rudder-web/secure/api/quicksearch/"
-  }
 
-  $scope.remoteUrlRequestFn = function(str) {
-    return {q: str};
-  };
-
-
-} ] );
+} );
 
 
 // Helper function to access from outside angular scope
-
-function initQuicksearchUrl(url) {
-  var scope = angular.element($("#quicksearch")).scope();
-  scope.$apply(function() {
-    scope.setContextPath(url);
-  });
-};
-
+//
+//function initQuicksearchUrl(url) {
+//  var scope = angular.element($("#quicksearch")).scope();
+//  scope.$apply(function() {
+//    scope.setContextPath(url);
+//  });
+//};
+//
