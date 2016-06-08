@@ -63,13 +63,7 @@ import com.normation.inventory.ldap.core.InventoryMapper
 import com.normation.inventory.ldap.core.LDAPConstants
 import com.normation.rudder.domain.nodes.MachineInfo
 import java.util.regex.Pattern
-import QuicksearchService.QuicksearchResult
-import com.normation.rudder.services.QuicksearchService.QRNodeId
-import com.normation.rudder.services.QuicksearchService.QuicksearchResultId
-import com.normation.rudder.services.QuicksearchService.QRRuleId
-import com.normation.rudder.services.QuicksearchService.QRDirectiveId
-import com.normation.rudder.services.QuicksearchService.QRGroupId
-import com.normation.rudder.services.QuicksearchService.QRParameterId
+import com.normation.rudder.services.QuicksearchService._
 
 /**
  * This class allow to return a list of Rudder object given a string.
@@ -139,7 +133,7 @@ class QuicksearchService(
         , AND(IS(OC_RUDDER_NODE_GROUP), Filter.create(s"entryDN:dnSubtreeMatch:=${  rudderDit.GROUP.dn.toString                }"))
         , AND(IS(OC_PARAMETER        ), Filter.create(s"entryDN:dnOneLevelMatch:=${ rudderDit.PARAMETERS.dn.toString           }"))
         ):_*)
-    ,   OR(attributes.map(a => MATCH(a, token)):_*)
+    ,   OR(attributes.map(a => SUB(a, null, Array(token), null )):_*)
     )
 
     con.search(nodeDit.BASE_DN, Sub, filter, (attributes :+ A_OC):_*)
@@ -176,10 +170,36 @@ class QuicksearchService(
                       } }
       id           <- getId(e)
     } yield {
-      println(s"name: '${e(A_NAME).getOrElse("")}': ${e}")
       //prefer hostname for nodes
       val name = e(A_HOSTNAME).orElse(e(A_NAME)).getOrElse(id.value)
-      QuicksearchResult(id, name, attr+":"+desc)
+
+      //limit description length to avoid having a whole file printed
+      val description = {
+        if(desc.size > 19) desc.take(16) + "..."
+        else               desc
+      }
+      //some attribute with better name:
+      val a = {
+        attr match {
+          case A_NODE_UUID | A_DIRECTIVE_UUID | A_NODE_GROUP_UUID | A_RULE_UUID => "id"
+          case A_NAME | A_PARAMETER_NAME=> "name"
+          case A_NODE_PROPERTY => "property"
+          case A_HOSTNAME => "hostname"
+          case A_LIST_OF_IP => "ip"
+          case A_SERVER_ROLE => "rudder role"
+          case A_ARCH => "arch"
+          case A_DIRECTIVE_VARIABLES => "parameter"
+          case A_PARAMETER_VALUE => "value"
+          case A_OS_NAME => "os name"
+          case A_OS_FULL_NAME => "os"
+          case A_OS_VERSION => "os version"
+          case A_OS_SERVICE_PACK => "os service pack"
+          case A_OS_KERNEL_VERSION => "os kernel version"
+          case x => x
+        }
+      }
+
+      QuicksearchResult(id, name, a+": "+description)
     }
   }
 
@@ -189,9 +209,8 @@ class QuicksearchService(
     } yield {
       val matches = toSearchResult(s"""(?i).*${token}.*""".r.pattern) _
       val results = getEntries(ldap, token).flatMap(matches(_))
-      println(s" ===> Found ${results.size} entries matchings search")
       //we can have duplicates ids, removes them
-      results.map(r => (r.id, r)).toMap.values.toSeq
+      results.map(r => (r.id, r)).toMap.values.toSeq.sortWith(sortQuicksearchResult)
     }
   }
 }
@@ -201,13 +220,13 @@ object QuicksearchService {
   // we defined a set of id type to be able to process specifically
   // these kinds in result
 
-  sealed trait QuicksearchResultId { def value: String }
+  sealed trait QuicksearchResultId { def value: String; def tpe: String; def order: Int }
 
-  final case class QRNodeId      (value: String) extends QuicksearchResultId
-  final case class QRGroupId     (value: String) extends QuicksearchResultId
-  final case class QRDirectiveId (value: String) extends QuicksearchResultId
-  final case class QRRuleId      (value: String) extends QuicksearchResultId
-  final case class QRParameterId (value: String) extends QuicksearchResultId
+  final case class QRNodeId      (value: String) extends QuicksearchResultId { override final val tpe = "node"     ; override final val order = 0 }
+  final case class QRGroupId     (value: String) extends QuicksearchResultId { override final val tpe = "group"    ; override final val order = 1 }
+  final case class QRDirectiveId (value: String) extends QuicksearchResultId { override final val tpe = "directive"; override final val order = 2 }
+  final case class QRRuleId      (value: String) extends QuicksearchResultId { override final val tpe = "rule"     ; override final val order = 3 }
+  final case class QRParameterId (value: String) extends QuicksearchResultId { override final val tpe = "parameter"; override final val order = 4 }
 
 
   final case class QuicksearchResult(
@@ -217,5 +236,15 @@ object QuicksearchService {
 
   )
 
+  // default sort for QuicksearchResult:
+  // - by type
+  // - then by name
+  def sortQuicksearchResult(a: QuicksearchResult, b: QuicksearchResult): Boolean = {
+    if(a.id.order == b.id.order) {
+      String.CASE_INSENSITIVE_ORDER.compare(a.name, b.name) <= 0
+    } else {
+      a.id.order <= b.id.order
+    }
+  }
 }
 

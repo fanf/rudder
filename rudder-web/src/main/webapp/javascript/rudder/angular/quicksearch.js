@@ -1,18 +1,15 @@
 
-var quicksearch = angular.module('quicksearch', ["ngTouch", "angucomplete-ie8"]);
+var quicksearch = angular.module('quicksearch', ["angucomplete-ie8"]);
 
 quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope) {
 
 
-  $scope.test =  "test!!!";
-
 
   $scope.selectedObject = function(selected) {
-    console.log("in selectedObject: " + selected.originalObject.name);
     if(selected && selected.originalObject.url) {
-      eval(selected.originalObject.url);
+      window.location = selected.originalObject.url;
     } else {
-      //nothing
+      return "";
     }
   }
 

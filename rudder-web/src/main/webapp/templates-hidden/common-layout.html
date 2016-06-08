@@ -87,9 +87,6 @@
       var bootstrapAffix = $.fn.affix.noConflict();
       var bootstrapModal = $.fn.modal.noConflict();
       $.fn.bsModal = bootstrapModal
-
-      //bootstrap quicksearch
-      $(document).ready(angular.bootstrap('#quicksearch', ['quicksearch']));
       // ]]>
     </script>
 
@@ -119,27 +116,6 @@
         <span class="lift:BootstrapMenu?linkToSelf=true;expandAll=true"></span>
         <!-- Quick Search -->
         <lift:QuickSearchNode.render />
-        <!-- Quick Search 2 -->
-        <div ng-app="quicksearch" id="quicksearch" ng-controller="QuicksearchCtrl">
-        <div angucomplete-ie8=""
-             placeholder="Search nodes, rules, directives, groups..."
-             maxlength="50" pause="500"
-             selected-object="selectedObject"
-             remote-url="api/quicksearch/"
-             remote-url-data-field="data"
-             title-field="name"
-             description-field="desc"
-             minlength="3"
-             input-class="form-control form-control-small"
-             match-class="highlight"
-        ></div>
-        <div class="result">
-          <span>Text acces scope: {{test}}</span>
-          <div ng-show="selectedObject">
-            {{selectedObject}}
-          </div>
-        </div>
-        </div>
         <!-- Right Menu -->
         <ul class="nav navbar-nav navbar-right">
           <!-- Change request -->

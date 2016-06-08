@@ -42,24 +42,23 @@ class RestQuicksearch (
     import com.normation.rudder.domain.nodes.NodeGroupId
     import com.normation.rudder.domain.parameters.ParameterName
     import com.normation.rudder.web.model.JsInitContextLinkUtil._
+    import net.liftweb.http.S
 
     def toJson(): JObject = {
-      val (tpe, url) = r.id match {
-        case _: QRNodeId      =>
-          ( "node", redirectToNodeLink(NodeId(r.id.value)).toJsCmd )
-        case _: QRRuleId      =>
-          ( "rule", redirectToRuleLink(RuleId(r.id.value)).toJsCmd )
-        case _: QRDirectiveId =>
-          ( "directive", redirectToDirectiveLink(DirectiveId(r.id.value)).toJsCmd )
-        case _: QRGroupId     =>
-          ( "group", redirectToGroupLink(NodeGroupId(r.id.value)).toJsCmd )
-        case _: QRParameterId =>
-          ( "parameter", redirectToGlobalParameterLink(ParameterName(r.id.value)).toJsCmd )
+      def enc(s: String) = S.encodeURL(s).encJs
+
+      val url = r.id match {
+        case QRNodeId(v)      => nodeLink(NodeId(v))
+        case QRRuleId(v)      => ruleLink(RuleId(v))
+        case QRDirectiveId(v) => directiveLink(DirectiveId(v))
+        case QRGroupId(v)     => groupLink(NodeGroupId(v))
+        case QRParameterId(v) => globalParameterLink(ParameterName(v))
       }
 
       (
           ( "name" -> r.name        )
-        ~ ( "type" -> tpe           )
+        ~ ( "type" -> r.id.tpe      )
+        ~ ( "id"   -> r.id.value    )
         ~ ( "desc" -> r.description )
         ~ ( "url"  -> url           )
       )

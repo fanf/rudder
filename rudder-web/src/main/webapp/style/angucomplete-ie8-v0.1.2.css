@@ -7,7 +7,7 @@
     border-width: 1px;
     border-style: solid;
     border-radius: 2px;
-    width: 250px;
+    width: 350px;
     padding: 6px;
     cursor: pointer;
     z-index: 9999;
@@ -17,6 +17,8 @@
     */
     margin-top: -6px;
     background-color: #ffffff;
+    overflow-y: scroll;
+    max-height: 500px;
 }
 
 .angucomplete-searching {
@@ -24,8 +26,13 @@
     font-size: 14px;
 }
 
+.angucomplete-title {
+    font-size: 13px;
+}
+
 .angucomplete-description {
-    font-size: 14px;
+    font-size: 12px;
+    font-weight: normal;
 }
 
 .angucomplete-row {
