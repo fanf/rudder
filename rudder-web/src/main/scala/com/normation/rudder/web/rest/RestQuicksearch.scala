@@ -20,22 +20,85 @@ class RestQuicksearch (
 ) extends RestHelper with Loggable {
 
 
+  final val MAX_RES_BY_KINd = 10
+
   serve {
     case Get("secure" :: "api" :: "quicksearch" :: token :: Nil, req) => {
 
-      val error: JsExp = "error"
-      def toJs(results: List[QuicksearchResult]): JValue = JArray(results.map(_.toJson))
-
       quicksearch.search(token) match {
-        case eb: EmptyBox  => JsonResponse(error               , Nil, Nil, RestError.code)
-        case Full(results) => toJsonResponse(None, toJs(results.toList))("quicksearch", false)
+
+        case eb: EmptyBox  =>
+          val e = eb ?~! s"Error when looking for object containing ${token}"
+          toJsonError(None, e.messageChain)("quicksearch", false)
+
+        case Full(results) =>
+          toJsonResponse(None, prepare(results, MAX_RES_BY_KINd))("quicksearch", false)
       }
 
     }
 
   }
 
-  private implicit class JsonSearchResult(r: QuicksearchResult) {
+  /**
+   * A function that will prepare results to be transfered to the browser:
+   * - split them by kind, so that we can add a summary by number for each
+   * - in each kind, sort by natural order on names,
+   * - for each kind, limit the number of element sent to the browser.
+   *   The user will be able to make more precises search if needed, and we avoid
+   *   crunching the browser with thousands of answers
+   */
+  private[this] def prepare(results: Seq[QuicksearchResult], maxByKind: Int): JValue = {
+
+    // group by kind, and build the summary for each
+    val map = results.groupBy( _.id.tpe ).map { case (tpe, seq) =>
+      //distinct by id:
+      val unique   = seq.map(x => (x.id, x) ).toMap.values.toSeq
+      val returned = unique.take(maxByKind)
+
+      val summary = ResultTypeSummary(tpe, unique.size, returned.size)
+
+      (tpe, (summary, returned))
+    }
+
+    // now, transformed to the wanted results: an array.
+    // hard coded order for elements:
+    // - nodes
+    // - groups
+    // - directives
+    // - parameters
+    // - rules
+
+    val jsonList = QuicksearchResultId.allTypes.flatMap { tpe =>
+      val (summary, res) = map.getOrElse(tpe, (ResultTypeSummary(tpe, 0,0), Seq()) )
+      summary.toJson :: res.toList.map( _.toJson )
+    }
+
+    JArray(jsonList)
+  }
+
+  private[this] final case class ResultTypeSummary(
+      tpe            : String
+    , originalNumber : Int
+    , returnedNumber : Int
+  )
+
+  private[this] implicit class JsonResultTypeSummary(t: ResultTypeSummary) {
+
+    val desc = if(t.originalNumber <= t.returnedNumber) {
+       s"${t.originalNumber} found"
+    } else { // we elided some results
+       s"${t.originalNumber} found, only displaying the ${t.returnedNumber} firsts. You should try a more precise query"
+    }
+
+    def toJson(): JObject = {
+      (
+          ("type"    -> t.tpe.capitalize)
+        ~ ("summary" -> desc            )
+      )
+    }
+  }
+
+  private[this] implicit class JsonSearchResult(r: QuicksearchResult) {
     import com.normation.inventory.domain.NodeId
     import com.normation.rudder.domain.policies.DirectiveId
     import com.normation.rudder.domain.policies.RuleId
@@ -43,6 +106,8 @@ class RestQuicksearch (
     import com.normation.rudder.domain.parameters.ParameterName
     import com.normation.rudder.web.model.JsInitContextLinkUtil._
     import net.liftweb.http.S
+    import com.normation.rudder.domain.RudderLDAPConstants._
+    import com.normation.inventory.ldap.core.LDAPConstants._
 
     def toJson(): JObject = {
       def enc(s: String) = S.encodeURL(s).encJs
@@ -55,12 +120,42 @@ class RestQuicksearch (
         case QRParameterId(v) => globalParameterLink(ParameterName(v))
       }
 
+      //some attribute with better name:
+      val a = {
+        r.attribute match {
+          case A_NODE_UUID | A_DIRECTIVE_UUID | A_NODE_GROUP_UUID | A_RULE_UUID => "id"
+          case A_NAME | A_PARAMETER_NAME=> "name"
+          case A_NODE_PROPERTY => "property"
+          case A_HOSTNAME => "hostname"
+          case A_LIST_OF_IP => "ip"
+          case A_SERVER_ROLE => "rudder role"
+          case A_ARCH => "arch"
+          case A_DIRECTIVE_VARIABLES => "parameter"
+          case A_PARAMETER_VALUE => "value"
+          case A_OS_NAME => "os name"
+          case A_OS_FULL_NAME => "os"
+          case A_OS_VERSION => "os version"
+          case A_OS_SERVICE_PACK => "os service pack"
+          case A_OS_KERNEL_VERSION => "os kernel version"
+          case x => x
+        }
+      }
+
+      //limit description length to avoid having a whole file printed
+      val v = {
+        val max = 30
+        if(r.value.size > max+3) r.value.take(max) + "..."
+        else                     r.value
+      }
+
+      val desc = s"${a}: ${v}"
+
       (
-          ( "name" -> r.name        )
-        ~ ( "type" -> r.id.tpe      )
-        ~ ( "id"   -> r.id.value    )
-        ~ ( "desc" -> r.description )
-        ~ ( "url"  -> url           )
+          ( "name" -> r.name     )
+        ~ ( "type" -> r.id.tpe   )
+        ~ ( "id"   -> r.id.value )
+        ~ ( "desc" -> desc       )
+        ~ ( "url"  -> url        )
       )
     }
   }

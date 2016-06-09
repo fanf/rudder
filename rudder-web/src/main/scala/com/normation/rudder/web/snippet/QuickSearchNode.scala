@@ -75,7 +75,7 @@ class QuickSearchNode extends DispatchSnippet with Loggable {
               ng-disabled="disableInput"
               type="text"
               placeholder="{{placeholder}}"
-              ng-focus="onFocusHandler()"
+              ng-focus="resetHideResults(); onFocusHandler()"
               class="{{inputClass}}"
               ng-blur="hideResults($event)"
               autocapitalize="off"
@@ -86,12 +86,17 @@ class QuickSearchNode extends DispatchSnippet with Loggable {
               <div class="angucomplete-searching" ng-show="searching" ng-bind="textSearching"></div>
               <div class="angucomplete-searching" ng-show={"!searching && (!results || results.length == 0)"} ng-bind="textNoResults"></div>
               <div class="angucomplete-row" ng-repeat="result in results" ng-click="selectResult(result)" ng-mouseenter="hoverRow($index)" ng-class="{'angucomplete-selected-row': $index == currentIndex}">
-                <div class="angucomplete-title">{{{{result.originalObject.type}}}}: {{{{result.originalObject.name}}}} <span style="font-weight: normal">[{{{{result.originalObject.id}}}}]</span></div>
-                <div ng-if={"matchClass && result.description && result.description != ''"} class="angucomplete-description" ng-bind-html="result.description"></div>
-                <div ng-if={"!matchClass && result.description && result.description != ''"} class="angucomplete-description">{{result.description}}</div>
-              </div>
-              <div class="angucomplete-row" ng-click="selectResult({title: searchStr, originalObject: { name: searchStr, custom: true }})" ng-mouseenter="hoverRow(results.length)" ng-class="{'angucomplete-selected-row': results.length == currentIndex}">
-                <div class="angucomplete-title">Select custom country '{{ searchStr }}'</div>
+                <div ng-if={"result.originalObject.name"} class="angucomplete-item">
+                  <div>
+                       <span class="angucomplete-title">{{{{result.originalObject.type}}}}: {{{{result.originalObject.name}}}}</span>
+                  </div>
+                  <div ng-if={"matchClass && result.description && result.description != ''"} class="angucomplete-description" ng-bind-html="result.description"></div>
+                  <div ng-if={"!matchClass && result.description && result.description != ''"} class="angucomplete-description">{{result.description}}</div>
+                </div>
+                <div ng-if={"result.originalObject.summary"} class="angucomplete-summary">
+                  <span class="angucomplete-title">{{{{result.originalObject.type}}}}</span>
+                  <span class="angucomplete-description">{{{{result.originalObject.summary}}}}</span>
+                </div>
               </div>
             </div>
           </div>

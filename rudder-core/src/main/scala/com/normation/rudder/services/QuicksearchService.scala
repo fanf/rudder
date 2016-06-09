@@ -173,36 +173,18 @@ class QuicksearchService(
       //prefer hostname for nodes
       val name = e(A_HOSTNAME).orElse(e(A_NAME)).getOrElse(id.value)
 
-      //limit description length to avoid having a whole file printed
-      val description = {
-        if(desc.size > 19) desc.take(16) + "..."
-        else               desc
-      }
-      //some attribute with better name:
-      val a = {
-        attr match {
-          case A_NODE_UUID | A_DIRECTIVE_UUID | A_NODE_GROUP_UUID | A_RULE_UUID => "id"
-          case A_NAME | A_PARAMETER_NAME=> "name"
-          case A_NODE_PROPERTY => "property"
-          case A_HOSTNAME => "hostname"
-          case A_LIST_OF_IP => "ip"
-          case A_SERVER_ROLE => "rudder role"
-          case A_ARCH => "arch"
-          case A_DIRECTIVE_VARIABLES => "parameter"
-          case A_PARAMETER_VALUE => "value"
-          case A_OS_NAME => "os name"
-          case A_OS_FULL_NAME => "os"
-          case A_OS_VERSION => "os version"
-          case A_OS_SERVICE_PACK => "os service pack"
-          case A_OS_KERNEL_VERSION => "os kernel version"
-          case x => x
-        }
-      }
-
-      QuicksearchResult(id, name, a+": "+description)
+      QuicksearchResult(id, name, attr, desc)
     }
   }
 
+
+
+  /**
+   * Search in nodes, groups, directives, rules, parameters for the object
+   * containing token.
+   * The results are raw: they are not sorted, and may be not unique for
+   * a given id (i.e, we can have to answer for the node id "root").
+   */
   def search(token: String): Box[Seq[QuicksearchResult]] = {
     for {
       ldap <- ldapConnection
@@ -210,30 +192,41 @@ class QuicksearchService(
       val matches = toSearchResult(s"""(?i).*${token}.*""".r.pattern) _
       val results = getEntries(ldap, token).flatMap(matches(_))
       //we can have duplicates ids, removes them
-      results.map(r => (r.id, r)).toMap.values.toSeq.sortWith(sortQuicksearchResult)
+      results
     }
   }
 }
 
 object QuicksearchService {
+  import QuicksearchResultId._
 
   // we defined a set of id type to be able to process specifically
   // these kinds in result
 
   sealed trait QuicksearchResultId { def value: String; def tpe: String; def order: Int }
 
-  final case class QRNodeId      (value: String) extends QuicksearchResultId { override final val tpe = "node"     ; override final val order = 0 }
-  final case class QRGroupId     (value: String) extends QuicksearchResultId { override final val tpe = "group"    ; override final val order = 1 }
-  final case class QRDirectiveId (value: String) extends QuicksearchResultId { override final val tpe = "directive"; override final val order = 2 }
-  final case class QRRuleId      (value: String) extends QuicksearchResultId { override final val tpe = "rule"     ; override final val order = 3 }
-  final case class QRParameterId (value: String) extends QuicksearchResultId { override final val tpe = "parameter"; override final val order = 4 }
+  final case class QRNodeId      (value: String) extends QuicksearchResultId { override final val tpe = nodeType     ; override final val order = 0 }
+  final case class QRGroupId     (value: String) extends QuicksearchResultId { override final val tpe = groupType    ; override final val order = 1 }
+  final case class QRDirectiveId (value: String) extends QuicksearchResultId { override final val tpe = directiveType; override final val order = 2 }
+  final case class QRRuleId      (value: String) extends QuicksearchResultId { override final val tpe = ruleType     ; override final val order = 3 }
+  final case class QRParameterId (value: String) extends QuicksearchResultId { override final val tpe = parameterType; override final val order = 4 }
 
+  object QuicksearchResultId {
+
+    val nodeType = "node"
+    val groupType = "group"
+    val directiveType = "directive"
+    val ruleType = "rule"
+    val parameterType = "parameter"
+
+    val allTypes = nodeType :: groupType :: directiveType :: parameterType :: ruleType :: Nil
+  }
 
   final case class QuicksearchResult(
-      id         : QuicksearchResultId // the uuid used to build url
-    , name       : String              // the user facing name
-    , description: String              // the part that matches the search
-
+      id       : QuicksearchResultId // the uuid used to build url
+    , name     : String              // the user facing name
+    , attribute: String              // the part that matches the search
+    , value    : String              // the value that matches the search
   )
 
   // default sort for QuicksearchResult:
