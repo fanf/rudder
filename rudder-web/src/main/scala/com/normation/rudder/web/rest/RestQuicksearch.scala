@@ -1,7 +1,5 @@
 package com.normation.rudder.web.rest
 
-import com.normation.rudder.services.QuicksearchService
-import com.normation.rudder.services.QuicksearchService._
 import com.normation.rudder.web.rest.RestUtils._
 
 import net.liftweb.common._
@@ -14,9 +12,32 @@ import net.liftweb.http.rest.RestHelper
 import net.liftweb.json.JArray
 import net.liftweb.json.JsonAST._
 import net.liftweb.json.JsonDSL._
+import com.normation.rudder.services.quicksearch.FullQuickSearchService
+import com.normation.rudder.services.quicksearch.QuickSearchResult
 
+
+/**
+ * A class for the Quicksearch rest endpoint.
+ *
+ * Internal Endpoint: /secure/api/quicksearch/${user_query}
+ * Where user_query is a parsable query:
+ * - it can be simple string, in that case the string is search exactly as entered
+ * - it always a partial (substring) search that is done
+ * - the string can contains some key:value parameters. All parameter are taken as AND
+ * - possible parameters are:
+ *   - restriction on type.
+ *     - Possible values defined in QSObject: node, group, directive, parameter, rule
+ *     - if not specified, each values are looked for
+ *     - ex: type:directive
+ *     - ex: type:rule,node
+ *     - ex: type:rule type:node
+ *   - restriction on attribute
+ *     - possible values defined in QSAttribute: nodeId, hostname, etc.
+ *     - ex: attribute:hostname,nodeId,ipAddresses
+ *
+ */
 class RestQuicksearch (
-  quicksearch: QuicksearchService
+  quicksearch: FullQuickSearchService
 ) extends RestHelper with Loggable {
 
 
@@ -47,15 +68,16 @@ class RestQuicksearch (
    *   The user will be able to make more precises search if needed, and we avoid
    *   crunching the browser with thousands of answers
    */
-  private[this] def prepare(results: Seq[QuicksearchResult], maxByKind: Int): JValue = {
+  private[this] def prepare(results: Set[QuickSearchResult], maxByKind: Int): JValue = {
+    import com.normation.rudder.services.quicksearch.QSObject
 
     // group by kind, and build the summary for each
-    val map = results.groupBy( _.id.tpe ).map { case (tpe, seq) =>
+    val map = results.groupBy( _.id.tpe ).map { case (tpe, set) =>
       //distinct by id:
-      val unique   = seq.map(x => (x.id, x) ).toMap.values.toSeq
+      val unique   = set.map(x => (x.id, x) ).toMap.values.toSeq
       val returned = unique.take(maxByKind)
 
-      val summary = ResultTypeSummary(tpe, unique.size, returned.size)
+      val summary = ResultTypeSummary(tpe.name, unique.size, returned.size)
 
       (tpe, (summary, returned))
     }
@@ -68,11 +90,14 @@ class RestQuicksearch (
     // - parameters
     // - rules
 
-    val jsonList = QuicksearchResultId.allTypes.flatMap { tpe =>
-      val (summary, res) = map.getOrElse(tpe, (ResultTypeSummary(tpe, 0,0), Seq()) )
-      summary.toJson :: res.toList.map( _.toJson )
+    val jsonList = QSObject.all.toList.flatMap { tpe =>
+      val (summary, res) = map.getOrElse(tpe, (ResultTypeSummary(tpe.name, 0,0), Seq()) )
+      if(res.isEmpty) {
+        Nil
+      } else {
+        summary.toJson :: res.toList.map( _.toJson )
+      }
     }
-
     JArray(jsonList)
   }
 
@@ -98,7 +123,7 @@ class RestQuicksearch (
     }
   }
 
-  private[this] implicit class JsonSearchResult(r: QuicksearchResult) {
+  private[this] implicit class JsonSearchResult(r: QuickSearchResult) {
     import com.normation.inventory.domain.NodeId
     import com.normation.rudder.domain.policies.DirectiveId
     import com.normation.rudder.domain.policies.RuleId
@@ -106,8 +131,8 @@ class RestQuicksearch (
     import com.normation.rudder.domain.parameters.ParameterName
     import com.normation.rudder.web.model.JsInitContextLinkUtil._
     import net.liftweb.http.S
-    import com.normation.rudder.domain.RudderLDAPConstants._
-    import com.normation.inventory.ldap.core.LDAPConstants._
+    import com.normation.rudder.services.quicksearch.QSAttribute._
+    import com.normation.rudder.services.quicksearch.QuickSearchResultId._
 
     def toJson(): JObject = {
       def enc(s: String) = S.encodeURL(s).encJs
@@ -120,27 +145,6 @@ class RestQuicksearch (
         case QRParameterId(v) => globalParameterLink(ParameterName(v))
       }
 
-      //some attribute with better name:
-      val a = {
-        r.attribute match {
-          case A_NODE_UUID | A_DIRECTIVE_UUID | A_NODE_GROUP_UUID | A_RULE_UUID => "id"
-          case A_NAME | A_PARAMETER_NAME=> "name"
-          case A_NODE_PROPERTY => "property"
-          case A_HOSTNAME => "hostname"
-          case A_LIST_OF_IP => "ip"
-          case A_SERVER_ROLE => "rudder role"
-          case A_ARCH => "arch"
-          case A_DIRECTIVE_VARIABLES => "parameter"
-          case A_PARAMETER_VALUE => "value"
-          case A_OS_NAME => "os name"
-          case A_OS_FULL_NAME => "os"
-          case A_OS_VERSION => "os version"
-          case A_OS_SERVICE_PACK => "os service pack"
-          case A_OS_KERNEL_VERSION => "os kernel version"
-          case x => x
-        }
-      }
-
       //limit description length to avoid having a whole file printed
       val v = {
         val max = 30
@@ -148,14 +152,14 @@ class RestQuicksearch (
         else                     r.value
       }
 
-      val desc = s"${a}: ${v}"
+      val desc = s"${r.attribute.map( _.name + ": ").getOrElse("")}{v}"
 
       (
-          ( "name" -> r.name     )
-        ~ ( "type" -> r.id.tpe   )
-        ~ ( "id"   -> r.id.value )
-        ~ ( "desc" -> desc       )
-        ~ ( "url"  -> url        )
+          ( "name" -> r.name        )
+        ~ ( "type" -> r.id.tpe.name )
+        ~ ( "id"   -> r.id.value    )
+        ~ ( "desc" -> desc          )
+        ~ ( "url"  -> url           )
       )
     }
   }
