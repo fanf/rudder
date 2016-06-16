@@ -54,6 +54,7 @@ import com.normation.rudder.repository.RoDirectiveRepository
 import com.unboundid.ldap.sdk.Filter
 
 import net.liftweb.common.Box
+import net.liftweb.common.Full
 
 
 /**
@@ -70,7 +71,12 @@ import net.liftweb.common.Box
 
 
 object QSDirectiveBackend {
-
+  import com.normation.rudder.repository.FullActiveTechnique
+  import com.normation.rudder.domain.policies.Directive
+  import com.normation.rudder.domain.policies.DirectiveId
+  import QSObject.{Directive => QSDirective }
+  import QSAttribute.{ DirectiveId => QSDirectiveId, _ }
+  import QuickSearchResultId.QRDirectiveId
 
   /*
    * The filter that allows to know if a couple (activeTechnique, directive) match
@@ -83,18 +89,83 @@ object QSDirectiveBackend {
    */
   def search(query: Query)(implicit repo: RoDirectiveRepository): Box[Set[QuickSearchResult]] = {
 
+    // only search if query is on Directives and attributes contains
+    // DirectiveId, DirectiveVarName, DirectiveVarValue, TechniqueName, TechniqueVersion
+
+    val attributes: Set[QSAttribute] = query.attributes.intersect(Set(
+        QSDirectiveId
+      , DirectiveVarName
+      , DirectiveVarValue
+      , TechniqueName
+      , TechniqueVersion
+      , Description
+      , ShortDescription
+      , LongDescription
+      , Name
+    ) )
 
 
-    for {
-      directiveLib <- repo.getFullDirectiveLibrary
-    } yield {
+    if(query.objectClass.contains(QSDirective) && attributes.nonEmpty) {
+      for {
+        directiveLib <- repo.getFullDirectiveLibrary
+      } yield {
+        (for {
+          (at, dir) <- directiveLib.allDirectives.values
+          attribute <- attributes
+        } yield {
+          attribute.find(at, dir, query.userToken)
+        }).flatten.toSet
+      }
+    } else {
+      Full(Set())
+    }
+  }
 
-      directiveLib.allDirectives.collect { case (id, (at, dir) ) =>
-        ???
+  implicit class QSAttributeFilter(a: QSAttribute) {
+    def find(at: FullActiveTechnique, dir: Directive, token: String): Option[QuickSearchResult] = {
+
+      val pattern = s""".*${token}.*""".r.pattern
+
+      val toMatch: Option[Set[String]] = a match {
+        case QSDirectiveId     => Some(Set(dir.id.value))
+        case DirectiveVarName  => Some(dir.parameters.keySet)
+        case DirectiveVarValue => Some(dir.parameters.values.flatten.toSet)
+        case TechniqueName     => Some(Set(at.techniqueName.toString))
+        case TechniqueVersion  => Some(Set(dir.techniqueVersion.toString))
+        case Description       => Some(Set(dir.shortDescription, dir.longDescription))
+        case ShortDescription  => Some(Set(dir.shortDescription))
+        case LongDescription   => Some(Set(dir.longDescription))
+        case Name              => Some(Set(dir.name))
+        case IsEnabled         => None
+        case NodeId            => None
+        case Fqdn              => None
+        case OsType            => None
+        case OsName            => None
+        case OsVersion         => None
+        case OsFullName        => None
+        case OsKernelVersion   => None
+        case OsServicePack     => None
+        case Arch              => None
+        case Ram               => None
+        case IpAddresses       => None
+        case PolicyServerId    => None
+        case Properties        => None
+        case RudderRoles       => None
+        case GroupId           => None
+        case IsDynamic         => None
+        case ParameterName     => None
+        case ParameterValue    => None
+      }
+
+      toMatch.flatMap { set => set.find( s => pattern.matcher(s).matches) }.map{ s =>
+        QuickSearchResult(
+            QRDirectiveId(dir.id.value)
+          , dir.name
+          , Some(a)
+          , s
+        )
       }
     }
-
-    ???
   }
 
 }

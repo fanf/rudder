@@ -64,6 +64,42 @@ object QSRegexQueryParser extends RegexParsers {
    *
    */
 
+  /*
+   * just call the parser on a value, and in case of successful parsing, interprete
+   * the resulting AST (seq of token)
+   */
+  def parse(value: String): Box[Query] = {
+    if(value.trim.isEmpty()) {
+      FailedBox("You can search with an empty or whitespace only query")
+    } else {
+      parseAll(all, value) match {
+        case NoSuccess(msg   , remaining) => FailedBox(s"""Error when parsing query "${value}", error message is: ${msg}""")
+        case Success  (parsed, remaining) => interprete(parsed)
+      }
+    }
+  }
+
+  /*
+   * The funny part that for each token add the interpretation of the token
+   * by composing interpretation function.
+   */
+  def interprete(parsed: (QueryString, List[Filter])): Box[Query] = {
+
+    parsed match {
+      case (EmptyQuery, _) =>
+        FailedBox("No query string was found (the query is only composed of whitespaces and filters)")
+
+      case (CharSeq(query), filters) =>
+        val objects    = filters.collect { case ObjectFilter   (set) => set }.flatten.toSet
+        val attributes = filters.collect { case AttributeFilter(set) => set }.flatten.toSet
+        for {
+          objs  <- getObjects(objects)
+          attrs <- getAttributes(attributes)
+        } yield {
+          Query(query, objs, attrs)
+        }
+    }
+  }
 
   /*
    * In our parser, whitespace are relevant, but only in the query string,
@@ -106,41 +142,47 @@ object QSRegexQueryParser extends RegexParsers {
    */
   type QF = (QueryString, List[Filter])
 
+  /////
   ///// this is the entry point /////
-  private[this] def all            : Parser[QF]          = ( nominal | onlyFilters )
+  /////
+
+  private[this] def all            : Parser[QF] = ( nominal | onlyFilters )
 
   /////
   ///// different structure of queries
   /////
 
   //degenerated case with only filters, no query string
-  private[this] def onlyFilters    : Parser[QF]          = ( filter.+ )                                ^^ { case f              => (EmptyQuery, f) }
+  private[this] def onlyFilters    : Parser[QF] = ( filter.+ )                     ^^ { case f              => (EmptyQuery, f) }
 
   //nonimal case: zero of more filter, a query string, zero or more filter
-  private[this] def nominal        : Parser[QF]          = ( filter.* ~ ( case0 | case1 )  )           ^^ { case ~(f1, (q, f2)) => (check(q), f1 ::: f2) }
+  private[this] def nominal        : Parser[QF] = ( filter.* ~ ( case0 | case1 ) ) ^^ { case ~(f1, (q, f2)) => (check(q), f1 ::: f2) }
 
   //need the two following rules so that so the parsing is correctly done for filter in the end
-  private[this] def case0          : Parser[QF]          = ( queryInMiddle ~ filter.+ )                ^^ { case ~(q, f)        => (check(q)  , f   ) }
-  private[this] def case1          : Parser[QF]          = ( queryAtEnd               )                ^^ { case q              => (check(q)  , Nil ) }
+  private[this] def case0          : Parser[QF] = ( queryInMiddle ~ filter.+ )     ^^ { case ~(q, f)        => (check(q)  , f   ) }
+  private[this] def case1          : Parser[QF] = ( queryAtEnd               )     ^^ { case q              => (check(q)  , Nil ) }
 
   /////
-  ///// simple elements: filters and query string
+  ///// simple elements: filters
   /////
 
   // deal with filters, either objects or attributes
-  private[this] def filter         : Parser[Filter]      = ( objectFilter | attributeFilter )
+  private[this] def filter         : Parser[Filter] = ( objectFilter | attributeFilter )
 
-  // a filter, with key words o
-  private[this] def objectFilter   : Parser[Filter]      = word("object")    ~> ":" ~> filterKey       ^^ { x => ObjectFilter   (Set(x)) }
-  private[this] def attributeFilter: Parser[Filter]      = word("attribute") ~> ":" ~> filterKey       ^^ { x => AttributeFilter(Set(x)) }
+  // a filter, with key words
+  private[this] def objectFilter   : Parser[Filter] = word("object")    ~> ":" ~> filterKey ^^ { x => ObjectFilter   (Set(x)) }
+  private[this] def attributeFilter: Parser[Filter] = word("attribute") ~> ":" ~> filterKey ^^ { x => AttributeFilter(Set(x)) }
+  // the key part
+  private[this] def filterKey      : Parser[String] = """[\-_a-zA-Z0-9]+""".r
 
+  /////
+  ///// simple elements: query string
+  /////
 
-  // and what the user is actually looking for. It means match "until" "attribute:" and "object:"
+  // we need to case, because regex are bad to look-ahead and see if there is still filter after
   private[this] def queryInMiddle  : Parser[QueryString] = """(?iums)(.+(?=(object:|attribute:)))""".r ^^ { x => CharSeq(x.trim) }
   private[this] def queryAtEnd     : Parser[QueryString] = """(?iums)(.+)""".r                         ^^ { x => CharSeq(x.trim) }
 
-  // the key part
-  private[this] def filterKey      : Parser[String] = """[\-_a-zA-Z0-9]+""".r
 
   /////
   ///// utility methods
@@ -168,43 +210,6 @@ object QSRegexQueryParser extends RegexParsers {
       } else {
         CharSeq(trimed)
       }
-  }
-
-  /*
-   * just call the parser on a value, and in case of successful parsing, interprete
-   * the resulting AST (seq of token)
-   */
-  def parse(value: String): Box[Query] = {
-    if(value.trim.isEmpty()) {
-      FailedBox("You can search with an empty or whitespace only query")
-    } else {
-      parseAll(all, value) match {
-        case NoSuccess(msg   , remaining) => FailedBox(s"""Error when parsing query "${value}", error message is: ${msg}""")
-        case Success  (parsed, remaining) => interprete(parsed)
-      }
-    }
-  }
-
-  /*
-   * The funny part that for each token add the interpretation of the token
-   * by composing interpretation function.
-   */
-  def interprete(parsed: QF): Box[Query] = {
-
-    parsed match {
-      case (EmptyQuery, _) =>
-        FailedBox("No query string was found (the query is only composed of whitespaces and filters)")
-
-      case (CharSeq(query), filters) =>
-        val objects    = filters.collect { case ObjectFilter   (set) => set }.flatten.toSet
-        val attributes = filters.collect { case AttributeFilter(set) => set }.flatten.toSet
-        for {
-          objs  <- getObjects(objects)
-          attrs <- getAttributes(attributes)
-        } yield {
-          Query(query, objs, attrs)
-        }
-    }
   }
 
 
