@@ -94,6 +94,9 @@ object QSRegexQueryParser extends RegexParsers {
 
   //// parsing language
 
+  //// does not work on empty/whitespace only string, forbid them before ////
+
+
   /*
    * We want to parse a string that:
    * - starts or/and ends with 0 or more filter
@@ -101,10 +104,47 @@ object QSRegexQueryParser extends RegexParsers {
    * - have a query string, which is in one piece, and is exactly parsed as it is (unicode, regex, etc)
    *   - in particular, regex must not be interpreted, because they are often use in groups
    */
-  private[this] def all: Parser[(QueryString, List[Filter])] = ( filter.* ~ ( queryString | emptyQueryString ) ~ filter.* ) ^^ {
-    case ~(~(f1, q), f2) => (q, f1 ::: f2)
-  }
+  type QF = (QueryString, List[Filter])
 
+  ///// this is the entry point /////
+  private[this] def all            : Parser[QF]          = ( nominal | onlyFilters )
+
+  /////
+  ///// different structure of queries
+  /////
+
+  //degenerated case with only filters, no query string
+  private[this] def onlyFilters    : Parser[QF]          = ( filter.+ )                                ^^ { case f              => (EmptyQuery, f) }
+
+  //nonimal case: zero of more filter, a query string, zero or more filter
+  private[this] def nominal        : Parser[QF]          = ( filter.* ~ ( case0 | case1 )  )           ^^ { case ~(f1, (q, f2)) => (check(q), f1 ::: f2) }
+
+  //need the two following rules so that so the parsing is correctly done for filter in the end
+  private[this] def case0          : Parser[QF]          = ( queryInMiddle ~ filter.+ )                ^^ { case ~(q, f)        => (check(q)  , f   ) }
+  private[this] def case1          : Parser[QF]          = ( queryAtEnd               )                ^^ { case q              => (check(q)  , Nil ) }
+
+  /////
+  ///// simple elements: filters and query string
+  /////
+
+  // deal with filters, either objects or attributes
+  private[this] def filter         : Parser[Filter]      = ( objectFilter | attributeFilter )
+
+  // a filter, with key words o
+  private[this] def objectFilter   : Parser[Filter]      = word("object")    ~> ":" ~> filterKey       ^^ { x => ObjectFilter   (Set(x)) }
+  private[this] def attributeFilter: Parser[Filter]      = word("attribute") ~> ":" ~> filterKey       ^^ { x => AttributeFilter(Set(x)) }
+
+
+  // and what the user is actually looking for. It means match "until" "attribute:" and "object:"
+  private[this] def queryInMiddle  : Parser[QueryString] = """(?iums)(.+(?=(object:|attribute:)))""".r ^^ { x => CharSeq(x.trim) }
+  private[this] def queryAtEnd     : Parser[QueryString] = """(?iums)(.+)""".r                         ^^ { x => CharSeq(x.trim) }
+
+  // the key part
+  private[this] def filterKey      : Parser[String] = """[\-_a-zA-Z0-9]+""".r
+
+  /////
+  ///// utility methods
+  /////
 
   //maches exaclty a name (case insensitive)
   //modifier: see http://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html
@@ -113,40 +153,43 @@ object QSRegexQueryParser extends RegexParsers {
   //s: match end of line in ".*" pattern
   //m: multi-lines mode
   //exactly quote s - no regex authorized in
-  private[this] def exact(s: String) = ("""(?iu)\Q""" + s + """\E""").r
+  private[this] def word(s: String) = ("""(?iu)\Q""" + s + """\E""").r
 
-  // deal with filters, either objects or attributes
-  private[this] def filter         : Parser[Filter] = ( objectFilter | attributeFilter )
-
-  // a filter
-  private[this] def objectFilter   : Parser[Filter] = exact("object")    ~> ":" ~> filterKey ^^ { x => ObjectFilter   (Set(x)) }
-  private[this] def attributeFilter: Parser[Filter] = exact("attribute") ~> ":" ~> filterKey ^^ { x => AttributeFilter(Set(x)) }
-
-  // the key part
-  private[this] def filterKey      : Parser[String] = """[\-_a-zA-Z0-9]+""".r
-
-  // and what the user is actually looking for.
-  private[this] def queryString     : Parser[QueryString] = """(?iums)(.*\S.*)""".r ^^ { x => CharSeq(x.trim) }
-  private[this] def emptyQueryString: Parser[QueryString] = """(?iums)(\s)*""" .r ^^^  { EmptyQuery }
-
+  /*
+   * Check that the query is not empty (else, say it is the EmptyQuery),
+   * and trimed it.
+   */
+  private[this] def check(qs: QueryString) = qs match {
+    case EmptyQuery => EmptyQuery
+    case CharSeq(s) =>
+      val trimed = s.trim
+      if(trimed.size <= 0) {
+        EmptyQuery
+      } else {
+        CharSeq(trimed)
+      }
+  }
 
   /*
    * just call the parser on a value, and in case of successful parsing, interprete
    * the resulting AST (seq of token)
    */
   def parse(value: String): Box[Query] = {
-    parseAll(all, value) match {
-      case NoSuccess(msg   , remaining) => FailedBox(s"""Error when parsing query "${value}", error message is: ${msg}""")
-      case Success  (parsed, remaining) => interprete(parsed)
+    if(value.trim.isEmpty()) {
+      FailedBox("You can search with an empty or whitespace only query")
+    } else {
+      parseAll(all, value) match {
+        case NoSuccess(msg   , remaining) => FailedBox(s"""Error when parsing query "${value}", error message is: ${msg}""")
+        case Success  (parsed, remaining) => interprete(parsed)
+      }
     }
   }
-
 
   /*
    * The funny part that for each token add the interpretation of the token
    * by composing interpretation function.
    */
-  def interprete(parsed: (QueryString, List[Filter])): Box[Query] = {
+  def interprete(parsed: QF): Box[Query] = {
 
     parsed match {
       case (EmptyQuery, _) =>

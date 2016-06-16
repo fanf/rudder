@@ -68,6 +68,10 @@ class QSRegexQueryParserTest extends Specification {
     }
   }
 
+  //// the query part must be ALWAYS trimed ////
+  /*
+   * if not, with """attribute:hostname foo""", we can't look for just "foo", always for " foo"
+   */
 
    //Test the component part
   "Bad queries" should {
@@ -94,9 +98,19 @@ class QSRegexQueryParserTest extends Specification {
   }
 
   "Queries with filter" should {
-    "works" in {
-      parse(" object:Directive object:RuLes attribute:ID here, the query attribute:descriptions").mustFull(
+    "on both sides works" in {
+      parse(" ObjEct:Directive objEct:RuLes atTribUte:displayName here, the query attribute:descriptions").mustFull(
           Query("here, the query", Set(Directive, Rule), Set(Description, Name))
+      )
+    }
+    "only at end works" in {
+      parse(" here, the query atTriBute:descriptions").mustFull(
+          Query("here, the query", Set(), Set(Description))
+      )
+    }
+    "only at starts works" in {
+      parse(" objeCt:Directive objEct:RuLes attributE:displayName here, the query ").mustFull(
+          Query("here, the query", Set(Directive, Rule), Set(Name))
       )
     }
   }
