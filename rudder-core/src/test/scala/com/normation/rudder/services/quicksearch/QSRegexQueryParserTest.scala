@@ -89,23 +89,27 @@ class QSRegexQueryParserTest extends Specification {
   "Simple queries" should {
     "give the exact same string, but trimed" in {
       val q = """ some node """
-      parse(q).mustFull(Query(q.trim, Set(), Set()))
+      parse(q).mustFull(Query(q.trim, QSObject.all, QSAttribute.all))
     }
     "give the exact same string, but trimed, even with regexp" in {
       val q = """ some.node[0-9]+.foo """
-      parse(q).mustFull(Query(q.trim, Set(), Set()))
+      parse(q).mustFull(Query(q.trim, QSObject.all, QSAttribute.all))
+    }
+    "give the exact same string, but trimed, even with part of rudder variable" in {
+      val q = """ /foo/${rudder. """
+      parse(q).mustFull(Query(q.trim, QSObject.all, QSAttribute.all))
     }
   }
 
   "Queries with filter" should {
     "on both sides works" in {
-      parse(" ObjEct:Directive objEct:RuLes atTribUte:displayName here, the query attribute:descriptions").mustFull(
-          Query("here, the query", Set(Directive, Rule), Set(Description, Name))
+      parse(" ObjEct:Directive objEct:RuLes atTribUte:displayName here, the query attribute:NodeId").mustFull(
+          Query("here, the query", Set(Directive, Rule), Set(NodeId, Name))
       )
     }
     "only at end works" in {
-      parse(" here, the query atTriBute:descriptions").mustFull(
-          Query("here, the query", Set(), Set(Description))
+      parse(" here, the query object:node atTriBute:descriptions").mustFull(
+          Query("here, the query", Set(Node), Set(Description, LongDescription, ShortDescription))
       )
     }
     "only at starts works" in {

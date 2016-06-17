@@ -96,7 +96,15 @@ object QSRegexQueryParser extends RegexParsers {
           objs  <- getObjects(objects)
           attrs <- getAttributes(attributes)
         } yield {
-          Query(query, objs, attrs)
+          /*
+           * we need to add all attributes and objects if
+           * sets are empty - the user just didn't provided any filters.
+           */
+          Query(
+              query
+            , if( objs.isEmpty) { QSObject.all    } else { objs  }
+            , if(attrs.isEmpty) { QSAttribute.all } else { attrs }
+          )
         }
     }
   }
@@ -179,9 +187,9 @@ object QSRegexQueryParser extends RegexParsers {
   ///// simple elements: query string
   /////
 
-  // we need to case, because regex are bad to look-ahead and see if there is still filter after
-  private[this] def queryInMiddle  : Parser[QueryString] = """(?iums)(.+(?=(object:|attribute:)))""".r ^^ { x => CharSeq(x.trim) }
-  private[this] def queryAtEnd     : Parser[QueryString] = """(?iums)(.+)""".r                         ^^ { x => CharSeq(x.trim) }
+  // we need to case, because regex are bad to look-ahead and see if there is still filter after. .+? necessary to stop at first filter
+  private[this] def queryInMiddle  : Parser[QueryString] = """(?iums)(.+?(?=(object:|attribute:)))""".r ^^ { x => CharSeq(x.trim) }
+  private[this] def queryAtEnd     : Parser[QueryString] = """(?iums)(.+)""".r                          ^^ { x => CharSeq(x.trim) }
 
 
   /////
@@ -214,23 +222,67 @@ object QSRegexQueryParser extends RegexParsers {
 
 
   /**
-   * Mapping between a string and actual (objects, attribute).
+   * Mapping between a string and actual objects.
    * We try to be kind with users: not case sensitive, not plural sensitive
    */
-  private[this] def toNamesMapping[T](set: Set[T], name: T => String): Map[String, T] = {
-    set.map { obj =>
-      val n = name(obj).toLowerCase
+  private[this] val objectNameMapping = {
+    QSObject.all.map { obj =>
+      val n = obj.name.toLowerCase
       (n -> obj) :: ( n + "s" -> obj) :: Nil
     }.flatten.toMap
   }
 
-  private[this] val objectNameMapping    = toNamesMapping[QSObject]   (QSObject.all   , _.name)
-  private[this] val attributeNameMapping = toNamesMapping[QSAttribute](QSAttribute.all, _.name)
-  private[this] def getMapping[T](names: Set[String], map: Map[String, T], possible: Seq[String]): Box[Set[T]] = {
+  /*
+   * For attributes, we want to be a little more lenient than for objects, and have:
+   * - several names mapping to the same attribute. Ex: both (id, nodeid) map to NodeId.
+   * - a name mapping to several attributes. Ex. description map to (Description, LongDescription, ShortDescription)
+   * - for all name, also have the plural
+   */
+  private[this] val attributeNameMapping = {
+    import QSAttribute._
+    //set of names by attribute
+    val descriptions = Set(Description, LongDescription, ShortDescription).map( _.name ) ++ Set("descriptions")
+    val attributeNames = QSAttribute.all.map { a => a match {
+      case Name              => (a, Set(Name.name, "name") )
+      case Description       => (a, descriptions)
+      case ShortDescription  => (a, descriptions)
+      case LongDescription   => (a, descriptions)
+      case IsEnabled         => (a, Set(IsEnabled.name, "enabled") )
+      case NodeId            => (a, Set(NodeId.name, "nodeid") )
+      case Fqdn              => (a, Set(Fqdn.name, "hostname") )
+      case OsType            => (a, Set(OsType.name, "ostype", "os"))
+      case OsName            => (a, Set(OsName.name, "osname", "os") ) //not also full name because osFullname contains osName, not the reverse
+      case OsVersion         => (a, Set(OsVersion.name, "osversion", "os") )
+      case OsFullName        => (a, Set(OsFullName.name, "osfullname", OsName.name, "osname", "os") )
+      case OsKernelVersion   => (a, Set(OsKernelVersion.name, "oskernelversion", "oskernel", "kernel", "version", "os") )
+      case OsServicePack     => (a, Set(OsServicePack.name, "osservicepack", "ossp", "sp", "servicepack", "os") )
+      case Arch              => (a, Set(Arch.name, "architecture", "arch") )
+      case Ram               => (a, Set(Ram.name, "memory") )
+      case IpAddresses       => (a, Set(IpAddresses.name, "ip", "ips", "networkips") )
+      case PolicyServerId    => (a, Set(PolicyServerId.name, "policyserver") )
+      case Properties        => (a, Set(Properties.name, "node.props", "nodeprops", "node.properties", "nodeproperties") )
+      case RudderRoles       => (a, Set(RudderRoles.name, "serverrole", "serverroles", "role", "roles") )
+      case GroupId           => (a, Set(GroupId.name, "groupid") )
+      case IsDynamic         => (a, Set(IsDynamic.name, "isdynamic") )
+      case DirectiveId       => (a, Set(DirectiveId.name, "directiveid") )
+      case DirectiveVarName  => (a, Set(DirectiveVarName.name, "directivevar", "parameter", "parameters", "variable", "variables") )
+      case DirectiveVarValue => (a, Set(DirectiveVarValue.name,"directivevalue", "parameter", "parameters", "variable", "variables") )
+      case TechniqueName     => (a, Set(TechniqueName.name, "technique", "techniqueid") )
+      case TechniqueVersion  => (a, Set(TechniqueVersion.name, "technique", "techniqueid", "version") )
+      case ParameterName     => (a, Set(ParameterName.name, "parametername", "paramname", "name", "parameter", "param") )
+      case ParameterValue    => (a, Set(ParameterValue.name, "parametervalue", "paramvalue", "value", "parameter", "param") )
+    } }
+
+    //given that mapping, build the map of name -> Set(attribute)
+    val byNames: Map[String, Set[(String, QSAttribute)]] = attributeNames.flatMap { case(a, names) => names.map( n => (n.toLowerCase,a) ) }.groupBy(_._1)
+    byNames.mapValues( _.map(_._2))
+  }
+
+  private[this] def getMapping[T](names: Set[String], map: Map[String, T]): Box[Set[T]] = {
     sequence(names.toSeq) { name =>
       map.get(name.toLowerCase) match {
         case Some(obj) => Full(obj)
-        case None      => FailedBox(s"Requested object type '${name}' is not known. Please choose among '${possible.mkString("', '")}'")
+        case None      => FailedBox(s"Requested object type '${name}' is not known. Please choose among '${map.keys.mkString("', '")}'")
       }
     }.map( _.toSet )
   }
@@ -241,7 +293,7 @@ object QSRegexQueryParser extends RegexParsers {
    * We try to be kind with users: not case sensitive, not plural sensitive
    */
   private[this] def getObjects(names: Set[String]): Box[Set[QSObject]] = {
-    getMapping(names, objectNameMapping, QSObject.all.map( _.name).toSeq.sorted)
+    getMapping(names, objectNameMapping)
   }
 
   /**
@@ -249,7 +301,7 @@ object QSRegexQueryParser extends RegexParsers {
    * We try to be kind with users: not case sensitive, not plural sensitive
    */
   private[this] def getAttributes(names: Set[String]): Box[Set[QSAttribute]] = {
-    getMapping(names, attributeNameMapping, QSAttribute.all.map( _.name).toSeq.sorted)
+    getMapping(names, attributeNameMapping).map( _.flatten )
   }
 
 

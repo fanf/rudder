@@ -124,7 +124,7 @@ object QSDirectiveBackend {
   implicit class QSAttributeFilter(a: QSAttribute) {
     def find(at: FullActiveTechnique, dir: Directive, token: String): Option[QuickSearchResult] = {
 
-      val pattern = s""".*${token}.*""".r.pattern
+      val pattern = s""".*${Pattern.quote(token)}.*""".r.pattern
 
       val toMatch: Option[Set[String]] = a match {
         case QSDirectiveId     => Some(Set(dir.id.value))
@@ -209,7 +209,7 @@ object QSLdapBackend {
 
         // transformat LDAPEntries to quicksearch results, keeping only the attribute
         // that matches the query on the result
-        val keepAttribute = s"""(?i).*${query.userToken}.*""".r.pattern
+        val keepAttribute = s"""(?i).*${Pattern.quote(query.userToken)}.*""".r.pattern
         entries.flatMap( _.toResult(keepAttribute))
       }
     }

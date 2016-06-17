@@ -152,7 +152,7 @@ class RestQuicksearch (
         else                     r.value
       }
 
-      val desc = s"${r.attribute.map( _.name + ": ").getOrElse("")}{v}"
+      val desc = s"${r.attribute.map( _.name + ": ").getOrElse("")}${v}"
 
       (
           ( "name" -> r.name        )
