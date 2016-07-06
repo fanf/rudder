@@ -138,71 +138,77 @@ class ReportDisplayer(
       val dateFormat = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss")
 
       def currentConfigId(expectedConfigInfo: NodeConfigIdInfo) = {
-        s"Current configuration ID for the node is '${expectedConfigInfo.configId.value}' (generated on ${expectedConfigInfo.creation.toString(dateFormat)})"
+        s"Current configuration ID for this node is '${expectedConfigInfo.configId.value}' (generated on ${expectedConfigInfo.creation.toString(dateFormat)})."
       }
 
       info match {
         case ComputeCompliance(lastRunDateTime, expectedConfigInfo, expirationDateTime, missingReportStatus) =>
           (
+            <p>This node has up to date policy and the agent is running. Reports below are from the latest run, which started on the node at {lastRunDateTime.toString(dateFormat)}.</p>
             <p>{currentConfigId(expectedConfigInfo)}.</p>
-            <p>Last complete agent run has correct configuration ID, started on node at {lastRunDateTime.toString(dateFormat)}.</p>
           )
 
         case Pending(expectedConfigInfo, optLastRun, expirationDateTime, missingReportStatus) =>
           val runInfo = optLastRun match {
-            case None => "No recent runs received for this node"
+            case None => "No recent reports have been received for this node. Check that the agent is running (run 'rudder agent check' on the node)."
             case Some((date, id)) =>
-              s"Last run for node started at ${date.toString(dateFormat)} for configuration ID ${id.configId.value} " +
               (id.endOfLife match {
-                case None => ""
-                case Some(exp) => s"which expired at ${exp.toString(dateFormat)}"
+                case None => s"This is expected, the node is reporting on the previous configuration policy and should report on the new one at latest ${expirationDateTime.toString(dateFormat)}. Previous known states are displayed below."
+                case Some(exp) => s"This is unexpected, since the node is reporting on a configuration policy that expired at ${exp.toString(dateFormat)}."
               })
+              + s" The latest reports received for this node are from a run started at ${date.toString(dateFormat)} with configuration ID ${id.configId.value}."
           }
           (
-            <p>{currentConfigId(expectedConfigInfo)}.</p>
-            <p>The node is expected to send a report for that configuration ID before {expirationDateTime.toString(dateFormat)} but no reports
-               have been received yet. If that state persists, check that the agent is running.</p>
+            <p>This node has recently been assigned a new policy but no reports have been received for the new policy yet.</p>
             <p>{runInfo}</p>
+            <p>{currentConfigId(expectedConfigInfo)}.</p>
           )
 
         case NoReportInInterval(expectedConfigInfo) =>
           (
+            <p>No recent reports have been received for this node in the grace period since the last configuration policy change. This is unexpected. Please check the status of the agent by running 'rudder agent health' on the node.</p>
             <p>{currentConfigId(expectedConfigInfo)}.</p>
-            <p>No recent runs were received for node, and the grace period to receive them expired.</p>
           )
 
         case NoRunNoExpectedReport =>
-          <p>No configuration ID and no run received for that node. It may have been accepted after the last policy regeneration.</p>
+          <p>This is a new node that does not yet have a configured policy. If a policy generation is in progress, this will apply to this node when it is done.</p>
 
         case NoExpectedReport(lastRunDateTime, lastRunConfigId) =>
           val configIdmsg = lastRunConfigId match {
-            case None     =>  "without any configuration ID, when one was required"
-            case Some(id) => s"with configuration ID '${id.value}' that is unknown in Rudder base"
+            case None     =>  "without a configuration ID, although one is required"
+            case Some(id) => s"with configuration ID '${id.value}' that is unknown to Rudder"
           }
 
-          <p>The node sent a run (started at {lastRunDateTime.toString(dateFormat)}) {configIdmsg}. Either that configuration ID was deleted from Rudder DB or
-             the node is sending a corrupted configuration ID. You should update node policies with "rudder agent update -f", and if the problem persists,
-             try to regenerate policies with the "clear cache" action.</p>
+          <p>This node has no configuration policy assigned to it, but reports have been received for it {configIdmsg} (run started at {lastRunDateTime.toString(dateFormat)}).
+             Either this node was deleted from Rudder but still has a running agent or the node is sending a corrupted configuration ID.
+             Please run "rudder agent update -f" on the node to force a policy update and, if the problem persists,
+             force a policy regeneration with the "Clear caches" button in Administration > Settings.</p>
 
         case UnexpectedVersion(lastRunDateTime, Some(lastRunConfigInfo), lastRunExpiration, expectedConfigInfo, expectedExpiration) =>
           (
-            <p>{currentConfigId(expectedConfigInfo)} but we received a run, started at {lastRunDateTime.toString(dateFormat)}, with a different configuration ID ({expectedConfigInfo.configId.value}).</p>
-            <p>The time since generation of the new configuration is longer than the grace period, so all received reports will be mark as unexpected.
-               Please check that the node is able to get its new policies by running 'rudder agent update' on the node.</p>
+            <p>This node is sending reports from an out-of-date configuration policy ({expectedConfigInfo.configId.value}, run started at {lastRunDateTime.toString(dateFormat)}).
+               Please check that the node is able to update it's policy by running 'rudder agent update' on the node.</p>
+            <p>{currentConfigId(expectedConfigInfo)}</p>
           )
 
         case UnexpectedNoVersion(lastRunDateTime, Some(lastRunConfigInfo), lastRunExpiration, expectedConfigInfo, expectedExpiration) =>
           (
-            <p>{currentConfigId(expectedConfigInfo)} but we received a run, started at {lastRunDateTime.toString(dateFormat)}, without any configuration ID.</p>
-            <p>The time since generation of the new configuration is longer than the grace period, so all received reports will be marked as unexpected.
-               Please check that the node is able to get its new policies.</p>
+            <p>This node is sending reports without a configuration ID (run started on the node at {lastRunDateTime.toString(dateFormat)}), although one is required.</p>
+            <p>All reports below will be marked as unexpected. Please run "rudder agent update -f" on the node to force a policy update.</p>
+            <p>{currentConfigId(expectedConfigInfo)}</p>
           )
 
         case UnexpectedUnknowVersion(lastRunDateTime, lastRunConfigId, expectedConfigInfo, expectedExpiration) =>
+          val configIdmsg = lastRunConfigId match {
+            case None     =>  "without a configuration ID, although one is required"
+            case Some(id) => s"with configuration ID '${id.value}' that is unknown to Rudder"
+          }
+
           (
-            <p>{currentConfigId(expectedConfigInfo)} but we received a run, started at {lastRunDateTime.toString(dateFormat)}, without any configuration ID.</p>
-            <p>The time since generation of the new configuration is longer than the grace period, so all received reports will be marked as unexpected.
-               Please check that the node is able to get its new policies.</p>
+            <p>{currentConfigId(expectedConfigInfo)} but we received a run, started at {lastRunConfigId}, without any configuration ID.</p>
+            <p>This node is sending reports from an unknown configuration policy ({configIdmsg}, run started at {lastRunDateTime.toString(dateFormat)}).
+               Please run "rudder agent update -f" on the node to force a policy update.</p>
+            <p>{currentConfigId(expectedConfigInfo)}</p>
           )
       }
 
@@ -234,11 +240,11 @@ class ReportDisplayer(
         } else {
           <p>{
             if(nbAttention > 0) {
-              s"There are ${nbAttention} out of ${report.compliance.total} reports that require attention"
+              s"${nbAttention} reports below (out of ${report.compliance.total} total reports) are not in Success, and may require attention."
             } else if(report.compliance.pc_pending > 0) {
-              "Policy update in progress"
+              "Policy update in progress..."
             } else {
-              "All the last execution reports for this server are ok"
+              "All reports received for this node are in Success."
             }
           }</p>
         }
