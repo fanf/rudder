@@ -14,7 +14,6 @@ quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $root
   }
  $scope.addFilterSearch = function(filter) {
     $('#searchInput').val($('#searchInput').val()+" in:" + filter);
-    console.log(filter);
   }
 
 } );
@@ -28,16 +27,16 @@ function initQuicksearchDocinfo(json) {
   });
   (function () {
     if($('.angucomplete-holder .input-group').offset().left==15){
-      $('.dropdown-search').offset({left : $('.angucomplete-holder .input-group').offset().left});
+      $('.dropdown-search.help').offset({left : $('.angucomplete-holder .input-group').offset().left});
     }else{
-      $('.dropdown-search').css('left','');
+      $('.dropdown-search.help').css('left','');
     }
   })();
   $(window).resize(function(){
     if($('.angucomplete-holder .input-group').offset().left==15){
-	  $('.dropdown-search').offset({left : $('.angucomplete-holder .input-group').offset().left});
+	  $('.dropdown-search.help').offset({left : $('.angucomplete-holder .input-group').offset().left});
     }else{
-	  $('.dropdown-search').css('left','');
+	  $('.dropdown-search.help').css('left','');
     }
   });
   $('#help-search').on('click', function (event) {

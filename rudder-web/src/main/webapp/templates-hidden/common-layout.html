@@ -123,7 +123,8 @@
           <script type="text/ng-template" id="/my-custom-template.html">
             <div class="angucomplete-holder" ng-class="{'angucomplete-dropdown-visible': showDropdown};">
               <div class="input-group">
-			    <input ng-model="searchStr"
+
+                <input ng-model="searchStr"
                   ng-disabled="disableInput"
                   type="text"
                   placeholder="{{placeholder}}"
@@ -136,23 +137,31 @@
                   autocomplete="off"
                   ng-change="inputChangeHandler(searchStr)"/>
 
-              <div class="angucomplete-dropdown" ng-show="showDropdown">
-                <div class="angucomplete-searching" ng-show="searching" ng-bind="textSearching"></div>
-                <div class="angucomplete-searching" ng-show="!searching && (!results || results.length == 0);" ng-bind="textNoResults"></div>
-                <div class="angucomplete-row" ng-repeat="result in results" ng-click="selectResult(result)" ng-mouseenter="hoverRow($index)" ng-class="{'angucomplete-selected-row': $index == currentIndex}">
+              <div class="angucomplete-dropdown dropdown-search panel-group" role="tablist" ng-show="showDropdown">
+                <div ng-if="searching || (!searching && (!results || results.length == 0));">
+                  <div class="angucomplete-searching" ng-show="searching" ng-bind="textSearching"></div>
+                  <div class="angucomplete-searching" ng-show="!searching && (!results || results.length == 0);" ng-bind="textNoResults"></div>
+                </div>
+                <div class="list-group-item" ng-repeat="result in results track by $index" ng-click="selectResult(result)" ng-class="{'title': result.originalObject.summary}">
                   <div ng-if="result.originalObject.name" class="angucomplete-item">
-                    <div>
-                       <span class="angucomplete-title">{{result.originalObject.type}}: {{result.originalObject.name}}</span>
-                    </div>
+                    <span class="angucomplete-title">{{result.originalObject.type}}: {{result.originalObject.name}}</span>
                     <div ng-if="matchClass && result.description && result.description != '';" class="angucomplete-description" ng-bind-html="result.description"></div>
                     <div ng-if="!matchClass && result.description && result.description != '';" class="angucomplete-description">{{result.description}}</div>
                   </div>
-                  <div ng-if="result.originalObject.summary" class="angucomplete-summary">
-                    <span class="angucomplete-title">{{result.originalObject.type}}</span>
-                    <span class="angucomplete-description">{{result.originalObject.summary}}</span>
+                  <div ng-if="result.originalObject.summary" class="panel-heading">
+                    <h4 class="panel-title">
+                      <a>
+                      {{result.originalObject.type}}
+                      <div class="angucomplete-description">{{result.originalObject.summary}}</div>
+                      </a>
+                    </h4>
+                  </div>
+                  <div ng-if="result[$index].originalObject.type.toUpperCase() != result[$index-1].originalObject.type.toUpperCase()">
+                    <div></div>
                   </div>
                 </div>
               </div>
+
 			  <div class="input-group-btn group-search">
 				<button type="button" class="btn btn-default help-search dropdown-toggle" id="help-search" aria-haspopup="true" aria-expanded="false">
 				  <span class="glyphicon glyphicon-question-sign"></span>
@@ -196,6 +205,7 @@
                   </div>
                 </ul>
               </div>
+
             </div>
           </div>
         </script>
