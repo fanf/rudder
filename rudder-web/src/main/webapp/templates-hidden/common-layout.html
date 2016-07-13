@@ -120,20 +120,22 @@
         <lift:QuickSearchNode.render>
 
           <div ng-app="quicksearch" id="quicksearch" ng-controller="QuicksearchCtrl" class="navbar-form navbar-left">
-
           <script type="text/ng-template" id="/my-custom-template.html">
             <div class="angucomplete-holder" ng-class="{'angucomplete-dropdown-visible': showDropdown};">
-              <input ng-model="searchStr"
-                ng-disabled="disableInput"
-                type="text"
-                placeholder="{{placeholder}}"
-                ng-focus="resetHideResults(); onFocusHandler()"
-                class="{{inputClass}}"
-                ng-blur="hideResults($event)"
-                autocapitalize="off"
-                autocorrect="off"
-                autocomplete="off"
-                ng-change="inputChangeHandler(searchStr)"/>
+              <div class="input-group">
+			    <input ng-model="searchStr"
+                  ng-disabled="disableInput"
+                  type="text"
+                  placeholder="{{placeholder}}"
+                  ng-focus="resetHideResults(); onFocusHandler()"
+                  id="searchInput"
+                  class="{{inputClass}}"
+                  ng-blur="hideResults($event)"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  autocomplete="off"
+                  ng-change="inputChangeHandler(searchStr)"/>
+
               <div class="angucomplete-dropdown" ng-show="showDropdown">
                 <div class="angucomplete-searching" ng-show="searching" ng-bind="textSearching"></div>
                 <div class="angucomplete-searching" ng-show="!searching && (!results || results.length == 0);" ng-bind="textNoResults"></div>
@@ -151,8 +153,52 @@
                   </div>
                 </div>
               </div>
+			  <div class="input-group-btn group-search">
+				<button type="button" class="btn btn-default help-search dropdown-toggle" id="help-search" aria-haspopup="true" aria-expanded="false">
+				  <span class="glyphicon glyphicon-question-sign"></span>
+			    </button>
+				<ul class="dropdown-menu dropdown-search dropdown-menu-right">
+				  <li class="dropdown-header">
+                    <div>
+                      Searh text in node informations, groups, directives, paramater and rules.
+                      You can filter results by looking only in a subset of objects or their attributes with the
+                      syntaxe "in:filter1,filter2,filter3", where "filterN" is chosen in the following names, case insentively (you
+                      can indeferently use aliases in brakets):
+              		</div>
+                  </li>
+                  <div class="dropdown-container">
+                    <div class="panel-group" role="tablist">
+	                  <div class="panel panel-default" ng-repeat="object in $parent.docinfo track by $index">
+                        <div class="panel-heading" role="tab" id="{{'group'+$index}}">
+                          <h4 class="panel-title">
+				            <a class="collapsed" role="button" data-toggle="collapse" href="{{'#listGroup'+$index}}" aria-expanded="false" aria-controls="{{'listGroup'+$index}}">
+                              <span class="glyphicon glyphicon-chevron-up"></span>
+					          {{object.name}}
+                              <button class="btn btn-default" ng-click="$parent.$parent.addFilterSearch(object.name);$event.stopPropagation();$event.preventDefault()">
+                                <span class="glyphicon glyphicon-plus-sign"></span>
+                              </button>
+				            </a>
+			              </h4>
+		                </div>
+		                <div id="{{'listGroup'+$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="{{'group'+$index}}" aria-expanded="false" style="height: 0px;">
+			              <ul class="list-group">
+      				        <li class="list-group-item" ng-repeat="attribute in object.attributes track by $index">
+                              <span>
+                                {{attribute.name}}
+                              </span>
+                              [<span class="angucomplete-description" ng-repeat="alias in attribute.aliases"><span>{{alias}}{{$index!=attribute.aliases.length-1 ? ', ' : ''}}</span></span>]
+							  <button class="btn btn-default" ng-click="$parent.$parent.$parent.addFilterSearch(attribute.name);"><span class="glyphicon glyphicon-plus-sign"></span></button>
+                            </li>
+			              </ul>
+		                </div>
+	                  </div>
+                    </div>      
+                  </div>
+                </ul>
+              </div>
             </div>
-          </script>
+          </div>
+        </script>
 
             <div id="angucomplete-ie8-quicksearch"
                  angucomplete-ie8=""
@@ -165,27 +211,24 @@
                  title-field="name"
                  description-field="desc"
                  minlength="3"
-                 input-class="form-control ac_input"
+                 input-class="form-control"
                  match-class="highlight"
-                 template-url="/my-custom-template.html"
-            >
+                 template-url="/my-custom-template.html">
             </div>
 
-          <div class="dropdown">
+          <div class="dropdown" style="display:none;">
             <a href="#" data-toggle="dropdown" class="dropdown-toggle">[?] <b class="caret"></b></a>
-
             <div class="dropdown-menu" style="height:500px; width:600px; overflow: scroll;">
-              <div>
+              <div ng-click="test('ok')">
                 Searh text in node informations, groups, directives, paramater and rules.
                 You can filter results by looking only in a subset of objects or their attributes with the
                 syntaxe "in:filter1,filter2,filter3", where "filterN" is chosen in the following names, case insentively (you
                 can indeferently use aliases in brakets):
               </div>
-
               <div ng-repeat="object in docinfo">
-                <div class="angucomplete-summary">{{object.name}}</div>
-                <ul ng-repeat="attribute in object.attributes">
-                  <li>
+                <ul>
+                  <li class="item-title">{{object.name}}</li>
+                  <li ng-repeat="attribute in object.attributes">
                     <span>{{attribute.name}}</span>
                     [<span class="angucomplete-description"  ng-repeat="alias in attribute.aliases"><span>{{alias}}, </span></span>]
                   </li>
@@ -193,6 +236,11 @@
               </div>
             </div>
           </div>
+          
+          
+          
+          
+          
           </div>
         </lift:QuickSearchNode.render>
         <!-- Right Menu -->
