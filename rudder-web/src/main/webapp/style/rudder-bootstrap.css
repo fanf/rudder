@@ -34,6 +34,11 @@
 *
 *************************************************************************************
 */
+@media (min-width: 768px){
+	.tw-bs .nav.navbar-nav:first-child > li:last-child{
+	  margin-right : 10px;	
+	}
+}
 
 .tw-bs .modal-header {
   background-color: #ee7f00;
