@@ -83,7 +83,7 @@
       var bootstrapTooltip = $.fn.tooltip.noConflict();
       var bootstrapPopover = $.fn.popover.noConflict();
       var bootstrapScrollspy = $.fn.scrollspy.noConflict();
-      var bootstrapTab = $.fn.tab.noConflict();
+      //var bootstrapTab = $.fn.tab.noConflict();
       var bootstrapAffix = $.fn.affix.noConflict();
       var bootstrapModal = $.fn.modal.noConflict();
       $.fn.bsModal = bootstrapModal
@@ -122,90 +122,144 @@
           <div ng-app="quicksearch" id="quicksearch" ng-controller="QuicksearchCtrl" class="navbar-form navbar-left">
           <script type="text/ng-template" id="/my-custom-template.html">
             <div class="angucomplete-holder" ng-class="{'angucomplete-dropdown-visible': showDropdown};">
-              <div class="input-group">
-
+              <div class="input-group group-search" ng-class="{'open':searchStr.length>0}">
+                <ul class="dropdown-menu dropdown-search dropdown-menu-right">
+                  <li class="dropdown-header">
+                    <div class="row no-margin">
+                      <div class="row no-margin info-messages">
+                        <div class="angucomplete-searching" ng-show="((3 > searchStr.length)&&(results.length == 0)) || !searchStr;">
+                          The field size must be greater than 2 characters
+                        </div>
+                        <div ng-if="searching || (!searching && (!results || results.length == 0));">
+                          <div class="angucomplete-searching" ng-show="searching && searchStr.length > 2; " ng-bind="textSearching"></div>
+                          <div class="angucomplete-searching text-danger" ng-show="!searching && (!results || results.length == 0) && (searchStr.length > 2);" ng-bind="textNoResults"></div>
+                        </div>
+                      </div>
+                      <div class="row" id="search-tab">
+                        <button class="btn btn-default" id="toggleDoc">Help <span class="glyphicon glyphicon-question-sign"></span></button>
+                        <div class="filter-search col-xs-12">
+                          <div class="panel panel-default panel-help">
+                            <div class="panel-heading">
+                              <h4 class="panel-title">Filters</h4>
+                            </div>
+                            <div class="panel-body">
+                              <div class="btn-toolbar" role="toolbar">
+                                <div class="btn-group group-all" data-toggle="buttons">
+                                  <label for="filter-all" class="btn btn-default" ng-click="$parent.checkFilter($event, true,$parent.filter.all,'all');" ng-class="{active : $parent.filter.all || (!$parent.filter.directive && !$parent.filter.group && !$parent.filter.node && !$parent.filter.parameter && !$parent.filter.rule)};">
+                                    <input type="radio" id="filter-all" checked="true" ng-checked="$parent.filter.all || (!$parent.filter.directive && !$parent.filter.group && !$parent.filter.node && !$parent.filter.parameter && !$parent.filter.rule);"/>All
+                                  </label>
+                                </div>
+				                <div class="btn-group group-filters" data-toggle="buttons">
+                                  <label for="filter-directive" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.directive,'directive');">
+                                    <input id="filter-directive" type="checkbox" ng-model="$parent.filter.directive"/> Directive
+                                  </label>
+                                  <label for="filter-group" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.group,'group');">
+                                    <input id="filter-group" type="checkbox" autocomplete="off" ng-model="$parent.filter.group"/> Group
+                                  </label>
+                                  <label for="filter-node" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.node,'node');">
+                                    <input id="filter-node" type="checkbox" autocomplete="off" ng-model="$parent.filter.node"/> Node
+                                  </label>
+                                  <label for="filter-parameter" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.parameter,'parameter');">
+                                    <input id="filter-parameter" type="checkbox" autocomplete="off" ng-model="$parent.filter.parameter"/> Parameter
+                                  </label>
+                                  <label for="filter-rule" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.rule,'rule');">
+                                    <input id="filter-rule" type="checkbox" autocomplete="off" ng-model="$parent.filter.rule"/> Rule
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                          <div class="panel-group dropdown-container col-xs-12">
+                            <div class="angucomplete-dropdown dropdown-search " role="tablist">
+                              <div class="panel panel-default" ng-repeat="result in results | getResults:$parent track by $index">
+                                <div>
+                                  <div class="panel-heading" role="tab" id="{{'resultGroup'+$index}}">
+                                    <h4 class="panel-title">
+                                      <a class="collapsed" role="button" data-toggle="collapse" href="#{{'result'+$index}}" aria-expanded="false" aria-controls="{{'resultGroup'+$index}}">
+                                        <span class="glyphicon glyphicon-chevron-right"></span>
+					                    {{result[0].originalObject.type}}
+                                        <div class="angucomplete-description">{{result[0].originalObject.summary}}</div>
+                                      </a>
+			                        </h4>
+                                  </div>
+                                  <div id="{{'result'+$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="{{'result'+$index}}" aria-expanded="false" style="height: 0px;">
+			                        <ul class="list-group">
+                                      <li class="list-group-item" ng-repeat="object in result[1]"  ng-click="selectResult(object)">
+                                        <span>
+                                          {{object.originalObject.name}}
+                                        </span>
+                                        <div ng-if="matchClass && object.description && object.description != '';" class="angucomplete-description" ng-bind-html="object.description"></div>
+                                        <div ng-if="!matchClass && object.description && object.description != '';" class="angucomplete-description">{{object.description}}</div>
+                                      </li>
+			                        </ul>
+		                          </div>
+		                        </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="row hidden" id="info-tab">
+                          <button class="btn btn-default" id="toggleResult">
+                            Results
+                            <span class="glyphicon glyphicon-share-alt"></span>
+                          </button>
+                          <div class="col-xs-12">
+                            <div class="panel panel-default panel-help">
+                              <div class="panel-heading">
+                                <h4 class="panel-title">
+                                  Help
+                                </h4>
+                              </div>
+                              <div class="panel-body text-search">
+                                Searh text in node informations, groups, directives, paramater and rules.
+                                You can filter results by looking only in a subset of objects or their attributes with the
+                                syntaxe "in:filter1,filter2,filter3", where "filterN" is chosen in the following names, case insentively (you
+                                can indeferently use aliases in brakets):
+                              </div>
+                            </div>
+                          </div>
+                          <div class="panel-group col-xs-12 dropdown-container" role="tablist">
+	                        <div class="panel panel-default" ng-repeat="object in $parent.docinfo | orderBy:'name' track by $index">
+                              <div class="panel-heading" role="tab" id="{{'group'+$index}}">
+                                <h4 class="panel-title">
+				                  <a class="collapsed" role="button" data-toggle="collapse" href="{{'#listGroup'+$index}}" aria-expanded="false" aria-controls="{{'listGroup'+$index}}">
+                                    <span class="glyphicon glyphicon-chevron-right"></span>
+					                {{object.name}}
+				                  </a>
+			                    </h4>
+		                      </div>
+		                      <div id="{{'listGroup'+$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="{{'group'+$index}}" aria-expanded="false" style="height: 0px;">
+			                    <ul class="list-group">
+                                  <li class="list-group-item" ng-repeat="attribute in object.attributes track by $index">
+                                    <span>
+                                      {{attribute.name}}
+                                    </span>
+                                    [<span class="angucomplete-description" ng-repeat="alias in attribute.aliases"><span>{{alias}}{{$index!=attribute.aliases.length-1 ? ', ' : ''}}</span></span>]
+                                  </li>
+			                    </ul>
+		                      </div>
+	                        </div>
+                          </div>
+                        </div>
+                    </div>
+                  </li>
+                </ul>
                 <input ng-model="searchStr"
                   ng-disabled="disableInput"
                   type="text"
+                  value=""
                   placeholder="{{placeholder}}"
                   ng-focus="resetHideResults(); onFocusHandler()"
                   id="searchInput"
                   class="{{inputClass}}"
-                  ng-blur="hideResults($event)"
                   autocapitalize="off"
                   autocorrect="off"
                   autocomplete="off"
-                  ng-change="inputChangeHandler(searchStr)"/>
-
-              <div class="angucomplete-dropdown dropdown-search panel-group" role="tablist" ng-show="showDropdown">
-                <div ng-if="searching || (!searching && (!results || results.length == 0));">
-                  <div class="angucomplete-searching" ng-show="searching" ng-bind="textSearching"></div>
-                  <div class="angucomplete-searching" ng-show="!searching && (!results || results.length == 0);" ng-bind="textNoResults"></div>
-                </div>
-                <div class="list-group-item" ng-repeat="result in results track by $index" ng-click="selectResult(result)" ng-class="{'title': result.originalObject.summary}">
-                  <div ng-if="result.originalObject.name" class="angucomplete-item">
-                    <span class="angucomplete-title">{{result.originalObject.type}}: {{result.originalObject.name}}</span>
-                    <div ng-if="matchClass && result.description && result.description != '';" class="angucomplete-description" ng-bind-html="result.description"></div>
-                    <div ng-if="!matchClass && result.description && result.description != '';" class="angucomplete-description">{{result.description}}</div>
-                  </div>
-                  <div ng-if="result.originalObject.summary" class="panel-heading">
-                    <h4 class="panel-title">
-                      <a>
-                      {{result.originalObject.type}}
-                      <div class="angucomplete-description">{{result.originalObject.summary}}</div>
-                      </a>
-                    </h4>
-                  </div>
-                  <div ng-if="result[$index].originalObject.type.toUpperCase() != result[$index-1].originalObject.type.toUpperCase()">
-                    <div></div>
-                  </div>
-                </div>
+                  ng-change="inputChangeHandler(searchStr);$parent.refreshFilterSearch(searchStr)"/>
+			  <div class="input-group-btn">
+                <span ng-class="{noRemove:!searchStr}" class="input-group-addon" id="help-search"><span ng-click="$parent.setValueSearchInput('');$parent.refreshFilterSearch(searchStr);" class="glyphicon glyphicon-remove"></span></span>
               </div>
-
-			  <div class="input-group-btn group-search">
-				<button type="button" class="btn btn-default help-search dropdown-toggle" id="help-search" aria-haspopup="true" aria-expanded="false">
-				  <span class="glyphicon glyphicon-question-sign"></span>
-			    </button>
-				<ul class="dropdown-menu dropdown-search dropdown-menu-right">
-				  <li class="dropdown-header">
-                    <div>
-                      Searh text in node informations, groups, directives, paramater and rules.
-                      You can filter results by looking only in a subset of objects or their attributes with the
-                      syntaxe "in:filter1,filter2,filter3", where "filterN" is chosen in the following names, case insentively (you
-                      can indeferently use aliases in brakets):
-              		</div>
-                  </li>
-                  <div class="dropdown-container">
-                    <div class="panel-group" role="tablist">
-	                  <div class="panel panel-default" ng-repeat="object in $parent.docinfo track by $index">
-                        <div class="panel-heading" role="tab" id="{{'group'+$index}}">
-                          <h4 class="panel-title">
-				            <a class="collapsed" role="button" data-toggle="collapse" href="{{'#listGroup'+$index}}" aria-expanded="false" aria-controls="{{'listGroup'+$index}}">
-                              <span class="glyphicon glyphicon-chevron-up"></span>
-					          {{object.name}}
-                              <button class="btn btn-default" ng-click="$parent.$parent.addFilterSearch(object.name);$event.stopPropagation();$event.preventDefault()">
-                                <span class="glyphicon glyphicon-plus-sign"></span>
-                              </button>
-				            </a>
-			              </h4>
-		                </div>
-		                <div id="{{'listGroup'+$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="{{'group'+$index}}" aria-expanded="false" style="height: 0px;">
-			              <ul class="list-group">
-      				        <li class="list-group-item" ng-repeat="attribute in object.attributes track by $index">
-                              <span>
-                                {{attribute.name}}
-                              </span>
-                              [<span class="angucomplete-description" ng-repeat="alias in attribute.aliases"><span>{{alias}}{{$index!=attribute.aliases.length-1 ? ', ' : ''}}</span></span>]
-							  <button class="btn btn-default" ng-click="$parent.$parent.$parent.addFilterSearch(attribute.name);"><span class="glyphicon glyphicon-plus-sign"></span></button>
-                            </li>
-			              </ul>
-		                </div>
-	                  </div>
-                    </div>      
-                  </div>
-                </ul>
-              </div>
-
             </div>
           </div>
         </script>
@@ -225,32 +279,6 @@
                  match-class="highlight"
                  template-url="/my-custom-template.html">
             </div>
-
-          <div class="dropdown" style="display:none;">
-            <a href="#" data-toggle="dropdown" class="dropdown-toggle">[?] <b class="caret"></b></a>
-            <div class="dropdown-menu" style="height:500px; width:600px; overflow: scroll;">
-              <div ng-click="test('ok')">
-                Searh text in node informations, groups, directives, paramater and rules.
-                You can filter results by looking only in a subset of objects or their attributes with the
-                syntaxe "in:filter1,filter2,filter3", where "filterN" is chosen in the following names, case insentively (you
-                can indeferently use aliases in brakets):
-              </div>
-              <div ng-repeat="object in docinfo">
-                <ul>
-                  <li class="item-title">{{object.name}}</li>
-                  <li ng-repeat="attribute in object.attributes">
-                    <span>{{attribute.name}}</span>
-                    [<span class="angucomplete-description"  ng-repeat="alias in attribute.aliases"><span>{{alias}}, </span></span>]
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          
-          
-          
-          
           </div>
         </lift:QuickSearchNode.render>
         <!-- Right Menu -->
