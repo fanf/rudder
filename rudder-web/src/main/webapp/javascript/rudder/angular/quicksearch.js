@@ -15,14 +15,21 @@ quicksearch.filter("getResults", function(){
         }
       }
       scope.results = categories;
+      scope.getNumResults();
     }
     return scope.results;
   }
 });
 quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $rootScope) {
+  $scope.strBaseSearch='';
   $scope.results;
-  $scope.filter = {"all":true,"directive":false,"group":false,"node":false,"rule":false,"parameter":false};
-
+  $scope.filter = {"all":{activated:true,nbResults:0}
+                  ,"directive":{activated:false,nbResults:0}
+                  ,"group":{activated:false,nbResults:0}
+                  ,"node":{activated:false,nbResults:0}
+                  ,"rule":{activated:false,nbResults:0}
+                  ,"parameter":{activated:false,nbResults:0}
+                  };
   $scope.setFocus = function(selector){
     $(selector).focus();
   };
@@ -40,14 +47,14 @@ quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $root
     $scope.autoCompleteScope = angular.element("#searchInput").scope();
     $scope.autoCompleteScope.searchStr=value;
     $('#searchInput').val(value);
-    $scope.setFocus('#searchInput');
+    $scope.setFocus('strBaseSearch#searchInput');
     $('#searchInput').trigger('keyup');
   }
   $scope.getValueSearchInput = function (){
     return $('#searchInput').val();
   }
   $scope.addFilter = function(filter) {
-    $scope.filter[filter]=true;
+    $scope.filter[filter].activated=true;
     $scope.setValueSearchInput($scope.getValueSearchInput()+" in:" + filter);
   }
   $scope.removeFilters = function(filters) {
@@ -56,7 +63,7 @@ quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $root
     var regexpB;
     var newVal = $scope.getValueSearchInput();
     for(var i=0 ; i<filters.length ; i++){
-      $scope.filter[filters[i]]=false;
+      $scope.filter[filters[i]].activated=false;
       regExpString = 'in:\\s*'+filters[i]+'\\s*,\\s*';
       regexpA = new RegExp(regExpString , "gi");
       regExpString = '((in:\\s*'+filters[i]+'\\s*)|(,'+filters[i]+'))';
@@ -70,11 +77,11 @@ quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $root
     $scope.setValueSearchInput(newVal.trim());
   }
   $scope.activeFilter = function(filter) {
-    $scope.filter[filter]=true;
+    $scope.filter[filter].activated=true;
     $('#filter-'+filter).parent().addClass('active');
   }
   $scope.desactiveFilter = function(filter) {
-    $scope.filter[filter]=false;
+    $scope.filter[filter].activated=false;
     $('#filter-'+filter).parent().removeClass('active');
   }
   $scope.refreshFilterSearch = function(inputField) {
@@ -90,22 +97,23 @@ quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $root
         $scope.desactiveFilter(filter);
       }
     }
+    
   }
   $scope.checkFilter =function(event, isAll,isChecked,filterName){
     if(isAll){
       $('.group-filters .active').removeClass('active');
       for(filter in $scope.filter){
         if(filter=='all'){
-          $scope.filter[filter]=true;
+          $scope.filter[filter].activated=true;
         }else{
-          $scope.filter[filter]=false;
+          $scope.filter[filter].activated=false;
         }
       }
       var properties = Object.getOwnPropertyNames($scope.filter);
       $scope.removeFilters(properties);
     }else{
       $('.group-all .active').removeClass('active');
-      $scope.filter.all=false;
+      $scope.filter.all.activated=false;
       if(!isChecked){
         $scope.addFilter(filterName);
       }else{
@@ -113,6 +121,31 @@ quicksearch.controller('QuicksearchCtrl', function QuicksearchCtrl($scope, $root
       }
     }
   }
+  $scope.getNumResults = function(){
+    var num;
+    var result;
+    var strRegExp = '((\\s*in:\\s*((directive)|(group)|(node)|(parameter)|(rule))+\\s*,*\\s*)|(,\\s*((directive)|(group)|(node)|(parameter)|(rule))+\\s*))';
+  	var regexp = new RegExp(strRegExp , "gi");
+  	var baseSearch = $('#searchInput').val().replace(regexp, '');
+  	
+  	//Si il n'y a pas de filtre
+  	if((($('#searchInput').val().match(regexp))&&(baseSearch.toUpperCase()!==$scope.strBaseSearch.toUpperCase()))||(!$('#searchInput').val().match(regexp))){
+  	  $scope.strBaseSearch = baseSearch;
+      $scope.filter.all.nbResults = 0;
+      for(filter in $scope.filter){
+        result = $scope.results.hasOwnProperty(filter) ? $scope.results[filter] : false;
+        if(result){
+          num = result[0].originalObject.numbers;
+        }else{
+          num = 0;
+        }
+        $scope.filter.all.nbResults += num;
+        $scope.filter[filter].nbResults = num;
+      }
+    //Si il y a des filtres
+  	}
+  }
+
   $scope.noSearch = function() {
     return $scope.searchStr.length<1;
   }

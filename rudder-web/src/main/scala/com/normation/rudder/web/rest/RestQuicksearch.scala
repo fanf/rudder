@@ -120,6 +120,7 @@ class RestQuicksearch (
       (
           ("type"    -> t.tpe.capitalize)
         ~ ("summary" -> desc            )
+        ~ ("numbers" -> t.originalNumber )
       )
     }
   }

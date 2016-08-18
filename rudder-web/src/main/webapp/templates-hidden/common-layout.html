@@ -72,6 +72,7 @@
     <script type="text/javascript" src="/bootstrap-3.2.0-dist/js/bootstrap.js" />
     <link type="text/css" rel="stylesheet" href="/bootstrap-3.2.0-dist/css/tw-bs-bootstrap.css" media="screen" />
     <link type="text/css" rel="stylesheet" href="/style/rudder-bootstrap.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/rudder-quicksearch.css" media="screen" />
     <link type="text/css" rel="stylesheet" href="/style/bootstrap-rudder-bridge.css" media="screen" />
 
     <script type="text/javascript">
@@ -126,79 +127,85 @@
                 <ul class="dropdown-menu dropdown-search dropdown-menu-right">
                   <li class="dropdown-header">
                     <div class="row no-margin">
-                      <div class="row no-margin info-messages">
-                        <div class="angucomplete-searching" ng-show="((3 > searchStr.length)&&(results.length == 0)) || !searchStr;">
-                          The field size must be greater than 2 characters
-                        </div>
-                        <div ng-if="searching || (!searching && (!results || results.length == 0));">
-                          <div class="angucomplete-searching" ng-show="searching && searchStr.length > 2; " ng-bind="textSearching"></div>
-                          <div class="angucomplete-searching text-danger" ng-show="!searching && (!results || results.length == 0) && (searchStr.length > 2);" ng-bind="textNoResults"></div>
-                        </div>
-                      </div>
                       <div class="row" id="search-tab">
-                        <button class="btn btn-default" id="toggleDoc">Help <span class="glyphicon glyphicon-question-sign"></span></button>
                         <div class="filter-search col-xs-12">
                           <div class="panel panel-default panel-help">
-                            <div class="panel-heading">
-                              <h4 class="panel-title">Filters</h4>
-                            </div>
-                            <div class="panel-body">
-                              <div class="btn-toolbar" role="toolbar">
+                            <div class="panel-heading heading-search">
+                              <h4 class="panel-title">Type</h4>
+                                <div class="btn-toolbar" role="toolbar">
                                 <div class="btn-group group-all" data-toggle="buttons">
-                                  <label for="filter-all" class="btn btn-default" ng-click="$parent.checkFilter($event, true,$parent.filter.all,'all');" ng-class="{active : $parent.filter.all || (!$parent.filter.directive && !$parent.filter.group && !$parent.filter.node && !$parent.filter.parameter && !$parent.filter.rule)};">
-                                    <input type="radio" id="filter-all" checked="true" ng-checked="$parent.filter.all || (!$parent.filter.directive && !$parent.filter.group && !$parent.filter.node && !$parent.filter.parameter && !$parent.filter.rule);"/>All
+                                  <label for="filter-all" class="btn btn-default" ng-click="$parent.checkFilter($event, true,$parent.filter.all.activated,'all');" ng-class="{active : $parent.filter.all.activated || (!$parent.filter.directive.activated && !$parent.filter.group.activated && !$parent.filter.node.activated && !$parent.filter.parameter.activated && !$parent.filter.rule.activated)};">
+                                    <input type="radio" id="filter-all" checked="true" ng-checked="$parent.filter.all.activated || (!$parent.filter.directive.activated && !$parent.filter.group.activated && !$parent.filter.node.activated && !$parent.filter.parameter.activated && !$parent.filter.rule.activated);"/>All
+                                    <span class="badge pull-right" ng-class="{'label-success':$parent.filter.all.nbResults>0}">{{$parent.filter.all.nbResults}}</span>
                                   </label>
                                 </div>
 				                <div class="btn-group group-filters" data-toggle="buttons">
-                                  <label for="filter-directive" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.directive,'directive');">
-                                    <input id="filter-directive" type="checkbox" ng-model="$parent.filter.directive"/> Directive
+                                  <label for="filter-directive" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.directive.activated,'directive');">
+                                    <input id="filter-directive" type="checkbox" ng-model="$parent.filter.directive.activated"/> Directive 
+                                    <span class="badge pull-right" ng-class="{'label-success':$parent.filter.directive.nbResults>0}">{{$parent.filter.directive.nbResults}}</span>
                                   </label>
-                                  <label for="filter-group" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.group,'group');">
-                                    <input id="filter-group" type="checkbox" autocomplete="off" ng-model="$parent.filter.group"/> Group
+                                  <label for="filter-group" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.group.activated,'group');">
+                                    <input id="filter-group" type="checkbox" autocomplete="off" ng-model="$parent.filter.group.activated"/> Groups
+                                    <span class="badge pull-right" ng-class="{'label-success':$parent.filter.group.nbResults>0}">{{$parent.filter.group.nbResults}}</span>
                                   </label>
-                                  <label for="filter-node" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.node,'node');">
-                                    <input id="filter-node" type="checkbox" autocomplete="off" ng-model="$parent.filter.node"/> Node
+                                  <label for="filter-node" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.node.activated,'node');">
+                                    <input id="filter-node" type="checkbox" autocomplete="off" ng-model="$parent.filter.node.activated"/> Nodes
+                                    <span class="badge pull-right" ng-class="{'label-success':$parent.filter.node.nbResults>0}">{{$parent.filter.node.nbResults}}</span>
                                   </label>
-                                  <label for="filter-parameter" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.parameter,'parameter');">
-                                    <input id="filter-parameter" type="checkbox" autocomplete="off" ng-model="$parent.filter.parameter"/> Parameter
+                                  <label for="filter-parameter" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.parameter.activated,'parameter');">
+                                    <input id="filter-parameter" type="checkbox" autocomplete="off" ng-model="$parent.filter.parameter.activated"/> Parameters
+                                    <span class="badge pull-right" ng-class="{'label-success':$parent.filter.parameter.nbResults>0}">{{$parent.filter.parameter.nbResults}}</span>
                                   </label>
-                                  <label for="filter-rule" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.rule,'rule');">
-                                    <input id="filter-rule" type="checkbox" autocomplete="off" ng-model="$parent.filter.rule"/> Rule
+                                  <label for="filter-rule" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.rule.activated,'rule');">
+                                    <input id="filter-rule" type="checkbox" autocomplete="off" ng-model="$parent.filter.rule.activated"/> Rules
+                                    <span class="badge pull-right" ng-class="{'label-success':$parent.filter.rule.nbResults>0}">{{$parent.filter.rule.nbResults}}</span>
                                   </label>
+                                </div>
+                              </div>
+                              <button class="btn btn-default" id="toggleDoc">Help <span class="glyphicon glyphicon-question-sign"></span></button>
+                            </div>
+                            <div class="panel-body results-content">
+                              <div class="info-messages">
+                                <div class="angucomplete-searching" ng-show="((3 > searchStr.length)&&(results.length == 0)) || !searchStr;">
+                                  The field size must be greater than 2 characters
+                                </div>
+                                <div ng-if="searching || (!searching && (!results || results.length == 0));">
+                                  <div class="angucomplete-searching" ng-show="searching && searchStr.length > 2; " ng-bind="textSearching"></div>
+                                  <div class="angucomplete-searching text-danger" ng-show="!searching && (!results || results.length == 0) && (searchStr.length > 2);" ng-bind="textNoResults"></div>
+                                </div>
+                              </div>
+                              <div class="panel-group" ng-hide="!searching && (!results || results.length == 0) && (searchStr.length > 2);">
+                                <div class="angucomplete-dropdown dropdown-search " role="tablist">
+                                  <div class="panel panel-default" ng-repeat="result in results | getResults:$parent track by $index">
+                                    <div>
+                                      <div class="panel-heading" role="tab" id="{{'resultGroup'+$index}}">
+                                        <h4 class="panel-title">
+                                          <a class="" role="button" data-toggle="collapse" href="#{{'result'+$index}}" aria-expanded="true" aria-controls="{{'resultGroup'+$index}}">
+                                            <span class="glyphicon glyphicon-chevron-right"></span>
+					                        {{result[0].originalObject.type+"s"}}
+                                            <span class="angucomplete-description">{{result[0].originalObject.summary}}</span>
+                                          </a>
+			                            </h4>
+                                      </div>
+                                      <div id="{{'result'+$index}}" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="{{'result'+$index}}" aria-expanded="true">
+			                            <ul class="list-group">
+                                          <li class="list-group-item" ng-repeat="object in result[1]"  ng-click="selectResult(object)">
+                                            <span>
+                                              {{object.originalObject.name}}
+                                            </span>
+                                            <div ng-if="matchClass && object.description && object.description != '';" class="angucomplete-description" ng-bind-html="object.description"></div>
+                                            <div ng-if="!matchClass && object.description && object.description != '';" class="angucomplete-description">{{object.description}}</div>
+                                          </li>
+			                            </ul>
+		                              </div>
+		                            </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                          <div class="panel-group dropdown-container col-xs-12">
-                            <div class="angucomplete-dropdown dropdown-search " role="tablist">
-                              <div class="panel panel-default" ng-repeat="result in results | getResults:$parent track by $index">
-                                <div>
-                                  <div class="panel-heading" role="tab" id="{{'resultGroup'+$index}}">
-                                    <h4 class="panel-title">
-                                      <a class="collapsed" role="button" data-toggle="collapse" href="#{{'result'+$index}}" aria-expanded="false" aria-controls="{{'resultGroup'+$index}}">
-                                        <span class="glyphicon glyphicon-chevron-right"></span>
-					                    {{result[0].originalObject.type}}
-                                        <div class="angucomplete-description">{{result[0].originalObject.summary}}</div>
-                                      </a>
-			                        </h4>
-                                  </div>
-                                  <div id="{{'result'+$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="{{'result'+$index}}" aria-expanded="false" style="height: 0px;">
-			                        <ul class="list-group">
-                                      <li class="list-group-item" ng-repeat="object in result[1]"  ng-click="selectResult(object)">
-                                        <span>
-                                          {{object.originalObject.name}}
-                                        </span>
-                                        <div ng-if="matchClass && object.description && object.description != '';" class="angucomplete-description" ng-bind-html="object.description"></div>
-                                        <div ng-if="!matchClass && object.description && object.description != '';" class="angucomplete-description">{{object.description}}</div>
-                                      </li>
-			                        </ul>
-		                          </div>
-		                        </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                      </div>
                         <div class="row hidden" id="info-tab">
                           <button class="btn btn-default" id="toggleResult">
                             Results
@@ -206,7 +213,7 @@
                           </button>
                           <div class="col-xs-12">
                             <div class="panel panel-default panel-help">
-                              <div class="panel-heading">
+                              <div class="panel-heading heading-help">
                                 <h4 class="panel-title">
                                   Help
                                 </h4>
