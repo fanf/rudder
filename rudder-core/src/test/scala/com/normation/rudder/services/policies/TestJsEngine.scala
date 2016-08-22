@@ -99,7 +99,7 @@ class TestJsEngine extends Specification {
     (
       b match {
         case Full(v) if( v.values.size == 1 && cond(v.values(0)) ) => true
-        case Full(v) => println("size is " + v.values.size); false
+        case Full(v) => false
         case _ => false
       }
     , s"${b} is not a Full(InputVariable) that matches condition ${cond} but a '${b}'"
