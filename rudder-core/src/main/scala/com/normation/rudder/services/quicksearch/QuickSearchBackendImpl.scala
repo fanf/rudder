@@ -56,7 +56,6 @@ import com.unboundid.ldap.sdk.Filter
 import net.liftweb.common.Box
 import net.liftweb.common.Full
 
-
 /**
  * This file contains the differents possible implementation of
  * quick search backends.
@@ -67,8 +66,6 @@ import net.liftweb.common.Full
  * For now, we have one for directive, and a different one
  * of everything else.
  */
-
-
 
 object QSDirectiveBackend {
   import com.normation.rudder.repository.FullActiveTechnique
@@ -82,7 +79,6 @@ object QSDirectiveBackend {
    * The filter that allows to know if a couple (activeTechnique, directive) match
    * the expected query
    */
-
 
   /**
    * Lookup directives
@@ -113,18 +109,17 @@ object QSDirectiveBackend {
   implicit class QSAttributeFilter(a: QSAttribute) {
     def find(at: FullActiveTechnique, dir: Directive, token: String): Option[QuickSearchResult] = {
 
-      val pattern = s""".*${Pattern.quote(token)}.*""".r.pattern
+      val pattern = s"""(?i).*${Pattern.quote(token)}.*""".r.pattern
 
-      val toMatch: Option[Set[String]] = a match {
-        case QSDirectiveId     => Some(Set(dir.id.value))
-        case DirectiveVarName  => Some(dir.parameters.keySet)
-        case DirectiveVarValue => Some(dir.parameters.values.flatten.toSet)
-        case TechniqueName     => Some(Set(at.techniqueName.toString))
-        case TechniqueVersion  => Some(Set(dir.techniqueVersion.toString))
-        case Description       => Some(Set(dir.shortDescription, dir.longDescription))
-        case ShortDescription  => Some(Set(dir.shortDescription))
-        case LongDescription   => Some(Set(dir.longDescription))
-        case Name              => Some(Set(dir.name))
+      val toMatch: Option[Set[(String,String)]] = a match {
+        case QSDirectiveId     => Some(Set((dir.id.value,dir.id.value)))
+        case DirectiveVarName  => Some(dir.parameters.flatMap(param => param._2.map(value => (param._1, param._1+":"+ value))).toSet)
+        case DirectiveVarValue => Some(dir.parameters.flatMap(param => param._2.map(value => (value, param._1+":"+ value))).toSet)
+        case TechniqueName     => Some(Set((at.techniqueName.toString,at.techniqueName.toString)))
+        case TechniqueVersion  => Some(Set((dir.techniqueVersion.toString,dir.techniqueVersion.toString)))
+        case Description       => Some(Set((dir.shortDescription,dir.shortDescription), (dir.longDescription,dir.longDescription)))
+        case LongDescription   => Some(Set((dir.longDescription,dir.longDescription)))
+        case Name              => Some(Set((dir.name,dir.name)))
         case IsEnabled         => None
         case NodeId            => None
         case Fqdn              => None
@@ -149,7 +144,7 @@ object QSDirectiveBackend {
         case Targets           => None
       }
 
-      toMatch.flatMap { set => set.find( s => pattern.matcher(s).matches) }.map{ s =>
+      toMatch.flatMap { set => set.find{case (s,value) => pattern.matcher(s).matches } }.map{ case (_,s) =>
         QuickSearchResult(
             QRDirectiveId(dir.id.value)
           , dir.name
@@ -161,7 +156,6 @@ object QSDirectiveBackend {
   }
 
 }
-
 
 /**
  * The whole LDAP backend logic: look for Nodes, NodeGroups, Parameters, Rules,
@@ -207,8 +201,6 @@ object QSLdapBackend {
     }
   }
 
-
-
   /**
    * Mapping between attribute and their ldap name
    */
@@ -216,7 +208,6 @@ object QSLdapBackend {
      val m: Map[QSAttribute, String] = Map(
         Name              -> A_NAME
       , Description       -> A_DESCRIPTION
-      , ShortDescription  -> A_DESCRIPTION
       , LongDescription   -> A_LONG_DESCRIPTION
       , IsEnabled         -> A_IS_ENABLED
       , NodeId            -> A_NODE_UUID
@@ -270,7 +261,6 @@ object QSLdapBackend {
       a match {
         case Name              => sub
         case Description       => sub
-        case ShortDescription  => sub
         case LongDescription   => sub
         case IsEnabled         => sub
         case NodeId            => sub
@@ -309,6 +299,7 @@ object QSLdapBackend {
   final implicit class QSObjectLDAPFilter(obj: QSObject)(implicit inventoryDit: InventoryDit, nodeDit: NodeDit, rudderDit: RudderDit) {
 
     def filter() = obj match {
+      case Common    => Nil
       case Node      => (  AND(IS(OC_NODE)             , Filter.create(s"entryDN:dnOneLevelMatch:=${ inventoryDit.NODES.dn.toString                }"))
                         :: AND(IS(OC_RUDDER_NODE)      , Filter.create(s"entryDN:dnOneLevelMatch:=${ nodeDit.     NODES.dn.toString                }")) :: Nil )
       case Group     =>    AND(IS(OC_RUDDER_NODE_GROUP), Filter.create(s"entryDN:dnSubtreeMatch:=${  rudderDit.   GROUP.dn.toString                }")) :: Nil
@@ -317,8 +308,6 @@ object QSLdapBackend {
       case Rule      =>    AND(IS(OC_RULE)             , Filter.create(s"entryDN:dnSubtreeMatch:=${  rudderDit.   RULES.dn.toString                }")) :: Nil
     }
   }
-
-
 
   /**
    * correctly transform entry to a result, putting what is needed in type and description
@@ -359,7 +348,3 @@ object QSLdapBackend {
     }
   }
 }
-
-
-
-
