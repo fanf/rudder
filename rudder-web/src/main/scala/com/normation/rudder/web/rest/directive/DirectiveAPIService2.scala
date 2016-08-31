@@ -73,6 +73,7 @@ import com.normation.rudder.web.rest.RestDataSerializer
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.services.TechniqueRepository
+import com.normation.rudder.policyMode.Enforce
 
 case class DirectiveAPIService2 (
     readDirective        : RoDirectiveRepository
@@ -224,7 +225,7 @@ case class DirectiveAPIService2 (
                   case Full(technique) =>
                     readDirective.getActiveTechnique(technique.id.name) match {
                       case Full(Some(activeTechnique)) =>
-                        val baseDirective = Directive(directiveId,technique.id.version,Map(),name,"", _isEnabled = true)
+                        val baseDirective = Directive(directiveId,technique.id.version,Map(),name,"", None, _isEnabled = true)
                         actualDirectiveCreation(restDirective,baseDirective,activeTechnique,technique)
                       case Full(None) =>
                         toJsonError(Some(directiveId.value), "Could not create Directive because the technique was not found")

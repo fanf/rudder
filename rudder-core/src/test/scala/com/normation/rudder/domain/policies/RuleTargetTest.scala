@@ -19,6 +19,7 @@ import com.normation.inventory.domain.Debian
 import com.normation.inventory.domain.Linux
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.UndefinedKey
+import com.normation.rudder.policyMode.Enforce
 
 @RunWith(classOf[JUnitRunner])
 class RuleTargetTest extends Specification with Loggable {
@@ -29,7 +30,7 @@ class RuleTargetTest extends Specification with Loggable {
     NodeId(s"${i}")
   }).toSet
 
-  def newNode(id : NodeId) = Node(id,"" ,"", false, false, false, DateTime.now, ReportingConfiguration(None,None), Seq())
+  def newNode(id : NodeId) = Node(id,"" ,"", false, false, false, DateTime.now, ReportingConfiguration(None,None), Seq(), None)
 
   val allNodeIds = nodeIds + NodeId("root")
   val nodes = allNodeIds.map {

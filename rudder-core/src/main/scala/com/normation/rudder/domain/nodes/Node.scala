@@ -46,6 +46,8 @@ import com.normation.rudder.reports.AgentRunInterval
 import com.normation.rudder.reports.HeartbeatConfiguration
 import com.normation.rudder.domain.policies.SimpleDiff
 import com.normation.inventory.domain.FullInventory
+import com.normation.rudder.policyMode.PolicyMode
+import com.normation.rudder.policyMode.Enforce
 
 /**
  * The entry point for a REGISTERED node in Rudder.
@@ -63,6 +65,7 @@ case class Node(
   , creationDate              : DateTime
   , nodeReportingConfiguration: ReportingConfiguration
   , properties                : Seq[NodeProperty]
+  , policyMode                : Option[PolicyMode]
 ) extends HashcodeCaching
 
 case object Node {
@@ -77,6 +80,7 @@ case object Node {
       , inventory.node.inventoryDate.getOrElse(new DateTime(0))
       , ReportingConfiguration(None,None)
       , Seq()
+      , None
     )
   }
 }

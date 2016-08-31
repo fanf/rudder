@@ -1,6 +1,6 @@
 /*
 *************************************************************************************
-* Copyright 2013 Normation SAS
+* Copyright 2016 Normation SAS
 *************************************************************************************
 *
 * This file is part of Rudder.
@@ -34,27 +34,56 @@
 *
 *************************************************************************************
 */
+package com.normation.rudder.policyMode
 
-package com.normation.rudder.web.rest.node
+import net.liftweb.common.{Box,Full,Failure}
 
-import net.liftweb.common.Box
-import net.liftweb.common.Loggable
-import net.liftweb.http.LiftResponse
-import net.liftweb.http.Req
-import net.liftweb.http.rest.RestHelper
-import com.normation.rudder.web.rest.RestAPI
-import com.normation.rudder.domain.nodes.NodeProperty
-import com.normation.rudder.policyMode.PolicyMode
-
-trait NodeAPI extends RestAPI {
-  val kind = "nodes"
+sealed trait PolicyMode {
+  def name : String
 }
 
-case class RestNodeProperties(
-    properties : Option[Seq[NodeProperty]]
+case object Verify extends PolicyMode {
+  val name = "verify"
+}
+
+case object Enforce extends PolicyMode {
+  val name = "enforce"
+}
+
+object PolicyMode {
+  val allModes : List[PolicyMode] = Verify :: Enforce :: Nil
+
+  def parse (value : String) : Box[PolicyMode] = {
+    allModes.find { _.name == value.toLowerCase() } match {
+      case None =>
+         Failure(s"Unable to parse policy mode name '${value}'. was expecting ${allModes.map(_.name).mkString("'", "' or '", "'")}.")
+      case Some(mode) =>
+        Full(mode)
+    }
+  }
+}
+
+case class GlobalPolicyMode (
+    mode : PolicyMode
+  , overridable : Boolean
 )
 
-case class RestNode (
-    properties : Option[Seq[NodeProperty]]
-  , policyMode : Option[Option[PolicyMode]]
-)
+object PolicyModeService {
+
+  def computeMode(globalValue : GlobalPolicyMode, nodeMode : Option[PolicyMode], directiveMode : Seq[Option[PolicyMode]]) = {
+    if (globalValue.overridable) {
+      nodeMode match {
+        case Some(Verify) => Verify
+        case _ =>
+          (((None : Option[PolicyMode]) /: directiveMode) {
+            case (None,current) => current
+            case (Some(Verify),_) | (_,Some(Verify)) => Some(Verify)
+            case _ => Some(Enforce)
+          }).getOrElse(globalValue.mode)
+
+      }
+    } else {
+      globalValue.mode
+    }
+  }
+}
