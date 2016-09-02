@@ -37,7 +37,6 @@
 
 package com.normation.rudder.services.quicksearch
 
-
 import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
@@ -47,7 +46,6 @@ import org.specs2.matcher.MatchResult
 
 @RunWith(classOf[JUnitRunner])
 class QSRegexQueryParserTest extends Specification {
-
 
   import QSRegexQueryParser.parse
   import com.normation.rudder.services.quicksearch.QSObject._
@@ -101,7 +99,6 @@ class QSRegexQueryParserTest extends Specification {
     }
   }
 
-
   "Queries with filter" should {
     "if only on object, give all attributes" in {
       parse(" Is:Directives is:RuLes here, the query").mustFull(
@@ -122,7 +119,7 @@ class QSRegexQueryParserTest extends Specification {
     }
     "only at end works" in {
       parse(" here, the query is:node in:descriptions").mustFull(
-          Query("here, the query", Set(Node), Set(Description, LongDescription, ShortDescription))
+          Query("here, the query", Set(Node), Set(Description, LongDescription))
       )
     }
     "only at starts works" in {
@@ -136,6 +133,5 @@ class QSRegexQueryParserTest extends Specification {
       )
     }
   }
-
 
 }

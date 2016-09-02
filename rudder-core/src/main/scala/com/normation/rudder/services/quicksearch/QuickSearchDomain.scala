@@ -39,7 +39,6 @@ package com.normation.rudder.services.quicksearch
 
 import ca.mrvisser.sealerate
 
-
 /**
  * This file contains domains objects for the quick search service.
  */
@@ -74,59 +73,92 @@ object QSBackend {
  * This does not hold for directive, because we don't have a real variable
  * parameter
  */
-sealed trait QSAttribute { def name: String }
+sealed trait QSAttribute {
+  def name    : String
+  def display : String = name.capitalize.replace("_", " ")
+}
 object QSAttribute {
 
   //common
-  final case object Name             extends QSAttribute { override val name = "displayName" }
+  final case object Name             extends QSAttribute { override val name = "name" }
   final case object Description      extends QSAttribute { override val name = "description" }
-  final case object ShortDescription extends QSAttribute { override val name = "shortDescription" }
-  final case object LongDescription  extends QSAttribute { override val name = "longDescription" }
-  final case object IsEnabled        extends QSAttribute { override val name = "isEnabled" }
+  final case object LongDescription  extends QSAttribute { override val name = "long_description" }// Long description}
+  final case object IsEnabled        extends QSAttribute { override val name = "enabled" }
 
   //Nodes
-  final case object NodeId          extends QSAttribute { override val name = "id" }
-  final case object Fqdn            extends QSAttribute { override val name = "hostname" }
-  final case object OsType          extends QSAttribute { override val name = "os.type" }
-  final case object OsName          extends QSAttribute { override val name = "os.name" }
-  final case object OsVersion       extends QSAttribute { override val name = "os.version" }
-  final case object OsFullName      extends QSAttribute { override val name = "os.fullName" }
-  final case object OsKernelVersion extends QSAttribute { override val name = "os.kernelVersion" }
-  final case object OsServicePack   extends QSAttribute { override val name = "os.servicePack" }
-  final case object Arch            extends QSAttribute { override val name = "architectureDescription" }
-  final case object Ram             extends QSAttribute { override val name = "ram" }
-  final case object IpAddresses     extends QSAttribute { override val name = "ipAddresses" }
-  final case object PolicyServerId  extends QSAttribute { override val name = "policyServerId" }
+  final case object NodeId          extends QSAttribute {
+    override val name = "id"
+    override val display = "ID"
+  }
+  final case object Fqdn            extends QSAttribute { override val name = "hostname"  }
+  final case object OsType          extends QSAttribute {
+    override val name = "os_type"
+    override val display = "Operating system type"
+  }
+  final case object OsName          extends QSAttribute { override val name = "os_name"
+    override val display = "Operating system name"
+
+  }
+  final case object OsVersion       extends QSAttribute { override val name = "os_version"
+
+    override val display = "Operating system version"
+  }
+  final case object OsFullName      extends QSAttribute
+  { override val name = "os"
+    override val display = "Operating system" }
+  final case object OsKernelVersion extends QSAttribute { override val name = "os_kernelVersion"
+    override val display = "Kernel"
+  }
+  final case object OsServicePack   extends QSAttribute { override val name = "os_servicePack"
+    override val display = "Operating system service pack"
+  }
+  final case object Arch            extends QSAttribute { override val name = "architecture" }
+  final case object Ram             extends QSAttribute { override val name = "ram"
+    override val display = "RAM"} // RAM }
+  final case object IpAddresses     extends QSAttribute { override val name = "ips"
+    override val display = "IP addresses"
+  }
+  // Mac address
+  final case object PolicyServerId  extends QSAttribute { override val name = "policy_server_id"
+    override val display = "Policy server" }
+
   final case object Properties      extends QSAttribute { override val name = "properties" }
-  final case object RudderRoles     extends QSAttribute { override val name = "rudderRoles" }
+  final case object RudderRoles     extends QSAttribute { override val name = "rudder_roles"}
+  // MachineType e
 
   //Groups
   final case object GroupId   extends QSAttribute { override val name = "id" }
-  final case object IsDynamic extends QSAttribute { override val name = "isDynamic" }
+  final case object IsDynamic extends QSAttribute { override val name = "dynamic" }
 
   //Directives
   final case object DirectiveId       extends QSAttribute { override val name = "id" }
-  final case object DirectiveVarName  extends QSAttribute { override val name = "var.name" }
-  final case object DirectiveVarValue extends QSAttribute { override val name = "var.value" }
-  final case object TechniqueName     extends QSAttribute { override val name = "techniqueName" }
-  final case object TechniqueVersion  extends QSAttribute { override val name = "techniqueVersion" }
+  final case object DirectiveVarName  extends QSAttribute { override val name = "dir_param_name"
+    override val display = "Parameter name"
+  }
+  final case object DirectiveVarValue extends QSAttribute { override val name = "dir_param_value"
+    override val display = "Parameter value"
+  }
+  final case object TechniqueName     extends QSAttribute { override val name = "technique_name" }
+  final case object TechniqueVersion  extends QSAttribute { override val name = "technique_version" }
 
   //Parameters
-  final case object ParameterName  extends QSAttribute { override val name = "id" }
-  final case object ParameterValue extends QSAttribute { override val name = "value" }
+  final case object ParameterName  extends QSAttribute { override val name = "param_name"
+    override val display = "Parameter name"
+  }
+  final case object ParameterValue extends QSAttribute { override val name = "param_value"
+
+    override val display = "Parameter vakue"
+  }
 
   //Rules
   final case object RuleId       extends QSAttribute { override val name = "id" }
-  final case object DirectiveIds extends QSAttribute { override val name = "directiveIds" }
-  final case object Targets      extends QSAttribute { override val name = "targets" }
-
+  final case object DirectiveIds extends QSAttribute { override val name = "directives" }
+  final case object Targets      extends QSAttribute { override val name = "groups" }
 
   ////// all attributes /////
   final val all: Set[QSAttribute] = sealerate.values[QSAttribute]
 
 }
-
-
 
 /*
  * Objects on which we are able to perform
@@ -136,29 +168,31 @@ sealed trait QSObject { def name: String; def attributes: Set[QSAttribute] }
 
 object QSObject {
   import QSAttribute._
-  private[this] val commons: Set[QSAttribute] = Set(Name, Description, ShortDescription, LongDescription, IsEnabled)
+
+  final case object Common      extends QSObject { override val name = "common"
+                                                 override val attributes : Set[QSAttribute] = Set(Name, Description, LongDescription, IsEnabled)
+  }
 
   final case object Node      extends QSObject { override val name = "node"
-                                                 override val attributes = commons ++ Set(NodeId, Fqdn, OsType, OsName
+                                                 override val attributes : Set[QSAttribute] = Set(NodeId, Fqdn, OsType, OsName
                                                    , OsVersion, OsFullName, OsKernelVersion, OsServicePack, Arch, Ram
                                                    , IpAddresses, PolicyServerId, Properties, RudderRoles)
   }
   final case object Group     extends QSObject { override val name = "group"
-                                                 override val attributes = commons ++ Set(GroupId, IsDynamic)
+                                                 override val attributes : Set[QSAttribute] = Set(GroupId, IsDynamic)
   }
   final case object Directive extends QSObject { override val name = "directive"
-                                                 override val attributes = commons ++ Set(DirectiveId, DirectiveVarName
+                                                 override val attributes : Set[QSAttribute] = Set(DirectiveId, DirectiveVarName
                                                    , DirectiveVarValue, TechniqueName, TechniqueVersion)
   }
   final case object Parameter extends QSObject { override val name = "parameter"
-                                                 override val attributes = commons ++ Set(ParameterName, ParameterValue)
+                                                 override val attributes : Set[QSAttribute] = Set(ParameterName, ParameterValue)
   }
   final case object Rule      extends QSObject { override val name = "rule"
-                                                 override val attributes = commons ++ Set(RuleId, DirectiveIds, Targets)
+                                                 override val attributes : Set[QSAttribute] = Set(RuleId, DirectiveIds, Targets)
   }
 
   final val all: Set[QSObject] = sealerate.values[QSObject]
-
 
   // default sort for QuickSearchResult:
   // - by type
@@ -167,6 +201,7 @@ object QSObject {
 
     implicit class QSObjectOrder(o: QSObject) {
       def order() = o match {
+        case Common    => 0
         case Node      => 1
         case Group     => 2
         case Directive => 3
@@ -198,36 +233,35 @@ final object QSMapping {
   //set of names by attribute
   val attributeNames = {
     import QSAttribute._
-    val descriptions = Set(Description, LongDescription, ShortDescription).map( _.name ) ++ Set("descriptions")
+    val descriptions = Set(Description, LongDescription).map( _.name ) ++ Set("descriptions")
 
     QSAttribute.all.map { a => a match {
       case Name              => (a, Set(Name.name, "name") )
       case Description       => (a, descriptions)
-      case ShortDescription  => (a, descriptions)
       case LongDescription   => (a, descriptions)
-      case IsEnabled         => (a, Set(IsEnabled.name, "enabled") )
+      case IsEnabled         => (a, Set(IsEnabled.name  ))
       case NodeId            => (a, Set(NodeId.name, "nodeid") )
       case Fqdn              => (a, Set(Fqdn.name, "fqdn") )
       case OsType            => (a, Set(OsType.name, "ostype", "os"))
       case OsName            => (a, Set(OsName.name, "osname", "os") ) //not also full name because osFullname contains osName, not the reverse
       case OsVersion         => (a, Set(OsVersion.name, "osversion", "os") )
       case OsFullName        => (a, Set(OsFullName.name, "osfullname", OsName.name, "osname", "os") )
-      case OsKernelVersion   => (a, Set(OsKernelVersion.name, "oskernelversion", "oskernel", "kernel", "version", "os") )
+      case OsKernelVersion   => (a, Set(OsKernelVersion.name, "oskernelversion", "oskernel", "kernel", "os") )
       case OsServicePack     => (a, Set(OsServicePack.name, "osservicepack", "ossp", "sp", "servicepack", "os") )
-      case Arch              => (a, Set(Arch.name, "architecture", "arch") )
+      case Arch              => (a, Set(Arch.name, "arch") )
       case Ram               => (a, Set(Ram.name, "memory") )
       case IpAddresses       => (a, Set(IpAddresses.name, "ip", "ips", "networkips") )
       case PolicyServerId    => (a, Set(PolicyServerId.name, "policyserver") )
-      case Properties        => (a, Set(Properties.name, "node.props", "nodeprops", "node.properties", "nodeproperties") )
+      case Properties        => (a, Set(Properties.name, "node.props", "nodeprops", "node_properties", "nodeproperties") )
       case RudderRoles       => (a, Set(RudderRoles.name, "serverrole", "serverroles", "role", "roles") )
       case GroupId           => (a, Set(GroupId.name, "groupid") )
-      case IsDynamic         => (a, Set(IsDynamic.name, "isdynamic") )
+      case IsDynamic         => (a, Set(IsDynamic.name) )
       case DirectiveId       => (a, Set(DirectiveId.name, "directiveid") )
-      case DirectiveVarName  => (a, Set(DirectiveVarName.name, "directivevar", "parameter", "parameters", "variable", "variables") )
-      case DirectiveVarValue => (a, Set(DirectiveVarValue.name,"directivevalue", "parameter", "parameters", "variable", "variables") )
+      case DirectiveVarName  => (a, Set(DirectiveVarName.name , "dir_param", "dir_parameter", "dir_parameters", "param", "parameter", "parameters") )
+      case DirectiveVarValue => (a, Set(DirectiveVarValue.name, "dir_param", "dir_parameter", "dir_parameters", "param", "parameter", "parameters", "dir_value") )
       case TechniqueName     => (a, Set(TechniqueName.name, "technique", "techniqueid") )
       case TechniqueVersion  => (a, Set(TechniqueVersion.name, "technique", "techniqueid", "version") )
-      case ParameterName     => (a, Set(ParameterName.name, "parametername", "paramname", "name", "parameter", "param") )
+      case ParameterName     => (a, Set(ParameterName.name, "parametername", "paramname", "name", "parameter", "param", "id") )
       case ParameterValue    => (a, Set(ParameterValue.name, "parametervalue", "paramvalue", "value", "parameter", "param") )
       case RuleId            => (a, Set(RuleId.name, "ruleid") )
       case DirectiveIds      => (a, Set(DirectiveIds.name, "directiveids", "id", "ids") )
@@ -265,12 +299,9 @@ object QuickSearchResultId {
   final case class QRRuleId      (value: String) extends QuickSearchResultId { override final val tpe = Rule     }
 }
 
-
 final case class QuickSearchResult(
     id       : QuickSearchResultId // the uuid used to build url
   , name     : String              // the user facing name
   , attribute: Option[QSAttribute] // the part that matches the search
   , value    : String              // the value that matches the search
 )
-
-

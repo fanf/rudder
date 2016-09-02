@@ -16,7 +16,6 @@ import com.normation.rudder.services.quicksearch.FullQuickSearchService
 import com.normation.rudder.services.quicksearch.QuickSearchResult
 import com.normation.rudder.services.quicksearch.QSObject
 
-
 /**
  * A class for the Quicksearch rest endpoint.
  *
@@ -41,8 +40,7 @@ class RestQuicksearch (
   quicksearch: FullQuickSearchService
 ) extends RestHelper with Loggable {
 
-
-  final val MAX_RES_BY_KIND = 3
+  final val MAX_RES_BY_KIND = 10
 
   serve {
     case Get("secure" :: "api" :: "quicksearch" :: token :: Nil, req) => {
@@ -116,7 +114,7 @@ class RestQuicksearch (
     val desc = if(t.originalNumber <= t.returnedNumber) {
        s"${t.originalNumber} found"
     } else { // we elided some results
-       s"${t.originalNumber} found, only displaying the ${t.returnedNumber} firsts. You should try a more precise query"
+       s"${t.originalNumber} found, only displaying the first ${t.returnedNumber}. Please refine your query."
     }
 
     def toJson(): JObject = {
@@ -127,9 +125,6 @@ class RestQuicksearch (
       )
     }
   }
-
-
-
 
   private[this] implicit class JsonSearchResult(r: QuickSearchResult) {
     import com.normation.inventory.domain.NodeId
@@ -155,12 +150,12 @@ class RestQuicksearch (
 
       //limit description length to avoid having a whole file printed
       val v = {
-        val max = 30
+        val max = 100
         if(r.value.size > max+3) r.value.take(max) + "..."
         else                     r.value
       }
 
-      val desc = s"${r.attribute.map( _.name + ": ").getOrElse("")}${v}"
+      val desc = s"${r.attribute.map( _.display + ": ").getOrElse("")}${v}"
 
       (
           ( "name" -> r.name        )
@@ -172,8 +167,4 @@ class RestQuicksearch (
     }
   }
 
-
 }
-
-
-

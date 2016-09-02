@@ -289,6 +289,7 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
        display.changes.graph=true
        api.compatibility.mode=false
        rudder.featureSwitch.directiveScriptEngine=disabled
+       rudder.featureSwitch.quicksearchEverything=enabled
     """
 
   val configWithFallback = configFile.withFallback(ConfigFactory.parseString(defaultConfig))
@@ -488,11 +489,9 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
   def api_compatibility_mode(): Box[Boolean] = get("api_compatibility_mode")
   def set_api_compatibility_mode(value : Boolean): Box[Unit] = save("api_compatibility_mode", value)
 
-
   /////
   ///// Feature switches /////
   /////
-
 
   /**
    * Should we evaluate scripts in the variables?
