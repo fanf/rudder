@@ -48,7 +48,7 @@ import com.normation.rudder.web.rest.RestAPI
 import com.normation.cfclerk.domain.TechniqueName
 import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.cfclerk.domain.Technique
-import com.normation.rudder.policyMode.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode
 
 trait DirectiveAPI extends RestAPI {
   val kind = "directives"

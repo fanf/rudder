@@ -80,8 +80,7 @@ import net.liftweb.json._
 import JsonDSL._
 import com.normation.rudder.reports._
 import com.normation.inventory.ldap.core.InventoryMapper
-import com.normation.rudder.policyMode.PolicyMode
-import com.normation.rudder.policyMode.Enforce
+import com.normation.rudder.domain.policies.PolicyMode
 
 /**
  * Map objects from/to LDAPEntries

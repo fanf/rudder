@@ -37,42 +37,58 @@
 
 package com.normation.rudder.services.servers
 
-import com.normation.rudder.batch.UpdateDynamicGroups
-import com.normation.rudder.domain._
-import com.normation.rudder.domain.nodes._
-import com.normation.rudder.domain.Constants._
-import com.normation.rudder.domain.servers.Srv
-import com.normation.rudder.repository._
-import com.normation.rudder.repository.ldap.LDAPEntityMapper
-import com.normation.inventory.ldap.core.InventoryDitService
-import com.normation.inventory.domain._
-import com.normation.inventory.ldap.core._
-import LDAPConstants._
-import com.normation.inventory.ldap.core.LDAPFullInventoryRepository
-import com.unboundid.ldap.sdk._
-import com.unboundid.ldif.LDIFChangeRecord
-import com.normation.ldap.sdk._
-import BuildFilter.{ALL,EQ}
-import com.normation.utils.Control._
-import scala.collection.mutable.Buffer
-import net.liftweb.common._
-import Box._
-import net.liftweb.util.Helpers._
-import com.normation.cfclerk.domain.TechniqueId
-import org.joda.time.DateTime
-import org.slf4j.LoggerFactory
-import com.normation.eventlog.EventActor
-import com.normation.inventory.services.core.ReadOnlyFullInventoryRepository
-import com.normation.rudder.services.queries.QueryProcessor
-import com.normation.rudder.domain.queries._
 import java.lang.IllegalArgumentException
+
+
+import org.joda.time.DateTime
+import net.liftweb.common.Loggable
+import net.liftweb.common.EmptyBox
+import net.liftweb.common.Full
+import net.liftweb.common.Box
+import net.liftweb.common.Failure
+import net.liftweb.common.Empty
+
+import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
-import java.net.InetAddress
-import org.apache.commons.net.util.SubnetUtils
-import com.normation.rudder.domain.eventlog._
-import com.normation.rudder.reports._
+import com.normation.ldap.sdk.LDAPConnectionProvider
+import com.normation.ldap.sdk.RoLDAPConnection
+import com.normation.ldap.sdk.RwLDAPConnection
+import com.normation.ldap.sdk.BuildFilter.{ ALL, EQ }
+import com.normation.inventory.domain.InventoryStatus
+import com.normation.inventory.domain.NodeId
+import com.normation.inventory.domain.PendingInventory
+import com.normation.inventory.domain.FullInventory
+import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.ldap.core.InventoryDit
+import com.normation.inventory.ldap.core.InventoryHistoryLogRepository
+import com.normation.inventory.ldap.core.InventoryDitService
+import com.normation.inventory.ldap.core.LDAPConstants._
+import com.normation.inventory.ldap.core.LDAPFullInventoryRepository
+import com.normation.inventory.services.core.ReadOnlyFullInventoryRepository
+import com.normation.rudder.batch.UpdateDynamicGroups
+import com.normation.rudder.domain.Constants
+import com.normation.rudder.domain.nodes.Node
+import com.normation.rudder.domain.NodeDit
+import com.normation.rudder.domain.servers.Srv
+import com.normation.rudder.domain.queries.NodeReturnType
+import com.normation.rudder.domain.queries.CriterionLine
+import com.normation.rudder.domain.queries.DitQueryData
+import com.normation.rudder.domain.queries.Query
+import com.normation.rudder.domain.queries.Or
+import com.normation.rudder.domain.queries.Equals
+import com.normation.rudder.domain.eventlog.InventoryLogDetails
+import com.normation.rudder.domain.eventlog.RefuseNodeEventLog
+import com.normation.rudder.domain.eventlog.AcceptNodeEventLog
+import com.normation.rudder.repository.RoNodeGroupRepository
+import com.normation.rudder.repository.CachedRepository
+import com.normation.rudder.repository.WoNodeGroupRepository
 import com.normation.rudder.repository.EventLogRepository
-import com.normation.rudder.policyMode.Enforce
+import com.normation.rudder.repository.ldap.LDAPEntityMapper
+import com.normation.rudder.reports.ReportingConfiguration
+import com.normation.rudder.services.queries.QueryProcessor
+import com.unboundid.ldif.LDIFChangeRecord
+import com.normation.utils.Control.sequence
+import com.normation.utils.Control.bestEffort
 
 /**
  * A trait to manage the acceptation of new node in Rudder

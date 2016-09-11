@@ -73,7 +73,6 @@ import com.normation.rudder.web.rest.RestDataSerializer
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.services.TechniqueRepository
-import com.normation.rudder.policyMode.Enforce
 
 case class DirectiveAPIService2 (
     readDirective        : RoDirectiveRepository

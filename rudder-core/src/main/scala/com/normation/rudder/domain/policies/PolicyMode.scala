@@ -34,56 +34,69 @@
 *
 *************************************************************************************
 */
-package com.normation.rudder.policyMode
+package com.normation.rudder.domain.policies
 
 import net.liftweb.common.{Box,Full,Failure}
+import ca.mrvisser.sealerate.values
 
-sealed trait PolicyMode {
-  def name : String
-}
+sealed trait PolicyMode {                        def name : String    }
 
-case object Verify extends PolicyMode {
-  val name = "verify"
-}
+final object PolicyMode {
 
-case object Enforce extends PolicyMode {
-  val name = "enforce"
-}
+  final case object Verify  extends PolicyMode { val name = "verify"  }
+  final case object Enforce extends PolicyMode { val name = "enforce" }
 
-object PolicyMode {
-  val allModes : List[PolicyMode] = Verify :: Enforce :: Nil
+  def allModes: Set[PolicyMode] = values[PolicyMode]
 
+  //get from string, case insensitive
   def parse (value : String) : Box[PolicyMode] = {
     allModes.find { _.name == value.toLowerCase() } match {
       case None =>
-         Failure(s"Unable to parse policy mode name '${value}'. was expecting ${allModes.map(_.name).mkString("'", "' or '", "'")}.")
+        Failure(s"Unable to parse policy mode name '${value}'. was expecting ${allModes.map(_.name).mkString("'", "' or '", "'")}.")
       case Some(mode) =>
         Full(mode)
     }
   }
-}
 
-case class GlobalPolicyMode (
-    mode : PolicyMode
-  , overridable : Boolean
-)
-
-object PolicyModeService {
-
+  /*
+   * Combine different modes and get the resulting one. Typically used when we
+   * want to know what is the policy mode on a given node, for a given directive,
+   * and we know from the context the default global value and the value of
+   * other directives for the same technique also on that node.
+   */
   def computeMode(globalValue : GlobalPolicyMode, nodeMode : Option[PolicyMode], directiveMode : Seq[Option[PolicyMode]]) = {
-    if (globalValue.overridable) {
-      nodeMode match {
-        case Some(Verify) => Verify
-        case _ =>
-          (((None : Option[PolicyMode]) /: directiveMode) {
-            case (None,current) => current
-            case (Some(Verify),_) | (_,Some(Verify)) => Some(Verify)
-            case _ => Some(Enforce)
-          }).getOrElse(globalValue.mode)
+    globalValue.overridable match {
+      case PolicyModeOverrides.Always =>
+        nodeMode match {
+          case Some(Verify) => Verify
+          case _ =>
+            (((None : Option[PolicyMode]) /: directiveMode) {
+              case (None,current) => current
+              case (Some(Verify),_) | (_,Some(Verify)) => Some(Verify)
+              case _ => Some(Enforce)
+            }).getOrElse(globalValue.mode)
 
-      }
-    } else {
-      globalValue.mode
+        }
+
+      case PolicyModeOverrides.Unoverridable =>
+        globalValue.mode
     }
   }
 }
+
+/*
+ * What is allowed to override the global value for policy mode
+ */
+sealed trait PolicyModeOverrides
+final object PolicyModeOverrides {
+  //nothing can override. Global is the sole value
+  final case object Unoverridable extends PolicyModeOverrides
+  //anything can override. Combination rules applies.
+  final case object Always        extends PolicyModeOverrides
+  //directives, groups, ...
+}
+
+final case class GlobalPolicyMode (
+    mode       : PolicyMode
+  , overridable: PolicyModeOverrides
+)

@@ -66,7 +66,10 @@ import scala.language.implicitConversions
 import ca.mrvisser.sealerate
 import com.normation.rudder.web.components.popup.ModificationValidationPopup.Disable
 import com.normation.rudder.domain.appconfig.FeatureSwitch
-import com.normation.rudder.policyMode._
+import com.normation.rudder.domain.policies.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode._
+import com.normation.rudder.domain.policies.GlobalPolicyMode
+import com.normation.rudder.domain.policies.PolicyModeOverrides
 
 /**
  * A service that Read mutable (runtime) configuration properties
@@ -140,10 +143,10 @@ trait ReadConfigService {
    */
   def rudder_global_policy_mode(): Box[GlobalPolicyMode] = {
     for {
-        mode <- rudder_policy_mode_name
+        mode        <- rudder_policy_mode_name
         overridable <- rudder_policy_overridable
     } yield {
-      GlobalPolicyMode(mode,overridable)
+      GlobalPolicyMode(mode, if(overridable) PolicyModeOverrides.Always else PolicyModeOverrides.Unoverridable)
     }
   }
   def rudder_policy_mode_name(): Box[PolicyMode]
@@ -267,7 +270,7 @@ trait UpdateConfigService {
   def set_rudder_policy_mode(mode : GlobalPolicyMode, actor: EventActor, reason: Option[String]): Box[Unit] = {
     for {
       _ <- set_rudder_policy_mode_name(mode.mode, actor, reason)
-      u <- set_rudder_policy_overridable(mode.overridable, actor, reason)
+      u <- set_rudder_policy_overridable(if(mode.overridable == PolicyModeOverrides.Always) true else false, actor, reason)
     } yield {
       u
     }

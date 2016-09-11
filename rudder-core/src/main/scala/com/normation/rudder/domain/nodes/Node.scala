@@ -37,17 +37,17 @@
 
 package com.normation.rudder.domain.nodes
 
+import com.normation.inventory.domain.FullInventory
+
 import com.normation.inventory.domain.NodeId
-import com.normation.utils.HashcodeCaching
-import com.normation.rudder.reports.ReportingConfiguration
-import net.liftweb.json.JsonAST.JObject
-import org.joda.time.DateTime
+import com.normation.rudder.domain.policies.SimpleDiff
+import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.reports.AgentRunInterval
 import com.normation.rudder.reports.HeartbeatConfiguration
-import com.normation.rudder.domain.policies.SimpleDiff
-import com.normation.inventory.domain.FullInventory
-import com.normation.rudder.policyMode.PolicyMode
-import com.normation.rudder.policyMode.Enforce
+import com.normation.rudder.reports.ReportingConfiguration
+import com.normation.utils.HashcodeCaching
+
+import org.joda.time.DateTime
 
 /**
  * The entry point for a REGISTERED node in Rudder.
@@ -129,8 +129,8 @@ final case class ModifyNodePropertiesDiff(
  */
 object JsonSerialisation {
 
-  import net.liftweb.json.JsonDSL._
   import net.liftweb.json._
+  import net.liftweb.json.JsonDSL._
 
   implicit class JsonNodeProperty(x: NodeProperty) {
     def toLdapJson(): JObject = (
@@ -140,7 +140,6 @@ object JsonSerialisation {
   }
 
   implicit class JsonNodeProperties(props: Seq[NodeProperty]) {
-    import net.liftweb.json.Serialization.write
     implicit val formats = DefaultFormats
 
     private[this] def json(x: NodeProperty): JObject = (

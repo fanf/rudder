@@ -58,7 +58,7 @@ import com.normation.inventory.domain.VirtualMachineType
 import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.inventory.domain.MemorySize
 import com.normation.inventory.domain.MachineUuid
-import com.normation.rudder.policyMode.Enforce
+import com.normation.rudder.domain.policies.PolicyMode.Enforce
 
 /*
  * This file is a container for testing data that are a little boring to

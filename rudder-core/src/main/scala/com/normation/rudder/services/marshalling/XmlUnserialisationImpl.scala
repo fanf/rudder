@@ -94,7 +94,7 @@ import scala.xml.XML
 import scala.xml.PrettyPrinter
 import com.normation.rudder.rule.category.RuleCategory
 import com.normation.rudder.rule.category.RuleCategoryId
-import com.normation.rudder.policyMode.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode
 
 case class XmlUnserializerImpl (
     rule        : RuleUnserialisation

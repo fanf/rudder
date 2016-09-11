@@ -44,7 +44,7 @@ import com.normation.cfclerk.domain.TechniqueVersion
 import com.normation.utils.HashcodeCaching
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.cfclerk.domain.Technique
-import com.normation.rudder.policyMode.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode
 
 case class DirectiveId(value : String) extends HashcodeCaching
 

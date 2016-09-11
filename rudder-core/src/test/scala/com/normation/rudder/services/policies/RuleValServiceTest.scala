@@ -55,7 +55,6 @@ import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.rule.category.RuleCategoryId
-import com.normation.rudder.policyMode.Enforce
 
 /**
  * Test how RuleVal and DirectiveVal are constructed, and if they

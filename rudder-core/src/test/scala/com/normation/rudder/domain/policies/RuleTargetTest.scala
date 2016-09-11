@@ -19,7 +19,6 @@ import com.normation.inventory.domain.Debian
 import com.normation.inventory.domain.Linux
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.UndefinedKey
-import com.normation.rudder.policyMode.Enforce
 
 @RunWith(classOf[JUnitRunner])
 class RuleTargetTest extends Specification with Loggable {

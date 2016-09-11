@@ -53,7 +53,7 @@ import com.normation.eventlog.EventActor
 import net.liftweb.common.Full
 import net.liftweb.common.Failure
 import net.liftweb.json.JsonAST.JString
-import com.normation.rudder.policyMode.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.utils.StringUuidGenerator
 import net.liftweb.json.JsonAST.JBool
 

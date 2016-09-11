@@ -73,8 +73,8 @@ import com.normation.rudder.services.queries.StringCriterionLine
 import com.normation.rudder.domain.queries.QueryReturnType
 import com.normation.rudder.domain.queries.NodeReturnType
 import com.normation.rudder.services.queries.StringQuery
-import com.normation.rudder.policyMode.PolicyMode
-import com.normation.rudder.policyMode.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode
+import com.normation.rudder.domain.policies.PolicyMode
 
 case class RestExtractorService (
     readRule             : RoRuleRepository

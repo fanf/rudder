@@ -67,7 +67,6 @@ import com.normation.rudder.authorization.NoRights
 import org.joda.time.DateTime
 import net.liftweb.http.js.JE.JsArray
 import com.normation.rudder.web.model.JsInitContextLinkUtil
-import com.normation.rudder.policyMode.Enforce
 
 /**
  * Snippet for managing the System and Active Technique libraries.
