@@ -66,21 +66,7 @@ class QuickSearchNode extends DispatchSnippet with Loggable {
   private[this] val config = RudderConfig.configService
 
   def dispatch = {
-    case "render" => chooseSearch
-  }
-
-  def chooseSearch(html: NodeSeq): NodeSeq = {
-
-    config.rudder_featureSwitch_quicksearchEverything() match {
-      case Full(FeatureSwitch.Enabled ) => quickSearchEveryting(html)
-      case Full(FeatureSwitch.Disabled) => quickSearchNode(html)
-      case eb: EmptyBox                 =>
-        val e = eb ?~! "Error when trying to know what quicksearch bar should be displayed, defaulting to the default one"
-        logger.warn(e.messageChain)
-        //default to node quicksearch
-        quickSearchNode(html)
-    }
-
+    case "render" => quickSearchEveryting
   }
 
   def quickSearchEveryting(html: NodeSeq) : NodeSeq = {
@@ -111,6 +97,7 @@ class QuickSearchNode extends DispatchSnippet with Loggable {
     "'" + compact(render(objs)) + "'"
   }
 
+<<<<<<< HEAD
 
 
   def quickSearchNode(html:NodeSeq) : NodeSeq = {
@@ -156,4 +143,6 @@ class QuickSearchNode extends DispatchSnippet with Loggable {
     </lift:form>
 
   }
+=======
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
 }

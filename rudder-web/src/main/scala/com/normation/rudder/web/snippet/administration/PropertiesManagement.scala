@@ -95,8 +95,11 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     case "displayGraphsConfiguration" => displayGraphsConfiguration
     case "apiMode" => apiComptabilityMode
     case "directiveScriptEngineConfiguration" => directiveScriptEngineConfiguration
+<<<<<<< HEAD
     case "quickSearchConfiguration" => quickSearchConfiguration
     case "directiveNodePropertiesConfiguration" => directiveNodePropertiesConfiguration
+=======
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
   }
 
   def changeMessageConfiguration = { xml : NodeSeq =>
@@ -141,7 +144,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
           S.error("updateChangeMsg","The message field cannot be empty.")
         }else{
           S.notice("updateChangeMsg","")
-        }    
+        }
       }
       Run(s"""$$("#changeMessageSubmit").button( "option", "disabled",${noModif||emptyString});""")
     }
@@ -901,6 +904,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     } ) apply xml
   }
 
+<<<<<<< HEAD
   def quickSearchConfiguration = { xml : NodeSeq =>
 
     ( configService.rudder_featureSwitch_quicksearchEverything() match {
@@ -997,4 +1001,6 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
         } )
     } ) apply xml
   }
+=======
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
 }

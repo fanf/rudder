@@ -159,6 +159,7 @@ trait ReadConfigService {
    */
   def rudder_featureSwitch_directiveScriptEngine(): Box[FeatureSwitch]
 
+<<<<<<< HEAD
   /*
    * Should we display the new quicksearch everything bar ?
    */
@@ -167,6 +168,8 @@ trait ReadConfigService {
    * Should we allow ${node.properties[key]} in directive
    */
   def rudder_featureSwitch_directiveNodeProperties(): Box[FeatureSwitch]
+=======
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
 }
 
 /**
@@ -255,6 +258,7 @@ trait UpdateConfigService {
    */
   def set_rudder_featureSwitch_directiveScriptEngine(status: FeatureSwitch): Box[Unit]
 
+<<<<<<< HEAD
   /**
    * Should we display the new quicksearch everything bar ?
    */
@@ -263,6 +267,25 @@ trait UpdateConfigService {
    * Should we allow ${node.properties[key]} in directive
    */
   def set_rudder_featureSwitch_directiveNodeProperties(status: FeatureSwitch): Box[Unit]
+=======
+/**
+   * Set the compliance mode
+   */
+  def set_rudder_policy_mode(mode : GlobalPolicyMode, actor: EventActor, reason: Option[String]): Box[Unit] = {
+    for {
+      _ <- set_rudder_policy_mode_name(mode.mode, actor, reason)
+      u <- set_rudder_policy_overridable(if(mode.overridable == PolicyModeOverrides.Always) true else false, actor, reason)
+    } yield {
+      u
+    }
+
+  }
+
+  def set_rudder_policy_mode_name(name : PolicyMode, actor : EventActor, reason: Option[String]) : Box[Unit]
+
+  def set_rudder_policy_overridable(overridable : Boolean, actor: EventActor, reason: Option[String]) : Box[Unit]
+
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
 }
 
 class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workflowUpdate: AsyncWorkflowInfo) extends ReadConfigService with UpdateConfigService with Loggable {
@@ -294,9 +317,15 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
        rudder.syslog.protocol=UDP
        display.changes.graph=true
        api.compatibility.mode=false
+<<<<<<< HEAD
        rudder.featureSwitch.directiveScriptEngine=enabled
        rudder.featureSwitch.quicksearchEverything=enabled
        rudder.featureSwitch.directiveNodeProperties=enabled
+=======
+       rudder.featureSwitch.directiveScriptEngine=disabled
+       rudder.policy.mode.name=${Enforce.name}
+       rudder.policy.mode.overridable=false
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
     """
 
   val configWithFallback = configFile.withFallback(ConfigFactory.parseString(defaultConfig))
@@ -506,6 +535,7 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
   def rudder_featureSwitch_directiveScriptEngine(): Box[FeatureSwitch] = get("rudder_featureSwitch_directiveScriptEngine")
   def set_rudder_featureSwitch_directiveScriptEngine(status: FeatureSwitch): Box[Unit] = save("rudder_featureSwitch_directiveScriptEngine", status)
 
+<<<<<<< HEAD
   /**
    * Should we display the new quicksearch everything bar ?
    */
@@ -516,4 +546,6 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
    */
   def rudder_featureSwitch_directiveNodeProperties(): Box[FeatureSwitch] = get("rudder_featureSwitch_directiveNodeProperties")
   def set_rudder_featureSwitch_directiveNodeProperties(status: FeatureSwitch): Box[Unit] = save("rudder_featureSwitch_directiveNodeProperties", status)
+=======
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
 }

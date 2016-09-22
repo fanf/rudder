@@ -13,6 +13,7 @@
     <link type="text/css" rel="stylesheet" href="/images/themes/ui-lightness/jquery.ui.all.css" />
     <link type="text/css" rel="stylesheet" href="/style/jquery-rudder-bridge.css" />
     <link type="text/css" rel="stylesheet" href="/style/c3/c3-0.4.10.min.css" />
+<<<<<<< HEAD
     <link type="text/css" rel="stylesheet" href="/style/angucomplete-ie8-v0.1.2.css" media="screen" />
     <link type="text/css" rel="stylesheet" href="/style/rudder.css" media="screen" />
 
@@ -26,6 +27,21 @@
     <!-- using minified version of that one leads to errors "DataTables warning (table id ...:
          Added data (size undefined) does not match known number of columns" errors -->
     <script type="text/javascript" src="/javascript/datatables/datatables.min.js"></script>
+=======
+    <link type="text/css" rel="stylesheet" href="/style/font-awesome/font-awesome-4.6.3.min.css"/>
+    
+    <link type="text/css" rel="stylesheet" href="/style/rudder/rudder.css" media="screen" />
+    
+    <link type="text/css" rel="stylesheet" href="/style/bootstrap/tw-bs-bootstrap-3.3.7.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/rudder/rudder-progress-bar.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/rudder/rudder-bootstrap.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/angular/angucomplete-alt.css" media="screen" />
+    <link type="text/css" rel="stylesheet" href="/style/rudder/rudder-quicksearch.css" media="screen" />
+    
+    <link type="text/css" rel="stylesheet" href="/style/AdminLTE/AdminLTE.min.css"/>
+    <link type="text/css" rel="stylesheet" href="/style/rudder/rudder-menu.css"/>
+    
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
 
     <script type="text/javascript" src="/javascript/jquery/ui/minified/jquery-ui.custom.min.js"></script>
     <script type="text/javascript" src="/javascript/jquery/ui/minified/jquery.ui.tabs.min.js"></script>
@@ -51,8 +67,13 @@
     <script type="text/javascript" src="/javascript/angular/angular.min.js" ></script>
     <script type="text/javascript" src="/javascript/angular/angular-animate.min.js" ></script>
     <script type="text/javascript" src="/javascript/angular/angular-datatables.js" ></script>
+<<<<<<< HEAD
     <script type="text/javascript" src="/javascript/angular/angular-touch.min.js" ></script>
     <script type="text/javascript" src="/javascript/angular/angucomplete-ie8-v0.1.2.js"></script>
+=======
+    <script type="text/javascript" src="/javascript/angular/angular-touch.min.js"></script>
+    <script type="text/javascript" src="/javascript/angular/angucomplete-alt.min.js"></script>
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
     <script type="text/javascript" src="/javascript/rudder/angular/quicksearch.js"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/groupManagement.js" id="angular-groupManagement"></script>
     <script type="text/javascript" src="/javascript/rudder/angular/ruleDirectives.js" id="angular-ruleDirectives"></script>
@@ -87,6 +108,7 @@
 <body>
 
 <div class="tw-bs">
+<<<<<<< HEAD
   <nav class="navbar navbar-rudder navbar-static-top" role="navigation">
     <div class="container-fluid">
       <div class="navbar-header">
@@ -193,6 +215,78 @@
                                       <span ng-show="$parent.checkRefresh(searching,'rule');" class="loading glyphicon glyphicon-refresh"></span>
                                     </span>
                                   </label>
+=======
+  <div class="wrapper">
+      <header class="main-header">
+        <a href="/secure/" class="logo fixed">
+          <span class="logo-mini"><b>R</b></span>
+          <span class="logo-lg"><b>Rudder</b></span>
+        </a>
+        <nav class="navbar navbar-static-top" role="navigation">
+          <a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button">
+            <span class="sr-only">Toggle navigation</span>
+          </a>
+          <!-- Quick Search-->
+         <div data-lift="QuickSearchNode.render"  class="sidebar-form topbar-search-form" >        <!-- Quick Search -->
+  
+            <div ng-app="quicksearch" id="quicksearch" ng-controller="QuicksearchCtrl" class="input-group">
+            <script type="text/ng-template" id="quicksearch.html">
+              <div class="angucomplete-holder" ng-class="{'angucomplete-dropdown-visible': showDropdown};">
+                <div class="input-group group-search" ng-class="{'open':searchStr.length>0}">
+                  
+                  <input ng-model="searchStr"
+                    ng-disabled="disableInput"
+                    type="text"
+                    value=""
+                    placeholder="{{placeholder}}"
+                    ng-focus="resetHideResults(); onFocusHandler()"
+                    id="searchInput"
+                    class="{{inputClass}}"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    autocomplete="off"
+                    ng-change="inputChangeHandler(searchStr);$parent.refreshFilterSearch(searchStr)"/>
+          <div class="input-group-btn">
+                  <span ng-class="{noRemove:!searchStr}" class="input-group-addon" id="help-search"><span ng-click="$parent.setValueSearchInput('');$parent.refreshFilterSearch(searchStr);" class="glyphicon glyphicon-remove"></span></span>
+                </div>
+                  <ul class="dropdown-menu dropdown-search angucomplete-dropdown dropdown-menu-right" ng-show="showDropdown">
+                    <li class="dropdown-header">
+                      <div class="row no-margin">
+                        <div class="row" id="search-tab">
+                          <div class="filter-search col-xs-12">
+                            <div class="panel panel-default panel-help">
+                              <div class="panel-heading heading-search">
+                                <h4 class="panel-title">Type</h4>
+                                  <div class="btn-toolbar" role="toolbar">
+                                  <div class="btn-group group-all" data-toggle="buttons">
+                                    <label for="filter-all" class="btn btn-default" ng-click="$parent.checkFilter($event, true,$parent.filter.all.activated,'all');" ng-class="{active : $parent.filter.all.activated || (!$parent.filter.directive.activated && !$parent.filter.group.activated && !$parent.filter.node.activated && !$parent.filter.parameter.activated && !$parent.filter.rule.activated)};">
+                                      <input type="radio" id="filter-all" checked="true" ng-checked="$parent.filter.all.activated || (!$parent.filter.directive.activated && !$parent.filter.group.activated && !$parent.filter.node.activated && !$parent.filter.parameter.activated && !$parent.filter.rule.activated);"/>All
+                                      <span class="badge pull-right" ng-class="{'label-success':$parent.filter.all.nbResults>0}">{{$parent.filter.all.nbResults}}</span>
+                                    </label>
+                                  </div>
+                          <div class="btn-group group-filters" data-toggle="buttons">
+                                    <label for="filter-directive" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.directive.activated,'directive');">
+                                      <input id="filter-directive" type="checkbox" ng-model="$parent.filter.directive.activated"/> Directive
+                                      <span class="badge pull-right" ng-class="{'label-success':$parent.filter.directive.nbResults>0}">{{$parent.filter.directive.nbResults}}</span>
+                                    </label>
+                                    <label for="filter-group" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.group.activated,'group');">
+                                      <input id="filter-group" type="checkbox" autocomplete="off" ng-model="$parent.filter.group.activated"/> Groups
+                                      <span class="badge pull-right" ng-class="{'label-success':$parent.filter.group.nbResults>0}">{{$parent.filter.group.nbResults}}</span>
+                                    </label>
+                                    <label for="filter-node" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.node.activated,'node');">
+                                      <input id="filter-node" type="checkbox" autocomplete="off" ng-model="$parent.filter.node.activated"/> Nodes
+                                      <span class="badge pull-right" ng-class="{'label-success':$parent.filter.node.nbResults>0}">{{$parent.filter.node.nbResults}}</span>
+                                    </label>
+                                    <label for="filter-parameter" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.parameter.activated,'parameter');">
+                                      <input id="filter-parameter" type="checkbox" autocomplete="off" ng-model="$parent.filter.parameter.activated"/> Parameters
+                                      <span class="badge pull-right" ng-class="{'label-success':$parent.filter.parameter.nbResults>0}">{{$parent.filter.parameter.nbResults}}</span>
+                                    </label>
+                                    <label for="filter-rule" class="btn btn-default" ng-click="$parent.checkFilter($event, false,$parent.filter.rule.activated,'rule');">
+                                      <input id="filter-rule" type="checkbox" autocomplete="off" ng-model="$parent.filter.rule.activated"/> Rules
+                                      <span class="badge pull-right" ng-class="{'label-success':$parent.filter.rule.nbResults>0}">{{$parent.filter.rule.nbResults}}</span>
+                                    </label>
+                                  </div>
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
                                 </div>
                               </div>
                             </div>
@@ -238,6 +332,7 @@
                           </div>
                         </div>
                       </div>
+<<<<<<< HEAD
                     </div>
                   </li>
                 </ul>
@@ -280,6 +375,29 @@
                  input-class="form-control"
                  match-class="highlight"
                  template-url="/my-custom-template.html">
+=======
+                    </li>
+                  </ul>
+              </div>
+            </div>
+          </script>
+  
+              <div id="angucomplete-ie8-quicksearch"
+                   angucomplete-alt=""
+                   placeholder="Search anything"
+                   maxlength="100"
+                   pause="500"
+                   selected-object="selectedObject"
+                   remote-url="api-url-to-change"
+                   remote-url-data-field="data"
+                   title-field="name"
+                   description-field="desc"
+                   minlength="3"
+                   input-class="form-control input"
+                   match-class="highlight"
+                   template-url="quicksearch.html">
+              </div>
+>>>>>>> 34c2711... Fixes #9111: Adapt quicksearch for 4.0
             </div>
           </div>
         </span>
