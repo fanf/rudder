@@ -37,48 +37,15 @@
 
 package com.normation.rudder.datasources
 
-import org.joda.time.DateTime
-import org.joda.time.Seconds
-import net.liftweb.common._
+import net.liftweb.common.Box
 
-sealed trait DataSourceType {
-  def name : String
-}
+trait DataSourceRepository {
 
-object DataSourceType {
-  def apply(name : String) : Box[DataSourceType] = {
-    if (name == ByNodeSourceType.name) {
-      Full(ByNodeSourceType)
-    } else {
-      Failure("not a valid source type name")
-    }
-  }
-}
-case object ByNodeSourceType extends DataSourceType {
-  val name = "byNode"
-}
+  def getAll : Box[Seq[DataSource]]
 
-case class AllNodesSourceType(
-    matchingPath  : String
-  , nodeAttribute : String
-) extends DataSourceType {
-  val name = AllNodesSourceType.name
-}
+  def get(name : DataSourceName) : Box[Option[DataSource]]
 
-object AllNodesSourceType {
-  val name = "allNodes"
-}
-case class DataSourceName(value : String) extends AnyVal
+  def save(source : DataSource) : Box[DataSource]
 
-case class DataSource (
-    name       : DataSourceName
-  , description: String
-  , sourceType : DataSourceType
-  , url        : String
-  , headers    : Map[String,String]
-  , httpMethod : String
-  , path       : String
-  , frequency  : Seconds
-  , lastUpdate : Option[DateTime]
-  , enabled    : Boolean
-)
+  def delete(source : DataSourceName) : Box[DataSource]
+}

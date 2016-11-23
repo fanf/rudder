@@ -75,6 +75,14 @@ import com.normation.rudder.domain.queries.NodeReturnType
 import com.normation.rudder.services.queries.StringQuery
 import net.liftweb.http.Req
 import com.normation.rudder.domain.policies.PolicyMode
+import com.normation.rudder.datasources.DataSource
+import com.normation.rudder.datasources.DataSourceName
+import com.normation.rudder.datasources.ByNodeSourceType
+import org.joda.time.Seconds
+import com.normation.rudder.web.rest.compliance.RestDataSource
+import net.liftweb.json.JsonAST.JObject
+import com.normation.rudder.datasources.DataSourceType
+import com.normation.rudder.datasources.AllNodesSourceType
 
 case class RestExtractorService (
     readRule             : RoRuleRepository
@@ -439,7 +447,7 @@ case class RestExtractorService (
     userPropertyService.reasonsFieldBehavior match {
       case Disabled  => Full(None)
       case mode =>
-        val reason = extractString("reason")(req)(identity)
+        val reason = extractString("reason")(req)(Full(_))
         mode match {
           case Mandatory =>
             reason match {
@@ -453,11 +461,11 @@ case class RestExtractorService (
   }
 
   def extractChangeRequestName (req : Req) : Box[Option[String]] = {
-    extractString("changeRequestName")(req)(identity)
+    extractString("changeRequestName")(req)(Full(_))
   }
 
   def extractChangeRequestDescription (req : Req) : String = {
-    extractString("changeRequestDescription")(req)(identity).getOrElse(None).getOrElse("")
+    extractString("changeRequestDescription")(req)(Full(_)).getOrElse(None).getOrElse("")
   }
 
   def extractNodeStatus (params : Map[String,List[String]]) : Box[NodeStatusAction] = {
@@ -862,18 +870,110 @@ case class RestExtractorService (
     }
   }
 
-  def extractString[T](key : String) (req : Req)(fun : String => T) : Box[Option[T]]  = {
+  def extractString[T](key : String) (req : Req)(fun : String => Box[T]) : Box[Option[T]]  = {
     req.json match {
       case Full(json) => json \ key match {
-        case JString(id) => Full(Some(fun(id)))
+        case JString(value) => fun(value).map(Some(_))
         case JNothing => Full(None)
         case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
       }
       case _ =>
         req.params.get(key) match {
           case None => Full(None)
-          case Some(head :: Nil) => Full(Some(fun(head)))
+          case Some(head :: Nil) => fun(head).map(Some(_))
+          case Some(list) => Failure(s"${list.size} values defined for '${key}' parameter, only one needs to be defined")
+        }
+    }
+  }
+
+  def extractInt[T](key : String) (req : Req)(fun : Int => T) : Box[Option[T]]  = {
+    req.json match {
+      case Full(json) => json \ key match {
+        case JInt(value) => Full(Some(fun(value.toInt)))
+        case JNothing => Full(None)
+        case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
+      }
+      case _ =>
+        req.params.get(key) match {
+          case None => Full(None)
+          case Some(head :: Nil) => try {
+            Full(Some(fun(head.toInt)))
+          } catch {
+            case e : Throwable =>
+              Failure(s"Parsing request parameter '${key}' as an integer failed, current value is '${head}'. Error message is: '${e.getMessage}'.")
+          }
           case Some(list) => Failure(s"${list.size} values defined for 'id' parameter, only one needs to be defined")
+        }
+    }
+  }
+
+    def extractBoolean[T](key : String) (req : Req)(fun : Boolean => T) : Box[Option[T]]  = {
+    req.json match {
+      case Full(json) => json \ key match {
+        case JBool(value) => Full(Some(fun(value)))
+        case JNothing => Full(None)
+        case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
+      }
+      case _ =>
+        req.params.get(key) match {
+          case None => Full(None)
+          case Some(head :: Nil) => try {
+            Full(Some(fun(head.toBoolean)))
+          } catch {
+            case e : Throwable =>
+              Failure(s"Parsing request parameter '${key}' as a boolean failed, current value is '${head}'. Error message is: '${e.getMessage}'.")
+          }
+          case Some(list) => Failure(s"${list.size} values defined for 'id' parameter, only one needs to be defined")
+        }
+    }
+  }
+
+  def extractMap[T,U](key : String)(req : Req)
+    ( keyFun : String => T
+    , jsonValueFun : JValue => U
+    , paramValueFun : String => U
+    , paramMapSepartor : String
+    ) : Box[Option[Map[T,U]]]  = {
+    req.json match {
+      case Full(json) => json \ key match {
+        case JObject(fields) =>
+          val map : Map[T,U] = fields.map{ case JField(fieldName, value) => (keyFun(fieldName), jsonValueFun(value))}.toMap
+          Full(Some(map))
+        case JNothing => Full(None)
+        case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
+      }
+      case _ =>
+        req.params.get(key) match {
+          case None => Full(None)
+          case Some(keyValues) =>
+              (bestEffort(keyValues) {
+                case keyValue =>
+                  val splitted = keyValue.split(paramMapSepartor,1).toList
+                  splitted match {
+                    case key :: value :: Nil => Full((keyFun(key),paramValueFun(value)))
+                    case _ => Failure ("Could not split value")
+                  }
+              }).map(values => Some(values.toMap))
+        }
+    }
+  }
+
+  def extractObj[T](key : String)(req : Req)(jsonValueFun : JObject => Box[T]) : Box[Option[T]]  = {
+    req.json match {
+      case Full(json) => json \ key match {
+        case obj : JObject => jsonValueFun(obj).map(Some(_))
+        case JNothing => Full(None)
+        case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
+      }
+      case _ =>
+        req.params.get(key) match {
+          case None => Full(None)
+          case Some(value :: Nil) =>
+            parseOpt(value) match {
+              case Some(obj : JObject) =>  jsonValueFun(obj).map(Some(_))
+              case _ => Failure(s"Not a valid value for '${key}' parameter, current value is : ${value}")
+            }
+          case Some(list) => Failure(s"${list.size} values defined for '${key}' parameter, only one needs to be defined")
         }
     }
   }
@@ -897,11 +997,55 @@ case class RestExtractorService (
       case _ =>
         req.params.get(key) match {
           case None => Full(Nil)
-          case Some(list) =>com.normation.utils.Control.bestEffort(list)(fun(_)).map(_.toList)
+          case Some(list) => bestEffort(list)(fun(_)).map(_.toList)
         }
     }
   }
 
-  def extractId[T] (req : Req)(fun : String => T)  = extractString("id")(req)(fun)
+  def extractId[T] (req : Req)(fun : String => Full[T])  = extractString("id")(req)(fun)
 
+  def extractDataSource(req : Req, optName : Option[DataSourceName] = None) : Box[RestDataSource] = {
+
+    def DataSourceType(obj : JObject) = {
+      obj \ "name" match {
+        case JString(ByNodeSourceType.name) => Full(ByNodeSourceType)
+        case JString(AllNodesSourceType.name) =>
+          (obj \ "path", obj \ "attribute") match {
+            case (JString(path), JString(attribute)) =>
+              Full(AllNodesSourceType(path,attribute))
+            case _ => Failure("Missing path or attribute for datasource type")
+          }
+        case _ => Failure("Cannot build datasource type from that object")
+      }
+    }
+
+    for {
+      name <- optName match {
+        case Some(name) => Full(name)
+        case None => extractString("name")(req) (x => Full(DataSourceName(x))).flatMap { Box(_) ?~! "no name defined in request"}
+      }
+      description  <- extractString("description")(req) (boxedIdentity)
+      sourceType  <- extractObj("type")(req) (DataSourceType(_))
+
+      description  <- extractString("description")(req) (boxedIdentity)
+      url  <- extractString("url")(req) (boxedIdentity)
+      path  <- extractString("path")(req) (boxedIdentity)
+      seconds  <- extractInt("frequency")(req) (Seconds.seconds(_))
+      enabled <- extractBoolean("enabled")(req)(identity)
+      headers <- extractMap("headers")(req) (identity, { case JString(value) => value; case _ => "" }, identity, ":")
+    } yield {
+      RestDataSource(
+          name
+        , description
+        , sourceType
+        , url
+        , headers
+        , path
+        , seconds
+        , enabled
+      )
+    }
+  }
+
+  private[this] def boxedIdentity[T] : T => Box[T] = Full(_)
 }

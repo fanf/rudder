@@ -35,50 +35,68 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.datasources
+package com.normation.rudder.web.rest.compliance
 
+import com.normation.rudder.web.rest.RestAPI
+import com.normation.rudder.datasources.DataSourceName
+import com.normation.rudder.datasources.DataSourceType
 import org.joda.time.DateTime
-import org.joda.time.Seconds
 import net.liftweb.common._
+import com.normation.rudder.datasources.DataSource
+import org.joda.time.Seconds
 
-sealed trait DataSourceType {
-  def name : String
+trait DataSourceApi extends RestAPI {
+  val kind = "datasources"
 }
 
-object DataSourceType {
-  def apply(name : String) : Box[DataSourceType] = {
-    if (name == ByNodeSourceType.name) {
-      Full(ByNodeSourceType)
-    } else {
-      Failure("not a valid source type name")
+case class RestDataSource (
+    name : DataSourceName
+  , description: Option[String]
+  , sourceType : Option[DataSourceType]
+  , url        : Option[String]
+  , headers    : Option[Map[String,String]]
+  , path       : Option[String]
+  , frequency  : Option[Seconds]
+  , enabled    : Option[Boolean]
+) {
+
+  def create() : Box[DataSource] = {
+
+    for {
+      sourceType <- Box(sourceType) ?~! "Source type must be defined when creating a data source"
+      desc = description.getOrElse("")
+      u    = url.getOrElse("")
+      p    = path.getOrElse("")
+      head = headers.getOrElse(Map())
+      freq = frequency.getOrElse(Seconds.seconds(60))
+      enab = enabled.getOrElse(false)
+
+    } yield {
+      DataSource(
+          name
+        , desc
+        , sourceType
+        , u
+        , head
+        , "get"
+        , p
+        , freq
+        , None
+        , enab
+      )
     }
   }
-}
-case object ByNodeSourceType extends DataSourceType {
-  val name = "byNode"
-}
 
-case class AllNodesSourceType(
-    matchingPath  : String
-  , nodeAttribute : String
-) extends DataSourceType {
-  val name = AllNodesSourceType.name
-}
+  def update(base : DataSource) : DataSource = {
 
-object AllNodesSourceType {
-  val name = "allNodes"
-}
-case class DataSourceName(value : String) extends AnyVal
+    val sType = sourceType.getOrElse(base.sourceType)
+    val desc  = description.getOrElse(base.description)
+    val u     = url.getOrElse(base.url)
+    val p     = path.getOrElse(base.path)
+    val head  = headers.getOrElse(base.headers)
+    val freq  = frequency.getOrElse(base.frequency)
+    val enab  = enabled.getOrElse(base.enabled)
 
-case class DataSource (
-    name       : DataSourceName
-  , description: String
-  , sourceType : DataSourceType
-  , url        : String
-  , headers    : Map[String,String]
-  , httpMethod : String
-  , path       : String
-  , frequency  : Seconds
-  , lastUpdate : Option[DateTime]
-  , enabled    : Boolean
-)
+    base.copy(base.name, desc, sType, u, head, base.httpMethod, p, freq, base.lastUpdate, enab)
+  }
+}
