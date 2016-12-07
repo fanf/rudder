@@ -40,45 +40,76 @@ package com.normation.rudder.datasources
 import org.joda.time.DateTime
 import org.joda.time.Seconds
 import net.liftweb.common._
+import scala.concurrent.duration.Duration
 
 sealed trait DataSourceType {
   def name : String
 }
 
-object DataSourceType {
-  def apply(name : String) : Box[DataSourceType] = {
-    if (name == ByNodeSourceType.name) {
-      Full(ByNodeSourceType)
-    } else {
-      Failure("not a valid source type name")
-    }
-  }
+final case class HttpDataSourceType (
+    url            : String
+  , headers        : Map[String,String]
+  , httpMethod     : String
+  , path           : String
+  , requestMode    : HttpRequestMode
+  , requestTimeOut : Duration
+) extends DataSourceType {
+  val name = HttpDataSourceType.name
 }
-case object ByNodeSourceType extends DataSourceType {
+
+object HttpDataSourceType{
+  val name = "http"
+}
+
+sealed trait HttpRequestMode {
+  def name : String
+}
+final case object OneRequestByNode extends HttpRequestMode {
   val name = "byNode"
 }
 
-case class AllNodesSourceType(
+final case class OneRequestAllNodes(
     matchingPath  : String
   , nodeAttribute : String
-) extends DataSourceType {
-  val name = AllNodesSourceType.name
+) extends HttpRequestMode {
+  val name = OneRequestAllNodes.name
 }
 
-object AllNodesSourceType {
+object OneRequestAllNodes {
   val name = "allNodes"
 }
-case class DataSourceName(value : String) extends AnyVal
+final case class DataSourceName(value : String) extends AnyVal
+final case class DataSourceId  (value : String) extends AnyVal
 
-case class DataSource (
-    name       : DataSourceName
-  , description: String
-  , sourceType : DataSourceType
-  , url        : String
-  , headers    : Map[String,String]
-  , httpMethod : String
-  , path       : String
-  , frequency  : Seconds
-  , lastUpdate : Option[DateTime]
-  , enabled    : Boolean
+sealed trait DataSourceSchedule {
+  def duration : Duration
+}
+
+final case class NoSchedule(
+  savedDuration : Duration
+) extends DataSourceSchedule {
+  val duration = savedDuration
+}
+
+final case class Scheduled(
+  duration : Duration
+) extends DataSourceSchedule
+
+final case class DataSourceRunParameters (
+    schedule     : DataSourceSchedule
+  , onGeneration : Boolean
+  , onNewNode    : Boolean
 )
+
+final case class DataSource (
+    id            : DataSourceId
+  , name          : DataSourceName
+  , sourceType    : DataSourceType
+  , runParam      : DataSourceRunParameters
+  , description   : String
+  , lastUpdate    : Option[DateTime]
+  , enabled       : Boolean
+  , updateTimeOut : Duration
+) {
+  val scope = "all"
+}

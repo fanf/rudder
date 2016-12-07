@@ -55,6 +55,7 @@ import com.normation.rudder.web.services.ReasonBehavior.Mandatory
 import com.normation.rudder.web.services.ReasonBehavior.Optionnal
 import com.normation.rudder.web.services.UserPropertyService
 import com.normation.utils.Control._
+import net.liftweb.util.Helpers.tryo
 import net.liftweb.common._
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
@@ -77,12 +78,15 @@ import net.liftweb.http.Req
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.datasources.DataSource
 import com.normation.rudder.datasources.DataSourceName
-import com.normation.rudder.datasources.ByNodeSourceType
 import org.joda.time.Seconds
-import com.normation.rudder.web.rest.compliance.RestDataSource
 import net.liftweb.json.JsonAST.JObject
 import com.normation.rudder.datasources.DataSourceType
-import com.normation.rudder.datasources.AllNodesSourceType
+import scala.concurrent.duration._
+import java.util.concurrent.TimeUnit
+import com.normation.rudder.datasources.HttpDataSourceType
+import com.normation.rudder.datasources.HttpRequestMode
+import com.normation.rudder.datasources.OneRequestByNode
+import com.normation.rudder.datasources.OneRequestAllNodes
 
 case class RestExtractorService (
     readRule             : RoRuleRepository
@@ -134,6 +138,14 @@ case class RestExtractorService (
   private[this] def extractJsonInt(json:JValue, key:String ) = {
     json \\ key match {
       case JInt(value)   => Full(Some(value.toInt))
+      case JObject(Nil)   => Full(None)
+      case _              => Failure(s"Not a good value for parameter ${key}")
+    }
+  }
+
+  private[this] def extractJsonBigInt[T](json:JValue, key:String )(convertTo : BigInt => Box[T]) = {
+    json \\ key match {
+      case JInt(value)   => convertTo(value).map(Some(_))
       case JObject(Nil)   => Full(None)
       case _              => Failure(s"Not a good value for parameter ${key}")
     }
@@ -886,10 +898,10 @@ case class RestExtractorService (
     }
   }
 
-  def extractInt[T](key : String) (req : Req)(fun : Int => T) : Box[Option[T]]  = {
+  def extractInt[T](key : String) (req : Req)(fun : BigInt => Box[T]) : Box[Option[T]]  = {
     req.json match {
       case Full(json) => json \ key match {
-        case JInt(value) => Full(Some(fun(value.toInt)))
+        case JInt(value) => fun(value).map(Some(_))
         case JNothing => Full(None)
         case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
       }
@@ -897,7 +909,7 @@ case class RestExtractorService (
         req.params.get(key) match {
           case None => Full(None)
           case Some(head :: Nil) => try {
-            Full(Some(fun(head.toInt)))
+            fun(head.toLong).map(Some(_))
           } catch {
             case e : Throwable =>
               Failure(s"Parsing request parameter '${key}' as an integer failed, current value is '${head}'. Error message is: '${e.getMessage}'.")
@@ -958,13 +970,17 @@ case class RestExtractorService (
     }
   }
 
+  def extractJsonObj[T](key : String)(json : JValue)(jsonValueFun : JObject => Box[T]) : Box[Option[T]]  = {
+  json \ key match {
+      case obj : JObject => jsonValueFun(obj).map(Some(_))
+      case JNothing => Full(None)
+      case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
+    }
+  }
+
   def extractObj[T](key : String)(req : Req)(jsonValueFun : JObject => Box[T]) : Box[Option[T]]  = {
     req.json match {
-      case Full(json) => json \ key match {
-        case obj : JObject => jsonValueFun(obj).map(Some(_))
-        case JNothing => Full(None)
-        case x => Failure(s"Not a valid value for '${key}' parameter, current value is : ${x}")
-      }
+      case Full(json) => extractJsonObj (key) (json) (jsonValueFun)
       case _ =>
         req.params.get(key) match {
           case None => Full(None)
@@ -1004,46 +1020,80 @@ case class RestExtractorService (
 
   def extractId[T] (req : Req)(fun : String => Full[T])  = extractString("id")(req)(fun)
 
-  def extractDataSource(req : Req, optName : Option[DataSourceName] = None) : Box[RestDataSource] = {
+  def extractDataSource(req : Req, base : DataSource) : Box[DataSource] = {
 
-    def DataSourceType(obj : JObject) = {
+    def extractDataSourceType(obj : JObject, base : DataSourceType) = {
+
       obj \ "name" match {
-        case JString(ByNodeSourceType.name) => Full(ByNodeSourceType)
-        case JString(AllNodesSourceType.name) =>
-          (obj \ "path", obj \ "attribute") match {
-            case (JString(path), JString(attribute)) =>
-              Full(AllNodesSourceType(path,attribute))
-            case _ => Failure("Missing path or attribute for datasource type")
+        case JString(HttpDataSourceType.name) =>
+          val httpBase = base match {
+            case h : HttpDataSourceType => h
           }
-        case _ => Failure("Cannot build datasource type from that object")
+
+          def extractHttpRequestMode(obj : JObject, base : HttpRequestMode) = {
+
+            obj \ "name" match {
+              case JString(OneRequestByNode.name) =>
+                Full(OneRequestByNode)
+              case JString(OneRequestAllNodes.name) =>
+                val allBase = base match {
+                  case h : OneRequestAllNodes => h
+                  case _ => OneRequestAllNodes("","")
+                }
+                for {
+                  attribute <- extractOneValueJson(obj, "attribute")(boxedIdentity)
+                  path <- extractOneValueJson(obj, "path")(boxedIdentity)
+                } yield {
+                  OneRequestAllNodes(
+                      path.getOrElse(allBase.matchingPath)
+                    , attribute.getOrElse(allBase.nodeAttribute)
+                  )
+                }
+            }
+          }
+
+          for {
+            url <- extractOneValueJson(obj, "url")(boxedIdentity)
+            path <- extractOneValueJson(obj, "path")(boxedIdentity)
+            method <- extractOneValueJson(obj, "requestMethod")(boxedIdentity)
+            timeout <- extractJsonBigInt(obj, "requestTimeout")(d => tryo{Duration(d.toLong, TimeUnit.SECONDS )})
+            headers <- obj \ "headers" match {
+              case header@JObject(fields) =>
+
+                sequence(fields.toSeq) { field => extractOneValueJson(header, field.name)( value => Full((field.name,value))).map(_.getOrElse((field.name,""))) }.map(fields => Some(fields.toMap))
+              case JNothing => Full(None)
+              case _ => Failure("oops")
+            }
+
+            requestMode <- extractJsonObj("requestMode")(obj)(extractHttpRequestMode(_,httpBase.requestMode))
+
+          } yield {
+            httpBase.copy(
+                url.getOrElse(httpBase.url)
+              , headers.getOrElse(httpBase.headers)
+              , method.getOrElse(httpBase.httpMethod)
+              , path.getOrElse(httpBase.path)
+              , requestMode.getOrElse(httpBase.requestMode)
+              , timeout.getOrElse(httpBase.requestTimeOut)
+            )
+          }
       }
     }
 
     for {
-      name <- optName match {
-        case Some(name) => Full(name)
-        case None => extractString("name")(req) (x => Full(DataSourceName(x))).flatMap { Box(_) ?~! "no name defined in request"}
-      }
+      name <- extractString("name")(req) (x => Full(DataSourceName(x)))
       description  <- extractString("description")(req) (boxedIdentity)
-      sourceType  <- extractObj("type")(req) (DataSourceType(_))
-
-      description  <- extractString("description")(req) (boxedIdentity)
-      url  <- extractString("url")(req) (boxedIdentity)
-      path  <- extractString("path")(req) (boxedIdentity)
-      seconds  <- extractInt("frequency")(req) (Seconds.seconds(_))
+      sourceType   <- extractObj("type")(req) (extractDataSourceType(_, base.sourceType))
+      timeOut  <- extractInt("timeout")(req) (d => tryo{Duration(d.toLong, TimeUnit.SECONDS )})
       enabled <- extractBoolean("enabled")(req)(identity)
-      headers <- extractMap("headers")(req) (identity, { case JString(value) => value; case _ => "" }, identity, ":")
     } yield {
-      RestDataSource(
-          name
-        , description
-        , sourceType
-        , url
-        , headers
-        , path
-        , seconds
-        , enabled
-      )
+      base.copy(
+        name = name.getOrElse(base.name)
+      , sourceType = sourceType.getOrElse(base.sourceType)
+      , description = description.getOrElse(base.description)
+      , enabled = enabled.getOrElse(base.enabled)
+      , updateTimeOut = timeOut.getOrElse(base.updateTimeOut)
+    )
     }
   }
 

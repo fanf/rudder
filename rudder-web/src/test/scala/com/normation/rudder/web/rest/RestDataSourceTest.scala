@@ -56,12 +56,11 @@ import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JField
 import net.liftweb.json.JsonAST.JArray
 import net.liftweb.json.JValue
-import com.normation.rudder.datasources.DataSource
-import com.normation.rudder.datasources.ByNodeSourceType
-import org.joda.time.Seconds
-import com.normation.rudder.datasources.DataSourceName
+import com.normation.rudder.datasources._
 import net.liftweb.common.Box
 import com.normation.rudder.web.rest.compliance.DataSourceApi
+import scala.concurrent.duration.Duration
+import java.util.concurrent.TimeUnit
 
 @RunWith(classOf[JUnitRunner])
 class RestDataSourceTest extends Specification with Loggable {
@@ -81,14 +80,17 @@ class RestDataSourceTest extends Specification with Loggable {
     }
   }
 
-  val datasource1 = DataSource(DataSourceName( "datasource1"), "This is data source 1", ByNodeSourceType, "url1", Map(("header1","value1")), "get", "path1", Seconds.seconds(60), None, true)
-  val d1Json = restDataSerializer.serializeDataSource(datasource1)
+  val baseSourceType = HttpDataSourceType("", Map(), "GET", "", OneRequestByNode, Duration.Inf)
+  val baseRunParam  = DataSourceRunParameters(NoSchedule(Duration.Inf), false,false)
+
+  val datasource1 = DataSource(DataSourceId( "datasource1"), DataSourceName(""), baseSourceType, baseRunParam, "", None, false, Duration.Inf)
+      val d1Json = restDataSerializer.serializeDataSource(datasource1)
   RestTestSetUp.datasourceRepo.save(datasource1)
 
   val datasource2 = datasource1.copy(name = DataSourceName("datasource2"))
   val d2Json = restDataSerializer.serializeDataSource(datasource2)
 
-  val dataSource2Updated = datasource2.copy(description = "new description", headers = Map( ("new header 1" -> "new value 1") , ("new header 2" -> "new value 2")), frequency = Seconds.seconds(4200))
+  val dataSource2Updated = datasource2.copy(description = "new description", sourceType = baseSourceType.copy(headers = Map( ("new header 1" -> "new value 1") , ("new header 2" -> "new value 2"))), runParam = baseRunParam.copy(Scheduled(Duration(4200, TimeUnit.SECONDS))))
   val d2updatedJson = restDataSerializer.serializeDataSource(dataSource2Updated)
   val d2modJson = {
     import net.liftweb.json.JsonDSL._

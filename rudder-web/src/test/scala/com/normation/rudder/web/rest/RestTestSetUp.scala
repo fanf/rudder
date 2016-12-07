@@ -102,7 +102,7 @@ object RestTestSetUp {
   )
 
   val datasourceRepo = new MemoryDataSourceRepository
-  val dataSourceApiService = new DataSourceApiService(datasourceRepo, restDataSerializer)
+  val dataSourceApiService = new DataSourceApiService(datasourceRepo, restDataSerializer, restExtractorService)
   val dataSourceApi9 = new DataSourceApi9(restExtractorService, dataSourceApiService, uuidGen)
 
   val api = APIDispatcher( Map((ApiVersion(42,false)-> List(dataSourceApi9))), restExtractorService)

@@ -57,7 +57,6 @@ import net.liftweb.json.JsonAST.JField
 import net.liftweb.json.JsonAST.JArray
 import net.liftweb.json.JValue
 import com.normation.rudder.datasources.DataSource
-import com.normation.rudder.datasources.ByNodeSourceType
 import org.joda.time.Seconds
 import com.normation.rudder.datasources.DataSourceName
 import net.liftweb.common.Box

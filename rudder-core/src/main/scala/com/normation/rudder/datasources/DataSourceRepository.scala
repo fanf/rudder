@@ -41,11 +41,11 @@ import net.liftweb.common.Box
 
 trait DataSourceRepository {
 
-  def getAll : Box[Seq[DataSource]]
+  def getAll : Box[Map[DataSourceId,DataSource]]
 
-  def get(name : DataSourceName) : Box[Option[DataSource]]
+  def get(id : DataSourceId) : Box[Option[DataSource]]
 
   def save(source : DataSource) : Box[DataSource]
 
-  def delete(source : DataSourceName) : Box[DataSource]
+  def delete(id : DataSourceId) : Box[DataSource]
 }

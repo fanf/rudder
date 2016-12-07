@@ -311,11 +311,9 @@ object RudderConfig extends Loggable {
     , RudderServerRole("rudder-cfengine-mission-portal", config.getString("rudder.server-roles.cfengine-mission-portal"))
   )
 
-
   // The base directory for hooks. I'm not sure it need to be configurable
   // as we only use it in generation.
   val HOOKS_D = "/opt/rudder/hooks.d"
-
 
   val licensesConfiguration = "licenses.xml"
   val logentries = "logentries.xml"
@@ -790,7 +788,7 @@ object RudderConfig extends Loggable {
 
   val settingsApi8 = new SettingsAPI8(restExtractorService, configService, asyncDeploymentAgent, stringUuidGenerator)
 
-  val dataSourceApiService = new DataSourceApiService(new MemoryDataSourceRepository, restDataSerializer)
+  val dataSourceApiService = new DataSourceApiService(new MemoryDataSourceRepository, restDataSerializer, restExtractorService)
   val dataSourceApi9 = new DataSourceApi9(restExtractorService, dataSourceApiService, stringUuidGenerator)
 
   // First working version with support for rules, directives, nodes and global parameters

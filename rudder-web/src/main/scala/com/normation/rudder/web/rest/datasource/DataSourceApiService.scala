@@ -42,27 +42,29 @@ import net.liftweb.json.JsonAST.JValue
 import com.normation.rudder.web.rest.RestDataSerializer
 import net.liftweb.common._
 import com.normation.rudder.web.rest.RestUtils
+import com.normation.rudder.web.rest.RestExtractorService
+import scala.concurrent.duration.Duration
+import net.liftweb.http.Req
 
 class MemoryDataSourceRepository extends DataSourceRepository {
 
-  private[this] var sources : Map[DataSourceName,DataSource] = Map()
+  private[this] var sources : Map[DataSourceId,DataSource] = Map()
 
-  def getAll() = Full(sources.values.toSeq)
+  def getAll() = Full(sources)
 
-  def get(name : DataSourceName) : Box[Option[DataSource]]= Full(sources.get(name))
+  def get(id : DataSourceId) : Box[Option[DataSource]]= Full(sources.get(id))
 
   def save(source : DataSource) = {
-    sources = sources +  ((source.name,source))
-    println(sources.size)
+    sources = sources +  ((source.id,source))
     Full(source)
   }
-  def delete(sourceName : DataSourceName) : Box[DataSource] = {
-    sources.get(sourceName) match {
+  def delete(id : DataSourceId) : Box[DataSource] = {
+    sources.get(id) match {
       case Some(source) =>
-        sources = sources - (sourceName)
+        sources = sources - (id)
         Full(source)
       case None =>
-        Failure(s"Data source '${sourceName}' does not exists, and thus can't be deleted")
+        Failure(s"Data source '${id}' does not exists, and thus can't be deleted")
     }
   }
 }
@@ -70,6 +72,7 @@ class MemoryDataSourceRepository extends DataSourceRepository {
 class DataSourceApiService(
     dataSourceRepo     : DataSourceRepository
   , restDataSerializer : RestDataSerializer
+  , restExctactor      : RestExtractorService
 ) extends Loggable {
   import net.liftweb.json.JsonDSL._
 
@@ -77,22 +80,22 @@ class DataSourceApiService(
   def getSources() : Box[JValue] = {
     for {
       sources <- dataSourceRepo.getAll
-      data = sources.map(restDataSerializer.serializeDataSource(_))
+      data = sources.values.map(restDataSerializer.serializeDataSource(_))
     } yield {
       data
     }
   }
 
-  def getSource(name : DataSourceName) : Box[JValue] = {
+  def getSource(id : DataSourceId) : Box[JValue] = {
     for {
-      optSource <- dataSourceRepo.get(name)
-      source <- Box(optSource) ?~! s"Data source ${name} does not exist."
+      optSource <- dataSourceRepo.get(id)
+      source <- Box(optSource) ?~! s"Data source ${id} does not exist."
     } yield {
       restDataSerializer.serializeDataSource(source) :: Nil
     }
   }
 
-  def deleteSource(name : DataSourceName) : Box[JValue] = {
+  def deleteSource(name : DataSourceId) : Box[JValue] = {
     for {
       source <- dataSourceRepo.delete(name)
     } yield {
@@ -100,9 +103,14 @@ class DataSourceApiService(
     }
   }
 
-  def createSource(restSource : RestDataSource ) : Box[JValue] = {
+  def createSource(request : Req) : Box[JValue] = {
+
+    val baseSourceType = HttpDataSourceType.apply("", Map(), "GET", "", OneRequestByNode, Duration.Inf)
+    val baseRunParam  = DataSourceRunParameters.apply(NoSchedule(Duration.Inf), false,false)
     for {
-      source <- restSource.create()
+      sourceId <- restExctactor.extractId(request){ a => val id = DataSourceId(a); Full(id)}.flatMap( Box(_) ?~! "You need to define datasource id to create it via api")
+      base = DataSource.apply(sourceId, DataSourceName(""), baseSourceType, baseRunParam, "", None, false, Duration.Inf)
+      source <- restExctactor.extractDataSource(request, base)
       _ <- dataSourceRepo.save(source)
       data = restDataSerializer.serializeDataSource(source)
     } yield {
@@ -110,10 +118,10 @@ class DataSourceApiService(
     }
   }
 
-  def updateSource(restSource : RestDataSource ) : Box[JValue] = {
+  def updateSource(sourceId : DataSourceId, request: Req ) : Box[JValue] = {
     for {
-      base <- dataSourceRepo.get(restSource.name).flatMap { Box(_) ?~! s"Cannot update data source '${restSource.name}', because it does not exist" }
-      updated = restSource.update(base)
+      base <- dataSourceRepo.get(sourceId).flatMap { Box(_) ?~! s"Cannot update data source '${sourceId.value}', because it does not exist" }
+      updated <- restExctactor.extractDataSource(request, base)
       _ <- dataSourceRepo.save(updated)
       data = restDataSerializer.serializeDataSource(updated)
     } yield {

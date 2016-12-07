@@ -59,9 +59,7 @@ import com.normation.rudder.web.rest.node.MinimalDetailLevel
 import com.normation.rudder.repository.FullActiveTechnique
 import scala.language.implicitConversions
 import com.normation.rudder.web.components.DateFormaterService
-import com.normation.rudder.datasources.DataSource
-import com.normation.rudder.datasources.ByNodeSourceType
-import com.normation.rudder.datasources.AllNodesSourceType
+import com.normation.rudder.datasources._
 
 /**
  *  Centralize all function to serialize datas as valid answer for API Rest
@@ -594,23 +592,32 @@ case class RestDataSerializerImpl (
 
   def serializeDataSource(source : DataSource): JValue = {
     ( ( "name"        -> source.name.value  )
+    ~ ( "id"        -> source.id.value  )
     ~ ( "description" -> source.description )
     ~ ( "type" -> (
         ( "name" -> source.sourceType.name )
         ~ { source.sourceType match {
-          case ByNodeSourceType =>
-            JObject(Nil)
-          case allNodes : AllNodesSourceType =>
-            ( ( "path"    -> allNodes.matchingPath  )
-            ~ ( "attribute" -> allNodes.nodeAttribute )
-            )
-        } }
-      ) )
-    ~ ( "url"        -> source.url     )
-    ~ ( "headers"    -> source.headers )
-    ~ ( "path"       -> source.path    )
-    ~ ( "frequency"  -> source.frequency.getSeconds )
+          case HttpDataSourceType(url,headers,method,path,mode,timeOut) =>
+            ( ( "url"        -> url     )
+            ~ ( "headers"    -> headers )
+            ~ ( "path"       -> path    )
+            ~ ( "requestTimeout"  -> timeOut.length )
+            ~ ( "requestMode"  ->
+              ( ( "name" -> mode.name )
+              ~ { mode match {
+                  case OneRequestByNode =>
+                    JObject(Nil)
+                  case OneRequestAllNodes(subPath,nodeAttribute) =>
+                    ( ( "path" -> subPath)
+                    ~ ( "attribute" -> nodeAttribute)
+                    )
+              } } )
+            ) )
+          }
+        } )
+      )
     ~ ( "lastUpdate" -> source.lastUpdate.map { DateFormaterService.getFormatedDate(_)} . getOrElse("Never") )
+    ~ ( "updateTimeOut" -> source.updateTimeOut.length )
     ~ ( "enabled"    -> source.enabled )
     )
   }

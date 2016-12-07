@@ -46,7 +46,7 @@ import net.liftweb.json.JsonDSL._
 import com.normation.rudder.web.rest.ApiVersion
 import net.liftweb.json.JValue
 import com.normation.rudder.web.rest.RestUtils
-import com.normation.rudder.datasources.DataSourceName
+import com.normation.rudder.datasources._
 import com.normation.utils.StringUuidGenerator
 
 class DataSourceApi9 (
@@ -71,30 +71,20 @@ class DataSourceApi9 (
       response(apiService.getSources(), req, "Could not get data sources", None)("getAllDataSources")
     }
 
-    case Get(sourceName :: Nil, req) => {
-      response(apiService.getSource(DataSourceName(sourceName)), req, "Could not get data sources", None)("getDataSource")
+    case Get(sourceId :: Nil, req) => {
+      response(apiService.getSource(DataSourceId(sourceId)), req, "Could not get data sources", None)("getDataSource")
     }
 
-    case Delete(sourceName :: Nil, req) => {
-      response(apiService.deleteSource(DataSourceName(sourceName)), req, "Could not delete data sources", None)("getDataSource")
+    case Delete(sourceId :: Nil, req) => {
+      response(apiService.deleteSource(DataSourceId(sourceId)), req, "Could not delete data sources", None)("getDataSource")
     }
 
     case Put(Nil, req) => {
-      for {
-        restSource <- restExtractor.extractDataSource(req)
-      } yield {
-        response(apiService.createSource(restSource), req, "Could not create data source", None)("createDataSource")
-      }
+        response(apiService.createSource(req), req, "Could not create data source", None)("createDataSource")
     }
 
-    case Post(sourceName :: Nil, req) => {
-      val data = for {
-        restSource <- restExtractor.extractDataSource(req, Some(DataSourceName(sourceName)))
-        data <- apiService.updateSource(restSource)
-      } yield {
-        data
-      }
-      response(data, req, "Could not update data source", None)("updateDataSource")
+    case Post(sourceId :: Nil, req) => {
+      response(apiService.updateSource(DataSourceId(sourceId),req), req, "Could not update data source", None)("updateDataSource")
     }
 
   }

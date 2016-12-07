@@ -38,65 +38,147 @@
 package com.normation.rudder.web.rest.compliance
 
 import com.normation.rudder.web.rest.RestAPI
-import com.normation.rudder.datasources.DataSourceName
-import com.normation.rudder.datasources.DataSourceType
 import org.joda.time.DateTime
 import net.liftweb.common._
-import com.normation.rudder.datasources.DataSource
+import com.normation.rudder.datasources._
+import com.normation.rudder.datasources.OneRequestAllNodes
+import com.normation.rudder.datasources.OneRequestByNode
 import org.joda.time.Seconds
+import scala.concurrent.duration.Duration
 
 trait DataSourceApi extends RestAPI {
   val kind = "datasources"
 }
+/*
+sealed trait RestRequestMode[T <: HttpRequestMode]{
+  def name : String
+  def update(data : T) : T
+  def create() : T
+}
+
+final case object RestByNodeMode extends RestRequestMode[OneRequestByNode.type] {
+  def name = OneRequestByNode.name
+  def create = OneRequestByNode
+  def update(data : OneRequestByNode.type) = OneRequestByNode
+}
+
+final case class RestOneRequestMode(
+    matchingPath  : Option[String]
+  , nodeAttribute : Option[String]
+) extends RestRequestMode[OneRequestAllNodes] {
+  def name = OneRequestAllNodes.name
+  def create =
+    OneRequestAllNodes(
+        matchingPath.getOrElse("")
+      , nodeAttribute.getOrElse("")
+    )
+
+  def update(base : OneRequestAllNodes) =
+    OneRequestAllNodes(
+        matchingPath.getOrElse(base.matchingPath)
+      , nodeAttribute.getOrElse(base.nodeAttribute)
+    )
+}
+
+sealed trait RestSourceType[T <: DataSourceType] {
+  def name : String
+
+  def update(data : T) : T
+
+  def create() : T
+}
+
+case class RestHttpSourceType (
+    url            : Option[String]
+  , headers        : Option[Map[String,String]]
+  , httpMethod     : Option[String]
+  , path           : Option[String]
+  , requestMode    : Option[RestRequestMode[HttpRequestMode]]
+  , requestTimeOut : Option[Duration]
+) extends RestSourceType[HttpDataSourceType] {
+  val name = "http"
+
+  def update( base : HttpDataSourceType) = {
+    base.copy(
+        url = url.getOrElse(base.url)
+      , headers = headers.getOrElse(base.headers)
+      , httpMethod = httpMethod.getOrElse(base.httpMethod)
+      , path = path.getOrElse(base.path)
+      , requestMode = requestMode.map(_.update(base.requestMode)).getOrElse(base.requestMode)
+      , requestTimeOut = requestTimeOut.getOrElse(base.requestTimeOut)
+    )
+  }
+
+  def create = {
+    HttpDataSourceType(
+        url = url.getOrElse("")
+      , headers = headers.getOrElse(Map())
+      , httpMethod = httpMethod.getOrElse("GET")
+      , path = path.getOrElse("")
+      , requestMode = requestMode.map(_.create).getOrElse(OneRequestByNode)
+      , requestTimeOut = requestTimeOut.getOrElse(Duration.Inf)
+    )
+  }
+}
+
+final case class RestSourceRunParameters (
+    schedule     : Option[DataSourceSchedule]
+  , onGeneration : Option[Boolean]
+  , onNewNode    : Option[Boolean]
+) {
+    def create() : DataSourceRunParameters = {
+
+    DataSourceRunParameters(
+        schedule.getOrElse(NoSchedule(Duration.Inf))
+      , onGeneration.getOrElse(false)
+      , onNewNode.getOrElse(false)
+    )
+  }
+
+  def update(base : DataSourceRunParameters) : DataSourceRunParameters = {
+    base.copy(
+        schedule.getOrElse(base.schedule)
+      , onGeneration.getOrElse(base.onGeneration)
+      , onNewNode.getOrElse(base.onNewNode)
+    )
+  }
+}
 
 case class RestDataSource (
-    name : DataSourceName
+    id : DataSourceId
+  , name : Option[DataSourceName]
+
   , description: Option[String]
-  , sourceType : Option[DataSourceType]
-  , url        : Option[String]
-  , headers    : Option[Map[String,String]]
-  , path       : Option[String]
-  , frequency  : Option[Seconds]
+  , sourceType : Option[RestSourceType[DataSourceType]]
   , enabled    : Option[Boolean]
+  , timeOut    : Option[Duration]
 ) {
 
   def create() : Box[DataSource] = {
 
-    for {
-      sourceType <- Box(sourceType) ?~! "Source type must be defined when creating a data source"
-      desc = description.getOrElse("")
-      u    = url.getOrElse("")
-      p    = path.getOrElse("")
-      head = headers.getOrElse(Map())
-      freq = frequency.getOrElse(Seconds.seconds(60))
-      enab = enabled.getOrElse(false)
+    val defaultSourceType = RestHttpSourceType(None,None,None,None,None,None)
 
-    } yield {
-      DataSource(
-          name
-        , desc
-        , sourceType
-        , u
-        , head
-        , "get"
-        , p
-        , freq
-        , None
-        , enab
-      )
-    }
+    Full(DataSource(
+        id
+      , name.getOrElse(DataSourceName(""))
+      , sourceType.getOrElse(defaultSourceType).create()
+      , null // parameters
+      , description.getOrElse("")
+      , None
+      , enabled.getOrElse(false)
+      , timeOut.getOrElse(Duration.Inf)
+    ))
   }
 
   def update(base : DataSource) : DataSource = {
 
-    val sType = sourceType.getOrElse(base.sourceType)
-    val desc  = description.getOrElse(base.description)
-    val u     = url.getOrElse(base.url)
-    val p     = path.getOrElse(base.path)
-    val head  = headers.getOrElse(base.headers)
-    val freq  = frequency.getOrElse(base.frequency)
-    val enab  = enabled.getOrElse(base.enabled)
-
-    base.copy(base.name, desc, sType, u, head, base.httpMethod, p, freq, base.lastUpdate, enab)
+    base.copy(
+        name = name.getOrElse(base.name)
+      , sourceType = sourceType.map(_.update(base.sourceType)).getOrElse(base.sourceType)
+      , description = description.getOrElse(base.description)
+      , enabled = enabled.getOrElse(base.enabled)
+      , updateTimeOut = timeOut.getOrElse(base.updateTimeOut)
+    )
   }
 }
+*/
