@@ -1056,7 +1056,7 @@ case class RestExtractorService (
             url <- extractOneValueJson(obj, "url")(boxedIdentity)
             path <- extractOneValueJson(obj, "path")(boxedIdentity)
             method <- extractOneValueJson(obj, "requestMethod")(boxedIdentity)
-            timeout <- extractJsonBigInt(obj, "requestTimeout")(d => tryo{Duration(d.toLong, TimeUnit.SECONDS )})
+            timeout <- extractOneValueJson(obj, "requestTimeout")(d => tryo(Duration(d)) )
             headers <- obj \ "headers" match {
               case header@JObject(fields) =>
 

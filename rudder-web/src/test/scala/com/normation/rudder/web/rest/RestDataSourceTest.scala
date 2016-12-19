@@ -84,7 +84,7 @@ class RestDataSourceTest extends Specification with Loggable {
   val baseRunParam  = DataSourceRunParameters(NoSchedule(Duration.Inf), false,false)
 
   val datasource1 = DataSource(DataSourceId( "datasource1"), DataSourceName(""), baseSourceType, baseRunParam, "", None, false, Duration.Inf)
-      val d1Json = restDataSerializer.serializeDataSource(datasource1)
+  val d1Json = restDataSerializer.serializeDataSource(datasource1)
   RestTestSetUp.datasourceRepo.save(datasource1)
 
   val datasource2 = datasource1.copy(name = DataSourceName("datasource2"))
@@ -97,18 +97,20 @@ class RestDataSourceTest extends Specification with Loggable {
     ( ("headers" -> ( ("new header 1" -> "new value 1") ~ ("new header 2" -> "new value 2") ) ) ~ ("description" -> "new description") ~ ("frequency" -> 4200) )
   }
 
-  sequential ^ ("Data source api" should {
+  sequential
+
+  "Data source api" should {
 
     "Get all base data source" in {
       testGET("/api/latest/datasources") { req =>
-       val result = for {
-         answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
-       } yield {
-         data
-       }
+        val result = for {
+          answer <- RestTestSetUp.api(req)()
+          data   <- extractDataFromResponse(answer, "datasources")
+        } yield {
+          data
+        }
 
-       result must beEqualTo(Full(d1Json :: Nil))
+        result must beEqualTo(Full(d1Json :: Nil))
       }
     }
 
@@ -116,7 +118,7 @@ class RestDataSourceTest extends Specification with Loggable {
       testPUT("/api/latest/datasources", d2Json) { req =>
        val result = for {
          answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
+         data   <- extractDataFromResponse(answer, "datasources")
        } yield {
          data
        }
@@ -127,67 +129,67 @@ class RestDataSourceTest extends Specification with Loggable {
 
     "List new data source" in {
       testGET("/api/latest/datasources") { req =>
-       val result = for {
-         answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
+        val result = for {
+          answer <- RestTestSetUp.api(req)()
+          data   <- extractDataFromResponse(answer, "datasources")
 
-       } yield {
-         data
-       }
-       result.getOrElse(Nil) must contain( exactly(d1Json , d2Json))
+        } yield {
+          data
+        }
+        result.getOrElse(Nil) must contain( exactly(d1Json , d2Json))
       }
     }
 
     "Accept modification as json" in {
       testPOST(s"/api/latest/datasources/${datasource2.name.value}", d2modJson) { req =>
-       val result = for {
-         answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
-       } yield {
-         data
-       }
+        val result = for {
+          answer <- RestTestSetUp.api(req)()
+          data   <- extractDataFromResponse(answer, "datasources")
+        } yield {
+          data
+        }
 
-       result must beEqualTo(Full(d2updatedJson :: Nil))
+        result must beEqualTo(Full(d2updatedJson :: Nil))
       }
     }
 
     "Get updated data source" in {
       testGET(s"/api/latest/datasources/${datasource2.name.value}") { req =>
-       val result = for {
-         answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
+        val result = for {
+          answer <- RestTestSetUp.api(req)()
+          data   <- extractDataFromResponse(answer, "datasources")
 
-       } yield {
-         data
-       }
-       result.getOrElse(Nil) must contain( exactly( d2updatedJson))
+        } yield {
+          data
+        }
+        result.getOrElse(Nil) must contain( exactly( d2updatedJson))
       }
     }
 
     "Delete the newly added data source" in {
       testDELETE(s"/api/latest/datasources/${datasource2.name.value}") { req =>
-       val result = for {
-         answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
+        val result = for {
+          answer <- RestTestSetUp.api(req)()
+          data   <- extractDataFromResponse(answer, "datasources")
 
-       } yield {
-         data
-       }
-       result must beEqualTo(Full(d2updatedJson :: Nil))
+        } yield {
+          data
+        }
+        result must beEqualTo(Full(d2updatedJson :: Nil))
       }
     }
 
     "Be removed from list of all data sources" in {
       testGET("/api/latest/datasources") { req =>
-       val result = for {
-         answer <- RestTestSetUp.api(req)()
-         data <- extractDataFromResponse(answer, "datasources")
+        val result = for {
+          answer <- RestTestSetUp.api(req)()
+          data   <- extractDataFromResponse(answer, "datasources")
 
-       } yield {
-         data
-       }
-       result.getOrElse(Nil) must contain( exactly(d1Json))
+        } yield {
+          data
+        }
+        result.getOrElse(Nil) must contain( exactly(d1Json))
       }
     }
-  })
+  }
 }

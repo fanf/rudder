@@ -601,7 +601,7 @@ case class RestDataSerializerImpl (
             ( ( "url"        -> url     )
             ~ ( "headers"    -> headers )
             ~ ( "path"       -> path    )
-            ~ ( "requestTimeout"  -> timeOut.length )
+            ~ ( "requestTimeout"  -> timeOut.toString.replaceAll("Duration.", "")) //yeah, they read only "Inf", not Duration.Inf
             ~ ( "requestMode"  ->
               ( ( "name" -> mode.name )
               ~ { mode match {
@@ -617,7 +617,7 @@ case class RestDataSerializerImpl (
         } )
       )
     ~ ( "lastUpdate" -> source.lastUpdate.map { DateFormaterService.getFormatedDate(_)} . getOrElse("Never") )
-    ~ ( "updateTimeOut" -> source.updateTimeOut.length )
+    ~ ( "updateTimeOut" -> source.updateTimeOut.toString.replaceAll("Duration.", "") )
     ~ ( "enabled"    -> source.enabled )
     )
   }
