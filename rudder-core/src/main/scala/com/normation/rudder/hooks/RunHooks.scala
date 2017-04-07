@@ -111,6 +111,35 @@ object HooksLogger extends Logger {
   override protected def _logger = LoggerFactory.getLogger("hooks")
 }
 
+sealed trait HookReturnCode
+object HookReturnCode {
+  sealed trait Continue extends HookReturnCode
+  sealed trait Stop     extends HookReturnCode {
+    def msg: String
+  }
+
+  //special return code
+  final case object Success extends Continue
+  final case class  Warning(code: Int, msg: String) extends Continue
+  final case class  Error(code: Int, msg: String) extends Stop
+  final case class  SystemError(msg: String) extends Stop
+
+  //special return code 100: it is a stop state, but in some case can lead to
+  //an user message that is tailored to explain that it is not a hook error)
+  final case class  Interrupt(msg: String) extends Stop
+}
+
+object HooksImplicits {
+  import scala.language.implicitConversions
+  implicit def hooksReturnCodeToBox(hrc: HookReturnCode): Box[Unit] = {
+    hrc match {
+      case _: HookReturnCode.Continue => Full(())
+      case x: HookReturnCode.Stop     => Failure(x.msg)
+    }
+  }
+
+}
+
 object RunHooks {
 
   /**
@@ -129,7 +158,7 @@ object RunHooks {
    * - > 255: should not happen, but treated as reserved.
    *
    */
-  def asyncRun(hooks: Hooks, hookParameters: HookEnvPairs, envVariables: HookEnvPairs): Future[Box[Unit]] = {
+  def asyncRun(hooks: Hooks, hookParameters: HookEnvPairs, envVariables: HookEnvPairs): Future[HookReturnCode] = {
     /*
      * We can not use Future.fold, because it execute all scripts
      * in parallele and then combine their results. Our semantic
@@ -137,10 +166,10 @@ object RunHooks {
      * step.
      * But we still want the whole operation to be non-bloking.
      */
-    ( Future(Full(()):Box[Unit]) /: hooks.hooksFile) { case (previousFuture, nextHookName) =>
+    ( Future(HookReturnCode.Success:HookReturnCode) /: hooks.hooksFile) { case (previousFuture, nextHookName) =>
       val path = hooks.basePath + File.separator + nextHookName
       previousFuture.flatMap {
-        case Full(())     =>
+        case x:HookReturnCode.Continue =>
           HooksLogger.debug(s"Run hook: '${path}' with environment parameters: ${hookParameters.show}")
           HooksLogger.trace(s"System environment variables: ${envVariables.show}")
           val env = envVariables.add(hookParameters)
@@ -148,19 +177,21 @@ object RunHooks {
             lazy val msg = s"Exit code=${result.code} for hook: '${path}' with environment variables: ${env.show}. \n  Stdout: '${result.stdout}' \n  Stderr: '${result.stderr}'"
             HooksLogger.trace(s"  -> results: ${msg}")
             if(       result.code <= 0 ) {
-              Full(())
+              HookReturnCode.Success
             } else if(result.code >= 1  && result.code <= 31 ) { // error
-              Failure(msg)
+              HookReturnCode.Error(result.code, msg)
             } else if(result.code >= 32 && result.code <= 64) { // warning
               HooksLogger.warn(msg)
-              Full(())
+              HookReturnCode.Warning(result.code, msg)
+            } else if(result.code == 100) {
+              HookReturnCode.Interrupt(msg)
             } else { //reserved - like error for now
-              Failure(msg)
+              HookReturnCode.Error(result.code, msg)
             }
           } recover {
-            case ex: Exception => Failure(s"Exception when executing '${path}' with environment variables: ${env.show}: ${ex.getMessage}")
+            case ex: Exception => HookReturnCode.SystemError(s"Exception when executing '${path}' with environment variables: ${env.show}: ${ex.getMessage}")
           }
-        case eb: EmptyBox => Future(eb)
+        case x:HookReturnCode.Stop => Future(x)
       }
     }
   }
@@ -182,7 +213,7 @@ object RunHooks {
    *
    *
    */
-  def syncRun(hooks: Hooks, hookParameters: HookEnvPairs, envVariables: HookEnvPairs): Box[Unit] = {
+  def syncRun(hooks: Hooks, hookParameters: HookEnvPairs, envVariables: HookEnvPairs): HookReturnCode = {
     try {
       //cmdInfo is just for comments/log. We use "*" to synthetize
       val cmdInfo = s"'${hooks.basePath}' with environment parameters: ${hookParameters.show}"
@@ -193,7 +224,7 @@ object RunHooks {
       HooksLogger.debug(s"Done in ${System.currentTimeMillis - time_0} ms: ${cmdInfo}")
       res
     } catch {
-      case NonFatal(ex) => Failure(s"Error when executing hooks in directory '${hooks.basePath}'. Error message is: ${ex.getMessage}")
+      case NonFatal(ex) => HookReturnCode.SystemError(s"Error when executing hooks in directory '${hooks.basePath}'. Error message is: ${ex.getMessage}")
     }
   }
 

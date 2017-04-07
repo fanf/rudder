@@ -368,7 +368,7 @@ class Cf3PromisesFileWriterServiceImpl(
                       , pathComputer.getRootPath(agentType) + backupFileExtension
                     ))
                   } else {
-                    pathComputer.computeBaseNodePath(config.nodeInfo.id, rootNodeConfigId, allNodeConfigs).map { case NodePromisesPaths(id, base, news, backup) =>
+                    pathComputer.computeBaseNodePath(config.nodeInfo.id, rootNodeConfigId, allNodeConfigs.mapValues(_.nodeInfo)).map { case NodePromisesPaths(id, base, news, backup) =>
                         val postfix = agentType.toRulesPath
                         NodePromisesPaths(id, base + postfix, news + postfix, backup + postfix)
                     }

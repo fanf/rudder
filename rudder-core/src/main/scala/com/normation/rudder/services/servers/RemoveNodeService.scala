@@ -30,6 +30,12 @@ import com.normation.utils.Control.sequence
 import net.liftweb.util.Helpers.tryo
 import com.normation.rudder.repository.CachedRepository
 import com.normation.rudder.repository.UpdateExpectedReportsRepository
+import com.normation.rudder.hooks.RunHooks
+import com.normation.rudder.hooks.HookEnvPairs
+import com.normation.rudder.services.policies.write.PathComputer
+import com.normation.rudder.services.policies.write.NodePromisesPaths
+import com.normation.rudder.domain.Constants
+
 
 
 trait RemoveNodeService {
@@ -58,8 +64,37 @@ class RemoveNodeServiceImpl(
     , groupLibMutex             : ScalaReadWriteLock //that's a scala-level mutex to have some kind of consistency with LDAP
     , nodeInfoServiceCache      : NodeInfoService with CachedRepository
     , nodeConfigurationsRepo    : UpdateExpectedReportsRepository
+    , pathComputer              : PathComputer
+    , HOOKS_D                   : String
+    , HOOKS_IGNORE_SUFFIXES     : List[String]
 ) extends RemoveNodeService with Loggable {
 
+  /*
+   * This method is an helper that does the policy server lookup for
+   * you.
+   */
+  def getNodePath(node: NodeInfo): Box[NodePromisesPaths] = {
+    //accumumate all the node infos from node id to root throught relay servers
+    def recGetParent(node: NodeInfo): Box[Map[NodeId, NodeInfo]] = {
+      if(node.id == Constants.ROOT_POLICY_SERVER_ID) {
+        Full(Map((node.id, node)))
+      } else {
+        for {
+          opt    <- nodeInfoService.getNodeInfo(node.policyServerId)
+          parent <- Box(opt) ?~! s"The policy server '${node.policyServerId.value}' for node ${node.hostname} ('${node.id.value}') was not found in Rudder"
+          rec    <- recGetParent(parent)
+        } yield {
+          rec + (node.id -> node)
+        }
+      }
+    }
+    for {
+      nodeInfos <- recGetParent(node)
+      paths     <- pathComputer.computeBaseNodePath(node.id, Constants.ROOT_POLICY_SERVER_ID, nodeInfos)
+    } yield {
+      paths
+    }
+  }
 
   /**
    * the removal of a node is a multi-step system
@@ -78,12 +113,42 @@ class RemoveNodeServiceImpl(
     nodeId.value match {
       case "root" => Failure("The root node cannot be deleted from the nodes list.")
       case _ => {
+
+        val systemEnv = {
+          import scala.collection.JavaConverters._
+          HookEnvPairs.build(System.getenv.asScala.toSeq:_*)
+        }
+
         for {
           optNodeInfo   <- nodeInfoService.getNodeInfo(nodeId)
+
           nodeInfo      <- optNodeInfo match {
                              case None    => Failure(s"The node with id ${nodeId.value} was not found and can not be deleted")
                              case Some(x) => Full(x)
                            }
+          nodePaths     <- getNodePath(nodeInfo)
+          startPreHooks =  System.currentTimeMillis
+          preHooks      <- RunHooks.getHooks(HOOKS_D + "/node-pre-deletion", HOOKS_IGNORE_SUFFIXES)
+
+          //
+          // TODO : we need to stop or continu the process given the HookReturnCode,
+          // and return an Either[HookReturnCode.Stop, Seq[LDIFChangeRecord]]
+          // Then, on the call site at /rudder-web/src/main/scala/com/normation/rudder/web/services/DisplayNode.scala#887
+          // we need to check for the kind of Stop. If it is interrupt, then display an adapted pop-up explaining that
+          // the node was not removed (but this is a guard, not an error)
+          //
+
+
+          _             <- RunHooks.syncRun(preHooks, HookEnvPairs.build(
+                               ("RUDDER_NODEID"             , nodeId.value)
+                             , ("RUDDER_NODE_POLICY_SERVER" , nodeInfo.policyServerId.value)
+                             , ("RUDDER_NODE_ROLES"         , nodeInfo.serverRoles.map(_.value).mkString(","))
+                             , ("RUDDER_POLICIES_DIRECTORY_CURRENT" , nodePaths.baseFolder)
+                             , ("RUDDER_POLICIES_DIRECTORY_NEW"     , nodePaths.newFolder)
+                             , ("RUDDER_POLICIES_DIRECTORY_ARCHIVE" , nodePaths.backupFolder)
+                           ), systemEnv)
+          timePreHooks  =  (System.currentTimeMillis - startPreHooks)
+          _             =  logger.debug(s"Node-pre-deletion scripts hooks ran in ${timePreHooks} ms")
 
           moved         <- groupLibMutex.writeLock {atomicDelete(nodeId, modId, actor) } ?~! "Error when archiving a node"
           closed        <- nodeConfigurationsRepo.closeNodeConfigurations(nodeId)
@@ -104,7 +169,24 @@ class RemoveNodeServiceImpl(
         } yield {
           //clear node info cached
           nodeInfoServiceCache.clearCache
-
+          // run post-deletion hooks
+          val postHooksTime =  System.currentTimeMillis
+          for {
+            postHooks             <- RunHooks.getHooks(HOOKS_D + "/node-post-deletion", HOOKS_IGNORE_SUFFIXES)
+            _                     <- RunHooks.syncRun(postHooks, HookEnvPairs.build(
+                                           ("RUDDER_NODEID"             , nodeId.value)
+                                         , ("RUDDER_NODE_POLICY_SERVER" , nodeInfo.policyServerId.value)
+                                         , ("RUDDER_NODE_ROLES"         , nodeInfo.serverRoles.map(_.value).mkString(","))
+                                         , ("RUDDER_POLICIES_DIRECTORY_CURRENT" , nodePaths.baseFolder)
+                                         , ("RUDDER_POLICIES_DIRECTORY_NEW"     , nodePaths.newFolder)
+                                         , ("RUDDER_POLICIES_DIRECTORY_ARCHIVE" , nodePaths.backupFolder)
+                                       ), systemEnv
+                                     )
+          } yield {
+            ()
+          }
+          val timeRunPostGenHooks   =  (System.currentTimeMillis - postHooksTime)
+          logger.debug(s"Node-post-deletion scripts hooks ran in ${timePreHooks} ms")
           moved
         }
       }
