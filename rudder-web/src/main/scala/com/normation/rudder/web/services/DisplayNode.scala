@@ -886,7 +886,7 @@ object DisplayNode extends Loggable {
   private[this] def removeNode(nodeId: NodeId) : JsCmd = {
     val modId = ModificationId(uuidGen.newUuid)
     removeNodeService.removeNode(nodeId, modId, CurrentUser.getActor) match {
-      case Full(Right(Full(entry))) =>
+      case Full(Right(entry)) =>
         logger.info(entry)
         asyncDeploymentAgent ! AutomaticStartDeployment(modId, CurrentUser.getActor)
         onSuccess
@@ -898,10 +898,6 @@ object DisplayNode extends Loggable {
       case Full(Left(hook)) =>
         logger.error(hook.msg)
         onFailure(nodeId, "There was an error while running pre-deletion hooks",hook.msg)
-      case Full(Right(eb : EmptyBox)) =>
-        val e = eb ?~! s"Could not remove node ${nodeId.value} from Rudder"
-        logger.error(e.messageChain)
-        onFailure(nodeId, "There was an error while deleting Node", e.messageChain)
       case eb:EmptyBox =>
         val e = eb ?~! s"Could not remove node ${nodeId.value} from Rudder"
         logger.error(e.messageChain)

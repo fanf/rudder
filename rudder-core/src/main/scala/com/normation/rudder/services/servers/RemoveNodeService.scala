@@ -46,7 +46,7 @@ trait RemoveNodeService {
    * - clean the ou=Nodes
    * - clean the groups
    */
-  def removeNode(nodeId : NodeId, modId: ModificationId, actor:EventActor) : Box[Either[HookReturnCode.Stop,Box[Seq[LDIFChangeRecord]]]]
+  def removeNode(nodeId : NodeId, modId: ModificationId, actor:EventActor) : Box[Either[HookReturnCode.Stop, Seq[LDIFChangeRecord]]]
 }
 
 class RemoveNodeServiceImpl(
@@ -106,7 +106,7 @@ class RemoveNodeServiceImpl(
    * The main goal is to separate the clear cache as it could fail while the node is correctly deleted.
    * A failing clear cache should not be considered an error when deleting a Node.
    */
-  def removeNode(nodeId : NodeId, modId: ModificationId, actor:EventActor) : Box[Either[HookReturnCode.Stop,Box[Seq[LDIFChangeRecord]]]] = {
+  def removeNode(nodeId : NodeId, modId: ModificationId, actor:EventActor) : Box[Either[HookReturnCode.Stop, Seq[LDIFChangeRecord]]] = {
     logger.debug("Trying to remove node %s from the LDAP".format(nodeId.value))
     nodeId.value match {
       case "root" => Failure("The root node cannot be deleted from the nodes list.")
@@ -127,47 +127,48 @@ class RemoveNodeServiceImpl(
           nodePaths     <- getNodePath(nodeInfo)
           startPreHooks =  System.currentTimeMillis
           preHooks      <- RunHooks.getHooks(HOOKS_D + "/node-pre-deletion", HOOKS_IGNORE_SUFFIXES)
+          moved         <- {
+
+                              val hookEnv =
+                                HookEnvPairs.build(
+                                    ("RUDDER_NODEID"             , nodeId.value)
+                                  , ("RUDDER_NODE_POLICY_SERVER" , nodeInfo.policyServerId.value)
+                                  , ("RUDDER_NODE_ROLES"         , nodeInfo.serverRoles.map(_.value).mkString(","))
+                                  , ("RUDDER_POLICIES_DIRECTORY_CURRENT" , nodePaths.baseFolder)
+                                  , ("RUDDER_POLICIES_DIRECTORY_NEW"     , nodePaths.newFolder)
+                                  , ("RUDDER_POLICIES_DIRECTORY_ARCHIVE" , nodePaths.backupFolder)
+                                )
+
+                              val preRun = RunHooks.syncRun(preHooks, hookEnv, systemEnv)
+                              val timePreHooks  =  (System.currentTimeMillis - startPreHooks)
+                              logger.debug(s"Node-pre-deletion scripts hooks ran in ${timePreHooks} ms")
+
+                              preRun match {
+                                case a : HookReturnCode.Stop => Full(Left(a))
+                                case _ =>
+                                  for {
+                                    moved  <- groupLibMutex.writeLock {atomicDelete(nodeId, modId, actor) } ?~! "Error when deleting a node"
+                                    closed <- nodeConfigurationsRepo.closeNodeConfigurations(nodeId)
+
+                                    invLogDetails = InventoryLogDetails (nodeInfo.id,nodeInfo.inventoryDate, nodeInfo.hostname, nodeInfo.osDetails.fullName, actor.name)
+                                    eventlog = DeleteNodeEventLog.fromInventoryLogDetails (None, actor, invLogDetails)
+                                    saved  <- actionLogger.saveEventLog(modId, eventlog)
+
+                                    _ = nodeInfoServiceCache.clearCache
+
+                                    // run post-deletion hooks
+                                    postHooksTime =  System.currentTimeMillis
+                                    postHooks     <- RunHooks.getHooks(HOOKS_D + "/node-post-deletion", HOOKS_IGNORE_SUFFIXES)
+                                    runPostHook   = RunHooks.syncRun(postHooks, hookEnv, systemEnv)
+                                    timePostHooks =  (System.currentTimeMillis - postHooksTime)
+                                    _             = logger.debug(s"Node-post-deletion scripts hooks ran in ${timePreHooks} ms")
+                                  } yield {
+                                    Right(moved)
+                                  }
+                              }
+                            }
         } yield {
-
-          val hookEnv =
-            HookEnvPairs.build(
-                ("RUDDER_NODEID"             , nodeId.value)
-              , ("RUDDER_NODE_POLICY_SERVER" , nodeInfo.policyServerId.value)
-              , ("RUDDER_NODE_ROLES"         , nodeInfo.serverRoles.map(_.value).mkString(","))
-              , ("RUDDER_POLICIES_DIRECTORY_CURRENT" , nodePaths.baseFolder)
-              , ("RUDDER_POLICIES_DIRECTORY_NEW"     , nodePaths.newFolder)
-              , ("RUDDER_POLICIES_DIRECTORY_ARCHIVE" , nodePaths.backupFolder)
-            )
-
-          val preRun = RunHooks.syncRun(preHooks, hookEnv, systemEnv)
-          val timePreHooks  =  (System.currentTimeMillis - startPreHooks)
-          logger.debug(s"Node-pre-deletion scripts hooks ran in ${timePreHooks} ms")
-
-          preRun match {
-            case a : HookReturnCode.Stop => Left(a)
-            case _ =>
-              val moved =
-                for {
-                  moved  <- groupLibMutex.writeLock {atomicDelete(nodeId, modId, actor) } ?~! "Error when deleting a node"
-                  closed <- nodeConfigurationsRepo.closeNodeConfigurations(nodeId)
-
-                  invLogDetails = InventoryLogDetails (nodeInfo.id,nodeInfo.inventoryDate, nodeInfo.hostname, nodeInfo.osDetails.fullName, actor.name)
-                  eventlog = DeleteNodeEventLog.fromInventoryLogDetails (None, actor, invLogDetails)
-                  saved  <- actionLogger.saveEventLog(modId, eventlog)
-
-                  _ = nodeInfoServiceCache.clearCache
-
-                  // run post-deletion hooks
-                  postHooksTime =  System.currentTimeMillis
-                  postHooks     <- RunHooks.getHooks(HOOKS_D + "/node-post-deletion", HOOKS_IGNORE_SUFFIXES)
-                  runPostHook   = RunHooks.syncRun(postHooks, hookEnv, systemEnv)
-                  timePostHooks =  (System.currentTimeMillis - postHooksTime)
-                  _             = logger.debug(s"Node-post-deletion scripts hooks ran in ${timePreHooks} ms")
-             } yield {
-               moved
-             }
-              Right(moved)
-          }
+          moved
         }
       }
     }
