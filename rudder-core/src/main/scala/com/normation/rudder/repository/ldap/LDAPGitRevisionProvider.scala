@@ -48,14 +48,26 @@ import com.normation.cfclerk.services.GitRevisionProvider
 import com.normation.cfclerk.services.GitRepositoryProvider
 import com.normation.rudder.repository.xml.GitFindUtils
 import com.normation.ldap.sdk.RwLDAPConnection
+import org.eclipse.jgit.errors.InvalidObjectIdException
 
 /**
  *
  * A git revision provider which persists the current
  * commit into LDAP
+ *
+ * The stored objectId can be prefixed by a string so
+ * that several id can be stored in the same attribute's entry.
+ * By default, there is no prefix (empty string)
  */
 class LDAPGitRevisionProvider(
-  ldap: LDAPConnectionProvider[RwLDAPConnection], rudderDit: RudderDit, gitRepo: GitRepositoryProvider, refPath: String) extends GitRevisionProvider with Loggable {
+    ldap: LDAPConnectionProvider[RwLDAPConnection]
+  , rudderDit: RudderDit
+  , gitRepo: GitRepositoryProvider
+  , refPath: String
+  , prefix : String
+) extends GitRevisionProvider with Loggable {
+
+
 
   if (!refPath.startsWith("refs/")) {
     logger.warn("The configured reference path for the Git repository of Active Technique Library does " +
@@ -65,13 +77,23 @@ class LDAPGitRevisionProvider(
   private[this] var currentId = {
     //try to read from LDAP, and if we can't, returned the last available from git
     (for {
-      con <- ldap
-      entry <- con.get(rudderDit.ACTIVE_TECHNIQUES_LIB.dn, A_TECHNIQUE_LIB_VERSION)
-      refLib <- entry(A_TECHNIQUE_LIB_VERSION)
+      con      <- ldap
+      entry    <- con.get(rudderDit.ACTIVE_TECHNIQUES_LIB.dn, A_TECHNIQUE_LIB_VERSION)
+      refLibId <- {
+                    val values = entry.valuesFor(A_TECHNIQUE_LIB_VERSION)
+                    val validIds = values.flatMap { value =>
+                      try {
+                        Some(ObjectId.fromString(value.replaceFirst(prefix, "")))
+                      } catch {
+                        case ex:InvalidObjectIdException => None
+                      }
+                    }
+                    Box(validIds.headOption) ?~! s"Missing configuration id with prefix ${prefix}"
+                  }
     } yield {
-      refLib
+      refLibId
     }) match {
-      case Full(id) => ObjectId.fromString(id)
+      case Full(id) =>
       case Empty =>
         logger.info("No persisted version of the current technique reference library revision " +
           "to use where found, init to last available from Git repository")

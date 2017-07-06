@@ -54,6 +54,13 @@ case class TechniquesInfo(
   , directivesDefaultNames: Map[String, String]
 ) extends HashcodeCaching {
   val allCategories = Map[TechniqueCategoryId, TechniqueCategory]() ++ subCategories + (rootCategory.id -> rootCategory)
+
+  private[services] def toInternalTechniqueInfo = new InternalTechniquesInfo(
+      Some(rootCategory)
+    , MutMap() ++ techniquesCategory
+    , MutMap() ++ techniques.map { case(name, versions) => (name, MutMap() ++ versions) }
+    , MutMap() ++ subCategories.collect { case (id, c:SubTechniqueCategory) => (id, c) }
+  )
 }
 
 //a mutable version of TechniquesInfo, for internal use only !
@@ -62,7 +69,17 @@ private[services] class InternalTechniquesInfo(
   , val techniquesCategory: MutMap[TechniqueId, TechniqueCategoryId] = MutMap()
   , val techniques: MutMap[TechniqueName, MutMap[TechniqueVersion, Technique]] = MutMap()
   , val subCategories: MutMap[SubTechniqueCategoryId, SubTechniqueCategory] = MutMap()
-)
+) {
+
+  def toTechniqueInfo(defaultNames: Map[String, String]) = TechniquesInfo(
+    rootCategory = this.rootCategory.getOrElse(throw new RuntimeException("One can't call toTechniqueInfo when no root categories are defined. This is most likely a software bug. Please report it")),
+    techniquesCategory = this.techniquesCategory.toMap,
+    techniques = this.techniques.map { case(k,v) => (k, SortedMap.empty[TechniqueVersion,Technique] ++ v)}.toMap,
+    subCategories = Map[SubTechniqueCategoryId, SubTechniqueCategory]() ++ this.subCategories,
+    defaultNames
+  )
+
+}
 
 /**
  * This class is in charge to maintain a map of

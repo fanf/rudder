@@ -139,6 +139,7 @@ import com.normation.rudder.services.quicksearch.FullQuickSearchService
 import com.normation.rudder.db.Doobie
 import com.normation.rudder.web.rest.settings.SettingsAPI8
 import com.normation.rudder.web.rest.sharedFiles.SharedFilesAPI
+import com.typesafe.config.ConfigException.Missing
 
 /**
  * Define a resource for configuration.
@@ -276,6 +277,12 @@ object RudderConfig extends Loggable {
   val RUDDER_JDBC_MAX_POOL_SIZE = config.getInt("rudder.jdbc.maxPoolSize")
   val RUDDER_DIR_GITROOT = config.getString("rudder.dir.gitRoot")
   val RUDDER_DIR_TECHNIQUES = config.getString("rudder.dir.techniques")
+  val RUDDER_EXTERNAL_GITROOT =
+    try {
+      Some(config.getString("rudder.gitRoot.systemTechniques"))
+    } catch {
+      case _: Missing => None
+    }
   val RUDDER_BATCH_DYNGROUP_UPDATEINTERVAL = config.getInt("rudder.batch.dyngroup.updateInterval") //60 //one hour
   val RUDDER_BATCH_TECHNIQUELIBRARY_UPDATEINTERVAL = config.getInt("rudder.batch.techniqueLibrary.updateInterval") //60 * 5 //five minutes
   val RUDDER_BATCH_REPORTSCLEANER_ARCHIVE_TTL = config.getInt("rudder.batch.reportscleaner.archive.TTL") //AutomaticReportsCleaning.defaultArchiveTTL
@@ -1086,7 +1093,7 @@ object RudderConfig extends Loggable {
     }
 
     val relativePath = RUDDER_DIR_TECHNIQUES.substring(gitSlash.size, RUDDER_DIR_TECHNIQUES.size)
-    new GitTechniqueReader(
+    val masterReader = new GitTechniqueReader(
         techniqueParser
       , gitRevisionProviderImpl
       , gitRepo
@@ -1094,6 +1101,16 @@ object RudderConfig extends Loggable {
       , Some(relativePath)
       , "default-directive-names.conf"
     )
+
+
+    RUDDER_EXTERNAL_GITROOT match {
+      case None => masterReader
+      case Some(path) =>
+        // todo: create an other Git Repos for override, and return a
+        // new BiTechniqueReader(...)
+        masterReader
+    }
+
   }
   private[this] lazy val historizationJdbcRepository = new HistorizationJdbcRepository(doobie)
   private[this] lazy val startStopOrchestratorImpl: StartStopOrchestrator = {

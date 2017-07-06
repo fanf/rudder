@@ -145,7 +145,7 @@ class GitTechniqueReader(
 
   /*
    * Change a path relative to the Git repository to a path relative
-   * to the root of policy template library.
+   * to the root of policy technique library.
    * As it is required that the git repository is in  a parent of the
    * ptLib, it's just removing start of the string.
    */
@@ -157,7 +157,7 @@ class GitTechniqueReader(
     }
   }
 
-  private final case class NoRootCategory(msg: String) extends Exception(msg)
+  final case class NoRootCategory(msg: String) extends Exception(msg)
 
   private[this] var currentTechniquesInfoCache : TechniquesInfo = {
     try {
@@ -496,7 +496,6 @@ class GitTechniqueReader(
   }
 
   private[this] def processDirectiveDefaultName(revTreeId: ObjectId) : Map[String, String] = {
-      //a first walk to find categories
       val tw = new TreeWalk(repo.db)
       tw.setFilter(new FileTreeFilter(canonizedRelativePath, directiveDefaultName))
       tw.setRecursive(true)
@@ -504,8 +503,6 @@ class GitTechniqueReader(
 
       val prop = new java.util.Properties()
 
-      //now, for each potential path, look if the cat or policy
-      //is valid
       while(tw.next) {
         //we need to filter out directories
         if(tw.getNameString == directiveDefaultName) {
