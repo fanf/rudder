@@ -54,6 +54,10 @@ import net.liftweb.actor._
 import net.liftweb.common._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import com.normation.rudder.domain.logger.ReportLoggerLevel
+import com.normation.rudder.hooks.HookEnvPairs
+import com.normation.rudder.hooks.RunHooks
+import com.normation.rudder.hooks.Hooks
 
 /**
  * This object will be used as message for the non compliant reports logger
@@ -67,12 +71,14 @@ object StartAutomaticReporting
  * Informations of logs a are taken from different repository
  */
 class AutomaticReportLogger(
-    propertyRepository    : RudderPropertiesRepository
-  , reportsRepository   : ReportsRepository
-  , ruleRepository      : RoRuleRepository
-  , directiveRepository : RoDirectiveRepository
-  , nodeInfoService     : NodeInfoService
-  , reportLogInterval   : Int
+    propertyRepository   : RudderPropertiesRepository
+  , reportsRepository    : ReportsRepository
+  , ruleRepository       : RoRuleRepository
+  , directiveRepository  : RoDirectiveRepository
+  , nodeInfoService      : NodeInfoService
+  , reportLogInterval    : Int
+  , HOOKS_D              : String
+  , HOOKS_IGNORE_SUFFIXES: List[String]
 ) extends Loggable {
 
   private val propertyName = "rudder.batch.reports.logInterval"
@@ -113,6 +119,7 @@ class AutomaticReportLogger(
               nodes          <- nodeInfoService.getAll
               rules          <- ruleRepository.getAll(true)
               directives     <- directiveRepository.getFullDirectiveLibrary()
+              hooks          <- nonCompliantReportHooks
             } yield {
               val id = hundredReports.headOption match {
                 // None means this is a new rudder without any reports, don't log anything, current id is 0
@@ -122,7 +129,7 @@ class AutomaticReportLogger(
 
                 // return last id and report the latest 100 non compliant reports
                 case Some(report) =>
-                  logReports(hundredReports.reverse, nodes, rules.map(r => (r.id, r)).toMap, directives)
+                  logReports(hundredReports.reverse, nodes, rules.map(r => (r.id, r)).toMap, directives, hooks)
                   report._1
               }
               updateLastId(id)
@@ -181,10 +188,11 @@ class AutomaticReportLogger(
       ): Box[Long] = {
         for {
           reports <- reportsRepository.getReportsByKindBeetween(fromId, maxId, batchSize, reportsKind)
+          hooks   <- nonCompliantReportHooks
         } yield {
           //when we get an empty here, it means that we don't have more non-compliant report
           //in the interval, just return the max id
-          val id = logReports(reports, allNodes, rules, directives).getOrElse(maxId)
+          val id = logReports(reports, allNodes, rules, directives, hooks).getOrElse(maxId)
           logger.debug(s"Wrote non-compliant-reports logs from id '${fromId}' to id '${id}'")
           updateLastId(id)
           id
@@ -246,10 +254,19 @@ class AutomaticReportLogger(
       maxTry(0)
     }
 
-    def logReports(reports : Seq[(Long, Reports)], allNodes: Map[NodeId, NodeInfo], rules: Map[RuleId, Rule],  directives: FullActiveTechniqueCategory): Option[Long] = {
+    private[this] def nonCompliantReportHooks = RunHooks.getHooks(HOOKS_D + "/non-compliant-report", HOOKS_IGNORE_SUFFIXES)
+
+    def logReports(reports : Seq[(Long, Reports)], allNodes: Map[NodeId, NodeInfo], rules: Map[RuleId, Rule],  directives: FullActiveTechniqueCategory, hooks: Hooks): Option[Long] = {
       if(reports.isEmpty) {
         None
       } else {
+        // avoid to get environment variable and hooks for each line, its costly
+        val systemEnv = {
+          import scala.collection.JavaConverters._
+          HookEnvPairs.build(System.getenv.asScala.toSeq:_*)
+        }
+
+        // log all non-compliant reports for that batch (+hooks)
         val loggedIds = reports.map { case (id, report) =>
           val t         = report.executionDate.toString("yyyy-MM-dd HH:mm:ssZ")
           val s         = report.severity
@@ -266,10 +283,43 @@ class AutomaticReportLogger(
           val v         = report.keyValue
           val m         = report.message
 
+
+          val reportLogger = AllReportLogger.findLogger(report.severity)
+
           //exceptionnally use $var in place of ${var} for log format lisibility
           val reportLine = s"[$t] N: $nid [$n] S: [$s] R: $rid [$r] D: $did [$d] T: $tn/$tv C: [$c] V: [$v] $m"
 
-          AllReportLogger.FindLogger(report.severity)(reportLine)
+          reportLogger.log(reportLine)
+
+          // hooks only for non compliant
+          reportLogger match {
+            case AllReportLogger.ReportLoggerLevel.Info => //nothing
+            case AllReportLogger.ReportLoggerLevel.Error |
+                 AllReportLogger.ReportLoggerLevel.Warn  =>
+
+              // hooks
+              val hookEnv = HookEnvPairs.build(
+                  ("RUDDER_REPORT_SEVERITY"           , s)
+                , ("RUDDER_REPORT_EXECUTION_DATETIME" , t)
+                , ("RUDDER_REPORT_RUN_DATETIME"       , report.executionTimestamp.toString("yyyy-MM-dd HH:mm:ssZ"))
+                , ("RUDDER_REPORT_NODE_ID"            , nid)
+                , ("RUDDER_REPORT_NODE_HOSTNAME"      , n)
+                , ("RUDDER_REPORT_RULE_ID"            , rid)
+                , ("RUDDER_REPORT_RULE_NAME"          , r)
+                , ("RUDDER_REPORT_DIRECTIVE_ID"       , did)
+                , ("RUDDER_REPORT_DIRECTIVE_NAME"     , d)
+                , ("RUDDER_REPORT_TECHNIQUE_ID"       , tn.toString)
+                , ("RUDDER_REPORT_TECHNIQUE_VERSION"  , tv)
+                , ("RUDDER_REPORT_COMPONENT_NAME"     , c)
+                , ("RUDDER_REPORT_COMPONENT_VALUE"    , v)
+                , ("RUDDER_REPORT_MESSAGE"            , m)
+              )
+
+              val startHooks = System.currentTimeMillis
+              RunHooks.syncRun(hooks, hookEnv, systemEnv)
+              val timeHooks  =  (System.currentTimeMillis - startHooks)
+              logger.debug(s"Non-compliance scripts hooks ran in ${timeHooks} ms")
+          }
 
           id
         }

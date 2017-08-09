@@ -45,25 +45,48 @@ object ReportLogger extends Logger {
   override protected def _logger = LoggerFactory.getLogger("report")
 }
 
+/**
+ * A data structure for our Report Level
+ */
+sealed trait ReportLoggerLevel {
+  def log: (=> AnyRef) => Unit
+}
+
 
 object AllReportLogger extends Logger {
   override protected def _logger = LoggerFactory.getLogger("non-compliant-reports")
 
-  def FindLogger(reportType : String) :((=> AnyRef) => Unit) = {
+  final object ReportLoggerLevel {
+
+    final case object Error extends ReportLoggerLevel {
+      override def log = error
+    }
+
+    final case object Warn extends ReportLoggerLevel {
+      override def log = info
+    }
+
+    final case object Info extends ReportLoggerLevel {
+      override def log = info
+    }
+
+  }
+
+  def findLogger(reportType : String): ReportLoggerLevel = {
     import Reports._
 
     reportType match{
       // error
-      case RESULT_ERROR       => error
-      case AUDIT_NONCOMPLIANT => error
-      case AUDIT_ERROR        => error
+      case RESULT_ERROR       => ReportLoggerLevel.Error
+      case AUDIT_NONCOMPLIANT => ReportLoggerLevel.Error
+      case AUDIT_ERROR        => ReportLoggerLevel.Error
 
       // warning
-      case RESULT_REPAIRED => warn
-      case LOG_WARN        => warn
-      case LOG_WARNING     => warn
+      case RESULT_REPAIRED => ReportLoggerLevel.Warn
+      case LOG_WARN        => ReportLoggerLevel.Warn
+      case LOG_WARNING     => ReportLoggerLevel.Warn
 
-      case _               => info
+      case _               => ReportLoggerLevel.Info
     }
   }
 }
