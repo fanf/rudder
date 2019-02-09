@@ -24,7 +24,7 @@ limitations under the License.
   <!-- ====================================  PROJECT INFORMATION  ==================================== -->
 
   <description>
-    Rudder helps you continualy configure and check compliance of your infrastructure. 
+    Rudder helps you continualy configure and check compliance of your infrastructure.
   </description>
 
   <organization>
@@ -347,8 +347,7 @@ limitations under the License.
 
     <current-year>2019</current-year>
     <rudder-major-version>5.0</rudder-major-version>
-    <rudder-version>5.0.7-SNAPSHOT</rudder-version>
-    <spring-run-dep-version>5.0.7-SNAPSHOT</spring-run-dep-version>
+    <rudder-version>5.1.0~alpha1-SNAPSHOT</rudder-version>
 
     <scala-version>2.12.7</scala-version>
     <scala-binary-version>2.12</scala-binary-version>
