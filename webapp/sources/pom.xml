@@ -643,6 +643,13 @@ limitations under the License.
       <artifactId>joda-time</artifactId>
       <version>${jodatime-version}</version>
     </dependency>
+    <!-- this is now standard -->
+    <dependency>
+      <groupId>org.typelevel</groupId>
+      <artifactId>cats-core_${scala-binary-version}</artifactId>
+      <version>${cats-version}</version>
+    </dependency>
+
     <!--  test -->
     <dependency>
       <groupId>junit</groupId>
