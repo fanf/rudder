@@ -238,6 +238,11 @@
               <li ng-repeat="directive in sortDirectives(directives)">
                 <span class="fa fa-file-text"></span>
                 <span class="target-name">{{ directive.name }}</span>
+                <span class="target-name">{{ directive.link }}</span>
+                <span class="target-name">{{ directive.desc }}</span>
+                <span class="target-name">{{ directive.techniqueName }}</span>
+                <span class="target-name">{{ directive.techniqueVersion }}</span>
+                <span class="target-name">{{ directive.mode }}</span>
                 <span class="target-remove" ng-click="removeInclude(directive.id)">
                   <i class="fa fa-times"></i>
                 </span>
@@ -324,7 +329,9 @@
             </li>
             <li ng-repeat="included in target.include.or">
               <span class="fa fa-sitemap"></span>
-              <span class="target-name">{{ getTargetName(included) }}</span>
+              <span class="target-name">{{ getTarget(included).name }}</span>
+              <span class="target-name">{{ getTarget(included).link }}</span>
+              <span class="target-name">{{ getTarget(included).desc }}</span>
               <span class="target-remove" ng-click="removeInclude(included)">
                   <i class="fa fa-times"></i>
                 </span>
@@ -358,7 +365,9 @@
             </li>
             <li ng-repeat="excluded in target.exclude.or">
               <span class="fa fa-sitemap"></span>
-              <span class="target-name">{{ getTargetName(excluded) }}</span>
+              <span class="target-name">{{ getTarget(included).name }}</span>
+              <span class="target-name">{{ getTarget(included).link }}</span>
+              <span class="target-name">{{ getTarget(included).desc }}</span>
               <span class="target-remove" ng-click="removeInclude(excluded)">
                   <i class="fa fa-times"></i>
                 </span>

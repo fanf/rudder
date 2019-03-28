@@ -103,6 +103,11 @@ object RuleEditForm {
   val htmlId_activeTechniquesTree = "directiveTree"
 }
 
+
+// these two case classes are needed to generate the JS for selected directive & target. They need to be top level else lift goes mad.
+final case class JsGroup(target: String, link:String, name: String, desc: String)
+final case class JsDirective(id: String, link:String, name: String, desc: String, techniqueName: String, techniqueVersion: String, mode: String)
+
 /**
  * The form that handles Rule edition
  * (not creation)
@@ -243,17 +248,45 @@ class RuleEditForm(
 
     //is't there an other way to do that? We already have the target/name
     //in the tree, so there's just the existing id to find back
-    val maptarget = groupLib.allTargets.map{
-      case (gt,fg) => s" ${encJs(gt.target)} : ${encJs(fg.name)}"
-    }.toList.mkString("{",",","}")
-
-    val selectedDirectives =
-      (for {
-        id <- selectedDirectiveIds
-        (_,directive) <-  directiveLib.allDirectives.get(id)
+    val maptarget = {
+      // information given to the "selectedDirective" list
+      import net.liftweb.json._
+      import net.liftweb.json.Serialization.write
+      implicit val formats = Serialization.formats(NoTypeHints)
+      val map = (for {
+        (gt,fg) <- groupLib.allTargets
       } yield {
-         s" ${encJs(id.value)} : ${encJs(directive.name)}"
-      }).mkString("{",",","}")
+        (gt.target, JsGroup(
+            gt.target
+          , linkUtil.targetLink(gt)
+          , fg.name
+          , fg.description
+        ))
+      }).toMap
+      write(map)
+    }
+
+    val selectedDirectives = {
+      // information given to the "selectedDirective" list
+      import net.liftweb.json._
+      import net.liftweb.json.Serialization.write
+      implicit val formats = Serialization.formats(NoTypeHints)
+      val map = (for {
+        id <- selectedDirectiveIds
+        (t,d) <-  directiveLib.allDirectives.get(id)
+      } yield {
+        (id.value, JsDirective(
+            d.id.value
+          , linkUtil.directiveLink(d.id)
+          , d.name
+          , d.shortDescription
+          , t.techniqueName.value
+          , d.techniqueVersion.toString
+          , d.policyMode.map(_.name).getOrElse(globalMode.mode.name)
+        ))
+      }).toMap
+      write(map)
+    }
 
     val includedTarget = ruleTarget.includedTarget.targets
     val excludedTarget = ruleTarget.excludedTarget.targets

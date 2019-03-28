@@ -4,12 +4,12 @@
 *************************************************************************************
 *
 * This file is part of Rudder.
-* 
+*
 * Rudder is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
-* 
+*
 * In accordance with the terms of section 7 (7. Additional Terms.) of
 * the GNU General Public License version 3, the copyright holders add
 * the following Additional permissions:
@@ -22,12 +22,12 @@
 * documentation that, without modification of the Source Code, enables
 * supplementary functions or services in addition to those offered by
 * the Software.
-* 
+*
 * Rudder is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License
 * along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -39,33 +39,33 @@ var ruleDirectives = angular.module('ruleDirectives', []);
 
 ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
     $scope.directives = {};
-    
-    //really, angular... 
-    //a call to sortDirectives is needed. 
+
+    //really, angular...
+    //a call to sortDirectives is needed.
     //the array here is ONLY used as a cache so
     //that angular can know when things don't change.
     //else, we get infinite looping....
     $scope.sortedDirectives = [];
-    
+
     //needed to correctly display directive by alphaNum
     $scope.sortDirectives = function() {
       var arr = [];
       for (var o in $scope.directives) {
-        arr.push({"id":o, "name": $scope.directives[o] });
+        arr.push($scope.directives[o]);
       }
       var sorted = arr.sort(function(a, b) {
         return a.name.localeCompare(b.name);
       });
 
       //test for equality... yeah..
-      //we need that because angularJS must know what is "stable", 
-      //and by default, it uses the object id. 
+      //we need that because angularJS must know what is "stable",
+      //and by default, it uses the object id.
       //So we have to cache the data somewhere and return that cached data
-      //if nothing changed. 
+      //if nothing changed.
       if(sorted.length == $scope.sortedDirectives.length) {
         for(var i=0; i<sorted.length; i++) {
           if(sorted[i].id != $scope.sortedDirectives[i].id ||
-             sorted[i].name != $scope.sortedDirectives[i].name 
+             sorted[i].name != $scope.sortedDirectives[i].name
           ) {
             $scope.sortedDirectives = sorted;
             return $scope.sortedDirectives;
@@ -76,7 +76,7 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
       }
       return $scope.sortedDirectives;
     }
-    
+
     // Init function so values can be set from outside the scope
     // directiveIds is expected to be a json of {directiveId : directiveName }
     $scope.init = function ( selectedDirectives ) {
@@ -93,8 +93,8 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
 
     $scope.directivesIsEmpty = function() {
       return $scope.sortDirectives($scope.directives).length === 0;
-    }  
-      
+    }
+
     // Update the html field that stocks the directive
     $scope.updateDirective = function() {
       $('#selectedDirectives').val(JSON.stringify(Object.keys($scope.directives)));
