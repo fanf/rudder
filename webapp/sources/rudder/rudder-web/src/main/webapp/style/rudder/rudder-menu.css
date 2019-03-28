@@ -1426,15 +1426,26 @@ label.text-fit{
   border: 1px solid #ccc;
   border-radius: 3px;
 }
+.content-wrapper .tooltip.right > .tooltip-inner {
+  padding: 10px !important;
+  font-size: 14px;
+  color: #555;
+}
+
 .content-wrapper .tooltip.top > .tooltip-arrow{
   border-top-color: #ccc;
 }
+
+.content-wrapper .tooltip.right > .tooltip-arrow{
+  border-right-color: #ccc;
+}
+
 .content-wrapper .tooltip > .tooltip-inner h4{
   background-color: #fff;
   font-weight:600;
   font-sive:20px;
   color: #333;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid #e5e5e5;
   padding: 5px 10px 5px 5px;
   font-size: 14px;
   margin-left: 3%;
@@ -2403,12 +2414,22 @@ hr.separation{
 .content-wrapper .btn.btn-success.btn-outline{
   background-color: #fff !important;
   color: #8fb92a !important;
+  transition-property: background-color, color;
+  transition-duration: .2s;
+}
+.content-wrapper .btn.btn-danger.btn-outline{
+  background-color: #fff !important;
+  color: #d43f3a !important;
+  transition-property: background-color, color;
+  transition-duration: .2s;
 }
 .content-wrapper .btn.btn-success.btn-outline:hover{
   background-color: #8fb92a !important;
   color: #fff !important;
-  transition-property: background-color, color;
-  transition-duration: .2s;
+}
+.content-wrapper .btn.btn-danger.btn-outline:hover{
+  background-color: #d43f3a !important;
+  color: #fff !important;
 }
 /* API ACCOUNTS PAGE */
 #accountGrid .reload-token{

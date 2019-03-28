@@ -48,15 +48,15 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
     $scope.sortedDirectives = [];
     
     //needed to correctly display directive by alphaNum
-    $scope.sortDirectives = function() { 
+    $scope.sortDirectives = function() {
       var arr = [];
-      for (var o in $scope.directives) {   
+      for (var o in $scope.directives) {
         arr.push({"id":o, "name": $scope.directives[o] });
-      } 
+      }
       var sorted = arr.sort(function(a, b) {
         return a.name.localeCompare(b.name);
       });
-      
+
       //test for equality... yeah..
       //we need that because angularJS must know what is "stable", 
       //and by default, it uses the object id. 
@@ -81,6 +81,9 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
     // directiveIds is expected to be a json of {directiveId : directiveName }
     $scope.init = function ( selectedDirectives ) {
       $scope.directives = selectedDirectives;
+
+      //init tooltips
+      $('.icon-info').bsTooltip();
     };
 
     // Get name of a directive instead of using the directive ID
@@ -88,11 +91,8 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
       return $scope.directives[directiveId];
     };
 
-    // Text to display if there is no directive selected
-    $scope.emptyDirective = "Select directives from the tree on the left to add them here"
-
     $scope.directivesIsEmpty = function() {
-      $scope.directives.length === 0;
+      return $scope.sortDirectives($scope.directives).length === 0;
     }  
       
     // Update the html field that stocks the directive
@@ -127,8 +127,12 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', function($scope) {
       }
      };
 
-     // Explanations to use in popups
-     $scope.directiveAddExplanation = "<h3>Add Directives here to so that they will be applied.</h3>"
+    $scope.modal = function(id, show) {
+      var element = $('#' + id);
+      element.bsModal(show ? 'show' : 'hide');
+    };
+
+
   } ] ) ;
 
 // Add directive to create popup from angular, the directive should shared to future angular component

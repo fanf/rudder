@@ -49,9 +49,6 @@ groupManagement.controller('GroupCtrl', ['$scope', function($scope) {
       return $scope.mapTarget[target];
     };
 
-    // Text to display if there is no target selected
-    $scope.emptyTarget = "Select groups from the tree on the left to add them here"
-
     // Update the html field that stocks the target
     $scope.updateTarget = function() {
       $('#selectedTargets').val(JSON.stringify($scope.target));
@@ -125,23 +122,29 @@ groupManagement.controller('GroupCtrl', ['$scope', function($scope) {
           // In included targets => remove from included
           $scope.removeInclude(target);
         }
-     };
+      };
 
-     // Explanations to use in popups
-     $scope.includeExplanation = [ "<h3>Add Groups here to apply this Rule to the nodes they contain.</h3>"
-                                  , "Groups will be merged together (union)."
+    // Explanations to use in popups
+    $scope.includeExplanation = [ "<div>Add Groups here to apply this Rule to the nodes they contain.</div><br/>"
+                                  , "<div>Groups will be merged together (union)."
                                   , "For example, if you add groups <b>'Datacenter 1'</b> and <b>'Production',</b>"
                                   , "this Rule will be applied to all nodes that are either"
-                                  , "in that datacenter (production or not) or in production (in any datacenter)."
-                                  ].join(" ");
-     $scope.excludeExplanation = [ "<h3>Add Groups here to forbid applying this Rule to the nodes they contain.</h3>"
-                                  , "Nodes in these Groups will never have this Rule applied,"
+                                  , "in that datacenter (production or not) or in production (in any datacenter).</div>"
+                                ].join(" ");
+    $scope.excludeExplanation = [ "<div>Add Groups here to forbid applying this Rule to the nodes they contain.</div><br/>"
+                                  , "<div>Nodes in these Groups will never have this Rule applied,"
                                   , "even if they are also in a Group applied above."
                                   , "For example, if the above list contains groups '<b>Datacenter 1</b>' and '<b>Production</b>',"
                                   , "and this list contains the group '<b>Red Hat Linux</b>',"
                                   , "this Rule will be applied to all nodes that are running any OS except 'Red Hat Linux'"
-                                  , "and are either in that datacenter (production or not) or in production (in any datacenter)."
+                                  , "and are either in that datacenter (production or not) or in production (in any datacenter).</div>"
                                   ].join(" ");
+
+    $scope.modal = function(id, show) {
+      var element = $('#' + id);
+      element.bsModal(show ? 'show' : 'hide');
+    };
+
   } ] ) ;
 
 // Add directive to create popup from angular, the directive should shared to future angular component
