@@ -58,10 +58,12 @@ import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.web.model.JsNodeId
 import com.normation.rudder.services.reports._
 import org.joda.time.format.DateTimeFormat
-import com.normation.rudder.appconfig.ReadConfigService
+import com.normation.appconfig.ReadConfigService
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.web.ChooseTemplate
 import com.normation.rudder.domain.nodes.NodeState
+
+import com.normation.box._
 
 /**
  * Display the last reports of a server
@@ -303,7 +305,7 @@ class ReportDisplayer(
       } else {
       for {
         report       <- reportingService.findNodeStatusReport(node.id)
-        directiveLib <- directiveRepository.getFullDirectiveLibrary
+        directiveLib <- directiveRepository.getFullDirectiveLibrary.toBox
       } yield {
 
         val intro = displayIntro(report)
@@ -392,10 +394,10 @@ class ReportDisplayer(
 
   private[this] def getComplianceData(nodeId: NodeId, reportStatus: NodeStatusReport) = {
     for {
-      directiveLib <- directiveRepository.getFullDirectiveLibrary
+      directiveLib <- directiveRepository.getFullDirectiveLibrary.toBox
       allNodeInfos <- getAllNodeInfos()
-      rules        <- ruleRepository.getAll(true)
-      globalMode   <- configService.rudder_global_policy_mode()
+      rules        <- ruleRepository.getAll(true).toBox
+      globalMode   <- configService.rudder_global_policy_mode().toBox
     } yield {
       ComplianceData.getNodeByRuleComplianceDetails(nodeId, reportStatus, allNodeInfos, directiveLib, rules, globalMode)
     }
