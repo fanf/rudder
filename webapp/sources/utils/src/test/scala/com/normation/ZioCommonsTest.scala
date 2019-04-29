@@ -164,31 +164,6 @@ object TestImplicits {
 }
 
 
-object TestSream {
-
-  val log = NamedZioLogger("test-logger")
-
-
-  def main(args: Array[String]): Unit = {
-    val prog =
-      log.error("wouhou") *>
-      ZIO.bracket(Task.effect{
-      val checkRelativePath = "file:///tmp/plop.txt"
-      val url = new URL(checkRelativePath)
-      url.openStream()
-    })(is =>
-      Task.effect(is.close).run // here, if I put `UIO.unit`, I can have the content
-    )(is =>
-      Task.effect(println(new String(is.readAllBytes(), "utf-8") ))
-    ) <* log.warn("some plop plop")
-    ZioRuntime.unsafeRun(prog)
-    // A checked error was not handled:
-    //  java.base/java.io.BufferedInputStream.getBufIfOpen(BufferedInputStream.java:176)
-    // IOException("Stream closed");
-  }
-
-}
-
 object TestLog {
 
   val log = NamedZioLogger("test-logger")
