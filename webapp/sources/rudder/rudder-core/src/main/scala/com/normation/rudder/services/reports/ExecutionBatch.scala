@@ -605,7 +605,7 @@ object ExecutionBatch extends Loggable {
   ) : NodeStatusReport = {
 
     // this one is not merged, but that's not efficient
-    def buildUnexpectedVersion(runTime: DateTime, runVersion: Option[NodeConfigIdInfo], runExpiration: DateTime, expectedConfig: NodeExpectedReports, expectedExpiration: DateTime, nodeStatusReports: Seq[ResultReports]) = {
+    def buildUnexpectedVersion(runTime: DateTime, runVersion: Option[NodeConfigIdInfo], runExpiration: DateTime, expectedConfig: NodeExpectedReports, expectedExpiration: DateTime, nodeStatusReports: Seq[ResultReports]): Set[RuleNodeStatusReport] = {
         RuleNodeStatusReport.merge(//mark all report of run unexpected,
           //all expected missing
           buildRuleNodeStatusReport(
@@ -614,7 +614,7 @@ object ExecutionBatch extends Loggable {
             , ReportType.Missing
           ) ++
           buildUnexpectedReports(MergeInfo(nodeId, Some(runTime), runVersion.map(_.configId), runExpiration), nodeStatusReports)
-        )
+        ).values.toSet
     }
 
     //only interesting reports: for that node, with a status
