@@ -809,7 +809,7 @@ object ExecutionBatch extends Loggable {
     val complianceForRun: Map[RuleId, RuleNodeStatusReport] = (for {
       RuleExpectedReports(ruleId
         , directives       ) <- lastRunNodeConfig.ruleExpectedReports
-      directiveStatusReports =  {
+      (directiveStatusReports, needRecompute) =  {
 
                                    val t1 = System.nanoTime
                                    //here, we had at least one report, even if it not a ResultReports (i.e: run start/end is meaningful
@@ -901,7 +901,8 @@ object ExecutionBatch extends Loggable {
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
 
-                                   missing ++ unexpected ++ expected
+                                   val needRecompute = missing.nonEmpty || unexpected.nonEmpty
+                                   (missing ++ unexpected ++ expected, needRecompute)
                                 }
     } yield {
       (
@@ -911,7 +912,7 @@ object ExecutionBatch extends Loggable {
             , ruleId
             , mergeInfo.run
             , mergeInfo.configId
-            , DirectiveStatusReport.merge(directiveStatusReports)
+            , if (needRecompute) { DirectiveStatusReport.merge(directiveStatusReports) } else { directiveStatusReports }
             , mergeInfo.expirationTime
           )
       )
@@ -1018,7 +1019,7 @@ object ExecutionBatch extends Loggable {
     }
   }
 
-  // here, we should no do a DirectiveStatusReport.merge, but rather build the correct data immediatly
+  // by construct, NodeExpectedReports are correctly grouped by Rule/Directive/Component
   private[reports] def buildRuleNodeStatusReport(
       mergeInfo      : MergeInfo
     , expectedReports: NodeExpectedReports
