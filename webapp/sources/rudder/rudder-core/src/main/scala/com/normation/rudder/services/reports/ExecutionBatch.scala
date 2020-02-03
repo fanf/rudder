@@ -912,7 +912,7 @@ object ExecutionBatch extends Loggable {
             , ruleId
             , mergeInfo.run
             , mergeInfo.configId
-            , if (needRecompute) { DirectiveStatusReport.merge(directiveStatusReports) } else { directiveStatusReports }
+            , if (needRecompute) { DirectiveStatusReport.merge(directiveStatusReports) } else { directiveStatusReports.map( dir => (dir.directiveId, dir) }.toMap
             , mergeInfo.expirationTime
           )
       )
