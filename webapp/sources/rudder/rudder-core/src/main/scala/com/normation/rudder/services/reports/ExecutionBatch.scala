@@ -888,7 +888,16 @@ object ExecutionBatch extends Loggable {
 
                                    val t4 = System.nanoTime
                                    u3 += t4-t3
-/*val expected2 = okKeys.groupBy(_._1).map { case (directiveId, cpts) =>
+        // okKeys is DirectiveId, ComponentName
+        // group by directiveId
+        val expected2 = okKeys.groupBy(_._1).map { case (directiveId, cptName) =>
+          DirectiveStatusReport(directiveId, cptName.toSeq.map { case (_, cpt) =>
+            val k = (directiveId, cpt)
+            val (policyMode, missingReportStatus, components) = expectedComponents(k)
+            (cpt, checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation))
+          }.toMap)
+        }
+        /*
   val (policyMode, missingReportStatus, components) = expectedComponents(k)
   DirectiveStatusReport(directiveId, cpts.toSeq.map(_._2).map { case k =>
     val (policyMode, missingReportStatus, components) = expectedComponents(k)
@@ -897,19 +906,19 @@ object ExecutionBatch extends Loggable {
   ))
 
 }*/
-
+/*
                                    val expected = okKeys.map { k =>
                                      val (policyMode, missingReportStatus, components) = expectedComponents(k)
                                      DirectiveStatusReport(k._1, Map(k._2 ->
                                        checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation)
                                      ))
                                    }
-
+*/
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
 
-                                   //val needRecompute = (missing.nonEmpty || unexpected.nonEmpty)
-                                   (missing ++ unexpected ++ expected, needRecompute)
+                                   val needRecompute = (missing.nonEmpty || unexpected.nonEmpty)
+                                   (missing ++ unexpected ++ expected2, needRecompute)
                                 }
     } yield {
       (
