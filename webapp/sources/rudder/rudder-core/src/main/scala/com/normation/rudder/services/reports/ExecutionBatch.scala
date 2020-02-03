@@ -592,6 +592,7 @@ object ExecutionBatch extends Loggable {
    * The contract is to give to that function a list of expected
    * report for an unique given node
    *
+   *  It returns a properly merged NodeStatusReports
    */
   def getNodeStatusReports(
       nodeId                  : NodeId
@@ -603,15 +604,17 @@ object ExecutionBatch extends Loggable {
     , unexpectedInterpretation: UnexpectedReportInterpretation
   ) : NodeStatusReport = {
 
+    // this one is not merged, but that's not efficient
     def buildUnexpectedVersion(runTime: DateTime, runVersion: Option[NodeConfigIdInfo], runExpiration: DateTime, expectedConfig: NodeExpectedReports, expectedExpiration: DateTime, nodeStatusReports: Seq[ResultReports]) = {
-        //mark all report of run unexpected,
-        //all expected missing
-        buildRuleNodeStatusReport(
-            MergeInfo(nodeId, Some(runTime), Some(expectedConfig.nodeConfigId), expectedExpiration)
-          , expectedConfig
-          , ReportType.Missing
-        ) ++
-        buildUnexpectedReports(MergeInfo(nodeId, Some(runTime), runVersion.map(_.configId), runExpiration), nodeStatusReports)
+        RuleNodeStatusReport.merge(//mark all report of run unexpected,
+          //all expected missing
+          buildRuleNodeStatusReport(
+              MergeInfo(nodeId, Some(runTime), Some(expectedConfig.nodeConfigId), expectedExpiration)
+            , expectedConfig
+            , ReportType.Missing
+          ) ++
+          buildUnexpectedReports(MergeInfo(nodeId, Some(runTime), runVersion.map(_.configId), runExpiration), nodeStatusReports)
+        )
     }
 
     //only interesting reports: for that node, with a status
