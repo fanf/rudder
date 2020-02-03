@@ -604,9 +604,16 @@ object ExecutionBatch extends Loggable {
     , unexpectedInterpretation: UnexpectedReportInterpretation
   ) : NodeStatusReport = {
 
-    // this one is not merged, but that's not efficient
+    // this one is merged, but that's not efficient
+    // this is aways called with only 1 node.
     def buildUnexpectedVersion(runTime: DateTime, runVersion: Option[NodeConfigIdInfo], runExpiration: DateTime, expectedConfig: NodeExpectedReports, expectedExpiration: DateTime, nodeStatusReports: Seq[ResultReports]): Set[RuleNodeStatusReport] = {
-        RuleNodeStatusReport.merge(//mark all report of run unexpected,
+      // we should try to avoid the merge, and do
+      // seq with all reports which are missing
+      // seq with all reports unexpected
+      // and do the respective grouping
+      // still unsure of the correct way to do it in a maintenable way
+      // hopefully, expect big perf improvement
+      RuleNodeStatusReport.merge(//mark all report of run unexpected,
           //all expected missing
           buildRuleNodeStatusReport(
               MergeInfo(nodeId, Some(runTime), Some(expectedConfig.nodeConfigId), expectedExpiration)
@@ -1011,6 +1018,7 @@ object ExecutionBatch extends Loggable {
     }
   }
 
+  // here, we should no do a DirectiveStatusReport.merge, but rather build the correct data immediatly
   private[reports] def buildRuleNodeStatusReport(
       mergeInfo      : MergeInfo
     , expectedReports: NodeExpectedReports
@@ -1019,7 +1027,7 @@ object ExecutionBatch extends Loggable {
   ): Set[RuleNodeStatusReport] = {
     expectedReports.ruleExpectedReports.map { case RuleExpectedReports(ruleId, directives) =>
       val d = directives.map { d =>
-        DirectiveStatusReport(d.directiveId,
+        (d.directiveId, DirectiveStatusReport(d.directiveId,
           d.components.map { c =>
             (c.componentName, ComponentStatusReport(c.componentName,
               c.groupedComponentValues.map { case(v,uv) =>
@@ -1028,13 +1036,13 @@ object ExecutionBatch extends Loggable {
             ))
           }.toMap
         )
-      }
+        )}.toMap
       RuleNodeStatusReport(
           mergeInfo.nodeId
         , ruleId
         , mergeInfo.run
         , mergeInfo.configId
-        , DirectiveStatusReport.merge(d)
+        , d //DirectiveStatusReport.merge(d) // todo why do we need to merge ?
         , mergeInfo.expirationTime
       )
     }.toSet
