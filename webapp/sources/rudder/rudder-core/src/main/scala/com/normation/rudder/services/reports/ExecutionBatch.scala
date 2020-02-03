@@ -963,19 +963,38 @@ object ExecutionBatch extends Loggable {
     (computed ::: newStatus).toSet
   }
 
-  private[this] def buildUnexpectedReports(mergeInfo: MergeInfo, reports: Seq[Reports]): Set[RuleNodeStatusReport] = {
+  /*private[this] def buildUnexpectedReports(mergeInfo: MergeInfo, reports: Seq[Reports]): Set[RuleNodeStatusReport] = {
     reports.groupBy(x => x.ruleId).map { case (ruleId, seq) =>
       RuleNodeStatusReport(
           mergeInfo.nodeId
         , ruleId
         , mergeInfo.run
         , mergeInfo.configId
+        // todo we could do that in one go !
         , DirectiveStatusReport.merge(buildUnexpectedDirectives(seq))
         , mergeInfo.expirationTime
       )
     }.toSet
-  }
+  }*/
 
+  private[this] def buildUnexpectedReports(mergeInfo: MergeInfo, reports: Seq[Reports]): Set[RuleNodeStatusReport] = {
+    reports.groupBy(x => x.ruleId).map { case (ruleId, seq) =>
+      RuleNodeStatusReport(
+        mergeInfo.nodeId
+        , ruleId
+        , mergeInfo.run
+        , mergeInfo.configId
+        , seq.groupBy(_.directiveId).map{ case (directiveId, reportsByDirectives) =>
+          (directiveId, DirectiveStatusReport(directiveId, reportsByDirectives.groupBy(_.component).map { case (component, reportsByComponents) =>
+            (component, ComponentStatusReport(component, reportsByComponents.groupBy(_.keyValue).map { case (keyValue, reportsByComponent) =>
+              (keyValue, ComponentValueStatusReport(keyValue, keyValue, reportsByComponent.map(r => MessageStatusReport(ReportType.Unexpected, r.message)).toList))
+              }.toMap)
+            )}.toMap)
+          )}.toMap
+        , mergeInfo.expirationTime
+      )
+    }.toSet
+  }
   /**
    * Build unexpected reports for the given reports
    */
