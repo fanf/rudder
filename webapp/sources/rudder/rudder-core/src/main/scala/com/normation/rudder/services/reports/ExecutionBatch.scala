@@ -807,10 +807,8 @@ object ExecutionBatch extends Loggable {
     val t0 = System.currentTimeMillis
     val reportsPerRule = executionReports.groupBy(_.ruleId)
     val complianceForRun: Map[RuleId, RuleNodeStatusReport] = (for {
-      RuleExpectedReports(ruleId
-        , directives       ) <- lastRunNodeConfig.ruleExpectedReports
+      RuleExpectedReports(ruleId, directives) <- lastRunNodeConfig.ruleExpectedReports
       (directiveStatusReports, needRecompute) =  {
-
                                    val t1 = System.nanoTime
                                    //here, we had at least one report, even if it not a ResultReports (i.e: run start/end is meaningful
 
@@ -890,6 +888,15 @@ object ExecutionBatch extends Loggable {
 
                                    val t4 = System.nanoTime
                                    u3 += t4-t3
+/*val expected2 = okKeys.groupBy(_._1).map { case (directiveId, cpts) =>
+  val (policyMode, missingReportStatus, components) = expectedComponents(k)
+  DirectiveStatusReport(directiveId, cpts.toSeq.map(_._2).map { case k =>
+    val (policyMode, missingReportStatus, components) = expectedComponents(k)
+    Map(k ->
+    checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation)
+  ))
+
+}*/
 
                                    val expected = okKeys.map { k =>
                                      val (policyMode, missingReportStatus, components) = expectedComponents(k)
@@ -901,7 +908,7 @@ object ExecutionBatch extends Loggable {
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
 
-                                   val needRecompute = missing.nonEmpty || unexpected.nonEmpty
+                                   //val needRecompute = (missing.nonEmpty || unexpected.nonEmpty)
                                    (missing ++ unexpected ++ expected, needRecompute)
                                 }
     } yield {
@@ -912,7 +919,8 @@ object ExecutionBatch extends Loggable {
             , ruleId
             , mergeInfo.run
             , mergeInfo.configId
-            , if (needRecompute) { DirectiveStatusReport.merge(directiveStatusReports) } else { directiveStatusReports.map( dir => (dir.directiveId, dir)).toMap }
+            , DirectiveStatusReport.merge(directiveStatusReports)
+            //, if (needRecompute) { DirectiveStatusReport.merge(directiveStatusReports) } else { directiveStatusReports.map( dir => (dir.directiveId, dir)).toMap }
             , mergeInfo.expirationTime
           )
       )
