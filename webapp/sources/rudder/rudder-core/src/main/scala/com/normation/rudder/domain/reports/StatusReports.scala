@@ -75,8 +75,8 @@ final class RuleStatusReport private (
   , val report : AggregatedStatusReport
   , val overrides : List[OverridenPolicy]
 ) extends StatusReport {
-  val compliance = report.compliance
-  val byNodes: Map[NodeId, AggregatedStatusReport] = report.reports.groupBy(_.nodeId).mapValues(AggregatedStatusReport(_))
+  lazy val compliance = report.compliance
+  lazy val byNodes: Map[NodeId, AggregatedStatusReport] = report.reports.groupBy(_.nodeId).mapValues(AggregatedStatusReport(_))
 }
 
 object RuleStatusReport {

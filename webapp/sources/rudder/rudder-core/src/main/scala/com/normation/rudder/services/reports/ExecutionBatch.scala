@@ -606,6 +606,7 @@ object ExecutionBatch extends Loggable {
 
     // this one is merged, but that's not efficient
     // this is aways called with only 1 node.
+    // actually it can't merge, as the merge group by nodeconfigid, and unexpected and missing have, by constuct, different configid
     def buildUnexpectedVersion(runTime: DateTime, runVersion: Option[NodeConfigIdInfo], runExpiration: DateTime, expectedConfig: NodeExpectedReports, expectedExpiration: DateTime, nodeStatusReports: Seq[ResultReports]): Set[RuleNodeStatusReport] = {
       // we should try to avoid the merge, and do
       // seq with all reports which are missing
@@ -613,7 +614,18 @@ object ExecutionBatch extends Loggable {
       // and do the respective grouping
       // still unsure of the correct way to do it in a maintenable way
       // hopefully, expect big perf improvement
-      RuleNodeStatusReport.merge(//mark all report of run unexpected,
+      /*
+      val missingMergeInfo = MergeInfo(nodeId, Some(runTime), Some(expectedConfig.nodeConfigId), expectedExpiration)
+
+      val unexpectedMergeInfo = MergeInfo(nodeId, Some(runTime), runVersion.map(_.configId), runExpiration)
+      val unexpectedReports = nodeStatusReports
+
+      val missingByRules = expectedConfig.ruleExpectedReports.map { case RuleExpectedReports(ruleId, directives)  => (ruleId, directives) }.groupBy(_._1)
+      val unexpectedByRules = unexpectedReports.groupBy(x => x.ruleId)
+      */
+
+      // we have 2 separate status: the missing and the expected, so two different RuleNodeStatusReport that will never merge
+      //RuleNodeStatusReport.merge(//mark all report of run unexpected,
           //all expected missing
           buildRuleNodeStatusReport(
               MergeInfo(nodeId, Some(runTime), Some(expectedConfig.nodeConfigId), expectedExpiration)
@@ -621,7 +633,26 @@ object ExecutionBatch extends Loggable {
             , ReportType.Missing
           ) ++
           buildUnexpectedReports(MergeInfo(nodeId, Some(runTime), runVersion.map(_.configId), runExpiration), nodeStatusReports)
-        ).values.toSet
+        //).values.toSet
+
+      /*
+          reports.groupBy(x => x.ruleId).map { case (ruleId, seq) =>
+      RuleNodeStatusReport(
+        mergeInfo.nodeId
+        , ruleId
+        , mergeInfo.run
+        , mergeInfo.configId
+        , seq.groupBy(_.directiveId).map{ case (directiveId, reportsByDirectives) =>
+          (directiveId, DirectiveStatusReport(directiveId, reportsByDirectives.groupBy(_.component).map { case (component, reportsByComponents) =>
+            (component, ComponentStatusReport(component, reportsByComponents.groupBy(_.keyValue).map { case (keyValue, reportsByComponent) =>
+              (keyValue, ComponentValueStatusReport(keyValue, keyValue, reportsByComponent.map(r => MessageStatusReport(ReportType.Unexpected, r.message)).toList))
+              }.toMap)
+            )}.toMap)
+          )}.toMap
+        , mergeInfo.expirationTime
+      )
+    }.toSet
+       */
     }
 
     //only interesting reports: for that node, with a status
