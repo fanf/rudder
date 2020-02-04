@@ -808,7 +808,7 @@ object ExecutionBatch extends Loggable {
     val reportsPerRule = executionReports.groupBy(_.ruleId)
     val complianceForRun: Map[RuleId, RuleNodeStatusReport] = (for {
       RuleExpectedReports(ruleId, directives) <- lastRunNodeConfig.ruleExpectedReports
-      (directiveStatusReports, needRecompute) =  {
+      (missing, unexpected, expected) =  {
                                    val t1 = System.nanoTime
                                    //here, we had at least one report, even if it not a ResultReports (i.e: run start/end is meaningful
 
@@ -888,15 +888,15 @@ object ExecutionBatch extends Loggable {
 
                                    val t4 = System.nanoTime
                                    u3 += t4-t3
-        // okKeys is DirectiveId, ComponentName
-        // group by directiveId
-        val expected2 = okKeys.groupBy(_._1).map { case (directiveId, cptName) =>
-          DirectiveStatusReport(directiveId, cptName.toSeq.map { case (_, cpt) =>
-            val k = (directiveId, cpt)
-            val (policyMode, missingReportStatus, components) = expectedComponents(k)
-            (cpt, checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation))
-          }.toMap)
-        }
+
+                                   // okKeys is DirectiveId, ComponentName
+                                   val expected2 = okKeys.groupBy(_._1).map { case (directiveId, cptName) =>
+                                      DirectiveStatusReport(directiveId, cptName.toSeq.map { case (_, cpt) =>
+                                        val k = (directiveId, cpt)
+                                        val (policyMode, missingReportStatus, components) = expectedComponents(k)
+                                        (cpt, checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation))
+                                      }.toMap)
+                                    }
         /*
   val (policyMode, missingReportStatus, components) = expectedComponents(k)
   DirectiveStatusReport(directiveId, cpts.toSeq.map(_._2).map { case k =>
@@ -917,10 +917,18 @@ object ExecutionBatch extends Loggable {
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
 
-                                   val needRecompute = (missing.nonEmpty || unexpected.nonEmpty)
-                                   (missing ++ unexpected ++ expected2, needRecompute)
+
+                                   (missing, unexpected, expected2)
                                 }
     } yield {
+      // if there is no missing nor unexpected, then data is alreay correct, otherwise we need to merge it
+      val directiveStatusReports = {
+        if (missing.nonEmpty || unexpected.nonEmpty) {
+          DirectiveStatusReport.merge(expected ++ missing ++ unexpected)
+        } else {
+          expected.map( dir => (dir.directiveId, dir)).toMap
+        }
+      }
       (
           ruleId
         , RuleNodeStatusReport(
@@ -928,8 +936,7 @@ object ExecutionBatch extends Loggable {
             , ruleId
             , mergeInfo.run
             , mergeInfo.configId
-            , DirectiveStatusReport.merge(directiveStatusReports)
-            //, if (needRecompute) { DirectiveStatusReport.merge(directiveStatusReports) } else { directiveStatusReports.map( dir => (dir.directiveId, dir)).toMap }
+            , directiveStatusReports
             , mergeInfo.expirationTime
           )
       )
