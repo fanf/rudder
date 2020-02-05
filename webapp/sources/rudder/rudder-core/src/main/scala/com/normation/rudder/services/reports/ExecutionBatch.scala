@@ -928,23 +928,7 @@ object ExecutionBatch extends Loggable {
                                         (cpt, checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation))
                                       }.toMap)
                                     }
-        /*
-  val (policyMode, missingReportStatus, components) = expectedComponents(k)
-  DirectiveStatusReport(directiveId, cpts.toSeq.map(_._2).map { case k =>
-    val (policyMode, missingReportStatus, components) = expectedComponents(k)
-    Map(k ->
-    checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation)
-  ))
 
-}*/
-/*
-                                   val expected = okKeys.map { k =>
-                                     val (policyMode, missingReportStatus, components) = expectedComponents(k)
-                                     DirectiveStatusReport(k._1, Map(k._2 ->
-                                       checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation)
-                                     ))
-                                   }
-*/
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
 
@@ -984,7 +968,6 @@ object ExecutionBatch extends Loggable {
 
     // note: isn't there something specific to do for unexpected reports ? Keep them all ?
 
-    val nil = Seq[RuleNodeStatusReport]()
     val currentRunReports = buildRuleNodeStatusReport(mergeInfo, currentConfig, ReportType.Pending)
     val t11 = System.currentTimeMillis
 
@@ -1028,20 +1011,6 @@ object ExecutionBatch extends Loggable {
 
     (computed ::: newStatus).toSet
   }
-
-  /*private[this] def buildUnexpectedReports(mergeInfo: MergeInfo, reports: Seq[Reports]): Set[RuleNodeStatusReport] = {
-    reports.groupBy(x => x.ruleId).map { case (ruleId, seq) =>
-      RuleNodeStatusReport(
-          mergeInfo.nodeId
-        , ruleId
-        , mergeInfo.run
-        , mergeInfo.configId
-        // todo we could do that in one go !
-        , DirectiveStatusReport.merge(buildUnexpectedDirectives(seq))
-        , mergeInfo.expirationTime
-      )
-    }.toSet
-  }*/
 
   private[this] def buildUnexpectedReports(mergeInfo: MergeInfo, reports: Seq[Reports]): Set[RuleNodeStatusReport] = {
     reports.groupBy(x => x.ruleId).map { case (ruleId, seq) =>
@@ -1098,7 +1067,7 @@ object ExecutionBatch extends Loggable {
         , ruleId
         , mergeInfo.run
         , mergeInfo.configId
-        , d //DirectiveStatusReport.merge(d) // todo why do we need to merge ?
+        , d
         , mergeInfo.expirationTime
       )
     }.toSet
