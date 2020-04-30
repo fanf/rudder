@@ -423,12 +423,11 @@ object PropertyParser {
   //empty string is a special case that must be look appart from plain string.
   //also parse full blank string, because no need to look for more case for them.
   def emptyVar[_: P]: P[List[CharSeq]] = P(CharsWhile(_.isSpaceChar, 0).!).map(x => List(CharSeq(x)) )
-  def s[_:P] = P(CharsWhile(_.isWhitespace, 0))
+  def space[_:P] = P(CharsWhile(_.isWhitespace, 0))
   // plain string must not match our identifier, ${rudder.* and ${node.properties.*}
   // here we defined a function to build them
   def plainStringNoDollar[_: P] : P[CharSeq] = P( (!"${" ~ AnyChar).rep(1).! ).map { CharSeq(_) }
   def plainStringNoEndCurly[_: P] : P[CharSeq] = P( (!"}" ~ AnyChar).rep(1).! ).map { CharSeq(_) }
-  def plainStringNoStartCurly[_: P] : P[CharSeq] = P( (!"{" ~ AnyChar).rep(1).! ).map { CharSeq(_) }
 
   /*
    * This bit is a bit complicated, because we need to differentiate:
@@ -439,9 +438,9 @@ object PropertyParser {
    * - a string $ .... }
    */
   def varOrString[_: P] = P( "${" ~/ (
-                                s ~ varname ~ s ~ "}"
-                              | plainStringNoEndCurly.map(_.prefix("${") )
-                            )
+                                     space ~ varname ~ space ~ "}"
+                                     | plainStringNoEndCurly.map(_.prefix("${") )
+                                     )
                           )
 
   def varname[_: P] = P( interpol | otherProp )
@@ -451,17 +450,17 @@ object PropertyParser {
 
   //an interpolated variable looks like: ${rudder.XXX}, or ${RuDder.xXx}
   // after "${rudder." there is no backtracking to an "otherProp" or string possible.
-  def rudderProp[_: P]  : P[Interpolation] = P( IgnoreCase("rudder") ~ s ~ "." ~ s ~/ (nodeAccess | parameter ) )
+  def rudderProp[_: P]  : P[Interpolation] = P(IgnoreCase("rudder") ~ space ~ "." ~ space ~/ (nodeAccess | parameter) )
 
   //a node path looks like: ${rudder.node.HERE.PATH}
-  def nodeAccess[_: P]  : P[Interpolation] = P( IgnoreCase("node") ~/ s ~ "." ~ s ~/ propId.rep(sep = s ~ "." ~ s) ).map { seq => NodeAccessor(seq.toList) }
+  def nodeAccess[_: P]  : P[Interpolation] = P(IgnoreCase("node") ~/ space ~ "." ~ space ~/ propId.rep(sep = space ~ "." ~ space) ).map { seq => NodeAccessor(seq.toList) }
 
   //a parameter looks like: ${rudder.PARAM_NAME}
-  def parameter[_: P]  : P[Interpolation] = P( IgnoreCase("param") ~/ s ~ "." ~ s ~/ propId).map{ p => Param(p) }
+  def parameter[_: P]  : P[Interpolation] = P(IgnoreCase("param") ~/ space ~ "." ~ space ~/ propId).map{ p => Param(p) }
 
   //a node property looks like: ${node.properties[.... Cut after "properties".
-  def nodeProp[_: P]    : P[Interpolation] = P( IgnoreCase("node") ~ s ~ "." ~ s ~ IgnoreCase("properties") ~/ ( s ~ "[" ~ s ~ propId ~ s ~ "]" ).rep(1) ~/
-                                                propOption.? ).map { case (path, opt) => Property(path.toList, opt) }
+  def nodeProp[_: P]    : P[Interpolation] = P(IgnoreCase("node") ~ space ~ "." ~ space ~ IgnoreCase("properties") ~/ (space ~ "[" ~ space ~ propId ~ space ~ "]" ).rep(1) ~/
+                                               propOption.? ).map { case (path, opt) => Property(path.toList, opt) }
 
   // other cases of ${}: cfengine variables, etc
   def otherProp[_: P]: P[NonRudderVar] = P( CharsWhile(c => c != '}').!).map { s => NonRudderVar("${"+s+"}") }
@@ -470,18 +469,15 @@ object PropertyParser {
   def interpol [_: P]   : P[Interpolation] = P( rudderProp | nodeProp )
 
   //here, the number of " must be strictly decreasing - ie. triple quote before
-  def propOption[_: P]  : P[PropertyOption] = P( s ~ "|" ~/ s ~ ( onNodeOpt | defaultOpt ) )
+  def propOption[_: P]  : P[PropertyOption] = P(space ~ "|" ~/ space ~ (onNodeOpt | defaultOpt) )
 
-  def defaultOpt[_: P]  : P[DefaultValue] = P( IgnoreCase("default") ~/ s ~ "=" ~/ s ~/ ( interpolOpt | emptyTQuote | tqString | emptySQuote | sqString ) )
+  def defaultOpt[_: P]  : P[DefaultValue] = P(IgnoreCase("default") ~/ space ~ "=" ~/ space ~/ (interpolOpt | emptyTQuote | tqString | emptySQuote | sqString) )
   def onNodeOpt[_: P]   : P[InterpreteOnNode.type] = P( IgnoreCase("node")).map(_ => InterpreteOnNode)
 
-  def variable[_: P] = P("${" ~ s ~/ varname ~/ s ~ "}")
+  def variable[_: P] = P("${" ~ space ~/ varname ~/ space ~ "}")
   def interpolOpt[_: P] : P[DefaultValue] = variable.map { x => DefaultValue(x::Nil) }
   def emptySQuote[_: P] : P[DefaultValue] = P( "\"\"" ).map { _ => DefaultValue(CharSeq("")::Nil) }
   def emptyTQuote[_: P] : P[DefaultValue] = P("\"\"\"\"\"\"").map { _ => DefaultValue(CharSeq("")::Nil) }
-
-
-  def leftTag[_: P] = P( "<" ~ (!">" ~ AnyChar).rep(1).! ~ ">" )
 
   //string must be simple or triple quoted string
   def sqString[_: P]    : P[DefaultValue] = P( "\"" ~ (sqplainStr | variable ).rep(1) ~ "\"").map { case x => DefaultValue(x.toList) }
