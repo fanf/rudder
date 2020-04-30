@@ -480,9 +480,13 @@ object PropertyParser {
   def emptyTQuote[_: P] : P[DefaultValue] = P("\"\"\"\"\"\"").map { _ => DefaultValue(CharSeq("")::Nil) }
 
   //string must be simple or triple quoted string
+  // single quoted strings or variable
   def sqString[_: P]    : P[DefaultValue] = P( "\"" ~ (sqplainStr | variable ).rep(1) ~ "\"").map { case x => DefaultValue(x.toList) }
+  // single quoted strings part
   def sqplainStr[_: P]  : P[Token]        = P( CharsWhile(c => c != '"').! ).map { str => CharSeq(str) }
 
+  // triple quoted strings or variable
   def tqString[_: P]    : P[DefaultValue]   = P( "\"\"\"" ~ (tqplainStr | variable).rep(1) ~ "\"\"\"" ).map { case x => DefaultValue(x.toList) }
+  // triple quoted strings part
   def tqplainStr[_: P]  : P[Token]          = P( (!"\"\"\"" ~ AnyChar).rep(1).! ).map { str => CharSeq(str) }
 }
