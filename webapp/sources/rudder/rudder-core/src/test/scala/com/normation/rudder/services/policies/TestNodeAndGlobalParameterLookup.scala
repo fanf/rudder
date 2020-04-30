@@ -201,6 +201,10 @@ class TestNodeAndGlobalParameterLookup extends Specification {
    */
   "Parsing values" should {
 
+    "parse empty text" in {
+      test(all(_), "", List(CharSeq("")))
+    }
+
     "parse (multiline) plain text" in {
       val s = """some vars chars with \z \n plop foo"""
       test(plainStringNoDollar(_), s, CharSeq(s))
