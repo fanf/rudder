@@ -207,23 +207,23 @@ class TestNodeAndGlobalParameterLookup extends Specification {
 
     "parse (multiline) plain text" in {
       val s = """some vars chars with \z \n plop foo"""
-      test(plainStringNoDollar(_), s, CharSeq(s))
+      test(noVariableStart(_), s, CharSeq(s))
     }
 
     "parse a rudder param variable" in {
-      test(variable(_), """${rudder.param.foo}""", Param("foo"))
+      test(variableStart(_), """${rudder.param.foo}""", Param("foo"))
     }
 
     "parse a rudder param variable with spaces" in {
-      test(variable(_), """${rudder . param . foo}""", Param("foo"))
+      test(variableStart(_), """${rudder . param . foo}""", Param("foo"))
     }
 
     "parse a rudder node variable" in {
-      test(variable(_), """${rudder.node.foo.bar.baz}""", NodeAccessor(List("foo", "bar", "baz")))
+      test(variableStart(_), """${rudder.node.foo.bar.baz}""", NodeAccessor(List("foo", "bar", "baz")))
     }
 
     "parse a rudder node variable with spaces" in {
-      test(variable(_), """${rudder . node . foo . bar . baz}""", NodeAccessor(List("foo", "bar", "baz")))
+      test(variableStart(_), """${rudder . node . foo . bar . baz}""", NodeAccessor(List("foo", "bar", "baz")))
     }
 
     "parse a rudder param variable with all parser" in {
@@ -240,6 +240,11 @@ class TestNodeAndGlobalParameterLookup extends Specification {
 
     "parse a non rudder param variable with all parser with space and keep them" in {
       test(all(_), """${something . cfengine}""", List(NonRudderVar("${something . cfengine}")))
+    }
+
+    "parse blank test" in {
+      test(all(_), "      ",
+        List(CharSeq("      ")))
     }
 
     "parse text and variable and text" in {
@@ -403,7 +408,14 @@ class TestNodeAndGlobalParameterLookup extends Specification {
         , CharSeq("  and some more text")
       ))
     }
-
+    "parse node properties 'default:node.properties + string' option" in {
+      val s = """some text and ${node.properties[datacenter][Europe]|default=" default ${node.properties[defaultDatacenter]}"}  and some more text"""
+      test(all(_), s, List(
+        CharSeq("some text and ")
+        , Property("datacenter" :: "Europe" :: Nil, Some(DefaultValue(CharSeq(" default ") :: Property("defaultDatacenter" :: Nil, None) :: Nil)))
+        , CharSeq("  and some more text")
+      ))
+    }
     "parse node properties 'default:node.properties+default' option" in {
       val s = """some text and ${node.properties[datacenter][Europe]|default=${node.properties[defaultDatacenter]|default="some default value"}}  and some more text"""
       test(all(_), s, List(
@@ -413,6 +425,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       ))
     }
   }
+
 
   "Parsing values with spaces" should {
 
