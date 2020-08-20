@@ -25,7 +25,6 @@
 
 package com.normation
 
-
 import java.util.concurrent.TimeUnit
 
 import net.liftweb.common.{Logger => _, _}
