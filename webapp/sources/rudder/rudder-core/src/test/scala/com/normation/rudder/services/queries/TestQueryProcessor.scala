@@ -848,6 +848,29 @@ class TestQueryProcessor extends Loggable {
     testQueries(q1 :: q2 :: q3 :: q4 :: q5 :: Nil)
   }
 
+  @Test def testLdapAndNodeInfoQuery(): Unit = {
+    val q1 = TestQuery(
+      "q1", // select nodes with user.accepted = true and environment variable SHELL=/bin/sh
+      parser("""
+      { "select":"node", "where":[
+        { "objectType":"serializedNodeProperty", "attribute":"name.value", "comparator":"jsonSelect", "value":"user:$.[?(@.accepted==true)]" }
+        ,  {"objectType":"environmentVariable","attribute":"name.value","comparator":"eq","value":"SHELL=/bin/sh"}
+      ] }
+      """).openOrThrowException("For tests"),
+      Nil)
+    val q2 = TestQuery(
+      "q1", // select nodes with user.accepted = true OR environment variable SHELL=/bin/sh
+      parser("""
+      { "select":"node", "composition" : "Or", "where":[
+        { "objectType":"serializedNodeProperty", "attribute":"name.value", "comparator":"jsonSelect", "value":"user:$.[?(@.accepted==true)]" }
+        ,  {"objectType":"environmentVariable","attribute":"name.value","comparator":"eq","value":"SHELL=/bin/sh"}
+      ] }
+      """).openOrThrowException("For tests"),
+      s(1) :: s(5) :: Nil)
+
+    testQueries(q1 :: q2 :: Nil)
+  }
+
   @Test def nodePropertiesFailingReq(): Unit = {
     def forceParse(q: String) = parser(q).openOrThrowException("Parsing the request must be ok for that test")
     // Failing request, see #10570
