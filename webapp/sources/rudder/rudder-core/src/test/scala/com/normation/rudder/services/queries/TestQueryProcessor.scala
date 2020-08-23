@@ -695,7 +695,7 @@ class TestQueryProcessor extends Loggable {
       s(7) :: Nil)
 
     val q2 = TestQuery(
-      "q1",
+      "q2",
       parser("""
       {  "select":"node", "where":[
         { "objectType":"node", "attribute":"state", "comparator":"eq", "value":"enabled" }
