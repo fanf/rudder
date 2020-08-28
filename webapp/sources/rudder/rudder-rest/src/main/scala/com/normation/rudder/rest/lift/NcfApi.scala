@@ -43,6 +43,7 @@ import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.services.GitRepositoryProvider
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.errors.IOResult
+import com.normation.errors.Inconsistency
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.rudder.domain.policies.ActiveTechniqueId
@@ -75,13 +76,12 @@ import net.liftweb.json.JsonAST.JField
 import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.JsonAST.JValue
-import zio.ZIO
+import zio._
 
 class NcfApi(
     techniqueWriter     : TechniqueWriter
   , techniqueReader     : TechniqueReader
   , techniqueRepository : TechniqueRepository
-  , readDirective       : RoDirectiveRepository
   , restExtractorService: RestExtractorService
   , techniqueSerializer : TechniqueSerializer
   , uuidGen             : StringUuidGenerator
@@ -385,14 +385,6 @@ class NcfApi(
         } )
     }
 
-    private def isTechniqueNameExist(name: TechniqueName) = {
-      for {
-        lib   <- readDirective.getFullDirectiveLibrary()
-      } yield {
-        lib.allTechniques.keySet.map(_.name).contains(name)
-      }
-    }
-
     val schema = API.CreateTechnique
     val restExtractor = restExtractorService
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
@@ -404,8 +396,9 @@ class NcfApi(
           methodMap = methods.map(m => (m.id,m)).toMap
           technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap, true)
           internalId <- OptionnalJson.extractJsonString(json \ "technique", "internalId")
-          isNameTaken <- isTechniqueNameExist(TechniqueName(technique.bundleName.value)).toBox
-          _ <- if(isNameTaken) Failure(s"Technique name and ID must be unique. '${technique.name}' already used") else Full(())
+          _          <- if(techniqueRepository.getAll().keySet.map(_.name.value).contains(technique.bundleName.value)) {
+                          Failure(s"Technique name and ID must be unique. '${technique.name}' already used")
+                        } else Full(())
           // If no internalId (used to manage temporary folder for resources), ignore resources, this can happen when importing techniques through the api
           resoucesMoved <- internalId.map( internalId => moveRessources(technique,internalId).toBox).getOrElse(Full("Ok"))
           updatedTech   <- techniqueWriter.writeTechniqueAndUpdateLib(technique, methodMap, modId, authzToken.actor).toBox
