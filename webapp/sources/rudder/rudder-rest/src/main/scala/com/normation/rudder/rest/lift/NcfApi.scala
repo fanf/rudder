@@ -385,15 +385,11 @@ class NcfApi(
         } )
     }
 
-    private def isTechniqueNameExist(name: TechniqueName, bundleName: BundleName) = {
+    private def isTechniqueNameExist(name: TechniqueName) = {
       for {
-        lib              <- readDirective.getFullDirectiveLibrary()
-        activeTechniques =  lib.allActiveTechniques.values.toSeq
-        userTechniques <- techniqueReader.readTechniquesMetadataFile
-        names            = activeTechniques.map(_.techniqueName.value) ++ userTechniques.map(_.bundleName.value)
-
+        lib   <- readDirective.getFullDirectiveLibrary()
       } yield {
-        names.contains(name.value) || names.contains(bundleName.value)
+        lib.allTechniques.keySet.map(_.name).contains(name)
       }
     }
 
@@ -408,7 +404,7 @@ class NcfApi(
           methodMap = methods.map(m => (m.id,m)).toMap
           technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap, true)
           internalId <- OptionnalJson.extractJsonString(json \ "technique", "internalId")
-          isNameTaken <- isTechniqueNameExist(TechniqueName(technique.name), technique.bundleName).toBox
+          isNameTaken <- isTechniqueNameExist(TechniqueName(technique.bundleName.value)).toBox
           _ <- if(isNameTaken) Failure(s"Technique name and ID must be unique. '${technique.name}' already used") else Full(())
           // If no internalId (used to manage temporary folder for resources), ignore resources, this can happen when importing techniques through the api
           resoucesMoved <- internalId.map( internalId => moveRessources(technique,internalId).toBox).getOrElse(Full("Ok"))
