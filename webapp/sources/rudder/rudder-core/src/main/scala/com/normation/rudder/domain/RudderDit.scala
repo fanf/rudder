@@ -225,7 +225,7 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
     def buildRDN(rdn: String): RDN = new RDN(A_ACTIVE_TECHNIQUE_UUID, rdn)
     def buildCategoryRDN(rdn: String): RDN = new RDN(A_TECHNIQUE_CATEGORY_UUID, rdn)
 
-    def directiveModel(uuid:String, techniqueVersion:TechniqueVersion, parentDN:DN) : LDAPEntry = {
+    def directiveModel(uuid:String, techniqueVersion: TechniqueVersion, parentDN: DN) : LDAPEntry = {
       val mod = LDAPEntry(new DN(new RDN(A_DIRECTIVE_UUID,uuid),parentDN))
       mod +=! (A_TECHNIQUE_VERSION, techniqueVersion.toString)
       mod +=! (A_OC, OC.objectClassNames(OC_DIRECTIVE).toSeq:_*)
@@ -241,13 +241,7 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
 
     def configRuleDN(uuid:String) = new DN(new RDN(A_RULE_UUID, uuid), rules.dn)
 
-    def ruleModel(
-      uuid:String,
-      name:String,
-      isEnabled : Boolean,
-      isSystem : Boolean,
-      category : String
-    ) : LDAPEntry = {
+    def ruleModel(uuid:String, revId: String, name:String, isEnabled : Boolean, isSystem : Boolean, category : String) : LDAPEntry = {
       val mod = LDAPEntry(configRuleDN(uuid))
       mod +=! (A_OC,OC.objectClassNames(OC_RULE).toSeq:_*)
       mod +=! (A_NAME, name)

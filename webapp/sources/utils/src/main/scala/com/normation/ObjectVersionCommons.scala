@@ -71,6 +71,6 @@ final object GitVersion {
   /**
    * The default branch
    */
-  val master = RevId("master")
+  val defaultRev = RevId("master")
 }
 

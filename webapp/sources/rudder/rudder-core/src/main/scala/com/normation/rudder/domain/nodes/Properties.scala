@@ -39,6 +39,8 @@ package com.normation.rudder.domain.nodes
 
 import java.util.regex.Pattern
 
+import com.normation.GitVersion.RevId
+import com.normation.GitVersion.defaultRev
 import com.normation.errors._
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.ApplicationLogger
@@ -103,6 +105,7 @@ trait GenericProperty[P <: GenericProperty[_]] {
   def fromConfig(v: Config): P
 
   final def name : String      = config.getString(NAME)
+  final def revId: RevId       = RevId(config.getString(REV_ID))
   final def value: ConfigValue = {
     if(config.hasPath(VALUE)) config.getValue(VALUE)
     else ConfigValueFactory.fromAnyRef("")
@@ -132,6 +135,7 @@ object GenericProperty {
 
   val VALUE       = "value"
   val NAME        = "name"
+  val REV_ID      = "revId"
   val PROVIDER    = "provider"
   val DESCRIPTION = "description"
 
@@ -328,10 +332,11 @@ object GenericProperty {
    * Parse a name, provider, description and value as a config object. It can fail if `value` doesn't fulfill our requirements:
    * either starts by a `{` and is well formatted hocon property string, or is a string.
    */
-  def parseConfig(name: String, value: String, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): PureResult[Config] = {
+  def parseConfig(name: String, revId: String, value: String, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): PureResult[Config] = {
     parseValue(value).flatMap { v =>
       val m = new java.util.HashMap[String, ConfigValue]()
       m.put(NAME, ConfigValueFactory.fromAnyRef(name))
+      m.put(REV_ID, ConfigValueFactory.fromAnyRef(revId))
       provider.foreach(x => m.put(PROVIDER, ConfigValueFactory.fromAnyRef(x.value)))
       description.foreach(x => m.put(DESCRIPTION, ConfigValueFactory.fromAnyRef(x)))
       m.put(VALUE, v)
@@ -342,9 +347,10 @@ object GenericProperty {
   /**
    * Transform a name, provider, description, and value (as a ConfigValue) into a config.
    */
-  def toConfig(name: String, value: ConfigValue, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): Config = {
+  def toConfig(name: String, revId: String, value: ConfigValue, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): Config = {
     val m = new java.util.HashMap[String, ConfigValue]()
     m.put(NAME, ConfigValueFactory.fromAnyRef(name))
+    m.put(REV_ID, ConfigValueFactory.fromAnyRef(revId))
     provider.foreach(x => m.put(PROVIDER, ConfigValueFactory.fromAnyRef(x.value)))
     description.foreach(x => m.put(DESCRIPTION, ConfigValueFactory.fromAnyRef(x)))
     m.put(VALUE, value)
@@ -445,10 +451,12 @@ object NodeProperty {
    * used as json.
    */
   def parse(name: String, value: String, provider: Option[PropertyProvider]): PureResult[NodeProperty] = {
-    GenericProperty.parseConfig(name, value, provider, None).map(c => new NodeProperty(c))
+    // for now, NodeProperty is not versionned, always default value.
+    GenericProperty.parseConfig(name, defaultRev.value, value, provider, None).map(c => new NodeProperty(c))
   }
   def apply(name: String, value: ConfigValue, provider: Option[PropertyProvider]): NodeProperty = {
-    new NodeProperty(GenericProperty.toConfig(name, value, provider, None))
+    // for now, NodeProperty is not versionned, always default value.
+    new NodeProperty(GenericProperty.toConfig(name, defaultRev.value, value, provider, None))
   }
 
   def unserializeLdapNodeProperty(json: String): PureResult[NodeProperty] = {
@@ -470,11 +478,11 @@ object GroupProperty {
    * a JString *but* a string representing an actual JSON should be
    * used as json.
    */
-  def parse(name: String, value: String, provider: Option[PropertyProvider]): PureResult[GroupProperty] = {
-    GenericProperty.parseConfig(name, value, provider, None).map(c => new GroupProperty(c))
+  def parse(name: String, revId: String, value: String, provider: Option[PropertyProvider]): PureResult[GroupProperty] = {
+    GenericProperty.parseConfig(name, revId, value, provider, None).map(c => new GroupProperty(c))
   }
-  def apply(name: String, value: ConfigValue, provider: Option[PropertyProvider]): GroupProperty = {
-    new GroupProperty(GenericProperty.toConfig(name, value, provider, None))
+  def apply(name: String, revId: RevId, value: ConfigValue, provider: Option[PropertyProvider]): GroupProperty = {
+    new GroupProperty(GenericProperty.toConfig(name, revId.value, value, provider, None))
   }
 
   def unserializeLdapGroupProperty(json: String): PureResult[GroupProperty] = {

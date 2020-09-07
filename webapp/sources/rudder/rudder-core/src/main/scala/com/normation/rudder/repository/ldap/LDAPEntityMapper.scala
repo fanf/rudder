@@ -38,6 +38,8 @@
 package com.normation.rudder.repository.ldap
 
 import cats.implicits._
+import com.normation.GitVersion.RevId
+import com.normation.GitVersion.defaultRev
 import com.normation.NamedZioLogger
 import com.normation.cfclerk.domain._
 import com.normation.errors.{OptionToIoResult => _}
@@ -976,8 +978,9 @@ class LDAPEntityMapper(
         description =  e(A_DESCRIPTION).getOrElse("")
         provider    =  e(A_PROPERTY_PROVIDER).map(PropertyProvider.apply)
         parsed      =  e(A_PARAMETER_VALUE).getOrElse("").parseGlobalParameter(name, e.hasAttribute("overridable"))
+        revId       =  e(A_REV_ID).map(RevId(_)).getOrElse(defaultRev)
     } yield {
-      GlobalParameter(name, parsed, description, provider)
+      GlobalParameter(name, revId, parsed, description, provider)
     }
     } else Left(Err.UnexpectedObject("The given entry is not of the expected ObjectClass '%s'. Entry details: %s".format(OC_PARAMETER, e)))
   }
@@ -987,6 +990,7 @@ class LDAPEntityMapper(
     val entry = rudderDit.PARAMETERS.parameterModel(
         parameter.name
     )
+    entry +=! (A_REV_ID, parameter.revId.value)
     entry +=! (A_PARAMETER_VALUE, parameter.value.serializeGlobalParameter)
     entry +=! (A_DESCRIPTION, parameter.description)
     parameter.provider.foreach(p =>
