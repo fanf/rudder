@@ -72,5 +72,17 @@ final object GitVersion {
    * The default branch
    */
   val defaultRev = RevId("master")
+
+  def parseOptionalRevision(revId: Option[String]) = revId match {
+    case None    => defaultRev
+    case Some(r) => RevId(r)
+  }
+
+  // an empty string is considered as missing version, so defaultRev.
+  def parseRevisionString(revId: String) = revId match {
+    case "" => defaultRev
+    case r  => RevId(r)
+  }
+
 }
 

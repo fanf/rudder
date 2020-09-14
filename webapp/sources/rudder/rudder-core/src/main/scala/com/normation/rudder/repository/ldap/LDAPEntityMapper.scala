@@ -38,6 +38,7 @@
 package com.normation.rudder.repository.ldap
 
 import cats.implicits._
+import com.normation.GitVersion
 import com.normation.GitVersion.RevId
 import com.normation.GitVersion.defaultRev
 import com.normation.NamedZioLogger
@@ -686,6 +687,7 @@ class LDAPEntityMapper(
       } yield {
         Directive(
             DirectiveId(id)
+          , GitVersion.parseOptionalRevision(e(A_REV_ID))
           , version
           , params
           , name
@@ -703,9 +705,10 @@ class LDAPEntityMapper(
 
   def userDirective2Entry(directive:Directive, parentDN:DN) : LDAPEntry = {
     val entry = rudderDit.ACTIVE_TECHNIQUES_LIB.directiveModel(
-        directive.id.value,
-        directive.techniqueVersion,
-        parentDN
+        directive.id.value
+      , directive.revId.value
+      , directive.techniqueVersion
+      , parentDN
     )
 
     entry +=! (A_DIRECTIVE_VARIABLES, policyVariableToSeq(directive.parameters):_*)
@@ -777,6 +780,7 @@ class LDAPEntityMapper(
         } yield {
           ruleTarget
         }
+        val revId = GitVersion.parseOptionalRevision(e(A_REV_ID))
         val directiveIds = e.valuesFor(A_DIRECTIVE_UUID).map(x => DirectiveId(x))
         val name = e(A_NAME).getOrElse(id)
         val shortDescription = e(A_DESCRIPTION).getOrElse("")
@@ -787,6 +791,7 @@ class LDAPEntityMapper(
 
         Rule(
             RuleId(id)
+          , revId
           , name
           , category
           , targets
@@ -807,9 +812,10 @@ class LDAPEntityMapper(
    * Map a rule to an LDAP Entry.
    * WARN: serial is NEVER mapped.
    */
-  def rule2Entry(rule:Rule) : LDAPEntry = {
+  def rule2Entry(rule: Rule): LDAPEntry = {
     val entry = rudderDit.RULES.ruleModel(
         rule.id.value
+      , rule.revId.value
       , rule.name
       , rule.isEnabledStatus
       , rule.isSystem

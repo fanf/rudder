@@ -37,6 +37,8 @@
 
 package com.normation.rudder.services.marshalling
 
+import com.normation.GitVersion
+
 import scala.xml.{NodeSeq, Text, Node => XNode}
 import net.liftweb.common._
 import net.liftweb.common.Box._
@@ -143,6 +145,10 @@ class DirectiveUnserialisationImpl extends DirectiveUnserialisation {
                                }
       fileFormatOk          <- TestFileFormat(directive)
       id                    <- (directive \ "id").headOption.map( _.text ) ?~! ("Missing attribute 'id' in entry type directive : " + xml)
+      revId                 =  GitVersion.parseOptionalRevision((directive \ "revisionId").map(_.text).mkString("") match {
+                                 case "" => None
+                                 case s  => Some(s)
+                               })
       ptName                <- (directive \ "techniqueName").headOption.map( _.text ) ?~! ("Missing attribute 'techniqueName' in entry type directive : " + xml)
       name                  <- (directive \ "displayName").headOption.map( _.text.trim ) ?~! ("Missing attribute 'displayName' in entry type directive : " + xml)
       techniqueVersion      <- (directive \ "techniqueVersion").headOption.map( x => TechniqueVersion(x.text) ) ?~! ("Missing attribute 'techniqueVersion' in entry type directive : " + xml)
@@ -159,6 +165,7 @@ class DirectiveUnserialisationImpl extends DirectiveUnserialisation {
           TechniqueName(ptName)
         , Directive(
               id               = DirectiveId(id)
+            , revId            = revId
             , name             = name
             , techniqueVersion = techniqueVersion
             , parameters       = SectionVal.toMapVariables(sectionVal)
@@ -237,6 +244,7 @@ class NodeGroupUnserialisationImpl(
                              } else {
                                GroupProperty.parse(
                                    (p\\"name").text.trim
+                                 , (p\\"revisionId").text.trim
                                  , (p\\"value").text.trim
                                  , (p\\"provider").headOption.map(p => PropertyProvider(p.text.trim))
                                ).toBox

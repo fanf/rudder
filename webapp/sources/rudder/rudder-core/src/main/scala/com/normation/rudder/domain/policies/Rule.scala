@@ -36,6 +36,7 @@
 */
 
 package com.normation.rudder.domain.policies
+import com.normation.GitVersion.RevId
 import com.normation.rudder.rule.category.RuleCategoryId
 
 final case class RuleId(value:String) extends AnyVal
@@ -52,6 +53,7 @@ final case class RuleId(value:String) extends AnyVal
  */
 final case class Rule(
     id              : RuleId
+  , revId           : RevId
   , name            : String
   , categoryId      : RuleCategoryId
     //is not mandatory, but if not present, rule is disabled

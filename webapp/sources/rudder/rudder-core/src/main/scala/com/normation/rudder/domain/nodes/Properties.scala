@@ -332,7 +332,7 @@ object GenericProperty {
    * Parse a name, provider, description and value as a config object. It can fail if `value` doesn't fulfill our requirements:
    * either starts by a `{` and is well formatted hocon property string, or is a string.
    */
-  def parseConfig(name: String, revId: String, value: String, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): PureResult[Config] = {
+  def parseConfig(name: String, revId: Option[RevId], value: String, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): PureResult[Config] = {
     parseValue(value).flatMap { v =>
       val m = new java.util.HashMap[String, ConfigValue]()
       m.put(NAME, ConfigValueFactory.fromAnyRef(name))

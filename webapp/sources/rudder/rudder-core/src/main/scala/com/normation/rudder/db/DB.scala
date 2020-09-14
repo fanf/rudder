@@ -49,16 +49,15 @@ import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.RuleTarget
 import com.normation.rudder.domain.reports.NodeConfigId
-import com.normation.rudder.reports.execution.{ AgentRun => RudderAgentRun }
+import com.normation.rudder.reports.execution.{AgentRun => RudderAgentRun}
 import com.normation.rudder.reports.execution.AgentRunId
 import com.normation.rudder.repository.GitCommitId
 import com.normation.rudder.rule.category.RuleCategoryId
-
 import org.joda.time.DateTime
-
 import doobie._
 import com.normation.rudder.db.Doobie._
 import cats.implicits._
+import com.normation.GitVersion
 
 
 
@@ -306,6 +305,7 @@ final case class SerializedRules[T](
     ) : Rule = {
       Rule (
           RuleId(rule.ruleId)
+        , GitVersion.defaultRev // TODO: we should perhaps be able to get ride of these table.
         , rule.name
         , RuleCategoryId(rule.categoryId.getOrElse("rootRuleCategory")) // this is not really useful as RuleCategory are not really serialized
         , ruleTargets.flatMap(x => RuleTarget.unser(x.targetSerialisation)).toSet
