@@ -37,6 +37,7 @@
 
 package com.normation.rudder.rest.lift
 
+import com.normation.GitVersion.defaultRev
 import com.normation.eventlog.EventActor
 import com.normation.eventlog._
 import com.normation.rudder.UserService
@@ -76,7 +77,6 @@ import net.liftweb.http.Req
 import net.liftweb.json.JArray
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json._
-
 import com.normation.box._
 import com.normation.errors._
 import zio._
@@ -372,7 +372,7 @@ class RuleApiService2 (
         case None =>
           // create from scratch - base rule is the same with default values
           val category = restRule.category.getOrElse(RuleCategoryId("rootRuleCategory"))
-          val baseRule = Rule(ruleId, name, category)
+          val baseRule = Rule(ruleId, defaultRev, name, category)
           // If enable is missing in parameter consider it to true
           val defaultEnabled = restRule.enabled.getOrElse(true)
 

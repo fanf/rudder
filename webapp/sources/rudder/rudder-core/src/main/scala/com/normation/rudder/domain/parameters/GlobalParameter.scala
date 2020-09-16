@@ -60,11 +60,11 @@ object GlobalParameter {
    * a JString *but* a string representing an actual JSON should be
    * used as json.
    */
-  def parse(name: String, revId: String, value: String, description: String, provider: Option[PropertyProvider]): PureResult[GlobalParameter] = {
+  def parse(name: String, revId: Option[RevId], value: String, description: String, provider: Option[PropertyProvider]): PureResult[GlobalParameter] = {
     GenericProperty.parseConfig(name, revId, value, provider, Some(description)).map(c => new GlobalParameter(c))
   }
-  def apply(name: String, revId: RevId, value: ConfigValue, description: String, provider: Option[PropertyProvider]): GlobalParameter = {
-    new GlobalParameter(GenericProperty.toConfig(name, revId.value, value, provider, Some(description)))
+  def apply(name: String, revId: Option[RevId], value: ConfigValue, description: String, provider: Option[PropertyProvider]): GlobalParameter = {
+    new GlobalParameter(GenericProperty.toConfig(name, revId, value, provider, Some(description)))
   }
 
 }

@@ -40,7 +40,6 @@ package com.normation.rudder.repository.ldap
 import cats.implicits._
 import com.normation.GitVersion
 import com.normation.GitVersion.RevId
-import com.normation.GitVersion.defaultRev
 import com.normation.NamedZioLogger
 import com.normation.cfclerk.domain._
 import com.normation.errors.{OptionToIoResult => _}
@@ -984,7 +983,7 @@ class LDAPEntityMapper(
         description =  e(A_DESCRIPTION).getOrElse("")
         provider    =  e(A_PROPERTY_PROVIDER).map(PropertyProvider.apply)
         parsed      =  e(A_PARAMETER_VALUE).getOrElse("").parseGlobalParameter(name, e.hasAttribute("overridable"))
-        revId       =  e(A_REV_ID).map(RevId(_)).getOrElse(defaultRev)
+        revId       =  e(A_REV_ID).map(RevId(_))
     } yield {
       GlobalParameter(name, revId, parsed, description, provider)
     }

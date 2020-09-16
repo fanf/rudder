@@ -36,6 +36,7 @@
 */
 package com.normation.rudder.services.policies
 
+import com.normation.GitVersion.defaultRev
 import org.junit.runner._
 import org.specs2.runner._
 import org.specs2.mutable._
@@ -129,6 +130,7 @@ class RuleValServiceTest extends Specification {
 
     val directive = Directive(
         directiveId
+      , defaultRev
       , techniqueId.version
       , Map()
       , "MyDirective"
@@ -142,6 +144,7 @@ class RuleValServiceTest extends Specification {
 
     val rule = Rule(
           ruleId
+        , defaultRev
         , "Rule Name"
         , RuleCategoryId("cat1")
         , Set(GroupTarget(NodeGroupId("nodeGroupId")))

@@ -188,6 +188,7 @@ class CreateCloneDirectivePopup(
       val cloneDirective =
         new Directive(
             id = DirectiveId(uuidGen.newUuid)
+          , revId = directive.revId
           , techniqueVersion = directive.techniqueVersion
           , parameters = directive.parameters
           , name = directiveName.get

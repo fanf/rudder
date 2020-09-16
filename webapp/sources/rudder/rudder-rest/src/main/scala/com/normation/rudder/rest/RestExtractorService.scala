@@ -613,7 +613,8 @@ final case class RestExtractorService (
   }
   def extractGroupProperties (params : Map[String, List[String]]) : Box[Option[List[GroupProperty]]] = {
     // properties coming from the API are always provider=rudder / mode=read-write
-    extractProperties(params, (k,v) => GroupProperty.parse(k, v, None))
+    // TODO: parse revision correctly
+    extractProperties(params, (k,v) => GroupProperty.parse(k, None, v, None))
   }
 
   def extractProperties[A](params : Map[String, List[String]], make:(String, String) => PureResult[A]): Box[Option[List[A]]] = {

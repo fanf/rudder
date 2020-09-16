@@ -37,6 +37,7 @@
 
 package com.normation.rudder.services.policies
 
+import com.normation.GitVersion.defaultRev
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
@@ -434,9 +435,9 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
   implicit def toRID(id: String) = RuleId(id)
   implicit def toRCID(id: String) = RuleCategoryId(id)
   val t1 = Technique(("t1", "1.0"), "t1", "t1", Nil, TrackerVariableSpec(), SectionSpec("root"), None)
-  val d1 = Directive("d1", "1.0", Map("foo1" -> Seq("bar1")), "d1", "d1", None)
-  val d2 = Directive("d2", "1.0", Map("foo2" -> Seq("bar2")), "d2", "d2", Some(PolicyMode.Enforce))
-  val d3 = Directive("d3", "1.0", Map("foo3" -> Seq("bar3")), "d3", "d3", Some(PolicyMode.Audit))
+  val d1 = Directive("d1", defaultRev, "1.0", Map("foo1" -> Seq("bar1")), "d1", "d1", None)
+  val d2 = Directive("d2", defaultRev, "1.0", Map("foo2" -> Seq("bar2")), "d2", "d2", Some(PolicyMode.Enforce))
+  val d3 = Directive("d3", defaultRev, "1.0", Map("foo3" -> Seq("bar3")), "d3", "d3", Some(PolicyMode.Audit))
   val fat1 = FullActiveTechnique("d1", "t1"
     , SortedMap(toTV("1.0") -> DateTime.parse("2016-01-01T12:00:00.000+00:00") )
     , SortedMap(toTV("1.0") -> t1)
@@ -451,8 +452,8 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
    *   ************************************************************************
    */
 
-   val r1 = Rule("r1", "r1", "cat1")
-   val r2 = Rule("r2", "r2", "cat1")
+   val r1 = Rule("r1", defaultRev, "r1", "cat1")
+   val r2 = Rule("r2", defaultRev, "r2", "cat1")
 
 }
 
@@ -706,6 +707,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
 
   val commonDirective = Directive(
       DirectiveId("common-root")
+    , defaultRev
     , TechniqueVersion("1.0")
     , Map(
         ("ALLOWEDNETWORK", Seq("192.168.0.0/16"))
@@ -850,6 +852,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   }
   def rpmDirective(id: String, pkg: String) = Directive(
       DirectiveId(id)
+    , defaultRev
     , TechniqueVersion("7.0")
     , Map(
          ("RPM_PACKAGE_CHECK_INTERVAL", Seq("5"))

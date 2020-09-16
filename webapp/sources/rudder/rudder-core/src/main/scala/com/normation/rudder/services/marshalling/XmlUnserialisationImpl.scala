@@ -38,6 +38,7 @@
 package com.normation.rudder.services.marshalling
 
 import com.normation.GitVersion
+import com.normation.GitVersion.RevId
 
 import scala.xml.{NodeSeq, Text, Node => XNode}
 import net.liftweb.common._
@@ -244,7 +245,10 @@ class NodeGroupUnserialisationImpl(
                              } else {
                                GroupProperty.parse(
                                    (p\\"name").text.trim
-                                 , (p\\"revisionId").text.trim
+                                 , (p\\"revisionId").text.trim match {
+                                     case "" => None
+                                     case s  => Some(RevId(s))
+                                   }
                                  , (p\\"value").text.trim
                                  , (p\\"provider").headOption.map(p => PropertyProvider(p.text.trim))
                                ).toBox
@@ -281,6 +285,11 @@ class RuleUnserialisationImpl extends RuleUnserialisation {
                           ("Missing attribute 'category' in entry type rule: " + entry)
       name             <- (rule \ "displayName").headOption.map( _.text.trim ) ?~!
                           ("Missing attribute 'displayName' in entry type rule: " + entry)
+      revisionId       <- (rule \ "revisionId").headOption.map( _.text.trim match {
+                            case "" => GitVersion.defaultRev
+                            case s  => RevId(s)
+                          } ) ?~!
+                          ("Missing attribute 'displayName' in entry type rule: " + entry)
       shortDescription <- (rule \ "shortDescription").headOption.map( _.text ) ?~!
                           ("Missing attribute 'shortDescription' in entry type rule: " + entry)
       longDescription  <- (rule \ "longDescription").headOption.map( _.text ) ?~!
@@ -297,6 +306,7 @@ class RuleUnserialisationImpl extends RuleUnserialisation {
     } yield {
       Rule(
           RuleId(id)
+        , revisionId
         , name
         , category
         , targets.toSet
@@ -652,7 +662,8 @@ class GlobalParameterUnserialisationImpl extends GlobalParameterUnserialisation 
       value            <- (globalParam \ "value").headOption.map( _.text ) ?~! ("Missing attribute 'value' in entry type globalParameter : " + entry)
       description      <- (globalParam \ "description").headOption.map( _.text ) ?~! ("Missing attribute 'description' in entry type globalParameter : " + entry)
       provider         =  (globalParam \ "provider").headOption.map(x => PropertyProvider(x.text))
-      g                <- GlobalParameter.parse(name, value, description, provider).toBox
+                          // TODO: no version in param for now
+      g                <- GlobalParameter.parse(name, None, value, description, provider).toBox
     } yield {
       g
     }

@@ -37,6 +37,7 @@
 
 package com.normation.rudder.rest.lift
 
+import com.normation.GitVersion.defaultRev
 import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.services.TechniqueRepository
@@ -75,7 +76,6 @@ import net.liftweb.http.Req
 import net.liftweb.json.JArray
 import net.liftweb.json.JsonAST.JValue
 import net.liftweb.json.JsonDSL._
-
 import com.normation.box._
 
 class DirectiveApi (
@@ -315,7 +315,7 @@ class DirectiveAPIService2 (
       name            <- Box(restDirective.name) ?~! s"Directive name is not defined in request data."
       technique       <- restExtractor.extractTechnique(restDirective.techniqueName, restDirective.techniqueVersion)  ?~! s"Technique is not correctly defined in request data."
       activeTechnique <- readDirective.getActiveTechnique(technique.id.name).notOptional(s"Technique ${technique.id.name} cannot be found.").toBox
-      baseDirective   =  Directive(directiveId,technique.id.version,Map(),name,"",None, _isEnabled = true)
+      baseDirective   =  Directive(directiveId, defaultRev, technique.id.version,Map(),name,"",None, _isEnabled = true)
       result          =  actualDirectiveCreation(restDirective,baseDirective,activeTechnique,technique) _
     } yield {
       result

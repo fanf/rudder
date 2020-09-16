@@ -244,7 +244,7 @@ extends Loggable {
     restParameter match {
       case Full(restParameter) =>
         import com.normation.rudder.domain.nodes.GenericProperty._
-        val parameter = restParameter.updateParameter(GlobalParameter(parameterName,"".toConfigValue,"",None))
+        val parameter = restParameter.updateParameter(GlobalParameter(parameterName, None, "".toConfigValue, "", None))
 
         val diff = AddGlobalParameterDiff(parameter)
         createChangeRequestAndAnswer(

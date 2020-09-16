@@ -37,9 +37,10 @@
 
 package com.normation.rudder.web.snippet.configuration
 
-import com.normation.rudder.domain.policies.{DirectiveId, Directive}
+import com.normation.rudder.domain.policies.{Directive, DirectiveId}
 import com.normation.cfclerk.domain.Technique
-import com.normation.rudder.web.components.{DirectiveEditForm,DateFormaterService}
+import com.normation.rudder.web.components.{DateFormaterService, DirectiveEditForm}
+
 import scala.xml._
 import net.liftweb.common._
 import Box._
@@ -50,6 +51,7 @@ import JE._
 import net.liftweb.util.Helpers._
 import com.normation.cfclerk.domain.TechniqueVersion
 import bootstrap.liftweb.RudderConfig
+import com.normation.GitVersion.defaultRev
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.FullActiveTechnique
@@ -62,7 +64,6 @@ import com.normation.eventlog.ModificationId
 import com.normation.rudder.web.services.AgentCompat
 import net.liftweb.util.Helpers.TimeSpan
 import com.normation.cfclerk.domain.TechniqueGenerationMode._
-
 import com.normation.box._
 
 /**
@@ -468,6 +469,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
         val directive =
           Directive(
               DirectiveId(uuidGen.newUuid)
+            , defaultRev
             , technique.id.version
             , Map()
             , directiveDefaultName

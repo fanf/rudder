@@ -40,7 +40,6 @@ package com.normation.rudder.domain.nodes
 import java.util.regex.Pattern
 
 import com.normation.GitVersion.RevId
-import com.normation.GitVersion.defaultRev
 import com.normation.errors._
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.ApplicationLogger
@@ -336,7 +335,7 @@ object GenericProperty {
     parseValue(value).flatMap { v =>
       val m = new java.util.HashMap[String, ConfigValue]()
       m.put(NAME, ConfigValueFactory.fromAnyRef(name))
-      m.put(REV_ID, ConfigValueFactory.fromAnyRef(revId))
+      revId.foreach(x => m.put(REV_ID, ConfigValueFactory.fromAnyRef(x)))
       provider.foreach(x => m.put(PROVIDER, ConfigValueFactory.fromAnyRef(x.value)))
       description.foreach(x => m.put(DESCRIPTION, ConfigValueFactory.fromAnyRef(x)))
       m.put(VALUE, v)
@@ -347,10 +346,10 @@ object GenericProperty {
   /**
    * Transform a name, provider, description, and value (as a ConfigValue) into a config.
    */
-  def toConfig(name: String, revId: String, value: ConfigValue, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): Config = {
+  def toConfig(name: String, revId: Option[RevId], value: ConfigValue, provider: Option[PropertyProvider], description: Option[String], options: ConfigParseOptions = ConfigParseOptions.defaults()): Config = {
     val m = new java.util.HashMap[String, ConfigValue]()
     m.put(NAME, ConfigValueFactory.fromAnyRef(name))
-    m.put(REV_ID, ConfigValueFactory.fromAnyRef(revId))
+    revId.foreach(x => m.put(REV_ID, ConfigValueFactory.fromAnyRef(x.value)))
     provider.foreach(x => m.put(PROVIDER, ConfigValueFactory.fromAnyRef(x.value)))
     description.foreach(x => m.put(DESCRIPTION, ConfigValueFactory.fromAnyRef(x)))
     m.put(VALUE, value)
@@ -452,11 +451,11 @@ object NodeProperty {
    */
   def parse(name: String, value: String, provider: Option[PropertyProvider]): PureResult[NodeProperty] = {
     // for now, NodeProperty is not versionned, always default value.
-    GenericProperty.parseConfig(name, defaultRev.value, value, provider, None).map(c => new NodeProperty(c))
+    GenericProperty.parseConfig(name, None, value, provider, None).map(c => new NodeProperty(c))
   }
   def apply(name: String, value: ConfigValue, provider: Option[PropertyProvider]): NodeProperty = {
     // for now, NodeProperty is not versionned, always default value.
-    new NodeProperty(GenericProperty.toConfig(name, defaultRev.value, value, provider, None))
+    new NodeProperty(GenericProperty.toConfig(name, None, value, provider, None))
   }
 
   def unserializeLdapNodeProperty(json: String): PureResult[NodeProperty] = {
@@ -478,11 +477,11 @@ object GroupProperty {
    * a JString *but* a string representing an actual JSON should be
    * used as json.
    */
-  def parse(name: String, revId: String, value: String, provider: Option[PropertyProvider]): PureResult[GroupProperty] = {
+  def parse(name: String, revId: Option[RevId], value: String, provider: Option[PropertyProvider]): PureResult[GroupProperty] = {
     GenericProperty.parseConfig(name, revId, value, provider, None).map(c => new GroupProperty(c))
   }
-  def apply(name: String, revId: RevId, value: ConfigValue, provider: Option[PropertyProvider]): GroupProperty = {
-    new GroupProperty(GenericProperty.toConfig(name, revId.value, value, provider, None))
+  def apply(name: String, revId: Option[RevId], value: ConfigValue, provider: Option[PropertyProvider]): GroupProperty = {
+    new GroupProperty(GenericProperty.toConfig(name, revId, value, provider, None))
   }
 
   def unserializeLdapGroupProperty(json: String): PureResult[GroupProperty] = {

@@ -119,17 +119,17 @@ class TestMergeGroupProperties extends Specification {
    */
 
   val parent1   = NodeGroup(NodeGroupId("parent1"), "parent1", "",
-      List(GroupProperty("foo", "bar1".toConfigValue, None))
+      List(GroupProperty("foo", None, "bar1".toConfigValue, None))
     , Some(Query(NodeReturnType, And, List()))
     , true, Set(), true
   )
-  val parent2Prop = GroupProperty("foo", "bar2".toConfigValue, None)
+  val parent2Prop = GroupProperty("foo", None, "bar2".toConfigValue, None)
   val parent2   = NodeGroup(NodeGroupId("parent2"), "parent2", "",
       List(parent2Prop)
     , Some(Query(NodeReturnType, And, List()))
     , true, Set(), true
   )
-  val childProp = GroupProperty("foo", "baz".toConfigValue, None)
+  val childProp = GroupProperty("foo", None, "baz".toConfigValue, None)
   val query = Query(NodeReturnType, And, List(parent1.toCriterion))
   val child = NodeGroup(NodeGroupId("child"), "child", "",
       List(childProp)
@@ -167,12 +167,12 @@ class TestMergeGroupProperties extends Specification {
 
     "be able to detect conflict" in {
       val parent1 = NodeGroup(NodeGroupId("parent1"), "parent1", "",
-          List(GroupProperty("dns", "1.1.1.1".toConfigValue, None))
+          List(GroupProperty("dns", None, "1.1.1.1".toConfigValue, None))
         , Some(Query(NodeReturnType, And, List()))
         , true, Set(), true
       )
       val parent2   = NodeGroup(NodeGroupId("parent2"), "parent2", "",
-          List(GroupProperty("dns", "9.9.9.9".toConfigValue, None))
+          List(GroupProperty("dns", None, "9.9.9.9".toConfigValue, None))
         , Some(Query(NodeReturnType, And, List()))
         , true, Set(), true
       )
@@ -186,12 +186,12 @@ class TestMergeGroupProperties extends Specification {
 
     "be able to correct conflict" in {
       val parent1 = NodeGroup(NodeGroupId("parent1"), "parent1", "",
-          List(GroupProperty("dns", "1.1.1.1".toConfigValue, None))
+          List(GroupProperty("dns", None, "1.1.1.1".toConfigValue, None))
         , Some(Query(NodeReturnType, And, List()))
         , true, Set(), true
       )
       val parent2   = NodeGroup(NodeGroupId("parent2"), "parent2", "",
-          List(GroupProperty("dns", "9.9.9.9".toConfigValue, None))
+          List(GroupProperty("dns", None, "9.9.9.9".toConfigValue, None))
         , Some(Query(NodeReturnType, And, List()))
         , true, Set(), true
       )
@@ -216,12 +216,12 @@ class TestMergeGroupProperties extends Specification {
      */
     "one can solve conflicts at parent level" in {
       val parent1 = NodeGroup(NodeGroupId("parent1"), "parent1", "",
-          List(GroupProperty("dns", "1.1.1.1".toConfigValue, None))
+          List(GroupProperty("dns", None, "1.1.1.1".toConfigValue, None))
         , Some(Query(NodeReturnType, And, List()))
         , true, Set(), true
       )
       val parent2   = NodeGroup(NodeGroupId("parent2"), "parent2", "",
-          List(GroupProperty("dns", "9.9.9.9".toConfigValue, None))
+          List(GroupProperty("dns", None, "9.9.9.9".toConfigValue, None))
         , Some(Query(NodeReturnType, And, List()))
         , true, Set(), true
       )
@@ -267,7 +267,7 @@ class TestMergeGroupProperties extends Specification {
     }
     def getGroups(parentProps: Map[String, String], childProps: Map[String, String]) = {
       def toProps(map: Map[String, String]) = map.map { case (k, v) =>
-        GroupProperty.parse(k, v, None).fold(
+        GroupProperty.parse(k, None, v, None).fold(
           err => throw new IllegalArgumentException("Error in test: " + err.fullMsg)
         , res => res
         )
@@ -315,8 +315,8 @@ class TestMergeGroupProperties extends Specification {
 
     "present only node value for override" in {
       val globals = Map(                                ("foo" -> GenericProperty.parseValue("""{"global":"global value", "override":"global"}""").forceGet) )
-      val parent  = parent1 .modify(_.properties)     .setTo(List(GroupProperty.parse("foo", """{"parent":"parent value", "override":"parent"}""", None).forceGet))
-      val child_  = child   .modify(_.properties)     .setTo(List(GroupProperty.parse("foo", """{"child" :"child value" , "override":"child" }""", None).forceGet))
+      val parent  = parent1 .modify(_.properties)     .setTo(List(GroupProperty.parse("foo", None, """{"parent":"parent value", "override":"parent"}""", None).forceGet))
+      val child_  = child   .modify(_.properties)     .setTo(List(GroupProperty.parse("foo", None, """{"child" :"child value" , "override":"child" }""", None).forceGet))
       val node    = nodeInfo.modify(_.node.properties).setTo(List(NodeProperty.parse ("foo", """{"node"  :"node value"  , "override":"node"  }""", None).forceGet))
       val merged = MergeNodeProperties.forNode(node, List(parent, child_).map(_.toTarget), globals).forceGet
 
