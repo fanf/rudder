@@ -196,7 +196,7 @@ class CreateCloneDirectivePopup(
           , _isEnabled = directive.isEnabled
           , policyMode = directive.policyMode
         )
-      roDirectiveRepository.getActiveTechniqueAndDirective(directive.id).notOptional(s"Error: active technique for directive '${directive.id}' was not found").toBox match {
+      roDirectiveRepository.getActiveTechniqueAndDirective(directive.rid).notOptional(s"Error: active technique for directive '${directive.rid.show}' was not found").toBox match {
         case Full((activeTechnique, _)) =>
           woDirectiveRepository.saveDirective(activeTechnique.id, cloneDirective, ModificationId(uuidGen.newUuid), CurrentUser.actor, reasons.map(_.get)).toBox match {
             case Full(directive) => {

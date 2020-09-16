@@ -52,6 +52,7 @@ import com.normation.rudder.web.model.WBTextField
 import com.normation.rudder.web.services.DisplayDirectiveTree
 import com.normation.rudder.web.services.DisplayNodeGroupTree
 import bootstrap.liftweb.RudderConfig
+import com.normation.GitVersion.RevId
 import com.normation.rudder.domain.nodes.NodeGroupId
 import net.liftweb.common._
 import net.liftweb.http.DispatchSnippet
@@ -237,7 +238,7 @@ class RuleEditForm(
   private[this] def showCrForm(groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory, globalMode : GlobalPolicyMode) : NodeSeq = {
 
     val usedDirectiveIds = roRuleRepository.getAll().toBox.getOrElse(Seq()).flatMap { case r =>
-      r.directiveIds.map( id => (id -> r.id))
+      r.directiveIds.map( id => (id.id -> r.id))
     }.groupMapReduce( _._1 )(_ => 1)(_+_).toSeq
 
     //is't there an other way to do that? We already have the target/name
@@ -287,9 +288,9 @@ class RuleEditForm(
             )
           case None => //the rule reference a non-existing directive. It will break generation. We need to make it appears
             JsDirective(
-                id.value
-              , linkUtil.directiveLink(id)
-              , s"Unknown directive with id: '${id.value}'"
+                id.id.value
+              , linkUtil.directiveLink(id.id)
+              , s"Unknown directive with id: '${id.show}'"
               , s"This directive is not known by Rudder. You should likely delete it from that rule."
               , "Technique unknown"
               , "Technique version unknown"
@@ -297,7 +298,7 @@ class RuleEditForm(
               , JArray(Nil)
             )
         }
-        (id.value, details)
+        (id.id.value, details)
       }.toMap
       write(map)
     }
@@ -328,7 +329,7 @@ class RuleEditForm(
               , onClickDirective = Some((_,t,d) => directiveClick(t, d, globalMode.mode.name))
               , addEditLink      = true
               , addActionBtns    = true
-              , included         = selectedDirectiveIds
+              , included         = selectedDirectiveIds.map(_.id)
                 //filter techniques without directives, and categories without technique
               , keepCategory     = category => category.allDirectives.nonEmpty
               , keepTechnique    = technique => technique.directives.nonEmpty
@@ -392,9 +393,9 @@ class RuleEditForm(
    * from a list of PI ids, get a string.
    * the format is a JSON array: [ "id1", "id2", ...]
    */
-  private[this] def serializedirectiveIds(ids:Seq[DirectiveId]) : String = {
+  private[this] def serializedirectiveIds(ids:Seq[DirectiveRId]) : String = {
     implicit val formats = Serialization.formats(NoTypeHints)
-    Serialization.write(ids.map( "jsTree-" + _.value ))
+    Serialization.write(ids.map(x => "jsTree-" + x.id.value + "_" + x.revId.value ))
   }
 
   /*
@@ -402,9 +403,12 @@ class RuleEditForm(
    * Directive Ids.
    * Never fails, but returned an empty list.
    */
-  private[this] def unserializedirectiveIds(ids:String) : Seq[DirectiveId] = {
+  private[this] def unserializedirectiveIds(ids:String) : Seq[DirectiveRId] = {
     implicit val formats = DefaultFormats
-    parse(ids).extract[List[String]].map( x => DirectiveId(x.replace("jsTree-","")) )
+    parse(ids).extract[List[String]].map { x =>
+      val parts = x.replace("jsTree-","").split("_")
+      DirectiveRId(DirectiveId(parts(0)), RevId(parts(1)))
+    }
   }
 
   private[this] def unserializeTarget(target:String)  = {

@@ -130,7 +130,7 @@ class LDAPDiffMapper(
                                 }
                             }
                           case A_DIRECTIVE_UUID =>
-                            diff.map( _.copy(modDirectiveIds = Some(SimpleDiff(oldCr.directiveIds, mod.getValues.map( DirectiveId(_) ).toSet))))
+                            diff.map( _.copy(modDirectiveIds = Some(SimpleDiff(oldCr.directiveIds, mod.getValues.map(x => JsonDirectiveId.ruleParse(x).toDirectiveRId ).toSet))))
                           case A_NAME =>
                             diff.map( _.copy(modName = Some(SimpleDiff(oldCr.name, mod.getAttribute().getValue))))
                           case A_DESCRIPTION =>

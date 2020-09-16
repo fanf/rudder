@@ -37,6 +37,9 @@
 
 package com.normation.rudder.services.eventlog
 
+import com.normation.GitVersion.RevId
+import com.normation.GitVersion.defaultRev
+
 import scala.xml._
 import net.liftweb.common._
 import net.liftweb.common.Box._
@@ -309,10 +312,15 @@ class EventLogDetailsServiceImpl(
                              { s => tryo { s.text.toBoolean } } )
       isSystem          <- getFromTo[Boolean]((rule \ "isSystem").headOption,
                              { s => tryo { s.text.toBoolean } } )
-      directiveIds      <- getFromTo[Set[DirectiveId]]((rule \ "directiveIds").headOption,
+      directiveIds      <- getFromTo[Set[DirectiveRId]]((rule \ "directiveIds").headOption,
                              { x:NodeSeq =>
-                               Full((x \ "id").toSet.map( (y:NodeSeq) =>
-                                 DirectiveId( y.text )))
+                               Full((x \ "id").toSet.map {  (y:NodeSeq) =>
+                                 val r = (y \ "@revisionId").text match {
+                                   case null | "" => defaultRev
+                                   case r         => RevId(r)
+                                 }
+                                 DirectiveRId(DirectiveId( y.text ), r )
+                               })
                            } )
     } yield {
       ModifyRuleDiff(

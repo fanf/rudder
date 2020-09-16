@@ -69,9 +69,9 @@ final object GitVersion {
 
 
   /**
-   * The default branch
+   * The default name for "last commit on default branch"
    */
-  val defaultRev = RevId("master")
+  val defaultRev = RevId("head")
 
   def parseOptionalRevision(revId: Option[String]) = revId match {
     case None    => defaultRev

@@ -65,6 +65,7 @@ import com.normation.rudder.web.services.AgentCompat
 import net.liftweb.util.Helpers.TimeSpan
 import com.normation.cfclerk.domain.TechniqueGenerationMode._
 import com.normation.box._
+import com.normation.rudder.domain.policies.DirectiveRId
 
 /**
  * Snippet for managing the System and Active Technique libraries.
@@ -160,7 +161,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
           (directiveLibrary.toBox,rules.toBox,configService.rudder_global_policy_mode().toBox) match {
             case (Full(activeTechLib), Full(allRules), Full(globalMode)) =>
               val usedDirectives = allRules.flatMap { case r =>
-                  r.directiveIds.map( id => (id -> r.id))
+                  r.directiveIds.map( id => (id.id -> r.id))
                 }.groupMapReduce( _._1 )(_ => 1)(_+_).toSeq
 
               <ul>{
@@ -509,7 +510,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
     }
     configService.rudder_global_policy_mode().toBox match {
       case Full(globalMode) =>
-        directiveLibrary.toBox.flatMap( _.allDirectives.get(directiveId)) match {
+        directiveLibrary.toBox.flatMap( _.allDirectives.get(DirectiveRId(directiveId))) match {
           // The directive exists, update directive form
           case Full((activeTechnique, directive)) =>
             // In priority, use the directive passed as parameter

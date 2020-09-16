@@ -108,9 +108,9 @@ final case class FullActiveTechniqueCategory(
   , isSystem        : Boolean = false // by default, we can't create system Category
 ) {
 
-  val allDirectives : Map[DirectiveId, (FullActiveTechnique, Directive)] = (
+  val allDirectives : Map[DirectiveRId, (FullActiveTechnique, Directive)] = (
        subCategories.flatMap( _.allDirectives).toMap
-    ++ activeTechniques.flatMap( at => at.directives.map( d => (d.id, (at, d))) ).toMap
+    ++ activeTechniques.flatMap( at => at.directives.map( d => (DirectiveRId(d.id, d.revId), (at, d))) ).toMap
   )
 
   val allDirectivesByActiveTechniques : Map[ActiveTechniqueId, List[Directive]] = (
@@ -167,7 +167,7 @@ trait RoDirectiveRepository {
    * retrieve a Directive with its parent Technique and the
    * binding Active Technique
    */
-  def getDirectiveWithContext(directiveId:DirectiveId) : IOResult[Option[(Technique, ActiveTechnique, Directive)]]
+  def getDirectiveWithContext(directiveId: DirectiveId) : IOResult[Option[(Technique, ActiveTechnique, Directive)]]
 
   /**
    * Find the active technique for which the given directive is an instance.
@@ -175,7 +175,7 @@ trait RoDirectiveRepository {
    * Return empty if no such directive is known,
    * fails if no active technique match the directive.
    */
-  def getActiveTechniqueAndDirective(id:DirectiveId) : IOResult[Option[(ActiveTechnique, Directive)]]
+  def getActiveTechniqueAndDirective(rid: DirectiveRId) : IOResult[Option[(ActiveTechnique, Directive)]]
 
   /**
    * Get directives for given technique.

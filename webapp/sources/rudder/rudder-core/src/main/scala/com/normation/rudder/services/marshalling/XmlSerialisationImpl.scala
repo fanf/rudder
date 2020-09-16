@@ -37,6 +37,7 @@
 
 package com.normation.rudder.services.marshalling
 
+import com.normation.GitVersion
 import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.rudder.batch.{CurrentDeploymentStatus, ErrorStatus, SuccessStatus}
@@ -78,6 +79,7 @@ import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.rudder.domain.appconfig.RudderWebProperty
 import com.normation.rudder.api.{ApiAccount, ApiAccountKind, ApiAuthorization}
 import com.normation.cfclerk.domain.TechniqueId
+import com.normation.rudder.domain.policies.DirectiveRId
 
 //serialize / deserialize tags
 object TagsXml {
@@ -115,7 +117,12 @@ class RuleSerialisationImpl(xmlVersion:String) extends RuleSerialisation {
           rule.targets.map { target => <target>{target.target}</target> }
         }</targets>
         <directiveIds>{
-          rule.directiveIds.map { id => <id>{id.value}</id> }
+          rule.directiveIds.map { case DirectiveRId(id, revId) =>
+            revId match {
+              case GitVersion.defaultRev => <id>{id.value}</id>
+              case r                     => <id revisionId={r.value}>{id.value}</id>
+            }
+          }
         }</directiveIds>
         <shortDescription>{rule.shortDescription}</shortDescription>
         <longDescription>{rule.longDescription}</longDescription>

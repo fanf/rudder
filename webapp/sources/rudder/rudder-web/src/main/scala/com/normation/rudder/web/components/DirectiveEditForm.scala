@@ -609,8 +609,8 @@ class DirectiveEditForm(
       val (addRules,removeRules)= directiveApp.checkRulesToUpdate
       val baseRules = (addRules ++ removeRules).sortBy(_.id.value)
 
-      val finalAdd = addRules.map(r => r.copy(directiveIds =  r.directiveIds + directive.id ))
-      val finalRem = removeRules.map(r => r.copy(directiveIds =  r.directiveIds - directive.id ))
+      val finalAdd = addRules.map(r => r.copy(directiveIds =  r.directiveIds + directive.rid ))
+      val finalRem = removeRules.map(r => r.copy(directiveIds =  r.directiveIds - directive.rid ))
       val updatedRules = (finalAdd ++ finalRem).sortBy(_.id.value)
 
       val newPolicyMode = policyModes.get match {

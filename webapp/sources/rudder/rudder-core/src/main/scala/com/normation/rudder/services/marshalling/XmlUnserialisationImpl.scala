@@ -39,6 +39,7 @@ package com.normation.rudder.services.marshalling
 
 import com.normation.GitVersion
 import com.normation.GitVersion.RevId
+import com.normation.GitVersion.defaultRev
 
 import scala.xml.{NodeSeq, Text, Node => XNode}
 import net.liftweb.common._
@@ -300,7 +301,13 @@ class RuleUnserialisationImpl extends RuleUnserialisation {
                           ("Missing attribute 'isSystem' in entry type rule: " + entry)
       targets          <- sequence((rule \ "targets" \ "target")) { t => RuleTarget.unser(t.text) } ?~!
                           ("Invalid attribute in 'target' entry: " + entry)
-      directiveIds     = (rule \ "directiveIds" \ "id" ).map( n => DirectiveId( n.text ) ).toSet
+      directiveIds     = (rule \ "directiveIds" \ "id" ).map { n =>
+                            val revId = (n \ "@revisionId").text match {
+                              case null | "" => defaultRev
+                              case r         => RevId(r)
+                            }
+                            DirectiveRId( DirectiveId(n.text), revId )
+                          }.toSet
       tags             =  TagsXml.getTags( rule \ "tags")
 
     } yield {

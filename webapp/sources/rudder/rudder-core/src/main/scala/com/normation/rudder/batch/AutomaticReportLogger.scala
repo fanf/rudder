@@ -49,11 +49,11 @@ import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.RoRuleRepository
 import com.normation.rudder.repository.RudderPropertiesRepository
 import com.normation.rudder.services.nodes.NodeInfoService
-
 import net.liftweb.actor._
 import net.liftweb.common._
 import com.normation.rudder.domain.logger.ScheduledJobLogger
 import com.normation.box._
+import com.normation.rudder.domain.policies.DirectiveRId
 
 /**
  * This object will be used as message for the non compliant reports logger
@@ -260,7 +260,9 @@ class AutomaticReportLogger(
           val rid       = report.ruleId.value
           val r         = rules.get(report.ruleId).map(_.name).getOrElse("Unknown rule")
           val did       = report.directiveId.value
-          val (d,tn,tv) = directives.allDirectives.get(report.directiveId) match {
+          // TODO: do we need to store revId for directive (and rule and etc) or can we find it back from other part ?
+          // for now, only head
+          val (d,tn,tv) = directives.allDirectives.get(DirectiveRId(report.directiveId)) match {
                             case Some((at, d)) => (d.name, at.techniqueName, d.techniqueVersion.toString)
                             case _ => ("Unknown directive", "Unknown technique id", "N/A")
                           }

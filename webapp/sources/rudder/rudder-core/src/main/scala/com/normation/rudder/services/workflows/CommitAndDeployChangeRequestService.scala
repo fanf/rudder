@@ -324,7 +324,7 @@ final case object CheckGlobalParameter extends CheckChanges[GlobalParameter]  {
         }
 
         if ( initialFixed.directiveIds != currentFixed.directiveIds) {
-          debugLog(s"Rule ID ${initialFixed.id.value} attached Directives have changed: original state from CR: ${initialFixed.directiveIds.map(_.value).mkString("[ ", ", ", " ]")}, current value: ${currentFixed.directiveIds.map(_.value).mkString("[ ", ", ", " ]")}")
+          debugLog(s"Rule ID ${initialFixed.id.value} attached Directives have changed: original state from CR: ${initialFixed.directiveIds.map(_.show).mkString("[ ", ", ", " ]")}, current value: ${currentFixed.directiveIds.map(_.show).mkString("[ ", ", ", " ]")}")
         }
 
         //return

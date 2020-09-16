@@ -231,9 +231,6 @@ final case class RestExtractorService (
   private[this] def toGroupCategoryId (value:String) : Box[NodeGroupCategoryId] = {
     Full(NodeGroupCategoryId(value))
   }
-  private[this] def toDirectiveId (value:String) : Box[DirectiveId] = {
-    readDirective.getDirective(DirectiveId(value)).notOptional(s"Directive '$value' not found").map(_.id).toBox
-  }
 
   private[this] def toApiAccountId (value:String) : Box[ApiAccountId] = {
     Full(ApiAccountId(value))
@@ -345,7 +342,11 @@ final case class RestExtractorService (
   /*
    * Convert List Functions
    */
-  private[this] def convertListToDirectiveId (values : Seq[String]) : Box[Set[DirectiveId]] = {
+  private[this] def convertListToDirectiveId (values : Seq[String]) : Box[Set[DirectiveRId]] = {
+    def toDirectiveId (value:String) : Box[DirectiveRId] = {
+      // TODO: parse value correctly
+      readDirective.getDirective(DirectiveId(value)).notOptional(s"Directive '$value' not found").map(x => DirectiveRId(x.id)).toBox
+    }
     sequence(values){ toDirectiveId }.map(_.toSet)
   }
 

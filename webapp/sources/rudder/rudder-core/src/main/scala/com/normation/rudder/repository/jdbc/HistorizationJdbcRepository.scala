@@ -209,7 +209,7 @@ class HistorizationJdbcRepository(db: Doobie) extends HistorizationRepository wi
         _  <- Update[DB.SerializedRuleDirectives]("""
                  insert into rulesdirectivesjoin (rulepkeyid, directiveid)
                  values (?, ?)
-               """).updateMany(r.directiveIds.toList.map(d => DB.SerializedRuleDirectives(pk, d.value)))
+               """).updateMany(r.directiveIds.toList.map(d => DB.SerializedRuleDirectives(pk, d.id.value)))
         _  <- Update[DB.SerializedRuleGroups]("""
                  insert into rulesgroupjoin (rulepkeyid, targetserialisation)
                  values (?, ?)

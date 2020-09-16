@@ -196,7 +196,7 @@ class HistorizationServiceImpl(
          }
       }.toSeq.map { case (t,fat,d) => (d, fat.toActiveTechnique, t) }
 
-      val stringDirectiveIds = directives.keySet.map( _.value)
+      val stringDirectiveIds = directives.keySet.map( _.id.value)
 
       val closable = registered.keySet.filter(x => !stringDirectiveIds.contains(x))
 

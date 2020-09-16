@@ -54,8 +54,8 @@ import com.normation.rudder.domain.logger.ApplicationLogger
 import com.unboundid.ldap.sdk.DN
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
-
 import com.normation.box._
+import com.normation.rudder.domain.policies.DirectiveRId
 
 /**
  * This service allows to manage properties linked to the root policy server,
@@ -146,7 +146,7 @@ class PolicyServerManagementServiceImpl(
     }
 
     for {
-      res <- roDirectiveRepository.getActiveTechniqueAndDirective(directiveId).notOptional(s"Error when retrieving system directive with ID ${directiveId.value}' which is mandatory for allowed networks configuration.")
+      res <- roDirectiveRepository.getActiveTechniqueAndDirective(DirectiveRId(directiveId)).notOptional(s"Error when retrieving system directive with ID ${directiveId.value}' which is mandatory for allowed networks configuration.")
       (activeTechnique, directive) = res
       newPi = directive.copy(parameters = directive.parameters + (Constants.V_ALLOWED_NETWORK -> validNets.map( _.toString)))
       msg = Some("Automatic update of system directive due to modification of accepted networks ")

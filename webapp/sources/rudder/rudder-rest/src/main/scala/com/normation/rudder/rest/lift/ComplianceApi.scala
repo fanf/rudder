@@ -58,8 +58,8 @@ import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json._
-
 import com.normation.box._
+import com.normation.rudder.domain.policies.DirectiveRId
 
 class ComplianceApi(
     restExtractorService: RestExtractorService
@@ -285,7 +285,7 @@ class ComplianceAPIService(
             , byDirectives.map{ case (directiveId, nodeDirectives) =>
                 ByRuleDirectiveCompliance(
                     directiveId
-                  , directivelib.allDirectives.get(directiveId).map(_._2.name).getOrElse("Unknown directive")
+                  , directivelib.allDirectives.get(DirectiveRId(directiveId)).map(_._2.name).getOrElse("Unknown directive")
                   , ComplianceLevel.sum(nodeDirectives.map( _._2.compliance) )
                   , //here we want the compliance by components of the directive. Get all components and group by their name
                     {
@@ -382,7 +382,7 @@ class ComplianceAPIService(
                     rule.id
                   , rule.name
                   , ComplianceLevel(noAnswer = rule.directiveIds.size)
-                  , rule.directiveIds.map { id => ByNodeDirectiveCompliance(id, directiveLib.get(id).map(_._2.name).getOrElse("Unknown Directive"), ComplianceLevel(noAnswer = 1), Map())}.toSeq
+                  , rule.directiveIds.map { rid => ByNodeDirectiveCompliance(rid.id, directiveLib.get(rid).map(_._2.name).getOrElse("Unknown Directive"), ComplianceLevel(noAnswer = 1), Map())}.toSeq
                 )
               }).toSeq
           ))
@@ -404,7 +404,7 @@ class ComplianceAPIService(
                     r.ruleId
                   , ruleMap.get(r.ruleId).map(_.name).getOrElse("Unknown rule")
                   , r.compliance
-                  , r.directives.toSeq.map { case (_, directiveReport) => ByNodeDirectiveCompliance(directiveReport,directiveLib.get(directiveReport.directiveId).map(_._2.name).getOrElse("Unknown Directive")) }
+                  , r.directives.toSeq.map { case (_, directiveReport) => ByNodeDirectiveCompliance(directiveReport,directiveLib.get(DirectiveRId(directiveReport.directiveId)).map(_._2.name).getOrElse("Unknown Directive")) }
                 )
               )
           )

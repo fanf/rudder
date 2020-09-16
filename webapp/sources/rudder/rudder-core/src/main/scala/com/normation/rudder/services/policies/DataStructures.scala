@@ -273,6 +273,7 @@ final case class NodeConfiguration(
  * used to differenciate multi-version technique, etc.
  *
  */
+// TODO: RuleRId, DirectiveRId
 final case class PolicyId(ruleId: RuleId, directiveId: DirectiveId, techniqueVersion: TechniqueVersion) {
 
   val value = s"${ruleId.value}@@${directiveId.value}"

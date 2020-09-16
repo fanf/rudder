@@ -38,6 +38,7 @@
 package com.normation.rudder.domain.policies
 
 import com.normation.GitVersion.RevId
+import com.normation.GitVersion.defaultRev
 
 import scala.xml._
 import com.normation.cfclerk.domain.TechniqueVersion
@@ -68,6 +69,11 @@ import com.normation.cfclerk.domain.SectionSpec
 
 
 final case class DirectiveId(value : String) extends AnyVal
+
+// there is a lot of place that need that as the real identifier of a directive
+final case class DirectiveRId(id: DirectiveId, revId: RevId = defaultRev) {
+  def show: String = if(revId == defaultRev) id.value else "${id.value}#${revId.value}"
+}
 
 /**
  * Define a directive.
@@ -152,6 +158,7 @@ final case class Directive(
 ) {
   //system object must ALWAYS be ENABLED.
   def isEnabled = _isEnabled || isSystem
+  def rid = DirectiveRId(id, revId)
 }
 
 final case class SectionVal(

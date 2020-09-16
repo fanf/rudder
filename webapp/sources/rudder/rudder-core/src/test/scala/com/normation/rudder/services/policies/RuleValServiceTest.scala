@@ -45,6 +45,7 @@ import com.normation.rudder.repository.FullActiveTechnique
 import com.normation.rudder.domain.policies.ActiveTechniqueId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.domain.policies.ActiveTechniqueCategoryId
+
 import scala.collection.SortedMap
 import org.joda.time.DateTime
 import com.normation.rudder.domain.policies.Directive
@@ -55,6 +56,7 @@ import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.inventory.domain.AgentType
+import com.normation.rudder.domain.policies.DirectiveRId
 
 /**
  * Test how RuleVal and ParsedPolicyDraft are constructed, and if they
@@ -148,7 +150,7 @@ class RuleValServiceTest extends Specification {
         , "Rule Name"
         , RuleCategoryId("cat1")
         , Set(GroupTarget(NodeGroupId("nodeGroupId")))
-        , Set(directiveId)
+        , Set(DirectiveRId(directiveId))
         , ""
         , ""
         , true

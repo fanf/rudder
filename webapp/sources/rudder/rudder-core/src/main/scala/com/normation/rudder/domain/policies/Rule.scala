@@ -39,7 +39,7 @@ package com.normation.rudder.domain.policies
 import com.normation.GitVersion.RevId
 import com.normation.rudder.rule.category.RuleCategoryId
 
-final case class RuleId(value:String) extends AnyVal
+final case class RuleId(value: String) extends AnyVal
 
 /**
  * A rule is a binding between a set of directives
@@ -59,7 +59,7 @@ final case class Rule(
     //is not mandatory, but if not present, rule is disabled
   , targets         : Set[RuleTarget] = Set()
     //is not mandatory, but if not present, rule is disabled
-  , directiveIds    : Set[DirectiveId] = Set()
+  , directiveIds    : Set[DirectiveRId] = Set()
   , shortDescription: String = ""
   , longDescription : String = ""
   , isEnabledStatus : Boolean = false

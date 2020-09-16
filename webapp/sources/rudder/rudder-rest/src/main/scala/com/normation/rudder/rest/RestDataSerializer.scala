@@ -65,6 +65,7 @@ import com.normation.rudder.api.ApiAuthorization.{None => NoAccess}
 import com.normation.rudder.api.ApiAuthorization.RO
 import com.normation.rudder.api.ApiAuthorization.RW
 import com.normation.rudder.api.ApiAuthorization.ACL
+import com.normation.rudder.repository.ldap.JsonDirectiveId
 import org.joda.time.DateTime
 
 /**
@@ -166,7 +167,7 @@ final case class RestDataSerializerImpl (
      ~ ( "displayName"      -> rule.name )
      ~ ( "shortDescription" -> rule.shortDescription )
      ~ ( "longDescription"  -> rule.longDescription )
-     ~ ( "directives"       -> rule.directiveIds.map(_.value) )
+     ~ ( "directives"       -> rule.directiveIds.map(x => JsonDirectiveId.fromRId(x).json))
      ~ ( "targets"          -> rule.targets.map(_.toJson) )
      ~ ( "enabled"          -> rule.isEnabledStatus )
      ~ ( "system"           -> rule.isSystem )
@@ -293,14 +294,14 @@ final case class RestDataSerializerImpl (
 
     def serializeRuleDiff(diff:ModifyRuleDiff,initialState:Rule) : JValue= {
       implicit def convert[T] (value : T) : JValue = value
-      def convertDirectives(dl : Set[DirectiveId]) : JValue = dl.map(_.value).toList
+      def convertDirectives(dl : Set[DirectiveRId]) : JValue = dl.map(x => JsonDirectiveId.fromRId(x).json).toList
       def convertTargets(t : Set[RuleTarget]) : JValue = t.map(_.target).toList
 
       val name :JValue             = diff.modName.map(displaySimpleDiff(_) ).getOrElse(initialState.name)
       val shortDescription :JValue = diff.modShortDescription.map(displaySimpleDiff(_)).getOrElse(initialState.shortDescription)
       val longDescription  :JValue = diff.modLongDescription.map(displaySimpleDiff(_)).getOrElse(initialState.longDescription)
       val targets :JValue          = diff.modTarget.map(displaySimpleDiff(_)(convertTargets)).getOrElse(initialState.targets.map(_.target).toList)
-      val directives :JValue       = diff.modDirectiveIds.map(displaySimpleDiff(_)(convertDirectives)).getOrElse(initialState.directiveIds.map(_.value).toList)
+      val directives :JValue       = diff.modDirectiveIds.map(displaySimpleDiff(_)(convertDirectives)).getOrElse(initialState.directiveIds.map(x => JsonDirectiveId.fromRId(x).json).toList)
       val enabled :JValue          = diff.modIsActivatedStatus.map(displaySimpleDiff(_)).getOrElse(initialState.isEnabled)
 
       (   ( "id"               -> initialState.id.value)

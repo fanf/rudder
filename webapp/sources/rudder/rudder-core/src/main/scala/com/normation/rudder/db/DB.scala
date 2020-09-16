@@ -58,6 +58,7 @@ import doobie._
 import com.normation.rudder.db.Doobie._
 import cats.implicits._
 import com.normation.GitVersion
+import com.normation.rudder.domain.policies.DirectiveRId
 
 
 
@@ -298,6 +299,7 @@ final case class SerializedRules[T](
               DateTime.now(), None )
     }
 
+    // TODO: this is only used for history, no version here
     def fromSerializedRule(
         rule : SerializedRules[Long]
       , ruleTargets : Seq[SerializedRuleGroups]
@@ -309,7 +311,7 @@ final case class SerializedRules[T](
         , rule.name
         , RuleCategoryId(rule.categoryId.getOrElse("rootRuleCategory")) // this is not really useful as RuleCategory are not really serialized
         , ruleTargets.flatMap(x => RuleTarget.unser(x.targetSerialisation)).toSet
-        , directives.map(x => DirectiveId(x.directiveId)).toSet
+        , directives.map(x => DirectiveRId(DirectiveId(x.directiveId), GitVersion.defaultRev)).toSet
         , rule.shortDescription.getOrElse("")
         , rule.longDescription.getOrElse("")
         , rule.isEnabledStatus

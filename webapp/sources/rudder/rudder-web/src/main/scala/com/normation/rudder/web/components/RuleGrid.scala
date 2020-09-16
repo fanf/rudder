@@ -485,7 +485,7 @@ class RuleGrid(
                   Full((directive, activeTechnique.toActiveTechnique, technique))
               }
             case None => //it's an error if the directive ID is defined and found but it is not attached to an activeTechnique
-              val error = Failure(s"Can not find Directive with ID '${id.value}' referenced in Rule with ID '${rule.id.value}'")
+              val error = Failure(s"Can not find Directive with ID '${id.show}' referenced in Rule with ID '${rule.id.value}'")
               logger.debug(error.messageChain, error)
               error
           }

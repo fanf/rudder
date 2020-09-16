@@ -131,7 +131,7 @@ class ReportingServiceTest extends DBCommon with BoxSpecMatcher {
     def getFullDirectiveLibrary() : IOResult[FullActiveTechniqueCategory] = directivesLib.succeed
     def getDirective(directiveId:DirectiveId) : IOResult[Option[Directive]] = ???
     def getDirectiveWithContext(directiveId:DirectiveId) : IOResult[Option[(Technique, ActiveTechnique, Directive)]] = ???
-    def getActiveTechniqueAndDirective(id:DirectiveId) : IOResult[Option[(ActiveTechnique, Directive)]] = ???
+    def getActiveTechniqueAndDirective(id:DirectiveRId) : IOResult[Option[(ActiveTechnique, Directive)]] = ???
     def getDirectives(activeTechniqueId:ActiveTechniqueId, includeSystem:Boolean = false) : IOResult[Seq[Directive]] = ???
     def getActiveTechniqueByCategory(includeSystem:Boolean = false) : IOResult[SortedMap[List[ActiveTechniqueCategoryId], CategoryWithActiveTechniques]] = ???
     def getActiveTechniqueByActiveTechnique(id:ActiveTechniqueId) : IOResult[Option[ActiveTechnique]] = ???
