@@ -38,7 +38,6 @@
 package com.normation.rudder.repository.ldap
 
 import cats.implicits._
-import com.normation.GitVersion
 import com.normation.NamedZioLogger
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.cfclerk.domain.Technique
@@ -95,10 +94,9 @@ class RoLDAPDirectiveRepository(
    * Retrieve the directive entry for the given ID, with the given connection
    */
   def getDirectiveEntry(con:RoLDAPConnection, rid: DirectiveRId, attributes:String*) : LDAPIOResult[Option[LDAPEntry]] = {
-    val filter = if(rid.revId == GitVersion.defaultRev) {
-      EQ(A_DIRECTIVE_UUID, rid.id.value)
-    } else {
-      AND(EQ(A_DIRECTIVE_UUID, rid.id.value), EQ(A_REV_ID, rid.revId.value))
+    val filter = rid.revId match {
+      case None    => EQ(A_DIRECTIVE_UUID, rid.id.value)
+      case Some(r) => AND(EQ(A_DIRECTIVE_UUID, rid.id.value), EQ(A_REV_ID, r.value))
     }
     con.searchSub(rudderDit.ACTIVE_TECHNIQUES_LIB.dn, filter, attributes:_*).flatMap(piEntries =>
       piEntries.size match {

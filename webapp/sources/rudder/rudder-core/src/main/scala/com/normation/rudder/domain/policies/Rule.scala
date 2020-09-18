@@ -41,6 +41,8 @@ import com.normation.rudder.rule.category.RuleCategoryId
 
 final case class RuleId(value: String) extends AnyVal
 
+final case class RuleRId(id: RuleId, revId: Option[RevId] = None)
+
 /**
  * A rule is a binding between a set of directives
  * and some target (group of node, etc) on which applying
@@ -53,7 +55,7 @@ final case class RuleId(value: String) extends AnyVal
  */
 final case class Rule(
     id              : RuleId
-  , revId           : RevId
+  , revId           : Option[RevId]
   , name            : String
   , categoryId      : RuleCategoryId
     //is not mandatory, but if not present, rule is disabled
@@ -71,4 +73,5 @@ final case class Rule(
 ) {
   //system object must ALWAYS be ENABLED.
   def isEnabled = isSystem || (isEnabledStatus && !targets.isEmpty && !directiveIds.isEmpty)
+  def ruleRId = RuleRId(id, revId)
 }

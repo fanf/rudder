@@ -37,7 +37,6 @@
 
 package com.normation.rudder.services.policies
 
-import com.normation.GitVersion.defaultRev
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.appconfig.FeatureSwitch
 import com.normation.rudder.domain.nodes.NodeGroup
@@ -111,7 +110,7 @@ class TestBuildNodeConfiguration extends Specification {
                                     , true
                                   )
 
-  val rule                      = Rule(RuleId("rule"), defaultRev, "rule", RuleCategoryId("rootcat"), Set(GroupTarget(group.id)), directiveLib.allDirectives.keySet,"","", true, true)
+  val rule                      = Rule(RuleId("rule"), None, "rule", RuleCategoryId("rootcat"), Set(GroupTarget(group.id)), directiveLib.allDirectives.keySet,"","", true, true)
   val valueCompiler             = new InterpolatedValueCompilerImpl()
   val ruleValService            = new RuleValServiceImpl(valueCompiler)
   val buildContext              = new PromiseGeneration_BuildNodeContext {

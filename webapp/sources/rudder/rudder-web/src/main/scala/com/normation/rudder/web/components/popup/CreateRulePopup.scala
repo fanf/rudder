@@ -51,7 +51,6 @@ import CreateOrCloneRulePopup._
 import com.normation.rudder.web.model.CurrentUser
 import com.normation.eventlog.ModificationId
 import bootstrap.liftweb.RudderConfig
-import com.normation.GitVersion.defaultRev
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.rudder.web.model.WBSelectField
 import com.normation.rudder.rule.category.RuleCategory
@@ -196,7 +195,7 @@ class CreateOrCloneRulePopup(
       val rule =
         Rule(
             RuleId(uuidGen.newUuid)
-          , defaultRev
+          , None
           , ruleName.get
           , RuleCategoryId(category.get)
           , targets = clonedRule.map( _.targets).getOrElse(Set())

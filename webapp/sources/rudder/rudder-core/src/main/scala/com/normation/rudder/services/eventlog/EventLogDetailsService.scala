@@ -37,8 +37,7 @@
 
 package com.normation.rudder.services.eventlog
 
-import com.normation.GitVersion.RevId
-import com.normation.GitVersion.defaultRev
+import com.normation.GitVersion.ParseRev
 
 import scala.xml._
 import net.liftweb.common._
@@ -279,64 +278,58 @@ class EventLogDetailsServiceImpl(
      <longDescription><from>...</from><to>...</to></longDescription>
      </rule>
    */
-  override def getRuleModifyDetails(xml:NodeSeq) : Box[ModifyRuleDiff] = {
-    for {
-      entry             <- getEntryContent(xml)
-      rule              <- (entry \ "rule").headOption ?~! ("Entry type is not rule : " + entry)
-      changeTypeAddOk   <- {
-                             if(rule.attribute("changeType").map( _.text ) == Some("modify"))
-                               Full("OK")
-                             else
-                               Failure("Rule attribute does not have changeType=modify: " + entry)
-                           }
-      fileFormatOk      <- TestFileFormat(rule)
-      id                <- (rule \ "id").headOption.map( _.text ) ?~!
-                           ("Missing attribute 'id' in entry type rule : " + entry)
-      displayName       <- (rule \ "displayName").headOption.map( _.text ) ?~!
-                           ("Missing attribute 'displayName' in entry type rule : " + entry)
-      name              <- getFromToString((rule \ "name").headOption)
-      category          <- getFromTo[RuleCategoryId](
-                               (rule \ "category").headOption
-                             , { s => Full(RuleCategoryId(s.text)) }
-                           )
-      serial            <- getFromTo[Int]((rule \ "serial").headOption,
-                             { x => tryo(x.text.toInt) } )
-      targets           <- getFromTo[Set[RuleTarget]]((rule \ "targets").headOption,
-                            { x:NodeSeq =>
-                                Full((x \ "target").toSet.flatMap{ y: NodeSeq  =>
-                                  RuleTarget.unser(y.text )})
-                           })
-      shortDescription  <- getFromToString((rule \ "shortDescription").headOption)
-      longDescription   <- getFromToString((rule \ "longDescription").headOption)
-      isEnabled         <- getFromTo[Boolean]((rule \ "isEnabled").headOption,
-                             { s => tryo { s.text.toBoolean } } )
-      isSystem          <- getFromTo[Boolean]((rule \ "isSystem").headOption,
-                             { s => tryo { s.text.toBoolean } } )
-      directiveIds      <- getFromTo[Set[DirectiveRId]]((rule \ "directiveIds").headOption,
-                             { x:NodeSeq =>
-                               Full((x \ "id").toSet.map {  (y:NodeSeq) =>
-                                 val r = (y \ "@revisionId").text match {
-                                   case null | "" => defaultRev
-                                   case r         => RevId(r)
-                                 }
-                                 DirectiveRId(DirectiveId( y.text ), r )
-                               })
-                           } )
-    } yield {
-      ModifyRuleDiff(
-          id = RuleId(id)
-        , name = displayName
-        , modName = name
-        , modSerial = serial
-        , modTarget = targets
-        , modDirectiveIds = directiveIds
-        , modShortDescription = shortDescription
-        , modLongDescription = longDescription
-        , modIsActivatedStatus = isEnabled
-        , modIsSystem = isSystem
-        , modCategory = category
-      )
-    }
+  override def getRuleModifyDetails(xml:NodeSeq) : Box[ModifyRuleDiff] = for {
+    entry             <- getEntryContent(xml)
+    rule              <- (entry \ "rule").headOption ?~! ("Entry type is not rule : " + entry)
+    changeTypeAddOk   <- {
+                           if(rule.attribute("changeType").map( _.text ) == Some("modify"))
+                             Full("OK")
+                           else
+                             Failure("Rule attribute does not have changeType=modify: " + entry)
+                         }
+    fileFormatOk      <- TestFileFormat(rule)
+    id                <- (rule \ "id").headOption.map( _.text ) ?~!
+                         ("Missing attribute 'id' in entry type rule : " + entry)
+    displayName       <- (rule \ "displayName").headOption.map( _.text ) ?~!
+                         ("Missing attribute 'displayName' in entry type rule : " + entry)
+    name              <- getFromToString((rule \ "name").headOption)
+    category          <- getFromTo[RuleCategoryId](
+                             (rule \ "category").headOption
+                           , { s => Full(RuleCategoryId(s.text)) }
+                         )
+    serial            <- getFromTo[Int]((rule \ "serial").headOption,
+                           { x => tryo(x.text.toInt) } )
+    targets           <- getFromTo[Set[RuleTarget]]((rule \ "targets").headOption,
+                          { x:NodeSeq =>
+                              Full((x \ "target").toSet.flatMap{ y: NodeSeq  =>
+                                RuleTarget.unser(y.text )})
+                         })
+    shortDescription  <- getFromToString((rule \ "shortDescription").headOption)
+    longDescription   <- getFromToString((rule \ "longDescription").headOption)
+    isEnabled         <- getFromTo[Boolean]((rule \ "isEnabled").headOption,
+                           { s => tryo { s.text.toBoolean } } )
+    isSystem          <- getFromTo[Boolean]((rule \ "isSystem").headOption,
+                           { s => tryo { s.text.toBoolean } } )
+    directiveIds      <- getFromTo[Set[DirectiveRId]]((rule \ "directiveIds").headOption,
+                           { x:NodeSeq =>
+                             Full((x \ "id").toSet.map {  (y: NodeSeq) =>
+                               DirectiveRId(DirectiveId( y.text ), ParseRev((y \ "@revisionId").text) )
+                             })
+                         } )
+  } yield {
+    ModifyRuleDiff(
+        id = RuleId(id)
+      , name = displayName
+      , modName = name
+      , modSerial = serial
+      , modTarget = targets
+      , modDirectiveIds = directiveIds
+      , modShortDescription = shortDescription
+      , modLongDescription = longDescription
+      , modIsActivatedStatus = isEnabled
+      , modIsSystem = isSystem
+      , modCategory = category
+    )
   }
 
 

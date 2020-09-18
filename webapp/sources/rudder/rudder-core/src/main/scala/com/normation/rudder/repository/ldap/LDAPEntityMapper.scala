@@ -38,9 +38,8 @@
 package com.normation.rudder.repository.ldap
 
 import cats.implicits._
-import com.normation.GitVersion
+import com.normation.GitVersion.ParseRev
 import com.normation.GitVersion.RevId
-import com.normation.GitVersion.defaultRev
 import com.normation.NamedZioLogger
 import com.normation.cfclerk.domain._
 import com.normation.errors.{OptionToIoResult => _}
@@ -689,7 +688,7 @@ class LDAPEntityMapper(
       } yield {
         Directive(
             DirectiveId(id)
-          , GitVersion.parseOptionalRevision(e(A_REV_ID))
+          , ParseRev(e(A_REV_ID))
           , version
           , params
           , name
@@ -707,8 +706,8 @@ class LDAPEntityMapper(
 
   def userDirective2Entry(directive:Directive, parentDN:DN) : LDAPEntry = {
     val entry = rudderDit.ACTIVE_TECHNIQUES_LIB.directiveModel(
-        directive.id.value
-      , directive.revId.value
+        directive.id
+      , directive.revId
       , directive.techniqueVersion
       , parentDN
     )
@@ -782,7 +781,7 @@ class LDAPEntityMapper(
         } yield {
           ruleTarget
         }
-        val revId = GitVersion.parseOptionalRevision(e(A_REV_ID))
+        val revId = ParseRev(e(A_REV_ID))
         val directiveIds = e.valuesFor(A_DIRECTIVE_UUID).map(x => JsonDirectiveId.ruleParse(x).toDirectiveRId)
         val name = e(A_NAME).getOrElse(id)
         val shortDescription = e(A_DESCRIPTION).getOrElse("")
@@ -816,8 +815,8 @@ class LDAPEntityMapper(
    */
   def rule2Entry(rule: Rule): LDAPEntry = {
     val entry = rudderDit.RULES.ruleModel(
-        rule.id.value
-      , rule.revId.value
+        rule.id
+      , rule.revId
       , rule.name
       , rule.isEnabledStatus
       , rule.isSystem
@@ -1046,7 +1045,7 @@ final case class JsonApiAuthz(path: String, actions: List[String])
 // Used for some cases where we need to serialize (id, revId) and need to have a name for it, for ex for derivation
 // For compatibility reason, in rule we need to be compatible with old format and json, so special parse.
 final case class JsonDirectiveId(id: String, revId: Option[String]) {
-  def toDirectiveRId: DirectiveRId = DirectiveRId(DirectiveId(id), revId.fold(defaultRev)(RevId.apply))
+  def toDirectiveRId: DirectiveRId = DirectiveRId(DirectiveId(id), ParseRev(revId))
   def serialize = {
     implicit val formats = Serialization.formats(NoTypeHints)
     Serialization.write(this)
@@ -1068,7 +1067,6 @@ object JsonDirectiveId {
     case s => JsonDirectiveId(s, None)
   }
   def fromRId(rid: DirectiveRId) = {
-    val r = if(rid.revId == defaultRev) None else Some(rid.revId.value)
-    JsonDirectiveId(rid.id.value, r)
+    JsonDirectiveId(rid.id.value, rid.revId.map(_.value))
   }
 }

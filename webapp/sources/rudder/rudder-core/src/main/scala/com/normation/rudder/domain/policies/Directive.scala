@@ -38,7 +38,6 @@
 package com.normation.rudder.domain.policies
 
 import com.normation.GitVersion.RevId
-import com.normation.GitVersion.defaultRev
 
 import scala.xml._
 import com.normation.cfclerk.domain.TechniqueVersion
@@ -65,14 +64,26 @@ import com.normation.cfclerk.domain.SectionSpec
  *
  * Given that, we should (at least in the begining) try to minize distance between API serialisation format and internal
  * format. So go for the second option, and be careful when evolving methods.
+ *
+ * ==== some more evolution
+ *
+ * - forcing rev everywhere, when we want it to be almost always `defaultRev`, is not efficient. We should use
+ *   Option[RevId]
+ *   BUT it means that special attention need to be used on unserialisation: defaultValue (if serialised)
+ *   must be unserialized to `None`.
+ * - the code is crying for a DirectiveRId(id: DirectiveId, revId: Option[RevId] = None)
+ *
  */
 
 
 final case class DirectiveId(value : String) extends AnyVal
 
 // there is a lot of place that need that as the real identifier of a directive
-final case class DirectiveRId(id: DirectiveId, revId: RevId = defaultRev) {
-  def show: String = if(revId == defaultRev) id.value else "${id.value}#${revId.value}"
+final case class DirectiveRId(id: DirectiveId, revId: Option[RevId] = None) {
+  def show: String = revId match {
+    case None    => id.value
+    case Some(r) => s"${id.value}+${r.value}"
+  }
 }
 
 /**
@@ -99,7 +110,7 @@ final case class Directive(
   // see rationnal in comment above
 
     id   : DirectiveId
-  , revId: RevId
+  , revId: Option[RevId]
 
     /**
      * They reference one and only one Technique version

@@ -51,7 +51,6 @@ import JE._
 import net.liftweb.util.Helpers._
 import com.normation.cfclerk.domain.TechniqueVersion
 import bootstrap.liftweb.RudderConfig
-import com.normation.GitVersion.defaultRev
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.FullActiveTechnique
@@ -470,7 +469,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
         val directive =
           Directive(
               DirectiveId(uuidGen.newUuid)
-            , defaultRev
+            , None
             , technique.id.version
             , Map()
             , directiveDefaultName

@@ -395,7 +395,10 @@ class RuleEditForm(
    */
   private[this] def serializedirectiveIds(ids:Seq[DirectiveRId]) : String = {
     implicit val formats = Serialization.formats(NoTypeHints)
-    Serialization.write(ids.map(x => "jsTree-" + x.id.value + "_" + x.revId.value ))
+    Serialization.write(ids.map(x => x.revId match {
+      case None          => "jsTree-" + x.id.value
+      case Some(RevId(r)) => "jsTree-" + x.id.value + "_" + r
+    }))
   }
 
   /*
@@ -407,7 +410,7 @@ class RuleEditForm(
     implicit val formats = DefaultFormats
     parse(ids).extract[List[String]].map { x =>
       val parts = x.replace("jsTree-","").split("_")
-      DirectiveRId(DirectiveId(parts(0)), RevId(parts(1)))
+      DirectiveRId(DirectiveId(parts(0)), if(parts.length == 2) Some(RevId(parts(1))) else None)
     }
   }
 

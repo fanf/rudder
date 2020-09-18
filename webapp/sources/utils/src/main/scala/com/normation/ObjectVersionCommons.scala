@@ -73,15 +73,18 @@ final object GitVersion {
    */
   val defaultRev = RevId("head")
 
-  def parseOptionalRevision(revId: Option[String]) = revId match {
-    case None    => defaultRev
-    case Some(r) => RevId(r)
-  }
-
   // an empty string is considered as missing version, so defaultRev.
-  def parseRevisionString(revId: String) = revId match {
-    case "" => defaultRev
-    case r  => RevId(r)
+  object ParseRev {
+    def apply(revId: String): Option[RevId] = revId match {
+      case null | "" | defaultRev.value => None
+      case r                            => Some(RevId(r))
+    }
+
+    def apply(revId: Option[String]): Option[RevId] = revId match {
+      case null | None                       => None
+      case Some("") | Some(defaultRev.value) => None
+      case Some(r)                           => Some(RevId(r))
+    }
   }
 
 }

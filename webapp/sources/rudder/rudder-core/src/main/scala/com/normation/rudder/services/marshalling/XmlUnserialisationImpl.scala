@@ -37,9 +37,7 @@
 
 package com.normation.rudder.services.marshalling
 
-import com.normation.GitVersion
-import com.normation.GitVersion.RevId
-import com.normation.GitVersion.defaultRev
+import com.normation.GitVersion.ParseRev
 
 import scala.xml.{NodeSeq, Text, Node => XNode}
 import net.liftweb.common._
@@ -147,10 +145,7 @@ class DirectiveUnserialisationImpl extends DirectiveUnserialisation {
                                }
       fileFormatOk          <- TestFileFormat(directive)
       id                    <- (directive \ "id").headOption.map( _.text ) ?~! ("Missing attribute 'id' in entry type directive : " + xml)
-      revId                 =  GitVersion.parseOptionalRevision((directive \ "revisionId").map(_.text).mkString("") match {
-                                 case "" => None
-                                 case s  => Some(s)
-                               })
+      revId                 =  ParseRev((directive \ "revisionId").map(_.text).mkString(""))
       ptName                <- (directive \ "techniqueName").headOption.map( _.text ) ?~! ("Missing attribute 'techniqueName' in entry type directive : " + xml)
       name                  <- (directive \ "displayName").headOption.map( _.text.trim ) ?~! ("Missing attribute 'displayName' in entry type directive : " + xml)
       techniqueVersion      <- (directive \ "techniqueVersion").headOption.map( x => TechniqueVersion(x.text) ) ?~! ("Missing attribute 'techniqueVersion' in entry type directive : " + xml)
@@ -246,10 +241,7 @@ class NodeGroupUnserialisationImpl(
                              } else {
                                GroupProperty.parse(
                                    (p\\"name").text.trim
-                                 , (p\\"revisionId").text.trim match {
-                                     case "" => None
-                                     case s  => Some(RevId(s))
-                                   }
+                                 , ParseRev((p\\"revisionId").text.trim)
                                  , (p\\"value").text.trim
                                  , (p\\"provider").headOption.map(p => PropertyProvider(p.text.trim))
                                ).toBox
@@ -286,11 +278,7 @@ class RuleUnserialisationImpl extends RuleUnserialisation {
                           ("Missing attribute 'category' in entry type rule: " + entry)
       name             <- (rule \ "displayName").headOption.map( _.text.trim ) ?~!
                           ("Missing attribute 'displayName' in entry type rule: " + entry)
-      revisionId       <- (rule \ "revisionId").headOption.map( _.text.trim match {
-                            case "" => GitVersion.defaultRev
-                            case s  => RevId(s)
-                          } ) ?~!
-                          ("Missing attribute 'displayName' in entry type rule: " + entry)
+      revisionId       =  ParseRev((rule \ "revisionId").headOption.map( _.text.trim))
       shortDescription <- (rule \ "shortDescription").headOption.map( _.text ) ?~!
                           ("Missing attribute 'shortDescription' in entry type rule: " + entry)
       longDescription  <- (rule \ "longDescription").headOption.map( _.text ) ?~!
@@ -302,11 +290,7 @@ class RuleUnserialisationImpl extends RuleUnserialisation {
       targets          <- sequence((rule \ "targets" \ "target")) { t => RuleTarget.unser(t.text) } ?~!
                           ("Invalid attribute in 'target' entry: " + entry)
       directiveIds     = (rule \ "directiveIds" \ "id" ).map { n =>
-                            val revId = (n \ "@revisionId").text match {
-                              case null | "" => defaultRev
-                              case r         => RevId(r)
-                            }
-                            DirectiveRId( DirectiveId(n.text), revId )
+                            DirectiveRId( DirectiveId(n.text), ParseRev((n \ "@revisionId").text) )
                           }.toSet
       tags             =  TagsXml.getTags( rule \ "tags")
 

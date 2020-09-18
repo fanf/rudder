@@ -37,7 +37,6 @@
 
 package com.normation.rudder.services.marshalling
 
-import com.normation.GitVersion
 import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.rudder.batch.{CurrentDeploymentStatus, ErrorStatus, SuccessStatus}
@@ -119,8 +118,8 @@ class RuleSerialisationImpl(xmlVersion:String) extends RuleSerialisation {
         <directiveIds>{
           rule.directiveIds.map { case DirectiveRId(id, revId) =>
             revId match {
-              case GitVersion.defaultRev => <id>{id.value}</id>
-              case r                     => <id revisionId={r.value}>{id.value}</id>
+              case None    => <id>{id.value}</id>
+              case Some(r) => <id revisionId={r.value}>{id.value}</id>
             }
           }
         }</directiveIds>
