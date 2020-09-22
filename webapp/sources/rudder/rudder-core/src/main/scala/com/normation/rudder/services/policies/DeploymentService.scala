@@ -245,7 +245,7 @@ trait PromiseGenerationService {
                                      })  ?~! "Could not get Node Infos" //disabled node don't get new policies
              fetch2Time           =  System.currentTimeMillis
              _                    =  PolicyGenerationLogger.timing.trace(s"Fetched node infos in ${fetch2Time-fetch1Time} ms")
-             directiveLib         <- getDirectiveLibrary() ?~! "Could not get the directive library"
+             directiveLib         <- getDirectiveLibrary(allRules.flatMap(_.directiveIds).toSet) ?~! "Could not get the directive library"
              fetch3Time           =  System.currentTimeMillis
              _                    =  PolicyGenerationLogger.timing.trace(s"Fetched directives in ${fetch3Time-fetch2Time} ms")
              groupLib             <- getGroupLibrary() ?~! "Could not get the group library"
@@ -424,7 +424,10 @@ trait PromiseGenerationService {
    * - groups library
    */
   def getAllNodeInfos(): Box[Map[NodeId, NodeInfo]]
-  def getDirectiveLibrary(): Box[FullActiveTechniqueCategory]
+  // get full active technique category, checking that:
+  // - all ids in parameter are in it,
+  // - filtering out other directives (and pruning relevant branches).
+  def getDirectiveLibrary(ids: Set[DirectiveRId]): Box[FullActiveTechniqueCategory]
   def getGroupLibrary(): Box[FullNodeGroupCategory]
   def getAllGlobalParameters: Box[Seq[GlobalParameter]]
   def getAllInventories(): Box[Map[NodeId, NodeInventory]]
@@ -504,17 +507,7 @@ trait PromiseGenerationService {
   def getAppliedRuleIds(rules:Seq[Rule], groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]): Set[RuleId]
 
   /**
-   * Find all modified rules.
-   * For them, find all directives with variables
-   * referencing these rules.
-   * Add them to the set of rules to return, and
-   * recurse.
-   * Stop when convergence is reached
-   *
-   * No modification on back-end are performed
-   * (perhaps safe setting the "isModified" value to "true" for
-   * all dependent CR).
-   *
+   * Get all rules, including system ones
    */
   def findDependantRules() : Box[Seq[Rule]]
 
@@ -757,7 +750,9 @@ trait PromiseGeneration_performeIO extends PromiseGenerationService {
 
   override def findDependantRules() : Box[Seq[Rule]] = roRuleRepo.getAll(true).toBox
   override def getAllNodeInfos(): Box[Map[NodeId, NodeInfo]] = nodeInfoService.getAll
-  override def getDirectiveLibrary(): Box[FullActiveTechniqueCategory] = roDirectiveRepository.getFullDirectiveLibrary().toBox
+  override def getDirectiveLibrary(ids: Set[DirectiveRId]): Box[FullActiveTechniqueCategory] = {
+    roDirectiveRepository.getFullDirectiveLibrary().map(_.addAndFilter(Nil, ids)).toBox
+  }
   override def getGroupLibrary(): Box[FullNodeGroupCategory] = roNodeGroupRepository.getFullGroupLibrary().toBox
   override def getAllGlobalParameters: Box[Seq[GlobalParameter]] = parameterService.getAllGlobalParameters()
   override def getAllInventories(): Box[Map[NodeId, NodeInventory]] = roInventoryRepository.getAllNodeInventories(AcceptedInventory).toBox

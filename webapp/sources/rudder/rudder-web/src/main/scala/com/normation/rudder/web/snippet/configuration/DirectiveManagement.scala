@@ -65,10 +65,8 @@ import com.normation.rudder.web.services.AgentCompat
 import net.liftweb.util.Helpers.TimeSpan
 import com.normation.cfclerk.domain.TechniqueGenerationMode._
 import com.normation.box._
-import com.normation.errors.Unexpected
 import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.rudder.domain.policies.DirectiveRId
-import zio.syntax._
 import net.liftweb.json
 
 
@@ -525,21 +523,10 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
     }
     (for {
       globalMode <- configService.rudder_global_policy_mode()
-      optAtd     <- RudderConfig.roDirectiveRepository.getActiveTechniqueAndDirective(directiveRId)
-      // if none and revision != `defaultRev`, we need to look-up in git
-      pair       <- optAtd match {
-                      case Some((at, d)) =>
-                        (at, d).succeed
-                      case None          =>
-                        RudderConfig.parseActiveTechniqueLibrary.getDirective(directiveRId).flatMap {
-                          case None          => Unexpected(s"Directive with id '${directiveRId.show}' was not found").fail
-                          case Some((at, d)) =>
-                            ((at, d)).succeed
-                        }
-                    }
-      techniques = RudderConfig.techniqueRepository.getByName(pair._1.techniqueName)
+      ad         <- RudderConfig.configurationRepository.getDirective(directiveRId).notOptional(s"Directive with id '${directiveRId.show}' was not found")
+      techniques = RudderConfig.techniqueRepository.getByName(ad.activeTechnique.techniqueName)
     } yield {
-      (globalMode, techniques, pair._1, pair._2)
+      (globalMode, techniques, ad.activeTechnique, ad.directive)
     }).toBox match {
       case Full((globalMode, techniques, activeTechnique, directive)) =>
         // In priority, use the directive passed as parameter
@@ -554,7 +541,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
 
     val json = directiveRId.revId match {
       case None    => s"""{"directiveId":"${directiveRId.id.value}"}"""
-      case Some(r) =>  s"""{"directiveId":"${directiveRId.id.value}", "revId":"${r.value}"}"""
+      case Some(r) => s"""{"directiveId":"${directiveRId.id.value}", "revId":"${r.value}"}"""
     }
     SetHtml(html_techniqueDetails, NodeSeq.Empty) &
     Replace(htmlId_policyConf, showDirectiveDetails) &

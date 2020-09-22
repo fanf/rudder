@@ -96,6 +96,15 @@ final case class FullActiveTechnique(
   )
 
   val newestAvailableTechnique = techniques.toSeq.sortBy( _._1).reverse.map( _._2 ).headOption
+
+  def addAndFilter(add: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechnique = {
+    val ids = directives.map(_.rid)
+    val d2 = add.collect { case (t, d) if(t == techniqueName && !ids.contains(d.rid)) => d } ::: directives
+    val d3 = d2.filter(d => keep.contains(d.rid))
+    val v2 = d3.map(_.techniqueVersion).toSet
+    def predicate(pair: (TechniqueVersion, Any)): Boolean = v2.contains(pair._1)
+    this.copy(directives = d3, techniques = techniques.filter(predicate), acceptationDatetimes = acceptationDatetimes.filter(predicate))
+  }
 }
 
 
@@ -136,6 +145,23 @@ final case class FullActiveTechniqueCategory(
 
   def getUpdateDateTime(id: TechniqueId): Option[DateTime] = {
     allTechniques.get(id).flatMap( _._2 )
+  }
+
+  /*
+   * Add given directive (if not already defined) and filter lib to only keep ids
+   */
+  def addAndFilter(add: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechniqueCategory = {
+    val subCats = subCategories.flatMap { s =>
+      val s2 = s.addAndFilter(add, keep)
+      if(s2.subCategories.isEmpty && s2.activeTechniques.isEmpty) Nil
+      else List(s2)
+    }
+    val ats = activeTechniques.flatMap { at =>
+      val at2 = at.addAndFilter(add, keep)
+      if(at2.directives.isEmpty) Nil
+      else List(at2)
+    }
+    this.copy(subCategories = subCats, activeTechniques = ats)
   }
 }
 

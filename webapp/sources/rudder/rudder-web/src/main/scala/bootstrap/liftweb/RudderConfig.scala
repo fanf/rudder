@@ -85,6 +85,7 @@ import com.normation.plugins.SnippetExtensionRegisterImpl
 import com.normation.rudder.UserService
 import com.normation.rudder.api._
 import com.normation.rudder.batch._
+import com.normation.rudder.configuration.ConfigurationRepositoryImpl
 import com.normation.rudder.db.Doobie
 import com.normation.rudder.domain._
 import com.normation.rudder.domain.logger.ApplicationLogger
@@ -1186,6 +1187,8 @@ object RudderConfig extends Loggable {
   // They are private to that object, and they can refer to other
   // private implementation as long as they conform to interface.
   //
+
+  lazy val configurationRepository = new ConfigurationRepositoryImpl(roLdapDirectiveRepository, parseActiveTechniqueLibrary)
 
   private[this] lazy val roLDAPApiAccountRepository = new RoLDAPApiAccountRepository(
       rudderDitImpl
