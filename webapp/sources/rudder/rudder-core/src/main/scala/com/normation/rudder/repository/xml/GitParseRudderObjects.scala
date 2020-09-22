@@ -37,10 +37,16 @@
 
 package com.normation.rudder.repository.xml
 
+import java.nio.file.Paths
+
+import com.normation.GitVersion.RevId
 import com.normation.cfclerk.services.GitRepositoryProvider
 import com.normation.errors.IOResult
 import com.normation.errors._
 import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.domain.policies.ActiveTechnique
+import com.normation.rudder.domain.policies.Directive
+import com.normation.rudder.domain.policies.DirectiveRId
 import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.RuleTargetInfo
@@ -57,8 +63,10 @@ import com.normation.rudder.services.marshalling.RuleCategoryUnserialisation
 import com.normation.rudder.services.marshalling.RuleUnserialisation
 import com.normation.utils.UuidRegex
 import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.lib.Repository
 import zio._
 import zio.syntax._
+import com.normation.errors.effectUioUnit
 
 
 final case class GitRootCategory(
@@ -327,6 +335,67 @@ class GitParseActiveTechniqueLibrary(
   , uptFileName         : String = "activeTechniqueSettings.xml"
 ) extends ParseActiveTechniqueLibrary with GitParseCommon[ActiveTechniqueCategoryContent] {
 
+  def getDirective(directiveRId: DirectiveRId): IOResult[Option[(ActiveTechnique, Directive)]] = {
+    directiveRId.revId match {
+      case None => ??? // to do, it's head
+      case Some(RevId(r)) =>
+        val root = getGitDirectoryPath(libRootDirectory).root
+        val id = directiveRId.id.value
+        for {
+          treeId <- GitFindUtils.findRevTreeFromRevString(repo.db, r)
+          paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id}.xml"))
+          _      <- effectUioUnit(println(s"Directive path for commit ${treeId.toString}: ${paths}"))
+          pair   <- paths.size match {
+                      case 0 =>
+                        None.succeed
+                      case 1 =>
+                       val path = paths.head
+                       val atPath = Paths.get(Paths.get(path).getParent.toString, uptFileName)
+
+                       for {
+                         _  <- effectUioUnit("start by loadDirective")
+                         d  <- loadDirective(repo.db, treeId, path)
+                         _  <- effectUioUnit(s"Directive loaded!")
+                         at <- loadActiveTechnique(repo.db, treeId, atPath.toString)
+                         _  <- effectUioUnit(s"Activetech loaded!")
+                       } yield Some((at, d))
+                      case _ =>
+                       ZIO.fail(Unexpected(s"There is more than one directive with ID '${id}' in git: ${paths.mkString(",")}"))
+                     }
+        } yield {
+          pair
+        }
+    }
+  }
+
+
+  def loadDirective(db: Repository, revTreeId: ObjectId, directiveGitPath: String): IOResult[Directive] = {
+    for {
+      _      <- effectUioUnit("load directive...")
+      oldXml <- GitFindUtils.getFileContent(db, revTreeId, directiveGitPath){ inputStream =>
+                  ParseXml(inputStream, Some(directiveGitPath)).chainError(s"Error when parsing file '${directiveGitPath}' as a directive")
+                }
+      _      <- effectUioUnit("Done!")
+      xml    <- xmlMigration.getUpToDateXml(oldXml).toIO
+      res    <- piUnserialiser.unserialise(xml).toIO.chainError(s"Error when unserializing directive for file '${directiveGitPath}'")
+    } yield {
+      res._2
+    }
+  }
+
+  def loadActiveTechnique(db: Repository, revTreeId: ObjectId, activeTechniqueGitPath: String): IOResult[ActiveTechnique] = {
+    for {
+      oldXml <- GitFindUtils.getFileContent(db, revTreeId, activeTechniqueGitPath){ inputStream =>
+                  ParseXml(inputStream, Some(activeTechniqueGitPath)).chainError(s"Error when parsing file '${activeTechniqueGitPath}' as an active technique")
+                }
+      xml    <- xmlMigration.getUpToDateXml(oldXml).toIO
+      at     <- uptUnserialiser.unserialise(xml).toIO.chainError(s"Error when unserializing active technique for file '${activeTechniqueGitPath}'")
+    } yield {
+      at
+    }
+  }
+
+
   def getArchiveForRevTreeId(revTreeId:ObjectId): IOResult[ActiveTechniqueCategoryContent] = {
 
     //directoryPath must end with "/"
@@ -394,18 +463,9 @@ class GitParseActiveTechniqueLibrary(
                            UuidRegex.isValid(p.substring(directoryPath.size, p.size - 4))
                          }
                        }
-            directives <- ZIO.foreach(piFiles.toSeq) { piFile =>
-                         for {
-                           xml2  <- GitFindUtils.getFileContent(repo.db, revTreeId, piFile){ inputStream =>
-                                      ParseXml(inputStream, Some(piFile)).chainError(s"Error when parsing file '${piFile}' as a directive")
-                                    }
-                           piXml <- xmlMigration.getUpToDateXml(xml2).toIO
-                           res   <- piUnserialiser.unserialise(piXml).toIO.chainError(s"Error when unserializing pdirective for file '${piFile}'")
-                         } yield {
-                           val (_, directive, _) = res
-                           directive
-                         }
-                       }
+            directives <- ZIO.foreach(piFiles.toSeq) { directivePath =>
+                            loadDirective(repo.db, revTreeId, directivePath)
+                          }
           } yield {
             val pisSet = directives.toSet
             Left(ActiveTechniqueContent(

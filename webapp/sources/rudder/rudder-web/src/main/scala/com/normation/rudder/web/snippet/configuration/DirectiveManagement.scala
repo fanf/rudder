@@ -51,6 +51,7 @@ import JE._
 import net.liftweb.util.Helpers._
 import com.normation.cfclerk.domain.TechniqueVersion
 import bootstrap.liftweb.RudderConfig
+import com.normation.GitVersion.ParseRev
 import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.FullActiveTechnique
@@ -64,7 +65,14 @@ import com.normation.rudder.web.services.AgentCompat
 import net.liftweb.util.Helpers.TimeSpan
 import com.normation.cfclerk.domain.TechniqueGenerationMode._
 import com.normation.box._
+import com.normation.errors.Unexpected
+import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.rudder.domain.policies.DirectiveRId
+import zio.syntax._
+import net.liftweb.json
+
+
+final case class JsonDirectiveRId(directiveId: String, revId: Option[String])
 
 /**
  * Snippet for managing the System and Active Technique libraries.
@@ -130,23 +138,31 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
    * If a query is passed as argument, try to dejoniffy-it, in a best effort
    * way - just don't take of errors.
    *
-   * We want to look for #{ "directiveId":"XXXXXXXXXXXX" }
+   * We want to look for #{ "directiveId":"XXXXXXXXXXXX" , "revId":"XXXX" }
    */
   private[this] def parseJsArg(): JsCmd = {
 
-    def displayDetails(directiveId:String) = updateDirectiveForm(Right(DirectiveId(directiveId)), None)
+    def displayDetails(jsonId:String) = {
+      implicit val format = json.DefaultFormats
+      json.parseOpt(jsonId).flatMap( _.extractOpt[JsonDirectiveRId]) match {
+        case None     =>
+          Noop
+        case Some(id) =>
+          updateDirectiveForm(Right(DirectiveRId(DirectiveId(id.directiveId), ParseRev(id.revId))), None)
+      }
+    }
 
-    JsRaw("""
+    JsRaw(s"""
         var directiveId = null;
         try {
-          directiveId = JSON.parse(decodeURI(window.location.hash.substring(1))).directiveId ;
+          var directiveId = decodeURI(window.location.hash.substring(1)) ;
         } catch(e) {
           directiveId = null;
         }
         if( directiveId != null && directiveId.length > 0) {
-          %s;
+          ${SHtml.ajaxCall(JsVar("directiveId"), displayDetails _ )._2.toJsCmd};
         }
-    """.format(SHtml.ajaxCall(JsVar("directiveId"), displayDetails _ )._2.toJsCmd)
+    """
     )
   }
 
@@ -217,7 +233,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
   def initDirectiveDetails(): NodeSeq = directiveId match {
     case Full(id) => (<div id={ htmlId_policyConf } />: NodeSeq) ++
       //Here, we MUST add a Noop because of a Lift bug that add a comment on the last JsLine.
-      Script(OnLoad(updateDirectiveForm(Right(DirectiveId(id)),None)))
+      Script(OnLoad(updateDirectiveForm(Right(DirectiveRId(DirectiveId(id))),None)))
     case _ =>  <div id={ htmlId_policyConf }></div>
   }
 
@@ -479,7 +495,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
             , 5
             , true
           )
-        updateDirectiveSettingForm(activeTechnique, directive,None, true, globalMode)
+        updateDirectiveSettingForm(activeTechnique.techniques.toMap, activeTechnique.toActiveTechnique(), directive,None, true, globalMode)
         //Update UI
         Replace(htmlId_policyConf, showDirectiveDetails) &
         SetHtml(html_techniqueDetails, NodeSeq.Empty) &
@@ -500,37 +516,52 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
    * or from the full directive info ( callbacks, click on directive tree ...)
    */
   def updateDirectiveForm(
-      directiveInfo: Either[Directive,DirectiveId]
+      directiveInfo: Either[Directive, DirectiveRId]
     , oldDirective: Option[Directive]
   ) = {
-    val directiveId = directiveInfo match {
-      case Left(directive) => directive.id
-      case Right(directiveId) => directiveId
+    val directiveRId = directiveInfo match {
+      case Left(directive) => directive.rid
+      case Right(directiveRId) => directiveRId
     }
-    configService.rudder_global_policy_mode().toBox match {
-      case Full(globalMode) =>
-        directiveLibrary.toBox.flatMap( _.allDirectives.get(DirectiveRId(directiveId))) match {
-          // The directive exists, update directive form
-          case Full((activeTechnique, directive)) =>
-            // In priority, use the directive passed as parameter
-            val newDirective = directiveInfo match {
-              case Left(updatedDirective) => updatedDirective
-              case _ => directive // Only the id, get it from the library
-            }
-            updateDirectiveSettingForm(activeTechnique, newDirective, oldDirective, false, globalMode)
-          case eb:EmptyBox =>
-            currentDirectiveSettingForm.set(eb)
+    (for {
+      globalMode <- configService.rudder_global_policy_mode()
+      optAtd     <- RudderConfig.roDirectiveRepository.getActiveTechniqueAndDirective(directiveRId)
+      // if none and revision != `defaultRev`, we need to look-up in git
+      pair       <- optAtd match {
+                      case Some((at, d)) =>
+                        (at, d).succeed
+                      case None          =>
+                        RudderConfig.parseActiveTechniqueLibrary.getDirective(directiveRId).flatMap {
+                          case None          => Unexpected(s"Directive with id '${directiveRId.show}' was not found").fail
+                          case Some((at, d)) =>
+                            ((at, d)).succeed
+                        }
+                    }
+      techniques = RudderConfig.techniqueRepository.getByName(pair._1.techniqueName)
+    } yield {
+      (globalMode, techniques, pair._1, pair._2)
+    }).toBox match {
+      case Full((globalMode, techniques, activeTechnique, directive)) =>
+        // In priority, use the directive passed as parameter
+        val newDirective = directiveInfo match {
+          case Left(updatedDirective) => updatedDirective
+          case _ => directive // Only the id, get it from the library
         }
+        updateDirectiveSettingForm(techniques, activeTechnique, newDirective, oldDirective, false, globalMode)
       case eb:EmptyBox =>
         currentDirectiveSettingForm.set(eb)
     }
 
+    val json = directiveRId.revId match {
+      case None    => s"""{"directiveId":"${directiveRId.id.value}"}"""
+      case Some(r) =>  s"""{"directiveId":"${directiveRId.id.value}", "revId":"${r.value}"}"""
+    }
     SetHtml(html_techniqueDetails, NodeSeq.Empty) &
     Replace(htmlId_policyConf, showDirectiveDetails) &
     JsRaw(
       s"""
-        this.window.location.hash = "#" + JSON.stringify({'directiveId':'${directiveId.value}'})
-        sessionStorage.removeItem('tags-${directiveId.value}');
+        this.window.location.hash = "#" + JSON.stringify(${json})
+        sessionStorage.removeItem('tags-${directiveRId.id.value}');
       """.stripMargin) &
     After(TimeSpan(0),JsRaw("""createTooltip();""")) // OnLoad or JsRaw createTooltip does not work ...
   }
@@ -539,7 +570,8 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
     Exception(s"Directive ${directive.name} (${directive.id.value}) is bound to a Technique without any valid version available")
 
   private[this] def updateDirectiveSettingForm(
-      activeTechnique     : FullActiveTechnique
+      techniques          : Map[TechniqueVersion, Technique]
+    , activeTechnique     : ActiveTechnique
     , directive           : Directive
     , oldDirective        : Option[Directive]
     , isADirectiveCreation: Boolean
@@ -550,8 +582,8 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
       new DirectiveEditForm(
             htmlId_policyConf
           , technique
-          , activeTechnique.toActiveTechnique
           , activeTechnique
+          , techniques
           , dir
           , oldDir
           , globalMode
@@ -562,13 +594,13 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
         )
     }
 
-    activeTechnique.techniques.get(directive.techniqueVersion) match {
+    techniques.get(directive.techniqueVersion) match {
       case Some(technique) =>
         val dirEditForm = createForm(directive, oldDirective, technique, None)
         currentDirectiveSettingForm.set(Full(dirEditForm))
       case None =>
         // do we have at least one version for that technique ? We can then try to migrate towards it
-        activeTechnique.techniques.lastOption match {
+        techniques.toSeq.sortBy(_._1).lastOption match {
           case Some((version, technique)) =>
             val dirEditForm = createForm(directive.copy(techniqueVersion = version), Some(directive), technique, None)
             currentDirectiveSettingForm.set(Full(dirEditForm))

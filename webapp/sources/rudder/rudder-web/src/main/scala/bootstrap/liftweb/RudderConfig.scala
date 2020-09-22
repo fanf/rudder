@@ -1677,7 +1677,7 @@ object RudderConfig extends Loggable {
     , gitNodeGroupArchiver
     , gitParameterArchiver
     , parseRules
-    , ParseActiveTechniqueLibrary
+    , parseActiveTechniqueLibrary
     , parseGlobalParameter
     , parseRuleCategories
     , importTechniqueLibrary
@@ -1898,7 +1898,7 @@ object RudderConfig extends Loggable {
     , entityMigration
     , rulesDirectoryName
   )
-  private[this] lazy val ParseActiveTechniqueLibrary : ParseActiveTechniqueLibrary = new GitParseActiveTechniqueLibrary(
+  lazy val parseActiveTechniqueLibrary : GitParseActiveTechniqueLibrary = new GitParseActiveTechniqueLibrary(
       activeTechniqueCategoryUnserialisation
     , activeTechniqueUnserialisation
     , directiveUnserialisation

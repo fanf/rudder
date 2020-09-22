@@ -471,7 +471,7 @@ class RoLDAPDirectiveRepository(
 
   def getFullDirectiveLibrary() : IOResult[FullActiveTechniqueCategory] = {
     //data structure to holds all relation between objects
-final case class AllMaps(
+    final case class AllMaps(
         categories: Map[ActiveTechniqueCategoryId, ActiveTechniqueCategory]
       , activeTechiques: Map[ActiveTechniqueId, ActiveTechnique]
       , categoriesByCategory: Map[ActiveTechniqueCategoryId, List[ActiveTechniqueCategoryId]]
