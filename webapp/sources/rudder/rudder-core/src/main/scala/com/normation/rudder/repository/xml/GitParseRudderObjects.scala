@@ -67,7 +67,7 @@ import org.eclipse.jgit.lib.Repository
 import zio._
 import zio.syntax._
 import com.normation.errors.effectUioUnit
-
+import com.softwaremill.quicklens._
 
 final case class GitRootCategory(
     root: String
@@ -344,7 +344,6 @@ class GitParseActiveTechniqueLibrary(
         for {
           treeId <- GitFindUtils.findRevTreeFromRevString(repo.db, r)
           paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id}.xml"))
-          _      <- effectUioUnit(println(s"Directive path for commit ${treeId.toString}: ${paths}"))
           pair   <- paths.size match {
                       case 0 =>
                         None.succeed
@@ -362,8 +361,9 @@ class GitParseActiveTechniqueLibrary(
                       case _ =>
                        ZIO.fail(Unexpected(s"There is more than one directive with ID '${id}' in git: ${paths.mkString(",")}"))
                      }
+          _      <- effectUioUnit(println(s"****** FOUND Directive path for commit '${r}' ${treeId.toString}: ${paths}"))
         } yield {
-          pair
+          pair.modify(_.each._2.revId).setTo(directiveRId.revId)
         }
     }
   }

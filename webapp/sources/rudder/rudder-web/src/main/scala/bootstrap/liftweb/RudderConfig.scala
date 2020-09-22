@@ -1787,7 +1787,7 @@ object RudderConfig extends Loggable {
       , updateExpectedRepo
       , historizationService
       , roNodeGroupRepository
-      , roDirectiveRepository
+      , configurationRepository
       , ruleApplicationStatusImpl
       , roParameterServiceImpl
       , interpolationCompiler

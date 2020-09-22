@@ -102,6 +102,7 @@ import zio.syntax._
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import cats.implicits._
+import com.normation.rudder.configuration.ConfigurationRepository
 
 /**
  * A deployment hook is a class that accept callbacks.
@@ -649,7 +650,7 @@ class PromiseGenerationServiceImpl (
   , override val confExpectedRepo : UpdateExpectedReportsRepository
   , override val historizationService : HistorizationService
   , override val roNodeGroupRepository: RoNodeGroupRepository
-  , override val roDirectiveRepository: RoDirectiveRepository
+  , override val configurationRepository: ConfigurationRepository
   , override val ruleApplicationStatusService: RuleApplicationStatusService
   , override val parameterService : RoParameterService
   , override val interpolatedValueCompiler:InterpolatedValueCompiler
@@ -736,7 +737,7 @@ trait PromiseGeneration_performeIO extends PromiseGenerationService {
   def roRuleRepo : RoRuleRepository
   def nodeInfoService: NodeInfoService
   def roNodeGroupRepository: RoNodeGroupRepository
-  def roDirectiveRepository: RoDirectiveRepository
+  def configurationRepository: ConfigurationRepository
   def parameterService : RoParameterService
   def roInventoryRepository: ReadOnlyFullInventoryRepository
   def complianceModeService : ComplianceModeService
@@ -751,7 +752,7 @@ trait PromiseGeneration_performeIO extends PromiseGenerationService {
   override def findDependantRules() : Box[Seq[Rule]] = roRuleRepo.getAll(true).toBox
   override def getAllNodeInfos(): Box[Map[NodeId, NodeInfo]] = nodeInfoService.getAll
   override def getDirectiveLibrary(ids: Set[DirectiveRId]): Box[FullActiveTechniqueCategory] = {
-    roDirectiveRepository.getFullDirectiveLibrary().map(_.addAndFilter(Nil, ids)).toBox
+    configurationRepository.getDirectiveLibrary(ids).toBox
   }
   override def getGroupLibrary(): Box[FullNodeGroupCategory] = roNodeGroupRepository.getFullGroupLibrary().toBox
   override def getAllGlobalParameters: Box[Seq[GlobalParameter]] = parameterService.getAllGlobalParameters()

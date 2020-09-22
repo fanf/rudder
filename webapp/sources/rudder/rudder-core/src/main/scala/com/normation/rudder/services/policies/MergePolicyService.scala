@@ -243,7 +243,7 @@ final object MergePolicyService {
         PolicyGenerationLogger.error("First directivedraft: " + prettyRender(jmain))
         seq.tail.foreach{ x =>
           val diff  = jmain.diff(Extraction.decompose(x))
-          PolicyGenerationLogger.error(s"Diff with other draft: \nadded:${r(diff.added)} \nchanged:${r(diff.changed)} \ndeleted:${r(diff.deleted)}")
+          PolicyGenerationLogger.error(s" Diff with other draft: \nadded:${r(diff.added)} \nchanged:${r(diff.changed)} \ndeleted:${r(diff.deleted)}")
         }
       }
       main

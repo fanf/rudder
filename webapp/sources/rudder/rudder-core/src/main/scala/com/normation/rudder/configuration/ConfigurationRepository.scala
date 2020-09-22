@@ -38,13 +38,18 @@
 package com.normation.rudder.configuration
 
 import com.normation.GitVersion
+import com.normation.GitVersion.RevId
 import com.normation.errors.IOResult
+import com.normation.errors.effectUioUnit
 import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.rudder.domain.policies.Directive
+import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.DirectiveRId
+import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.xml.GitParseActiveTechniqueLibrary
-
+import zio._
+import zio.syntax._
 
 /*
  * Easier te manage data
@@ -67,6 +72,8 @@ trait RoConfigurationRepository {
    * Get a directive and its matching active technique for the given (id, version)
    */
   def getDirective(id: DirectiveRId): IOResult[Option[ActiveDirective]]
+
+  def getDirectiveLibrary(ids: Set[DirectiveRId]): IOResult[FullActiveTechniqueCategory]
 }
 
 trait WoConfigurationRepository {
@@ -86,6 +93,26 @@ class ConfigurationRepositoryImpl(
       case Some(r)                            =>
         parseActiveTechniqueLibrary.getDirective(id)
     }).map( _.map{ case (at, d) => ActiveDirective(at, d)} )
+  }
+
+  def getDirectiveLibrary(ids: Set[DirectiveRId]): IOResult[FullActiveTechniqueCategory] = {
+    val withVersion = ids.filter(x => x.revId.isDefined && x.revId != Some(GitVersion.defaultRev))
+    for {
+      opt        <- ZIO.foreach(withVersion.toList)(getDirective) // TODO: find a way to do that without N git treewalks
+      _          <- {
+        val found = opt.collect { case Some(d) => d.directive.rid }
+        val missing = withVersion -- found
+        ZIO.foreach_(missing) { m =>
+          effectUioUnit(println(s"******* MISSING ${m.show}")) *>
+          effectUioUnit(println(s"******* ${opt}"))
+        }
+      }
+      versionned =  opt.collect { case Some(ad) => (ad.activeTechnique.techniqueName, ad.directive) }
+      others     <- roDirectiveRepository.getFullDirectiveLibrary()
+      lib        =  others.addAndFilter(versionned, ids)
+    } yield {
+      lib
+    }
   }
 }
 
