@@ -103,8 +103,11 @@ trait GenericProperty[P <: GenericProperty[_]] {
   def config  : Config
   def fromConfig(v: Config): P
 
-  final def name : String      = config.getString(NAME)
-  final def revId: RevId       = RevId(config.getString(REV_ID))
+  final def name : String        = config.getString(NAME)
+  final def revId: Option[RevId] = {
+    if(config.hasPath(REV_ID)) Some(RevId(config.getString(REV_ID)))
+    else None
+  }
   final def value: ConfigValue = {
     if(config.hasPath(VALUE)) config.getValue(VALUE)
     else ConfigValueFactory.fromAnyRef("")
@@ -122,6 +125,7 @@ trait GenericProperty[P <: GenericProperty[_]] {
   }
 
   final def withName(name: String): P             = fromConfig(config.withValue(GenericProperty.NAME, name.toConfigValue))
+  final def withRevId(d: String): P               = fromConfig(config.withValue(GenericProperty.REV_ID, d.toConfigValue))
   final def withValue(value: ConfigValue): P      = fromConfig(config.withValue(GenericProperty.VALUE, value))
   final def withValue(value: String): P           = fromConfig(config.withValue(GenericProperty.VALUE, value.toConfigValue))
   final def withProvider(p: PropertyProvider): P  = fromConfig(config.withValue(GenericProperty.PROVIDER, p.value.toConfigValue))
