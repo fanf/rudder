@@ -37,7 +37,7 @@
 
 package com.normation.rudder.services.reports
 
-import com.normation.cfclerk.domain.TechniqueVersion
+import com.normation.cfclerk.domain.TechniqueVersionHelper
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
@@ -80,8 +80,8 @@ class ReportingServiceUtilsTest extends Specification {
 
   def thisOverrideThatOn(overrider: RuleId, overriden: RuleId, directive: DirectiveId) = {
     OverridenPolicy(
-        PolicyId(overriden, directive, TechniqueVersion("1.0")) //this one is
-      , PolicyId(overrider, directive, TechniqueVersion("1.0")) //overriden by that one
+        PolicyId(overriden, directive, TechniqueVersionHelper("1.0")) //this one is
+      , PolicyId(overrider, directive, TechniqueVersionHelper("1.0")) //overriden by that one
     )
   }
 

@@ -74,7 +74,7 @@ class RuleValServiceTest extends Specification {
    */
     val techniqueId = TechniqueId(
         TechniqueName("techniqueName")
-      , TechniqueVersion("1.0")
+      , TechniqueVersionHelper("1.0")
     )
   val directiveId = DirectiveId("dirId")
   val ruleId = RuleId("ruleId")

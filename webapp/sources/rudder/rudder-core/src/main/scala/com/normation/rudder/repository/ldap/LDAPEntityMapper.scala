@@ -48,6 +48,7 @@ import com.normation.inventory.ldap.core.InventoryDit
 import com.normation.inventory.ldap.core.InventoryMapper
 import com.normation.inventory.ldap.core.InventoryMappingResult._
 import com.normation.errors._
+import com.normation.inventory.ldap.core.InventoryMappingRudderError
 import com.normation.inventory.ldap.core.InventoryMappingRudderError.UnexpectedObject
 import com.normation.inventory.ldap.core.LDAPConstants
 import com.normation.inventory.ldap.core.LDAPConstants._
@@ -78,7 +79,6 @@ import com.normation.rudder.domain.logger.ApplicationLogger
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json.JsonAST.JObject
-import net.liftweb.util.Helpers._
 
 import scala.util.control.NonFatal
 
@@ -490,17 +490,23 @@ class LDAPEntityMapper(
   //////////////////////////////    ActiveTechnique    //////////////////////////////
 
   //two utilities to serialize / deserialize Map[TechniqueVersion,DateTime]
-  def unserializeAcceptations(value:String):Map[TechniqueVersion, DateTime] = {
+  def unserializeAcceptations(value:String): PureResult[Map[TechniqueVersion, DateTime]] = {
     import net.liftweb.json.JsonAST.JField
     import net.liftweb.json.JsonAST.JString
     import net.liftweb.json.JsonParser._
 
     parse(value) match {
       case JObject(fields) =>
-        fields.collect { case JField(version, JString(date)) =>
-          (TechniqueVersion(version) -> GeneralizedTime(date).dateTime)
-        }.toMap
-      case _ => Map()
+        fields.collect { case JField(version, JString(date)) => (version, date) }.traverse { case(v, d) =>
+          TechniqueVersion.parse(v).leftMap(Unexpected).flatMap(version =>
+            try {
+              Right((version, GeneralizedTime(d).dateTime))
+            } catch {
+              case NonFatal(ex) => Left(SystemError(s"Error when trying to parse '${d}' as a datetime", ex))
+            }
+          )
+        }.map(_.toMap)
+      case _ => Right(Map())
     }
   }
 
@@ -522,7 +528,10 @@ class LDAPEntityMapper(
         refTechniqueUuid     <- e.required(A_TECHNIQUE_UUID).map(x => TechniqueName(x))
         isEnabled            =  e.getAsBoolean(A_IS_ENABLED).getOrElse(false)
         isSystem             =  e.getAsBoolean(A_IS_SYSTEM).getOrElse(false)
-        acceptationDatetimes =  e(A_ACCEPTATION_DATETIME).map(unserializeAcceptations(_)).getOrElse(Map())
+        acceptationDatetimes <- e(A_ACCEPTATION_DATETIME) match {
+                                  case Some(v) => unserializeAcceptations(v).leftMap(e => InventoryMappingRudderError.UnexpectedObject(e.fullMsg))
+                                  case None    => Right(Map.empty[TechniqueVersion, DateTime])
+                                }
       } yield {
          ActiveTechnique(ActiveTechniqueId(id), refTechniqueUuid, acceptationDatetimes, Nil, isEnabled, isSystem)
       }
@@ -673,7 +682,7 @@ class LDAPEntityMapper(
                                case None => Right(None)
                                case Some(value) => PolicyMode.parse(value).map {Some(_) }
                              }
-        version          <- tryo(TechniqueVersion(s_version)).toPureResult
+        version          <- TechniqueVersion.parse(s_version).leftMap(Unexpected)
         name             =  e(A_NAME).getOrElse(id)
         params           =  parsePolicyVariables(e.valuesFor(A_DIRECTIVE_VARIABLES).toSeq)
         shortDescription =  e(A_DESCRIPTION).getOrElse("")
@@ -997,7 +1006,7 @@ class LDAPEntityMapper(
     val entry = rudderDit.PARAMETERS.parameterModel(
         parameter.name
     )
-    entry +=! (A_REV_ID, parameter.revId.value)
+    parameter.revId.foreach(r => entry +=! (A_REV_ID, r.value))
     entry +=! (A_PARAMETER_VALUE, parameter.value.serializeGlobalParameter)
     entry +=! (A_DESCRIPTION, parameter.description)
     parameter.provider.foreach(p =>

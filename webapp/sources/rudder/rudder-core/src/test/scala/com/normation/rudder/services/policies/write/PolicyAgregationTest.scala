@@ -57,8 +57,8 @@ import com.normation.inventory.domain.AgentType
 
 @RunWith(classOf[JUnitRunner])
 class PolicyAgregationTest extends Specification {
-  implicit def str2pId(id: String) = TechniqueId(TechniqueName(id), TechniqueVersion("1.0"))
-  implicit def str2PolicyId(id: String) = PolicyId(RuleId("r_"+id), DirectiveId("d_"+id), TechniqueVersion("1.0"))
+  implicit def str2pId(id: String) = TechniqueId(TechniqueName(id), TechniqueVersionHelper("1.0"))
+  implicit def str2PolicyId(id: String) = PolicyId(RuleId("r_"+id), DirectiveId("d_"+id), TechniqueVersionHelper("1.0"))
 
   def compareValues(expected: Seq[(String, String)], actual1: Seq[String], actual2: Seq[String]) = {
     val actual = actual1.zip(actual2)
@@ -78,7 +78,7 @@ class PolicyAgregationTest extends Specification {
 
   //  a simple mutli-instance technique
   val technique1_1 = Technique(
-      TechniqueId(TechniqueName("tech_1"), TechniqueVersion("1.0"))
+      TechniqueId(TechniqueName("tech_1"), TechniqueVersionHelper("1.0"))
     , "tech_1"
     , "DESCRIPTION"
     , cfe :: Nil
@@ -90,32 +90,32 @@ class PolicyAgregationTest extends Specification {
 
   //  a simple mutli-instance technique
   val technique2_1 = technique1_1.copy(
-      id = TechniqueId(TechniqueName("tech_2"), TechniqueVersion("1.0"))
+      id = TechniqueId(TechniqueName("tech_2"), TechniqueVersionHelper("1.0"))
     , name = "tech_2"
   )
 
   // the same in an other version
   val technique2_2 = technique1_1.copy(
-      id = TechniqueId(TechniqueName("tech_2"), TechniqueVersion("2.0"))
+      id = TechniqueId(TechniqueName("tech_2"), TechniqueVersionHelper("2.0"))
     , name = "tech_2"
   )
 
   // the same in an other version, multi-policy
   val technique2_3 = technique1_1.copy(
-      id = TechniqueId(TechniqueName("tech_2"), TechniqueVersion("3.0"))
+      id = TechniqueId(TechniqueName("tech_2"), TechniqueVersionHelper("3.0"))
     , name = "tech_2"
     , generationMode = TechniqueGenerationMode.MultipleDirectives
   )
 
   // that one is not multi-instance, not multi-policy
   val technique3_1 = technique1_1.copy(
-      id = TechniqueId(TechniqueName("tech_3"), TechniqueVersion("1.0"))
+      id = TechniqueId(TechniqueName("tech_3"), TechniqueVersionHelper("1.0"))
     , name = "tech_3"
     , isMultiInstance = false
   )
 
   // an other version still not multi-policy
-  val technique3_2 = technique3_1.copy(id = TechniqueId(TechniqueName("tech_3"), TechniqueVersion("2.0")))
+  val technique3_2 = technique3_1.copy(id = TechniqueId(TechniqueName("tech_3"), TechniqueVersionHelper("2.0")))
 
 
   def newPolicy(technique: Technique, id: String, varName: String, values: Seq[String]) = {

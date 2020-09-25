@@ -63,9 +63,6 @@ import zio._
 import zio.syntax._
 
 import scala.collection.SortedMap
-import scala.util.Success
-import scala.util.Try
-import scala.util.{Failure => TryFailure}
 
 class TechniqueApi (
     restExtractorService: RestExtractorService
@@ -121,10 +118,10 @@ class TechniqueApi (
     def process(version: ApiVersion, path: ApiPath, nv: (String, String), req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
 
       val (techniqueName, version) = (TechniqueName(nv._1), nv._2)
-      val directives = Try(TechniqueVersion(version)) match {
-        case Success(techniqueVersion) =>
+      val directives = TechniqueVersion.parse(version) match {
+        case Right(techniqueVersion) =>
               apiV6.listDirectives(techniqueName, Some(techniqueVersion :: Nil))
-        case TryFailure(exception) =>
+        case Left(err) =>
           Failure(s"Could not find list of directives based on '${techniqueName}' Technique, because we could not parse '${version}' as a valid technique version")
       }
       response(

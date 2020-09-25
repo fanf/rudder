@@ -103,6 +103,7 @@ import com.normation.rudder.domain.nodes.GenericProperty
 import com.normation.rudder.domain.nodes.GroupProperty
 import com.normation.rudder.ncf.ParameterType.ParameterTypeService
 import com.normation.rudder.services.policies.PropertyParser
+import net.liftweb.common.Box.option2Box
 import org.bouncycastle.cert.X509CertificateHolder
 import zio.{Tag => _, _}
 import zio.syntax._
@@ -772,7 +773,7 @@ final case class RestExtractorService (
       priority         <- extractOneValue(params, "priority")(toInt)
       parameters       <- extractOneValue(params, "parameters")(toDirectiveParam)
       techniqueName    <- extractOneValue(params, "techniqueName")(x => Full(TechniqueName(x)))
-      techniqueVersion <- extractOneValue(params, "techniqueVersion")(x => Full(TechniqueVersion(x)))
+      techniqueVersion <- extractOneValue(params, "techniqueVersion")(x => TechniqueVersion.parse(x).toOption ?~! s"Error parsing '${x}' as a technique version.")
       policyMode       <- extractOneValue(params, "policyMode")(PolicyMode.parseDefault(_).toBox)
       tagsList         <- extractList(params, "tags")(sequence(_)(toTag))
       tags             = tagsList.map(t => Tags(t.toSet))
@@ -851,7 +852,7 @@ final case class RestExtractorService (
       priority         <- extractJsonInt(json,"priority")
       parameters       <- extractJsonDirectiveParam(json)
       techniqueName    <- extractJsonString(json, "techniqueName", x => Full(TechniqueName(x)))
-      techniqueVersion <- extractJsonString(json, "techniqueVersion", x => Full(TechniqueVersion(x)))
+      techniqueVersion <- extractJsonString(json, "techniqueVersion", x => TechniqueVersion.parse(x).toOption ?~! s"Error parsing '${x}' as a technique version.")
       policyMode       <- extractJsonString(json, "policyMode", PolicyMode.parseDefault(_).toBox)
       tags             <- extractTagsFromJson(json \ "tags")  ?~! "Error when extracting Directive tags"
     } yield {

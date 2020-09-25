@@ -395,7 +395,10 @@ class EventLogDetailsServiceImpl(
       displayName           <- (directive \ "displayName").headOption.map( _.text ) ?~! ("Missing attribute 'displayName' in entry type directive : " + entry)
       name                  <- getFromToString((directive \ "name").headOption)
       techniqueVersion <- getFromTo[TechniqueVersion]((directive \ "techniqueVersion").headOption, {v =>
-                                  tryo(TechniqueVersion(v.text))
+                                  TechniqueVersion.parse(v.text) match {
+                                    case Left(err) => Failure(err)
+                                    case Right(v)  => Full(v)
+                                  }
                                 } )
       parameters            <- getFromTo[SectionVal]((directive \ "parameters").headOption, {parameter =>
                                 piUnserialiser.parseSectionVal(parameter)
@@ -594,7 +597,7 @@ class EventLogDetailsServiceImpl(
                               for {
                                 name    <- (technique \ "name").headOption.map( _.text ) ?~! ("Missing attribute 'name' in entry type techniqueReloaded : " + entry)
                                 version <- (technique \ "version").headOption.map( _.text ) ?~! ("Missing attribute 'version' in entry type techniqueReloaded : " + entry)
-                                v       <- tryo { TechniqueVersion(version) }
+                                v       <- TechniqueVersion.parse(version).toOption ?~! s"Error when parsing '${version}' as a technique version"
                               } yield {
                                 TechniqueId(TechniqueName(name),v)
                               }

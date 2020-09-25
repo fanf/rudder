@@ -671,7 +671,7 @@ class GitTechniqueReader(
   }
 
   private[this] val dummyTechnique = Technique(
-      TechniqueId(TechniqueName("dummy"),TechniqueVersion("1.0"))
+      TechniqueId(TechniqueName("dummy"), TechniqueVersion.parse("1.0").getOrElse(throw new RuntimeException("Version of dummy technique is not parsable")))
     , "dummy", "dummy", Nil, TrackerVariableSpec()
     , SectionSpec("ROOT"), None
  )
@@ -705,12 +705,12 @@ class GitTechniqueReader(
     }
 
     val descriptorFile = new File(filePath)
-    val policyVersion = TechniqueVersion(descriptorFile.getParentFile.getName)
     val policyName = TechniqueName(descriptorFile.getParentFile.getParentFile.getName)
     val parentCategoryId = TechniqueCategoryId.buildId(descriptorFile.getParentFile.getParentFile.getParent )
-    val techniqueId = TechniqueId(policyName,policyVersion)
 
     for {
+      policyVersion <- ZIO.fromEither(TechniqueVersion.parse(descriptorFile.getParentFile.getName)).mapError(s => Unexpected(s))
+      techniqueId   = TechniqueId(policyName,policyVersion)
       pack <- if(parseDescriptor) loadDescriptorFile(is, filePath).flatMap(d => ZIO.fromEither(techniqueParser.parseXml(d, techniqueId)))
               else dummyTechnique.succeed
       info <- techniquesInfo.get

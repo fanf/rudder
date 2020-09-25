@@ -38,18 +38,15 @@
 package com.normation.rudder.configuration
 
 import com.normation.GitVersion
-import com.normation.GitVersion.RevId
 import com.normation.errors.IOResult
 import com.normation.errors.effectUioUnit
 import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.rudder.domain.policies.Directive
-import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.DirectiveRId
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.xml.GitParseActiveTechniqueLibrary
 import zio._
-import zio.syntax._
 
 /*
  * Easier te manage data

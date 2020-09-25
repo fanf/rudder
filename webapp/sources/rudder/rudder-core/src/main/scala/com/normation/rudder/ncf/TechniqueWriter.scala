@@ -117,14 +117,13 @@ class TechniqueWriter (
   private[this] val agentSpecific = new ClassicTechniqueWriter(basePath, parameterTypeService) :: new DSCTechniqueWriter(basePath, translater, parameterTypeService) :: Nil
 
   def deleteTechnique(techniqueName : String, techniqueVersion : String, deleteDirective : Boolean, modId : ModificationId, committer : EventActor) : IOResult[Unit] ={
-    val techniqueId = TechniqueId(TechniqueName(techniqueName), TechniqueVersion(techniqueVersion))
 
     def createCr(directive : Directive, rootSection : SectionSpec ) ={
-        val diff = DeleteDirectiveDiff(techniqueId.name, directive)
+        val diff = DeleteDirectiveDiff(TechniqueName(techniqueName), directive)
         ChangeRequestService.createChangeRequestFromDirective(
           s"Deleting technique ${techniqueName}/${techniqueVersion}"
           , ""
-          , techniqueId.name
+          , TechniqueName(techniqueName)
           , rootSection
           , directive.id
           , Some(directive)
@@ -139,6 +138,8 @@ class TechniqueWriter (
     }
 
     for {
+      techVers   <- ZIO.fromEither(TechniqueVersion.parse(techniqueVersion)).mapError(Unexpected)
+      techniqueId = TechniqueId(TechniqueName(techniqueName), techVers)
       directives <- readDirectives.getFullDirectiveLibrary().map(_.allActiveTechniques.values.filter(_.techniqueName.value == techniqueId.name.value).flatMap(_.directives).filter(_.techniqueVersion == techniqueId.version))
 
       technique  <- techniqueRepository.get(techniqueId).notOptional(s"No Technique with ID '${techniqueId.toString()}' found in reference library.")

@@ -144,11 +144,14 @@ object NodeConfigurationHash {
     def readPolicy(p: JValue) = {
       p match {
         case JArray(List(JString(ruleId), JString(directiveId), JString(techniqueVerion), JInt(policyHash))) =>
-          try {
-            Right(PolicyHash(PolicyId(RuleId(ruleId), DirectiveId(directiveId), TechniqueVersion(techniqueVerion)), policyHash.toInt))
-          } catch {
-            case ex: TechniqueVersionFormatException => Left((s"Technique version for policy '${ruleId}@@${directiveId}' was not recognized: ${techniqueVerion}", p))
-          }
+          for {
+            version <- TechniqueVersion.parse(techniqueVerion).leftMap(err => (err, p))
+            res     <- try {
+                         Right(PolicyHash(PolicyId(RuleId(ruleId), DirectiveId(directiveId), version), policyHash.toInt))
+                       } catch {
+                         case ex: TechniqueVersionFormatException => Left((s"Technique version for policy '${ruleId}@@${directiveId}' was not recognized: ${techniqueVerion}", p))
+                       }
+          } yield res
       }
     }
 

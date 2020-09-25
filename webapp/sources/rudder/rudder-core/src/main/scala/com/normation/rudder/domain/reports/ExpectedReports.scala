@@ -354,12 +354,17 @@ object ExpectedReportsSerialisation {
         case (JString(drid), JString(ddid), JString(orid), JString(odid)) =>
           val (v1, v2) = {
             ((json \ "policy" \ "techniqueVersion"), (json \ "overridenBy" \ "techniqueVersion")) match {
-              case (JString(v1), JString(v2)) => (TechniqueVersion(v1), TechniqueVersion(v2))
-              case _                          => (TechniqueVersion("0.0"), TechniqueVersion("0.0"))
+              case (JString(v1), JString(v2)) => (v1, v2)
+              case _                          => ("0.0", "0.0")
             }
           }
 
-          Full(OverridenPolicy(PolicyId(RuleId(drid), DirectiveId(ddid), v1), PolicyId(RuleId(orid), DirectiveId(odid), v2)))
+          (TechniqueVersion.parse(v1), TechniqueVersion.parse(v2)) match {
+            case (Right(tv1), Right(tv2)) =>
+              Full(OverridenPolicy(PolicyId(RuleId(drid), DirectiveId(ddid), tv1), PolicyId(RuleId(orid), DirectiveId(odid), tv2)))
+            case _ =>
+              Failure(s"Error when parsing rule expected reports from json: '${compactRender(json)}'")
+          }
         case _ =>
           Failure(s"Error when parsing rule expected reports from json: '${compactRender(json)}'")
       }

@@ -38,6 +38,11 @@ package com.normation.cfclerk.domain
 
 object TechniqueVersionHelper {
 
-  implicit
+  def apply(value: String): TechniqueVersion = {
+    TechniqueVersion.parse(value) match {
+      case Right(v)  => v
+      case Left(err) => throw new Exception(s"Error when parsing technique value in test: ${err}")
+    }
+  }
 
 }

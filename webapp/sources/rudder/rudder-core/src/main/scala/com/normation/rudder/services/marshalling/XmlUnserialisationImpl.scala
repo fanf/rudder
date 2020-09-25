@@ -148,7 +148,7 @@ class DirectiveUnserialisationImpl extends DirectiveUnserialisation {
       revId                 =  ParseRev((directive \ "revisionId").map(_.text).mkString(""))
       ptName                <- (directive \ "techniqueName").headOption.map( _.text ) ?~! ("Missing attribute 'techniqueName' in entry type directive : " + xml)
       name                  <- (directive \ "displayName").headOption.map( _.text.trim ) ?~! ("Missing attribute 'displayName' in entry type directive : " + xml)
-      techniqueVersion      <- (directive \ "techniqueVersion").headOption.map( x => TechniqueVersion(x.text) ) ?~! ("Missing attribute 'techniqueVersion' in entry type directive : " + xml)
+      techniqueVersion      <- (directive \ "techniqueVersion").headOption.flatMap( x => TechniqueVersion.parse(x.text).toOption) ?~! ("Missing attribute 'techniqueVersion' in entry type directive : " + xml)
       sectionVal            <- parseSectionVal(directive)
       shortDescription      <- (directive \ "shortDescription").headOption.map( _.text ) ?~! ("Missing attribute 'shortDescription' in entry type directive : " + xml)
       longDescription       <- (directive \ "longDescription").headOption.map( _.text ) ?~! ("Missing attribute 'longDescription' in entry type directive : " + xml)
@@ -382,7 +382,7 @@ class ActiveTechniqueUnserialisationImpl extends ActiveTechniqueUnserialisation 
       acceptationDates <- sequence(activeTechnique \ "versions" \ "version" ) { version =>
                             for {
                               ptVersionName   <- version.attribute("name").map( _.text) ?~! "Missing attribute 'name' for acceptation date in PT '%s' (%s): '%s'".format(ptName, id, version)
-                              ptVersion       <- tryo { TechniqueVersion(ptVersionName) }
+                              ptVersion       <- TechniqueVersion.parse(ptVersionName).toOption ?~! s"Error when trying to parse '${ptVersionName}' as a technique version."
                               acceptationDate <- tryo { dateFormatter.parseDateTime(version.text) }
                             } yield {
                               (ptVersion, acceptationDate)

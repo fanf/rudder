@@ -134,7 +134,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
   val file1 = TechniqueResourceIdByPath(List("libdir"), f1.getName)
   FileUtils.writeStringToFile(f1, f1Content, StandardCharsets.UTF_8)
 
-  val file2 = TechniqueResourceIdByName(TechniqueId(TechniqueName("p1_1"), TechniqueVersion("1.0")), "file2.txt")
+  val file2 = TechniqueResourceIdByName(TechniqueId(TechniqueName("p1_1"), TechniqueVersionHelper("1.0")), "file2.txt")
 
   val repo = GitRepositoryProviderImpl.make(gitRoot.getAbsolutePath).runNow
 
@@ -186,8 +186,8 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
     "has no description" in cat1.description === ""
     "has two techniques..." in cat1.techniqueIds.size === 2
     "...with the same name p1_1" in cat1.techniqueIds.forall(id => "p1_1" === id.name.value)
-    "...and version 1.0" in techniques(0).version === TechniqueVersion("1.0")
-    "...and version 2.0" in techniques(1).version === TechniqueVersion("2.0")
+    "...and version 1.0" in techniques(0).version === TechniqueVersionHelper("1.0")
+    "...and version 2.0" in techniques(1).version === TechniqueVersionHelper("2.0")
     "...with 3 templates" in {
       infos.techniques(techniques(0).name)(techniques(0).version).agentConfigs(0).templates.toSet === Set(
         TechniqueTemplate(tmlId, s"p1_1/1.0/${tmlId.name}.cf", true)
@@ -234,7 +234,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
       Seq("p1_1_1_1", "p1_1_1_2").forall(name => cat1_1_1.techniqueIds.exists(id => id.name.value == name)) === true
     }
     "...and the same version 1.0" in {
-      cat1_1_1.techniqueIds.forall(id => id.version === TechniqueVersion("1.0"))
+      cat1_1_1.techniqueIds.forall(id => id.version === TechniqueVersionHelper("1.0"))
     }
   }
 
@@ -249,7 +249,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
       git.commit.setMessage("Modify PT: cat1/p1_1/2.0").call
 
       val n = TechniqueName("p1_1")
-      reader.getModifiedTechniques === Map(n -> TechniqueUpdated(n, Map(TechniqueVersion("2.0") -> VersionAdded)))
+      reader.getModifiedTechniques === Map(n -> TechniqueUpdated(n, Map(TechniqueVersionHelper("2.0") -> VersionAdded)))
     }
 
     "and after a read, no more modification" in {
@@ -270,7 +270,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
       git.add.addFilepattern(name).call
       git.commit.setMessage("Modify file /libdir/file1.txt in technique: cat1/p1_1/1.0").call
       val n = TechniqueName("p1_1")
-      reader.getModifiedTechniques === Map(n -> TechniqueUpdated(n, Map(TechniqueVersion("1.0") -> VersionUpdated)))
+      reader.getModifiedTechniques === Map(n -> TechniqueUpdated(n, Map(TechniqueVersionHelper("1.0") -> VersionUpdated)))
     }
   }
 

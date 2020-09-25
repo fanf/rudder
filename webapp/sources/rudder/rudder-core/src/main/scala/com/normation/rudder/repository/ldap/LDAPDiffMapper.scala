@@ -227,8 +227,15 @@ class LDAPDiffMapper(
             diff  <- modify.getModifications().foldLeft(ModifyDirectiveDiff(ptName, oldPi.id, oldPi.name).asRight[RudderError]) { (diff, mod) =>
                         mod.getAttributeName() match {
                           case A_TECHNIQUE_VERSION =>
-                            nonNull(diff, mod.getAttribute().getValue) { (d, value) =>
-                              d.copy(modTechniqueVersion = Some(SimpleDiff(oldPi.techniqueVersion, TechniqueVersion(value))))
+                            mod.getAttribute().getValue match {
+                              case null    => diff
+                              case version =>
+                                for {
+                                  d <- diff
+                                  v <- TechniqueVersion.parse(version).leftMap(Unexpected)
+                                } yield {
+                                  d.copy(modTechniqueVersion = Some(SimpleDiff(oldPi.techniqueVersion, v)))
+                                }
                             }
                           case A_DIRECTIVE_VARIABLES =>
                             val beforeRootSection = oldVariableRootSection.getOrElse(variableRootSection)

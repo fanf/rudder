@@ -1030,8 +1030,8 @@ class WoLDAPDirectiveRepository(
     for {
       con             <- ldap
       activeTechnique <- getUPTEntry(con, uactiveTechniqueId, A_ACCEPTATION_DATETIME).notOptional(s"Active technique with id '${uactiveTechniqueId.value}' was not found")
+      oldAcceptations <- ZIO.fromEither(mapper.unserializeAcceptations(activeTechnique(A_ACCEPTATION_DATETIME).getOrElse("")))
       saved           <- {
-                           val oldAcceptations = mapper.unserializeAcceptations(activeTechnique(A_ACCEPTATION_DATETIME).getOrElse(""))
                            val json = JsonAST.compactRender(mapper.serializeAcceptations(oldAcceptations ++ datetimes))
                            activeTechnique.+=!(A_ACCEPTATION_DATETIME, json)
                            userLibMutex.writeLock { con.save(activeTechnique) }

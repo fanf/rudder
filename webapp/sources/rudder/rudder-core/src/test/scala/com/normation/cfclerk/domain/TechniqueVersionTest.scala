@@ -47,26 +47,27 @@ class TechniqueVersionTest extends Specification {
   sequential
 
   "parse version" >> {
+    import com.normation.utils._
     import Separator._
     import PartType._
     import VersionPart._
     def parse(s: String) = ParseVersion.parse(s).getOrElse(throw new RuntimeException(s"Can not parse: ${s}"))
 
-    parse("1.0") === Version(0, Numeric(1), After(Dot, Numeric(0)) :: Nil)
-    parse("1.0-alpha10") === Version(0,
+    parse("1.0") === com.normation.utils.Version(0, Numeric(1), After(Dot, Numeric(0)) :: Nil)
+    parse("1.0-alpha10") === com.normation.utils.Version(0,
         Numeric(1)
       , After(Dot, Numeric(0)) ::
         Before(Minus, Alpha("alpha")) ::
         After(None, Numeric(10)) ::
         Nil
     )
-    parse("1.1.0") === Version(0,
+    parse("1.1.0") === com.normation.utils.Version(0,
         Numeric(1)
       , After(Dot, Numeric(1)) ::
         After(Dot, Numeric(0)) ::
         Nil
     )
-    parse("2.0") === Version(0,
+    parse("2.0") === com.normation.utils.Version(0,
         Numeric(2)
       , After(Dot, Numeric(0)) ::
         Nil
@@ -77,7 +78,7 @@ class TechniqueVersionTest extends Specification {
         Before(Tilde, Chars("a")) ::
         Nil
     )
-    parse("1~~") === Version(0,
+    parse("1~~") === com.normation.utils.Version(0,
         Numeric(1)
       , Before(Tilde, Chars("")) ::
         Before(Tilde, Chars("")) ::
@@ -133,37 +134,37 @@ class TechniqueVersionTest extends Specification {
 
   "Epoch" should {
     "not be printed when toString, if 0" in {
-      TechniqueVersion("0:5abc~").toString === "5abc~"
+      TechniqueVersionHelper("0:5abc~").toString === "5abc~"
     }
 
     "be printed when toString, if > 0" in {
-      TechniqueVersion("2:2bce").toString === "2:2bce"
+      TechniqueVersionHelper("2:2bce").toString === "2:2bce"
     }
   }
 
   "Invalid version" should {
 
-    val msg1 = "The version format of a technique should be : [epoch:]upstream_version"
-    "throw a TechniqueVersionFormatException : %s".format(msg1) in {
-      TechniqueVersion("a:18") must throwA[TechniqueVersionFormatException].like { case e => e.getMessage must contain(msg1) }
+    val msg1 = "Error when parsing 'a:18' as a version. Only ascii (non-control, non-space) chars are allowed in a version string."
+    "return left".format(msg1) in {
+      TechniqueVersion.parse("a:18") must beLeft[String].like { case e => e must contain(msg1) }
     }
 
-    val msg2 = "The version format of a technique should be : [epoch:]upstream_version"
-    "throw a TechniqueVersionFormatException : %s".format(msg2) in {
-      TechniqueVersion("a15") must throwA[TechniqueVersionFormatException].like { case e => e.getMessage must contain(msg2) }
+    val msg2 = "Error when parsing 'a15' as a version. Only ascii (non-control, non-space) chars are allowed in a version string."
+    "return left".format(msg2) in {
+      TechniqueVersion.parse("a15") must beLeft[String].like { case e => e must contain(msg2) }
     }
   }
 
   private[this] def equalVersions(version1: String, version2: String) = {
     //the actual comparison test
     "be so that '%s' == '%s'".format(version1, version2) in {
-      TechniqueVersion(version1) == TechniqueVersion(version2) must beTrue
+      TechniqueVersionHelper(version1) == TechniqueVersionHelper(version2) must beTrue
     }
     "be so that '%s' > '%s' is false".format(version1, version2) in {
-      TechniqueVersion(version1) > TechniqueVersion(version2) must beFalse
+      TechniqueVersionHelper(version1) > TechniqueVersionHelper(version2) must beFalse
     }
     "be so that '%s' < '%s' is false".format(version1, version2) in {
-      TechniqueVersion(version1) < TechniqueVersion(version2) must beFalse
+      TechniqueVersionHelper(version1) < TechniqueVersionHelper(version2) must beFalse
     }
   }
 
@@ -171,13 +172,13 @@ class TechniqueVersionTest extends Specification {
   private[this] def increasingVersions(version1: String, version2: String) = {
     //the actual comparison test
     "be so that '%s' < '%s'".format(version1, version2) in {
-      TechniqueVersion(version1) < TechniqueVersion(version2) must beTrue
+      TechniqueVersionHelper(version1) < TechniqueVersionHelper(version2) must beTrue
     }
     "be so that '%s' > '%s' is false".format(version1, version2) in {
-      TechniqueVersion(version1) > TechniqueVersion(version2) must beFalse
+      TechniqueVersionHelper(version1) > TechniqueVersionHelper(version2) must beFalse
     }
     "be so that '%s' == '%s' is false".format(version1, version2) in {
-      TechniqueVersion(version1) == TechniqueVersion(version2) must beFalse
+      TechniqueVersionHelper(version1) == TechniqueVersionHelper(version2) must beFalse
     }
   }
 }
