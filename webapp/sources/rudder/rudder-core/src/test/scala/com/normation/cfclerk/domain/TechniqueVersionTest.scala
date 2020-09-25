@@ -148,7 +148,7 @@ class TechniqueVersionTest extends Specification {
       TechniqueVersion("a:18") must throwA[TechniqueVersionFormatException].like { case e => e.getMessage must contain(msg1) }
     }
 
-    val msg2 = "The upstream_version should start with a digit"
+    val msg2 = "The version format of a technique should be : [epoch:]upstream_version"
     "throw a TechniqueVersionFormatException : %s".format(msg2) in {
       TechniqueVersion("a15") must throwA[TechniqueVersionFormatException].like { case e => e.getMessage must contain(msg2) }
     }

@@ -67,22 +67,18 @@ import java.nio.charset.Charset
 
 class TechniqueVersionFormatException(msg: String) extends Exception("The version format of a technique should be : [epoch:]upstream_version\n" + msg)
 
-final class TechniqueVersion(val epoch: Int, val upsreamTechniqueVersion: UpstreamTechniqueVersion) extends Ordered[TechniqueVersion] {
-  def compare(v: TechniqueVersion): Int = {
-    if (epoch != v.epoch) epoch compare v.epoch
-    else upsreamTechniqueVersion compare v.upsreamTechniqueVersion
-  }
+final class TechniqueVersion(val upsreamTechniqueVersion: UpstreamTechniqueVersion) extends Ordered[TechniqueVersion] {
+  def compare(v: TechniqueVersion): Int = upsreamTechniqueVersion compare v.upsreamTechniqueVersion
 
   override def equals(other:Any) : Boolean = other match {
-    case that:TechniqueVersion => this.epoch == that.epoch && this.upsreamTechniqueVersion == that.upsreamTechniqueVersion
+    case that:TechniqueVersion => this.upsreamTechniqueVersion == that.upsreamTechniqueVersion
     case _ => false
   }
 
-  override lazy val hashCode : Int = 7 + 13 * epoch + 41 * upsreamTechniqueVersion.hashCode
+  override lazy val hashCode : Int = 7 + 41 * upsreamTechniqueVersion.hashCode
 
   override lazy val toString = {
-    if(epoch < 1) upsreamTechniqueVersion.value
-    else epoch.toString + ":" + upsreamTechniqueVersion.value
+    upsreamTechniqueVersion.value.toVersionString
   }
 }
 
@@ -90,36 +86,15 @@ object TechniqueVersion {
 
   def apply(value: String): TechniqueVersion = {
     ParseVersion.parse(value) match {
-      case Right(v)  => new TechniqueVersion(v.epoch.toInt, UpstreamTechniqueVersion(v.toVersionStringNoEpoch))
+      case Right(v)  => new TechniqueVersion(UpstreamTechniqueVersion(v))
       case Left(err) => throw new TechniqueVersionFormatException(err)
     }
   }
 }
 
-case class UpstreamTechniqueVersion(value: String) extends Ordered[UpstreamTechniqueVersion] {
-
-  val parsed = checkValid(value)
-
-  def checkValid(value: String): Version = {
-  import scala.util.matching.Regex
-      if (value.isEmpty || !value(0).isDigit)
-        throw new TechniqueVersionFormatException("The upstream_version should start with a digit : " + value)
-
-      val validReg = new Regex("[A-Za-z0-9.+\\-:~]*")
-      validReg.findPrefixOf(value) match {
-        case Some(matchReg) if (matchReg != value) =>
-          throw new TechniqueVersionFormatException("The upstream_version contains invalid charaters.\n" +
-            "The upstream_version may contain only alphanumerics and " +
-            "the characters . + - : ~ (full stop, plus, hyphen, colon, tilde).")
-      case _ => ParseVersion.parse(value) match {
-        case Right(v)  => v
-        case Left(err) => throw new TechniqueVersionFormatException(err)
-      }
-    }
-  }
-
+case class UpstreamTechniqueVersion(value: Version) extends Ordered[UpstreamTechniqueVersion] {
   def compare(upsreamTechniqueVersion: UpstreamTechniqueVersion): Int = {
-    parsed.compareTo(upsreamTechniqueVersion.parsed)
+    value.compareTo(upsreamTechniqueVersion.value)
   }
 
 }
@@ -309,7 +284,7 @@ object ParseVersion {
 
   def startNum[_:P] = P( num ).map(PartType.Numeric)
 
-  def version[_ :P] = P( Start ~ epoch.? ~/ (startNum | chars) ~/
+  def version[_ :P] = P( Start ~ epoch.? ~/ startNum ~/
                          (numPart | charPart | noSepPart1 | noSepPart2).rep(0) ~ separators.? ~ End).map {
     case (e, head, list, opt) =>
       Version(e.getOrElse(0L), head, list.flatten.toList ::: listOfSepToPart(opt.toList.flatten))

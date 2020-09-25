@@ -73,6 +73,14 @@ import com.normation.cfclerk.domain.SectionSpec
  *   must be unserialized to `None`.
  * - the code is crying for a DirectiveRId(id: DirectiveId, revId: Option[RevId] = None)
  *
+ * ==== case of techniques
+ *
+ * Techniques already have a version as part of their ID. That version is different from our revision, as it is not strict.
+ * But it seems that our revision is more a complement than a totally other concept:
+ * - two techniques with a difference here must have different directories for files/etc
+ * - directives with different version can't be merged/etc
+ *
+ *
  */
 
 
