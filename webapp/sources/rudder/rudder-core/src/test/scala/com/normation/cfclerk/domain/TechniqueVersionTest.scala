@@ -46,115 +46,30 @@ class TechniqueVersionTest extends Specification {
 
   sequential
 
-  "parse version" >> {
-    import com.normation.utils._
-    import Separator._
-    import PartType._
-    import VersionPart._
-    def parse(s: String) = ParseVersion.parse(s).getOrElse(throw new RuntimeException(s"Can not parse: ${s}"))
-
-    parse("1.0") === com.normation.utils.Version(0, Numeric(1), After(Dot, Numeric(0)) :: Nil)
-    parse("1.0-alpha10") === com.normation.utils.Version(0,
-        Numeric(1)
-      , After(Dot, Numeric(0)) ::
-        Before(Minus, Alpha("alpha")) ::
-        After(None, Numeric(10)) ::
-        Nil
-    )
-    parse("1.1.0") === com.normation.utils.Version(0,
-        Numeric(1)
-      , After(Dot, Numeric(1)) ::
-        After(Dot, Numeric(0)) ::
-        Nil
-    )
-    parse("2.0") === com.normation.utils.Version(0,
-        Numeric(2)
-      , After(Dot, Numeric(0)) ::
-        Nil
-    )
-    parse("1~~a") === Version(0,
-        Numeric(1)
-      , Before(Tilde, Chars("")) ::
-        Before(Tilde, Chars("a")) ::
-        Nil
-    )
-    parse("1~~") === com.normation.utils.Version(0,
-        Numeric(1)
-      , Before(Tilde, Chars("")) ::
-        Before(Tilde, Chars("")) ::
-        Nil
-    )
+  "Equal versions" should {
+    equalVersions("1.0", "1.0")
+    equalVersions("1.0", "1.0.0")
   }
-
 
   "Different sizes" should {
     increasingVersions("1.0", "1.0.1")
     increasingVersions("1", "1.0.0.0.0.0.1")
   }
 
-  "numbered preversion" should {
-    increasingVersions("1.0-alpha5", "1.0-alpha10")
-    increasingVersions("1.0-SNAPSHOT", "1.0-alpha1")
-    increasingVersions("1.0-beta1", "1.0-rc1")
+  "with revisionId" should { // the higher one is head
+    increasingVersions("1.0+commitid", "1.0")
+    increasingVersions("1.0+commitid", "1.0.0")
   }
 
-  "preversion" should {
-    increasingVersions("1.0-alpha5", "1.0")
-    increasingVersions("1.0-SNAPSHOT", "1.0")
-    increasingVersions("1.0-beta1", "1.0")
-    increasingVersions("1.0~anything", "1.0")
-    increasingVersions("1.0~1", "1.0")
+  "technique version are simple" should {
+    TechniqueVersion.parse("1.0-alpha5") must beLeft()
+    TechniqueVersion.parse("1.0-SNAPSHOT") must beLeft()
+    TechniqueVersion.parse("1.0-beta1") must beLeft()
+    TechniqueVersion.parse("1.0~anything") must beLeft()
+    TechniqueVersion.parse("1.0~1") must beLeft()
+    TechniqueVersion.parse("1.a") must beLeft()
+    TechniqueVersion.parse("1:a") must beLeft()
   }
-
-  "number and char without separators" should {
-    increasingVersions("1.release3", "1.release10")
-    increasingVersions("1.3b", "1.10a")
-  }
-
-  "Two clearly differents versions" should {
-    increasingVersions("0:1~0", "2.2.0~beta1")
-    increasingVersions("0:1~1", "1:0")
-    increasingVersions("1.0", "1.1")
-    increasingVersions("1.0", "1.0.1")
-    increasingVersions("1.1.0", "2.0")
-  }
-
-  "Slighty increasing versions after ~" should {
-    increasingVersions("1~~", "1~~a")
-    increasingVersions("1~~a", "1~")
-    increasingVersions("1~", "1")
-    increasingVersions("1", "1a")
-  }
-
-  "Equal versions" should {
-    equalVersions("2:18ajk~pl~", "2:18ajk~pl~")
-    equalVersions("0:7bf", "7bf")
-    equalVersions("1.0", "1.0")
-  }
-
-  "Epoch" should {
-    "not be printed when toString, if 0" in {
-      TechniqueVersionHelper("0:5abc~").toString === "5abc~"
-    }
-
-    "be printed when toString, if > 0" in {
-      TechniqueVersionHelper("2:2bce").toString === "2:2bce"
-    }
-  }
-
-  "Invalid version" should {
-
-    val msg1 = "Error when parsing 'a:18' as a version. Only ascii (non-control, non-space) chars are allowed in a version string."
-    "return left".format(msg1) in {
-      TechniqueVersion.parse("a:18") must beLeft[String].like { case e => e must contain(msg1) }
-    }
-
-    val msg2 = "Error when parsing 'a15' as a version. Only ascii (non-control, non-space) chars are allowed in a version string."
-    "return left".format(msg2) in {
-      TechniqueVersion.parse("a15") must beLeft[String].like { case e => e must contain(msg2) }
-    }
-  }
-
   private[this] def equalVersions(version1: String, version2: String) = {
     //the actual comparison test
     "be so that '%s' == '%s'".format(version1, version2) in {

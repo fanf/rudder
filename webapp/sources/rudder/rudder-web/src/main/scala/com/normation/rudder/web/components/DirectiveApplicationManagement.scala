@@ -176,7 +176,7 @@ final case class DirectiveApplicationManagement (
    */
   def checkRule(id : RuleId, status: Boolean) = {
     def checkRule(id : RuleId, status: Boolean, category : CategoryId) : DirectiveApplicationResult = {
-      logger.debug(s"check for $id, in $category")
+      logger.debug(s"check for ${id.value}, in ${category.value}")
       // Get current state
       val currentAppliedRules = currentApplyingRules.get(category).getOrElse(Nil)
       // Get the new application status, and if the category completed is Full
@@ -216,7 +216,7 @@ final case class DirectiveApplicationManagement (
     val currentApplication = currentApplyingRules(id)
     // All Rules contained in that category
     val completeApplication  = rulesByCategory(id)
-    logger.debug(s"category $id is currently applying ${currentApplication.size} rules and completeApplication contains ${completeApplication.size} ")
+    logger.debug(s"category ${id.value} is currently applying ${currentApplication.size} rules and completeApplication contains ${completeApplication.size} ")
 
     // Get Rules that needs modifications
     val rulesToCheck = if (status) {
@@ -230,7 +230,7 @@ final case class DirectiveApplicationManagement (
 
     //Check Rules from that category
     val applications = rulesToCheck.map(checkRule(_, status))
-    logger.debug(s"final applications for category $id:")
+    logger.debug(s"final applications for category ${id.value}:")
     // Final merge
     DirectiveApplicationResult.merge(applications)
   }

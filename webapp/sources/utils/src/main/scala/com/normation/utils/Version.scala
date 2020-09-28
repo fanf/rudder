@@ -51,9 +51,10 @@ import java.nio.charset.Charset
  *   snapshot[s], nightly|nightlies, alpha, beta, milestone, rc
  *   so that "1.2-alpha1" == "1.2~alpha-1"
  * - all other words mean "after", and they are sorted alphabetically
+ *
+ * Equals/hashcode must be reimplemented to match ordered
  */
-final case
-class Version(epoch: Long, head: PartType, parts: List[VersionPart]) extends ToVersionString with Ordered[Version] {
+final case class Version(epoch: Long, head: PartType, parts: List[VersionPart]) extends ToVersionString with Ordered[Version] {
   def toVersionString: String = {
     (
     if (epoch == 0) {
@@ -67,6 +68,13 @@ class Version(epoch: Long, head: PartType, parts: List[VersionPart]) extends ToV
   def toVersionStringNoEpoch = head.toVersionString + parts.map(_.toVersionString).mkString("")
 
   override def compare(other: Version): Int = Version.compare(this, other)
+
+  override def equals(obj: Any): Boolean = obj match {
+    case that: Version => compare(that) == 0
+    case _ => false
+  }
+
+  override def hashCode(): Int = epoch.hashCode() + 3*head.hashCode() + 7*parts.hashCode()
 }
 
 object Version {

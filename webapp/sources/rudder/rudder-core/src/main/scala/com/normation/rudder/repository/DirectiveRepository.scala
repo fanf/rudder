@@ -97,9 +97,13 @@ final case class FullActiveTechnique(
 
   val newestAvailableTechnique = techniques.toSeq.sortBy( _._1).reverse.map( _._2 ).headOption
 
-  def addAndFilter(add: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechnique = {
+  /*
+   * Add some direcives for some technique, and only keep directives whose id/revision is in `keep`.
+   */
+  // TODO : add List[(techniqueVersion, technique)]
+  def addAndFilter(addDirectives: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechnique = {
     val ids = directives.map(_.rid)
-    val d2 = add.collect { case (t, d) if(t == techniqueName && !ids.contains(d.rid)) => d } ::: directives
+    val d2 = addDirectives.collect { case (t, d) if (t == techniqueName && !ids.contains(d.rid)) => d } ::: directives
     val d3 = d2.filter(d => keep.contains(d.rid))
     val v2 = d3.map(_.techniqueVersion).toSet
     def predicate(pair: (TechniqueVersion, Any)): Boolean = v2.contains(pair._1)

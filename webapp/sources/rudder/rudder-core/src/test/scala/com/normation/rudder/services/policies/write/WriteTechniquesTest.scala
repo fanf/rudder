@@ -229,7 +229,7 @@ trait TechniquesTest extends Specification with Loggable with BoxSpecMatcher wit
   def assertResourceContent(id: TechniqueResourceId, isTemplate: Boolean, expectedContent: String) = {
     val ext = if(isTemplate) Some(TechniqueTemplate.templateExtension) else None
     reader.getResourceContent(id, ext) {
-        case None     => ko("Can not open an InputStream for " + id.toString).succeed
+        case None     => ko("Can not open an InputStream for " + id.displayPath).succeed
         case Some(is) => (IOUtils.toString(is, StandardCharsets.UTF_8) === expectedContent).succeed
       }.runNow
   }

@@ -250,7 +250,7 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
 
     def directiveModel(uuid: DirectiveId, revId: Option[RevId], techniqueVersion: TechniqueVersion, parentDN: DN) : LDAPEntry = {
       val mod = LDAPEntry(RudderDit.buildDN(parentDN, A_DIRECTIVE_UUID, uuid.value, revId))
-      mod +=! (A_TECHNIQUE_VERSION, techniqueVersion.toString)
+      mod +=! (A_TECHNIQUE_VERSION, techniqueVersion.displayPath)
       mod +=! (A_OC, OC.objectClassNames(OC_DIRECTIVE).toSeq:_*)
       mod
     }

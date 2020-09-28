@@ -84,7 +84,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
    */
   override def afterAll() = {
     if(System.getProperty("tests.clean.tmp") != "false") {
-      logger.info("Deleting directory " + gitRoot.getAbsoluteFile)
+      logger.info("Deleting directory " + gitRoot.getAbsolutePath)
       FileUtils.deleteDirectory(gitRoot)
     }
   }
@@ -119,19 +119,19 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
    *      --- template2.st
    */
   val template = new File(gitRoot, "template.st")
-  val templateId = TechniqueResourceIdByPath(Nil, "template")
+  val templateId = TechniqueResourceIdByPath(Nil, None, "template")
   val templateContent = "this is some template content"
   template.getParentFile.mkdirs
   FileUtils.writeStringToFile(template, templateContent, StandardCharsets.UTF_8)
   val template2 = new File(new File(gitRoot, "libdir"), "template2.st")
-  val template2Id = TechniqueResourceIdByPath(List("libdir"), "template2")
+  val template2Id = TechniqueResourceIdByPath(List("libdir"), None, "template2")
   val template2Content = "this is template2 content"
   template2.getParentFile.mkdirs
   FileUtils.writeStringToFile(template2, template2Content, StandardCharsets.UTF_8)
 
   val f1 = new File(new File(gitRoot, "libdir"), "file1.txt")
   val f1Content = "this is the content of file 1"
-  val file1 = TechniqueResourceIdByPath(List("libdir"), f1.getName)
+  val file1 = TechniqueResourceIdByPath(List("libdir"), None, f1.getName)
   FileUtils.writeStringToFile(f1, f1Content, StandardCharsets.UTF_8)
 
   val file2 = TechniqueResourceIdByName(TechniqueId(TechniqueName("p1_1"), TechniqueVersionHelper("1.0")), "file2.txt")
@@ -158,7 +158,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
   def assertResourceContent(id: TechniqueResourceId, isTemplate: Boolean, expectedContent: String) = {
     val ext = if(isTemplate) Some(TechniqueTemplate.templateExtension) else None
     reader.getResourceContent(id, ext) {
-        case None => ko("Can not open an InputStream for " + id.toString).succeed
+        case None => ko("Can not open an InputStream for " + id.displayPath).succeed
         case Some(is) => (IOUtils.toString(is, StandardCharsets.UTF_8) === expectedContent).succeed
       }.runNow
   }
@@ -173,7 +173,7 @@ trait JGitPackageReaderSpec extends Specification with Loggable with AfterAll {
     "has no description" in rootCat.description === ""
     "has one policy technique..." in rootCat.techniqueIds.size === 1
     "...with name p_root_1" in rootCat.techniqueIds.head.name.value === "p_root_1"
-    "...with version 1.0" in rootCat.techniqueIds.head.version.toString === "1.0"
+    "...with version 1.0" in rootCat.techniqueIds.head.version.show === "1.0"
     "has 1 valid subcategory (because cat2 has no category.xml descriptor)" in rootCat.subCategoryIds.size === 1
     "...with name cat1" in rootCat.subCategoryIds.head === rootCat.id / "cat1"
   }

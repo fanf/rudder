@@ -658,7 +658,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   //root has 4 system directive, let give them some variables
   //
   implicit class UnsafeGet(repo: TechniqueRepositoryImpl) {
-    def unsafeGet(id: TechniqueId) = repo.get(id).getOrElse(throw new RuntimeException(s"Bad init for test: technique '${id.toString()}' not found"))
+    def unsafeGet(id: TechniqueId) = repo.get(id).getOrElse(throw new RuntimeException(s"Bad init for test: technique '${id.displayPath}' not found"))
   }
 
   val commonTechnique = techniqueRepository.unsafeGet(TechniqueId(TechniqueName("common"), TechniqueVersionHelper("1.0")))

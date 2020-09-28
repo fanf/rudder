@@ -282,7 +282,7 @@ class RuleEditForm(
               , d.name
               , d.shortDescription
               , t.newestAvailableTechnique.get.name
-              , d.techniqueVersion.toString
+              , d.techniqueVersion.displayPath
               , d.policyMode.map(_.name).getOrElse(globalMode.mode.name)
               , JsonTagSerialisation.serializeTags(d.tags)
             )
@@ -471,7 +471,7 @@ class RuleEditForm(
     val dirName        = d.name.encJs
     val dirDescription = d.shortDescription.encJs
     val dirTechName    = t.newestAvailableTechnique.get.name.encJs
-    val dirTechVersion = d.techniqueVersion.toString.encJs
+    val dirTechVersion = d.techniqueVersion.displayPath.encJs
     val dirMode        = d.policyMode.map(_.name).getOrElse(gm).encJs
     val dirTags        = net.liftweb.json.compactRender(JsonTagSerialisation.serializeTags(d.tags))
     JsRaw(s"""onClickDirective("${dirId}", ${dirName}, ${dirLink}, ${dirDescription}, ${dirTechName}, ${dirTechVersion}, ${dirMode}, ${dirTags})""")

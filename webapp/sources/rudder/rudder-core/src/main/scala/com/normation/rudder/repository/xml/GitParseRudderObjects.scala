@@ -67,6 +67,8 @@ import org.eclipse.jgit.lib.Repository
 import zio._
 import zio.syntax._
 import com.normation.errors.effectUioUnit
+import com.normation.rudder.domain.logger.ConfigurationLoggerPure
+import com.normation.rudder.domain.policies.DirectiveId
 import com.softwaremill.quicklens._
 
 final case class GitRootCategory(
@@ -335,36 +337,41 @@ class GitParseActiveTechniqueLibrary(
   , uptFileName         : String = "activeTechniqueSettings.xml"
 ) extends ParseActiveTechniqueLibrary with GitParseCommon[ActiveTechniqueCategoryContent] {
 
-  def getDirective(directiveRId: DirectiveRId): IOResult[Option[(ActiveTechnique, Directive)]] = {
-    directiveRId.revId match {
-      case None => ??? // to do, it's head
-      case Some(RevId(r)) =>
-        val root = getGitDirectoryPath(libRootDirectory).root
-        val id = directiveRId.id.value
-        for {
-          treeId <- GitFindUtils.findRevTreeFromRevString(repo.db, r)
-          paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id}.xml"))
-          pair   <- paths.size match {
-                      case 0 =>
-                        None.succeed
-                      case 1 =>
-                       val path = paths.head
-                       val atPath = Paths.get(Paths.get(path).getParent.toString, uptFileName)
+  /**
+   * Get a directive for the specific given revisionId;
+   */
+  def getDirective(id: DirectiveId, revId: RevId): IOResult[Option[(ActiveTechnique, Directive)]] = {
+    val root = getGitDirectoryPath(libRootDirectory).root
+    for {
+      _      <- ConfigurationLoggerPure.revision.debug(s"Looking for directive: ${DirectiveRId(id, Some(revId)).show}")
+      treeId <- GitFindUtils.findRevTreeFromRevString(repo.db, revId.value)
+      paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id}.xml"))
+      pair   <- paths.size match {
+                  case 0 =>
+                    None.succeed
+                  case 1 =>
+                    val path = paths.head
+                    val atPath = Paths.get(Paths.get(path).getParent.toString, uptFileName)
 
-                       for {
-                         _  <- effectUioUnit("start by loadDirective")
-                         d  <- loadDirective(repo.db, treeId, path)
-                         _  <- effectUioUnit(s"Directive loaded!")
-                         at <- loadActiveTechnique(repo.db, treeId, atPath.toString)
-                         _  <- effectUioUnit(s"Activetech loaded!")
-                       } yield Some((at, d))
-                      case _ =>
-                       ZIO.fail(Unexpected(s"There is more than one directive with ID '${id}' in git: ${paths.mkString(",")}"))
-                     }
-          _      <- effectUioUnit(println(s"****** FOUND Directive path for commit '${r}' ${treeId.toString}: ${paths}"))
-        } yield {
-          pair.modify(_.each._2.revId).setTo(directiveRId.revId)
-        }
+                    (for {
+                      d  <- loadDirective(repo.db, treeId, path)
+                      at <- loadActiveTechnique(repo.db, treeId, atPath.toString)
+                    } yield {
+                      // for directive, we need to set directiveId and techniqueId revision to the one we just looked-up.
+                      // (it's normal to not have it serialized. We could perhaps make load
+                      val rd = (d
+                        .modify(_.revId).setTo(Some(revId))
+                        .modify(_.techniqueVersion).using(v => v.copy(revId = Some(revId)))
+                      )
+                      Some((at, rd))
+                    }).catchAll(err =>
+                      ConfigurationLoggerPure.revision.debug(s"Impossible to find directive with id/revision: '${DirectiveRId(id, Some(revId))}': ${err.fullMsg}.") *> err.fail
+                    )
+                  case _ =>
+                    Unexpected(s"There is more than one directive with ID '${id}' in git: ${paths.mkString(",")}").fail
+                 }
+    } yield {
+      pair
     }
   }
 

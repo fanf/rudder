@@ -480,7 +480,7 @@ class RuleGrid(
             case Some((activeTechnique, directive)) =>
               techniqueRepository.getLastTechniqueByName(activeTechnique.techniqueName) match {
                 case None =>
-                  Failure(s"Can not find Technique for activeTechnique with name ${activeTechnique.techniqueName} referenced in Rule with ID ${rule.id.value}")
+                  Failure(s"Can not find Technique for activeTechnique with name ${activeTechnique.techniqueName.value} referenced in Rule with ID ${rule.id.value}")
                 case Some(technique) =>
                   Full((directive, activeTechnique.toActiveTechnique, technique))
               }
@@ -501,7 +501,7 @@ class RuleGrid(
             case Some(t) =>
               Full(t.toTargetInfo)
             case None =>
-              Failure(s"Can not find full information for target '${target}' referenced in Rule with ID '${rule.id.value}'")
+              Failure(s"Can not find full information for target '${target.target}' referenced in Rule with ID '${rule.id.value}'")
           }
        }.map(x => x.toSet)
 

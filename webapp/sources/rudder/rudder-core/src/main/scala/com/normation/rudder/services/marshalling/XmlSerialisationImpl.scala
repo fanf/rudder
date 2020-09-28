@@ -178,7 +178,8 @@ class ActiveTechniqueSerialisationImpl(xmlVersion:String) extends ActiveTechniqu
         <isEnabled>{activeTechnique.isEnabled}</isEnabled>
         <isSystem>{activeTechnique.isSystem}</isSystem>
         <versions>{ activeTechnique.acceptationDatetimes.map { case(version,date) =>
-          <version name={version.toString}>{date.toString(ISODateTimeFormat.dateTime)}</version>
+          // we never serialize revision in xml
+          <version name={version.version.toVersionString}>{date.toString(ISODateTimeFormat.dateTime)}</version>
         } }</versions>
     )
   }
@@ -329,12 +330,12 @@ class ChangeRequestChangesSerialisationImpl(
         { change.diff match {
           case  AddDirectiveDiff(techniqueName,directive) =>
             techniqueRepo.get(TechniqueId(techniqueName,directive.techniqueVersion)) match {
-              case None => (s"Error, could not retrieve technique ${techniqueName} version ${directive.techniqueVersion.toString}")
+              case None => (s"Error, could not retrieve technique ${techniqueName.value} version ${directive.techniqueVersion.show}")
               case Some(technique) => <diff action="add">{directiveSerializer.serialise(techniqueName,technique.rootSection,directive)}</diff>
              }
           case DeleteDirectiveDiff(techniqueName,directive) =>
             techniqueRepo.get(TechniqueId(techniqueName,directive.techniqueVersion)) match {
-              case None => (s"Error, could not retrieve technique ${techniqueName} version ${directive.techniqueVersion.toString}")
+              case None => (s"Error, could not retrieve technique ${techniqueName.value} version ${directive.techniqueVersion.show}")
               case Some(technique) => <diff action="delete">{directiveSerializer.serialise(techniqueName,technique.rootSection,directive)}</diff>
              }
           case ModifyToDirectiveDiff(techniqueName,directive,rootSection) =>

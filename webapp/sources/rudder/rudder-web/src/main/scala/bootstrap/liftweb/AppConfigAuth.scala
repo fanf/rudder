@@ -575,7 +575,7 @@ class RestAuthenticationFilter(
                   if(principal.isEnabled) {
                     principal.kind match {
                       case ApiAccountKind.System => // we don't want to allow system account kind from DB
-                        failsAuthentication(httpRequest, httpResponse, Inconsistency(s"A saved API account can not have the kind 'System': '${principal.name}'"))
+                        failsAuthentication(httpRequest, httpResponse, Inconsistency(s"A saved API account can not have the kind 'System': '${principal.name.value}'"))
                       case ApiAccountKind.PublicApi(authz, expirationDate) =>
                         expirationDate match {
                           case Some(date) if(DateTime.now().isAfter(date)) =>

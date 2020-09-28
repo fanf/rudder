@@ -116,7 +116,7 @@ class TechniqueParser(
             _            <- { // all agent config types must be different
                               val duplicated = agentConfigs.map(_.agentType.id).groupBy(identity).collect { case (id, seq) if(seq.size > 1) => id }
                               if(duplicated.nonEmpty) {
-                                Left(LoadTechniqueError.Parsing(s"Error when parsing technique with ID '${id.toString}': these agent configurations are declared " +
+                                Left(LoadTechniqueError.Parsing(s"Error when parsing technique with ID '${id.show}': these agent configurations are declared " +
                                                                 s"several times: '${duplicated.mkString("','")}' (note that <TMLS>, <BUNDLES> and <FILES> " +
                                                                 s"sections under root <TECHNIQUE> tag build a 'cfengine-community' agent configuration)"
                                 ))
@@ -127,7 +127,7 @@ class TechniqueParser(
 
             // System technique should not have run hooks, this is not supported:
             _ = if(isSystem && agentConfigs.exists( a => a.runHooks.nonEmpty ) ) {
-              logEffect.warn(s"System Technique with ID '${id.toString()}' has agent run hooks defined. This is not supported on system technique.")
+              logEffect.warn(s"System Technique with ID '${id.show}' has agent run hooks defined. This is not supported on system technique.")
             }
 
             // 4.3: does the technique support generation without directive merge (i.e mutli directive)
@@ -194,7 +194,7 @@ class TechniqueParser(
         AgentType.fromValue(name) match {
           case Right(agentType) => Some(agentType)
           case Left(err)        =>
-            val msg = s"Error when parsing technique with id '${id.toString}', agent type='${name}' is not known and the corresponding config will be ignored: ${err.fullMsg}"
+            val msg = s"Error when parsing technique with id '${id.show}', agent type='${name}' is not known and the corresponding config will be ignored: ${err.fullMsg}"
             logEffect.warn(msg)
             None
         }
@@ -245,7 +245,7 @@ class TechniqueParser(
   private[this] def parseSysvarSpecs(xml: Node, id:TechniqueId) : Either[LoadTechniqueError, Set[SystemVariableSpec]] = {
     (xml \ SYSTEMVARS_ROOT \ SYSTEMVAR_NAME).toList.traverse { x =>
       systemVariableSpecService.get(x.text).leftMap(_ =>
-        LoadTechniqueError.Parsing(s"The system variable ${x.text} is not defined: perhaps the metadata.xml for technique '${id.toString}' is not up to date")
+        LoadTechniqueError.Parsing(s"The system variable ${x.text} is not defined: perhaps the metadata.xml for technique '${id.show}' is not up to date")
       ).toValidatedNel
     }.fold(errs => Left(LoadTechniqueError.Accumulated(errs)), x => Right(x.toSet))
   }
@@ -280,7 +280,7 @@ class TechniqueParser(
 
     //the default out path for a template with name "name" is "techniqueName/techniqueVersion/name".defaultAgentExtension
     //note: by convention, the template name for DSC agent already contains the .ps1
-    def defaultOutPath(name: String) = s"${techniqueId.name.value}/${techniqueId.version.toString}/${name}${if(isTemplate) agentType.map(_.defaultPolicyExtension).getOrElse("") else ""}"
+    def defaultOutPath(name: String) = s"${techniqueId.displayPath}/${name}${if(isTemplate) agentType.map(_.defaultPolicyExtension).getOrElse("") else ""}"
 
     val outPath = (xml \ PROMISE_TEMPLATE_OUTPATH).text match {
       case "" => None
@@ -300,10 +300,10 @@ class TechniqueParser(
               val path = new java.io.File(n.substring(RUDDER_CONFIGURATION_REPOSITORY.length + 1))
               val name = path.getName
               //here, getName can't be empty since n does not end by "/"
-              Right(TechniqueResourceIdByPath(fileToList(path.getParentFile), name))
+              Right(TechniqueResourceIdByPath(fileToList(path.getParentFile), techniqueId.version.revId, name))
             } else {
               if(n.startsWith(RUDDER_CONFIGURATION_REPOSITORY)) { //most likely an user error, issue a warning
-                logEffect.warn(s"Resource named '${n}' for technique '${techniqueId}' starts with ${RUDDER_CONFIGURATION_REPOSITORY} which is not followed by a '/'. " +
+                logEffect.warn(s"Resource named '${n}' for technique '${techniqueId.show}' starts with ${RUDDER_CONFIGURATION_REPOSITORY} which is not followed by a '/'. " +
                     "If you meant to use a relative path from configuration-repository directory for the resource, it is an error.")
               }
               Right(TechniqueResourceIdByName(techniqueId, n))
@@ -403,11 +403,11 @@ class TechniqueParser(
             RunHook.Parameter(pname, pvalue)
           }
          ))
-      }).leftMap(err => LoadTechniqueError.Parsing(s"Error: in technique '${id.toString()}', tried to parse a <${RUN_HOOKS}> xml, but XML is invalid: "+ err.fullMsg))
+      }).leftMap(err => LoadTechniqueError.Parsing(s"Error: in technique '${id.show}', tried to parse a <${RUN_HOOKS}> xml, but XML is invalid: "+ err.fullMsg))
     }
 
     if(xml.label != RUN_HOOKS) {
-      Left(LoadTechniqueError.Parsing(s"Error in techni in technique '${id.toString()}', this is not a valid <${RUN_HOOKS}>: ${xml}"))
+      Left(LoadTechniqueError.Parsing(s"Error in techni in technique '${id.show}', this is not a valid <${RUN_HOOKS}>: ${xml}"))
     } else {
 
       // parse each direct children, but only proceed with PRE and POST.

@@ -55,7 +55,7 @@ class LDAPTreeTest extends Specification {
 
     }
 
-    println("tree: " + tree)
+    println("tree: " + tree.toLDIFString())
     tree.c1children.addChild(LDAPTree(LDAPEntry(dn3)))
 
     println("add1 " + tree.toLDIFString())

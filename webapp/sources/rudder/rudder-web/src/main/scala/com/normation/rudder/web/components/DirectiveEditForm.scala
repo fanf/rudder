@@ -195,7 +195,7 @@ class DirectiveEditForm(
     val versionSelect = if (isADirectiveCreation) {
       <div id="version" class="row wbBaseField form-group">
         <label for="version" class="col-xs-12 wbBaseFieldLabel"><span class="text-fit"><b>Technique version</b></span></label>
-        <div  class="col-xs-12"><input  name="version" class="form-control" readonly="" value={directive.techniqueVersion.toString}/></div>
+        <div  class="col-xs-12"><input  name="version" class="form-control" readonly="" value={directive.techniqueVersion.displayPath}/></div>
       </div>
      } else { directiveVersion.toForm_! }
     val currentVersion = showDeprecatedVersion(directive.techniqueVersion)
@@ -243,12 +243,12 @@ class DirectiveEditForm(
         ( "This Directive and its Technique are disabled."
         , <span>
             {SHtml.ajaxSubmit("Enable Directive", () => onSubmitDisable(DGModAction.Enable), ("class" ,"btn btn-sm btn-default"))}
-            <a class="btn btn-sm btn-default" href={s"/secure/administration/techniqueLibraryManagement/#${activeTechnique.techniqueName}"}>Edit Technique</a>
+            <a class="btn btn-sm btn-default" href={s"/secure/administration/techniqueLibraryManagement/#${activeTechnique.techniqueName.value}"}>Edit Technique</a>
           </span>
         )
       case(false, true) =>
         ( "The Technique of this Directive is disabled."
-        , <a class="btn btn-sm btn-default" href={s"/secure/administration/techniqueLibraryManagement/#${activeTechnique.techniqueName}"}>Edit Technique</a>
+        , <a class="btn btn-sm btn-default" href={s"/secure/administration/techniqueLibraryManagement/#${activeTechnique.techniqueName.value}"}>Edit Technique</a>
         )
       case(true, false) =>
         ( "This Directive is disabled."
@@ -487,7 +487,7 @@ class DirectiveEditForm(
       case Some(_) => "(deprecated)"
       case None => ""
     }
-    s"${version} ${deprecationInfo}"
+    s"${version.displayPath} ${deprecationInfo}"
   }
   private[this] val globalOverrideText = globalMode.overridable match {
     case Always  =>

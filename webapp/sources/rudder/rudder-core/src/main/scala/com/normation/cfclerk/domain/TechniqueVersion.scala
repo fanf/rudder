@@ -38,19 +38,61 @@
 package com.normation.cfclerk.domain
 
 
+import com.normation.GitVersion.RevId
 import com.normation.utils.ParseVersion
 import com.normation.utils.Version
 
 
 class TechniqueVersionFormatException(msg: String) extends Exception("The version format of a technique should be : [epoch:]upstream_version\n" + msg)
 
-final case class TechniqueVersion(version: Version) extends Ordered[TechniqueVersion] {
-  def compare(v: TechniqueVersion): Int = version compare v.version
+final case class TechniqueVersion(version: Version, revId: Option[RevId] = None) extends Ordered[TechniqueVersion] {
+  def compare(v: TechniqueVersion): Int = (version compare v.version) match {
+    case 0 =>
+      // we can't compare two revId, so just use alpha-num order
+      // A revId is always before none (which means "HEAD")
+      (revId, v.revId) match {
+        case (None   , None   ) =>  0
+        case (None   , _      ) =>  1
+        case (_      , None   ) => -1
+        case (Some(x), Some(y)) =>  String.CASE_INSENSITIVE_ORDER.compare(x.value, y.value)
+      }
+    case i => i
+  }
 
-  override lazy val toString = version.toVersionString
+  def withDefaultRevId = TechniqueVersion(version)
+
+  // intended for debug
+  def show = displayPath
+  // for serialisation on path
+  def displayPath = revId.fold(
+    version.toVersionString
+  )(
+    r => version.toVersionString + "+" + r.value
+  )
+
 }
 
 object TechniqueVersion {
 
-  def parse(value: String): Either[String, TechniqueVersion] = ParseVersion.parse(value).map(TechniqueVersion(_))
+  def authorizedChar = """[.0-9]+""".r.pattern
+
+  /*
+   * A technique version is *much* simpler than a full blown version.
+   * We can only have: a.b.c.etc+commitId
+   */
+  def parse(value: String): Either[String, TechniqueVersion] = {
+    val (v, revId) = {
+      val parts = value.split("\\+")
+      if(parts.size == 1) {
+        (value, None)
+      } else {
+        (parts.take(parts.size-1).mkString("+"), Some(RevId(parts(parts.size-1).trim)))
+      }
+    }
+    if(authorizedChar.matcher(v).matches()) {
+      ParseVersion.parse(value).map(x => TechniqueVersion(x, revId))
+    } else {
+      Left(s"Error: technique version can only have [.0-9] chars in main part + revisionId, not: '${value}'")
+    }
+  }
 }

@@ -271,7 +271,8 @@ final case class RestDataSerializerImpl (
     ~ ( "shortDescription" -> directive.shortDescription)
     ~ ( "longDescription"  -> directive.longDescription)
     ~ ( "techniqueName"    -> technique.id.name.value)
-    ~ ( "techniqueVersion" -> directive.techniqueVersion.toString)
+    // we want to keep technique version and revision together to have meaning full diff
+    ~ ( "techniqueVersion" -> directive.techniqueVersion.version.toVersionString)
     ~ ( "parameters"       -> sectionVal )
     ~ ( "priority"         -> directive.priority)
     ~ ( "enabled"          -> directive.isEnabled )
@@ -460,7 +461,7 @@ final case class RestDataSerializerImpl (
         val name :JValue             = diff.modName.map(displaySimpleDiff(_) ).getOrElse(initialState.name)
         val shortDescription :JValue = diff.modShortDescription.map(displaySimpleDiff(_)).getOrElse(initialState.shortDescription)
         val longDescription :JValue  = diff.modLongDescription.map(displaySimpleDiff(_)).getOrElse(initialState.longDescription)
-        val techniqueVersion :JValue = diff.modTechniqueVersion.map(displaySimpleDiff(_)(_.toString)).getOrElse(initialState.techniqueVersion.toString)
+        val techniqueVersion :JValue = diff.modTechniqueVersion.map(displaySimpleDiff(_)(_.displayPath)).getOrElse(initialState.techniqueVersion.displayPath)
         val priority :JValue         = diff.modPriority.map(displaySimpleDiff(_)).getOrElse(initialState.priority)
         val enabled :JValue          = diff.modIsActivated.map(displaySimpleDiff(_)).getOrElse(initialState.isEnabled)
         val initialParams :JValue    = serializeSectionVal(SectionVal.directiveValToSectionVal(initialRootSection, initialState.parameters))
@@ -523,10 +524,10 @@ final case class RestDataSerializerImpl (
 
     val changes : JValue = changeRequest match {
       case cr : ConfigurationChangeRequest =>
-      val directives = cr.directives.values.map(ch => serializeDirectiveChange(ch.changes).getOrElse(JString(s"Error while serializing directives from CR ${changeRequest.id}")))
-      val groups     = cr.nodeGroups.values.map(ch => serializeGroupChange(ch.changes, apiVersion).getOrElse(JString(s"Error while serializing groups from CR ${changeRequest.id}")))
-      val parameters = cr.globalParams.values.map(ch => serializeGlobalParameterChange(ch.changes).getOrElse(JString(s"Error while serializing Parameters from CR ${changeRequest.id}")))
-      val rules = cr.rules.values.map(ch => serializeRuleChange(ch.changes).getOrElse(JString(s"Error while serializing Rules from CR ${changeRequest.id}")))
+      val directives = cr.directives.values.map(ch => serializeDirectiveChange(ch.changes).getOrElse(JString(s"Error while serializing directives from CR ${changeRequest.id.value}")))
+      val groups     = cr.nodeGroups.values.map(ch => serializeGroupChange(ch.changes, apiVersion).getOrElse(JString(s"Error while serializing groups from CR ${changeRequest.id.value}")))
+      val parameters = cr.globalParams.values.map(ch => serializeGlobalParameterChange(ch.changes).getOrElse(JString(s"Error while serializing Parameters from CR ${changeRequest.id.value}")))
+      val rules = cr.rules.values.map(ch => serializeRuleChange(ch.changes).getOrElse(JString(s"Error while serializing Rules from CR ${changeRequest.id.value}")))
       (   ("directives" -> directives)
         ~ ("rules"      -> rules)
         ~ ("groups"     -> groups)
@@ -546,7 +547,7 @@ final case class RestDataSerializerImpl (
 
   def serializeTechnique(technique:FullActiveTechnique): JValue = {
     (   ( "name"     -> technique.techniqueName.value )
-      ~ ( "versions" ->  technique.techniques.map(_._1.toString ) )
+      ~ ( "versions" ->  technique.techniques.map(_._1.displayPath ) )
     )
   }
 

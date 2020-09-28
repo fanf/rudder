@@ -286,14 +286,14 @@ class FullInventoryRepositoryImpl(
 
       // Get into Nodes subtree
       nodeTree    <- tree.flatMap(_.children.get(dit.NODES.rdn)) match {
-                      case None => LDAPRudderError.Consistancy(s"Could not find node inventories in ${dit.BASE_DN}").fail
+                      case None => LDAPRudderError.Consistancy(s"Could not find node inventories in ${dit.BASE_DN.toString}").fail
                       case Some(tree) => tree.succeed
                      }
       nodes       <- ZIO.foreach(nodeTree.children.values) { tree => mapper.nodeFromTree(tree) }
 
       // Get into Machines subtree
       machineTree <- tree.flatMap(_.children.get(dit.MACHINES.rdn)) match {
-                       case None => LDAPRudderError.Consistancy(s"Could not find machine inventories in ${dit.BASE_DN}").fail
+                       case None => LDAPRudderError.Consistancy(s"Could not find machine inventories in ${dit.BASE_DN.toString}").fail
                        case Some(tree) => tree.succeed
                      }
       machines    <- ZIO.foreach(machineTree.children.values){ tree => mapper.machineFromTree(tree) }
@@ -387,7 +387,7 @@ class FullInventoryRepositoryImpl(
                              res
                            }).foldM(
                                 e => {
-                                  InventoryProcessingLogger.warn(s"Error when trying to delete machine for server with id '${id.value}' and inventory status '${inventoryStatus}'. Message was: ${e.msg}") *>
+                                  InventoryProcessingLogger.warn(s"Error when trying to delete machine for server with id '${id.value}' and inventory status '${inventoryStatus.name}'. Message was: ${e.msg}") *>
                                   Seq().succeed
                                 }, _.succeed
                              )

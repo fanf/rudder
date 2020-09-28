@@ -294,7 +294,7 @@ final case class SerializedRules[T](
               at.techniqueName.value,
               technique.name,
               Opt(technique.description),
-              directive.techniqueVersion.toString,
+              directive.techniqueVersion.displayPath,
               DateTime.now(), None )
     }
 

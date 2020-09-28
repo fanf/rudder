@@ -502,13 +502,13 @@ final case class RestExtractorService (
             techniqueRepository.getTechniqueVersions(techniqueName).find(_ == version) match {
               case Some(version) => techniqueRepository.get(TechniqueId(techniqueName,version)) match {
                 case Some(technique) => Full(technique)
-                case None => Failure(s" Technique ${techniqueName} version ${version} is not a valid Technique")
+                case None => Failure(s" Technique '${techniqueName.value}' version '${version.displayPath}' is not a valid Technique")
               }
-              case None => Failure(s" version ${version} of Technique ${techniqueName}  is not valid")
+              case None => Failure(s" version '${version.displayPath}' of Technique '${techniqueName.value}'  is not valid")
             }
           case None => techniqueRepository.getLastTechniqueByName(techniqueName) match {
             case Some(technique) => Full(technique)
-            case None => Failure( s"Error while fetching last version of technique ${techniqueName}")
+            case None => Failure( s"Error while fetching last version of technique '${techniqueName.value}''")
           }
         }
       case None => Failure("techniqueName should not be empty")
@@ -520,7 +520,7 @@ final case class RestExtractorService (
           case Some(version) =>
             techniqueRepository.getTechniqueVersions(techniqueName).find(_ == version) match {
               case Some(version) => Full(Some(version))
-              case None => Failure(s" version ${version} of Technique ${techniqueName}  is not valid")
+              case None => Failure(s" version '${version.displayPath}' of technique '${techniqueName.value}' is not valid")
             }
           case None => Full(None)
      }
