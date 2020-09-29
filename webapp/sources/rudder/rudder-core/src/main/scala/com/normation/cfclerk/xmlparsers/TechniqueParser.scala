@@ -53,9 +53,9 @@ import scala.xml._
  */
 
 class TechniqueParser(
-    variableSpecParser           : VariableSpecParser
-  , sectionSpecParser            : SectionSpecParser
-  , systemVariableSpecService    : SystemVariableSpecService
+    variableSpecParser        : VariableSpecParser
+  , sectionSpecParser         : SectionSpecParser
+  , systemVariableSpecService : SystemVariableSpecService
 ) extends NamedZioLogger {
 
   def loggerName = "technique-parser"
@@ -280,7 +280,7 @@ class TechniqueParser(
 
     //the default out path for a template with name "name" is "techniqueName/techniqueVersion/name".defaultAgentExtension
     //note: by convention, the template name for DSC agent already contains the .ps1
-    def defaultOutPath(name: String) = s"${techniqueId.displayPath}/${name}${if(isTemplate) agentType.map(_.defaultPolicyExtension).getOrElse("") else ""}"
+    def defaultOutPath(name: String) = s"${techniqueId.serialize}/${name}${if(isTemplate) agentType.map(_.defaultPolicyExtension).getOrElse("") else ""}"
 
     val outPath = (xml \ PROMISE_TEMPLATE_OUTPATH).text match {
       case "" => None

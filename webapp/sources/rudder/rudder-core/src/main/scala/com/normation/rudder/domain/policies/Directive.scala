@@ -88,9 +88,23 @@ final case class DirectiveId(value : String) extends AnyVal
 
 // there is a lot of place that need that as the real identifier of a directive
 final case class DirectiveRId(id: DirectiveId, revId: Option[RevId] = None) {
-  def show: String = revId match {
+  def show: String = serialize
+
+  def serialize: String = revId match {
     case None    => id.value
     case Some(r) => s"${id.value}+${r.value}"
+  }
+}
+
+object DirectiveRId {
+
+  // parse a directiveId which was serialize by "id.serialize"
+  def parse(s: String) : Either[String, DirectiveRId] = {
+    s.split("\\+").toList match {
+      case id :: Nil          => Right(DirectiveRId(DirectiveId(id), None))
+      case id :: revId :: Nil => Right(DirectiveRId(DirectiveId(id), Some(RevId(revId))))
+      case _                  => Left(s"Error when parsing '${s}' as a directive id. At most one '+' is authorized.")
+    }
   }
 }
 

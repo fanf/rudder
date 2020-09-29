@@ -461,7 +461,7 @@ final case class RestDataSerializerImpl (
         val name :JValue             = diff.modName.map(displaySimpleDiff(_) ).getOrElse(initialState.name)
         val shortDescription :JValue = diff.modShortDescription.map(displaySimpleDiff(_)).getOrElse(initialState.shortDescription)
         val longDescription :JValue  = diff.modLongDescription.map(displaySimpleDiff(_)).getOrElse(initialState.longDescription)
-        val techniqueVersion :JValue = diff.modTechniqueVersion.map(displaySimpleDiff(_)(_.displayPath)).getOrElse(initialState.techniqueVersion.displayPath)
+        val techniqueVersion :JValue = diff.modTechniqueVersion.map(displaySimpleDiff(_)(_.serialize)).getOrElse(initialState.techniqueVersion.serialize)
         val priority :JValue         = diff.modPriority.map(displaySimpleDiff(_)).getOrElse(initialState.priority)
         val enabled :JValue          = diff.modIsActivated.map(displaySimpleDiff(_)).getOrElse(initialState.isEnabled)
         val initialParams :JValue    = serializeSectionVal(SectionVal.directiveValToSectionVal(initialRootSection, initialState.parameters))
@@ -547,7 +547,7 @@ final case class RestDataSerializerImpl (
 
   def serializeTechnique(technique:FullActiveTechnique): JValue = {
     (   ( "name"     -> technique.techniqueName.value )
-      ~ ( "versions" ->  technique.techniques.map(_._1.displayPath ) )
+      ~ ( "versions" ->  technique.techniques.map(_._1.serialize ))
     )
   }
 

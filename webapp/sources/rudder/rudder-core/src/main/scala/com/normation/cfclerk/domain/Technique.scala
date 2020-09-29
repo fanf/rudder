@@ -58,9 +58,9 @@ final case class TechniqueName(value: String) extends AnyVal with Ordered[Techni
  */
 final case class TechniqueId(name: TechniqueName, version: TechniqueVersion) extends Ordered[TechniqueId] {
   // intented for debug/log, not serialization
-  def show = displayPath
+  def show = serialize
   // a technique
-  def displayPath = name.value + "/" + version.displayPath
+  def serialize = name.value + "/" + version.serialize
   def withDefaultRevId = TechniqueId(name, version.withDefaultRevId)
 
   override def compare(that: TechniqueId): Int = {

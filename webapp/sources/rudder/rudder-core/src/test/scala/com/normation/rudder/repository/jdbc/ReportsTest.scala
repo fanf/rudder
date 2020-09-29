@@ -45,15 +45,13 @@ import com.normation.rudder.domain.reports.Reports
 import com.normation.rudder.db.DBCommon
 import com.normation.rudder.reports.execution.AgentRun
 import com.normation.rudder.reports.execution.AgentRunId
-
 import org.joda.time.DateTime
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-
 import doobie.implicits._
 import cats.implicits._
-
 import com.normation.rudder.db.DB
+import com.normation.rudder.domain.policies.DirectiveRId
 import zio.interop.catz._
 
 
@@ -76,7 +74,7 @@ class ReportsTest extends DBCommon {
 
   implicit def toReport(t:(DateTime,String, String, String, Int, String, String, DateTime, String, String)) = {
     implicit def toRuleId(s:String) = RuleId(s)
-    implicit def toDirectiveId(s: String) = DirectiveId(s)
+    implicit def toDirectiveId(s: String) = DirectiveRId(DirectiveId(s))
     implicit def toNodeId(s: String) = NodeId(s)
 
     Reports(t._1, t._2, t._3,t._4,t._5,t._6,t._7,t._8,t._9,t._10)

@@ -100,14 +100,23 @@ final case class FullActiveTechnique(
   /*
    * Add some direcives for some technique, and only keep directives whose id/revision is in `keep`.
    */
-  // TODO : add List[(techniqueVersion, technique)]
-  def addAndFilter(addDirectives: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechnique = {
+  def addAndFilterDirectives(addDirectives: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechnique = {
     val ids = directives.map(_.rid)
+    // don't add a directive if it's already in directive list
     val d2 = addDirectives.collect { case (t, d) if (t == techniqueName && !ids.contains(d.rid)) => d } ::: directives
     val d3 = d2.filter(d => keep.contains(d.rid))
     val v2 = d3.map(_.techniqueVersion).toSet
     def predicate(pair: (TechniqueVersion, Any)): Boolean = v2.contains(pair._1)
     this.copy(directives = d3, techniques = techniques.filter(predicate), acceptationDatetimes = acceptationDatetimes.filter(predicate))
+  }
+  def addTechniques(addTechniques: List[Technique]): FullActiveTechnique = {
+    val here = addTechniques.filter(_.id.name == techniqueName)
+    //I don't see any reasonable value for acceptation date of past technique. It needs to be in the past and
+    //must not change from generation to the next, so => Epoch.
+    this.copy(
+        techniques = techniques ++ here.map(t => (t.id.version, t))
+      , acceptationDatetimes = acceptationDatetimes ++ here.map(t => (t.id.version, new DateTime(0)))
+    )
   }
 }
 
@@ -154,17 +163,23 @@ final case class FullActiveTechniqueCategory(
   /*
    * Add given directive (if not already defined) and filter lib to only keep ids
    */
-  def addAndFilter(add: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechniqueCategory = {
+  def addAndFilterDirectives(add: List[(TechniqueName, Directive)], keep: Set[DirectiveRId]): FullActiveTechniqueCategory = {
     val subCats = subCategories.flatMap { s =>
-      val s2 = s.addAndFilter(add, keep)
+      val s2 = s.addAndFilterDirectives(add, keep)
       if(s2.subCategories.isEmpty && s2.activeTechniques.isEmpty) Nil
       else List(s2)
     }
     val ats = activeTechniques.flatMap { at =>
-      val at2 = at.addAndFilter(add, keep)
+      val at2 = at.addAndFilterDirectives(add, keep)
       if(at2.directives.isEmpty) Nil
       else List(at2)
     }
+    this.copy(subCategories = subCats, activeTechniques = ats)
+  }
+
+  def addTechniques(add: List[Technique]): FullActiveTechniqueCategory = {
+    val subCats = subCategories.map(_.addTechniques(add))
+    val ats = activeTechniques.map( _.addTechniques(add))
     this.copy(subCategories = subCats, activeTechniques = ats)
   }
 }

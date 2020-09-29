@@ -195,7 +195,7 @@ class DirectiveEditForm(
     val versionSelect = if (isADirectiveCreation) {
       <div id="version" class="row wbBaseField form-group">
         <label for="version" class="col-xs-12 wbBaseFieldLabel"><span class="text-fit"><b>Technique version</b></span></label>
-        <div  class="col-xs-12"><input  name="version" class="form-control" readonly="" value={directive.techniqueVersion.displayPath}/></div>
+        <div  class="col-xs-12"><input  name="version" class="form-control" readonly="" value={directive.techniqueVersion.serialize}/></div>
       </div>
      } else { directiveVersion.toForm_! }
     val currentVersion = showDeprecatedVersion(directive.techniqueVersion)
@@ -487,7 +487,7 @@ class DirectiveEditForm(
       case Some(_) => "(deprecated)"
       case None => ""
     }
-    s"${version.displayPath} ${deprecationInfo}"
+    s"${version.serialize} ${deprecationInfo}"
   }
   private[this] val globalOverrideText = globalMode.overridable match {
     case Always  =>

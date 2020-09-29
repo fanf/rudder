@@ -261,7 +261,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
       case Some((fullActiveTechnique,version)) =>
         fullActiveTechnique.techniques.get(version) match {
           case None =>
-            val m = s"There was an error when trying to read version ${version.toString} of the Technique." +
+            val m = s"There was an error when trying to read version ${version.show} of the Technique." +
                  "This is bad. Please check if that version exists on the filesystem and is correctly registered in the Technique Library."
 
             logger.error(m)
@@ -286,7 +286,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
              fullActiveTechnique.acceptationDatetimes.get(v) match {
                case Some(timeStamp) => Some((v, t, timeStamp))
                case None =>
-                 logger.error("Inconsistent Technique version state for Technique with ID '%s' and its version '%s': ".format(fullActiveTechnique.techniqueName, v.toString) +
+                 logger.error("Inconsistent Technique version state for Technique with ID '%s' and its version '%s': ".format(fullActiveTechnique.techniqueName, v.show) +
                          "that version was not correctly registered into Rudder and can not be use for now.")
                  logger.info("A workaround is to remove that version manually from Rudder (move the directory for that version of the Technique out " +
                          "of your configuration-repository directory (for example in /tmp) and 'git commit' the modification), " +
@@ -325,7 +325,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
                  <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
                  This Technique is disabled.
 
-                 <a class="btn btn-sm btn-default" href={s"/secure/administration/techniqueLibraryManagement/#${fullActiveTechnique.techniqueName}"}>Edit Technique</a>
+                 <a class="btn btn-sm btn-default" href={s"/secure/administration/techniqueLibraryManagement/#${fullActiveTechnique.techniqueName.value}"}>Edit Technique</a>
                </div>
              else NodeSeq.Empty
            } &
@@ -391,7 +391,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
         AnonFunc("",ajax)
       }
       JsObj(
-          ( "version"             -> v.toString          )
+          ( "version"             -> v.serialize         )
         , ( "isDeprecated"        -> isDeprecated        )
         , ( "deprecationMessage"  -> deprecationMessage  )
         , ( "acceptationDate"     -> acceptationDate     )
@@ -441,13 +441,13 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
                         directive.id
                       , ModificationId(RudderConfig.stringUuidGenerator.newUuid)
                       , CurrentUser.actor
-                      , Some(s"Deleting directive '${directive.name}' (${directive.id}) because its Technique isn't available anymore").toBox
+                      , Some(s"Deleting directive '${directive.name}' (${directive.rid.show}) because its Technique isn't available anymore").toBox
                     ).toBox match {
                       case Full(diff)   =>
                         currentDirectiveSettingForm.set(Empty)
                         Replace(htmlId_policyConf, showDirectiveDetails) & JsRaw("""createTooltip();""") & onRemoveSuccessCallBack()
                       case eb: EmptyBox =>
-                        val msg = (eb ?~! s"Error when trying to delete directive '${directive.name}' (${directive.id})").messageChain
+                        val msg = (eb ?~! s"Error when trying to delete directive '${directive.name}' (${directive.rid.show})").messageChain
                         //redisplay this form with the new error
                         currentDirectiveSettingForm.set(Failure(msg))
                         Replace(htmlId_policyConf, showDirectiveDetails) & JsRaw("""createTooltip();""")
@@ -479,7 +479,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
     configService.rudder_global_policy_mode().toBox match {
       case Full(globalMode) =>
         val allDefaults = techniqueRepository.getTechniquesInfo.directivesDefaultNames
-        val directiveDefaultName = allDefaults.get(technique.id.toString).orElse(allDefaults.get(technique.id.name.value)).getOrElse(technique.name)
+        val directiveDefaultName = allDefaults.get(technique.id.serialize).orElse(allDefaults.get(technique.id.name.value)).getOrElse(technique.name)
         val directive =
           Directive(
               DirectiveId(uuidGen.newUuid)
@@ -604,7 +604,8 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
             )
           case None =>
             // no version ! propose deletion to the directive along with an error message.
-            val msg = s"Can not display directive edit form: missing information about technique with name='${activeTechnique.techniqueName}' and version='${directive.techniqueVersion}'"
+            val msg = s"Can not display directive edit form: missing information about technique with " +
+                      s"name='${activeTechnique.techniqueName.value}' and version='${directive.techniqueVersion.show}'"
             logger.warn(msg)
             currentDirectiveSettingForm.set(Failure(msg, Full(MissingTechniqueException(directive)), Empty))
         }

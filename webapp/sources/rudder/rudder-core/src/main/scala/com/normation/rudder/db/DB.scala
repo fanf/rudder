@@ -112,7 +112,7 @@ final object DB {
 
   def insertReports(reports: List[com.normation.rudder.domain.reports.Reports]): ConnectionIO[Int] = {
     val dbreports = reports.map { r =>
-      DB.Reports[Unit]((), r.executionDate, r.nodeId.value, r.directiveId.value, r.ruleId.value, r.serial
+      DB.Reports[Unit]((), r.executionDate, r.nodeId.value, r.directiveRId.serialize, r.ruleId.value, r.serial
                       , r.component, r.keyValue, r.executionTimestamp, r.severity, "policy", r.message)
     }
 
@@ -294,7 +294,7 @@ final case class SerializedRules[T](
               at.techniqueName.value,
               technique.name,
               Opt(technique.description),
-              directive.techniqueVersion.displayPath,
+              directive.techniqueVersion.serialize,
               DateTime.now(), None )
     }
 

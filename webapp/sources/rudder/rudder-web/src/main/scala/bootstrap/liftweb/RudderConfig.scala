@@ -110,6 +110,7 @@ import com.normation.rudder.reports.execution._
 import com.normation.rudder.repository._
 import com.normation.rudder.repository.jdbc._
 import com.normation.rudder.repository.ldap._
+import com.normation.rudder.repository.xml.GitParseTechniqueLibrary
 import com.normation.rudder.repository.xml._
 import com.normation.rudder.rest.RestExtractorService
 import com.normation.rudder.rest._
@@ -1188,7 +1189,17 @@ object RudderConfig extends Loggable {
   // private implementation as long as they conform to interface.
   //
 
-  lazy val configurationRepository = new ConfigurationRepositoryImpl(roLdapDirectiveRepository, parseActiveTechniqueLibrary)
+  lazy val configurationRepository = new ConfigurationRepositoryImpl(
+      roLdapDirectiveRepository
+    , techniqueRepository
+    , parseActiveTechniqueLibrary
+    , new GitParseTechniqueLibrary(
+        techniqueParser
+      , gitRepo
+      , "techniques"
+      , "metadata.xml"
+    )
+  )
 
   private[this] lazy val roLDAPApiAccountRepository = new RoLDAPApiAccountRepository(
       rudderDitImpl
@@ -1967,7 +1978,7 @@ object RudderConfig extends Loggable {
       , ldapEntityMapper
   )
 
-  private[this] lazy val logDisplayerImpl: LogDisplayer = new LogDisplayer(reportsRepositoryImpl, roLdapDirectiveRepository, roLdapRuleRepository)
+  private[this] lazy val logDisplayerImpl: LogDisplayer = new LogDisplayer(reportsRepositoryImpl, configurationRepository, roLdapRuleRepository)
   private[this] lazy val categoryHierarchyDisplayerImpl: CategoryHierarchyDisplayer = new CategoryHierarchyDisplayer()
   private[this] lazy val dyngroupUpdaterBatch: UpdateDynamicGroups = new UpdateDynamicGroups(
       dynGroupServiceImpl

@@ -226,7 +226,7 @@ class RuleValServiceTest extends Specification {
       val vars = PolicyVars(draft.id, draft.policyMode, draft.originalVariables, draft.originalVariables, draft.trackerVariable)
 
       val pt = PolicyTechnique.forAgent(draft.technique, AgentType.CfeCommunity).getOrElse(throw new RuntimeException("Test must not throws"))
-      val components = RuleExpectedReportBuilder.componentsFromVariables(pt, draft.id.directiveId, vars)
+      val components = RuleExpectedReportBuilder.componentsFromVariables(pt, draft.id.directiveRId, vars)
 
       "return a seq of two components" in {
         components.size === 2

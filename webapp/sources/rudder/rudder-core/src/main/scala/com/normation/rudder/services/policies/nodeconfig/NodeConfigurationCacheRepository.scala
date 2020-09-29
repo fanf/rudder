@@ -38,7 +38,6 @@
 package com.normation.rudder.services.policies.nodeconfig
 
 import com.normation.cfclerk.domain.TechniqueVersion
-import com.normation.cfclerk.domain.TechniqueVersionFormatException
 import com.normation.inventory.domain.NodeId
 import com.normation.ldap.sdk.LDAPConnectionProvider
 import com.normation.ldap.sdk.LDAPEntry
@@ -51,7 +50,6 @@ import net.liftweb.common.Full
 import net.liftweb.common.Loggable
 import org.joda.time.DateTime
 import com.normation.cfclerk.domain.Variable
-import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.services.policies.PolicyId
 import com.normation.rudder.services.policies.Policy
@@ -62,11 +60,11 @@ import cats.implicits._
 import org.joda.time.format.ISODateTimeFormat
 
 import scala.util.control.NonFatal
-
 import zio._
 import zio.syntax._
 import com.normation.errors._
 import com.normation.box._
+import com.normation.rudder.domain.policies.DirectiveRId
 
 final case class PolicyHash(
     draftId   : PolicyId
@@ -123,7 +121,7 @@ object NodeConfigurationHash {
     compactRender(
       (
         ("i" -> JArray(List(hash.id.value, hash.writtenDate.toString(ISODateTimeFormat.dateTime()), hash.nodeInfoHash, hash.parameterHash, hash.nodeContextHash)))
-      ~ ("p" -> JArray(hash.policyHash.toList.map(p => JArray(List(p.draftId.ruleId.value, p.draftId.directiveId.value, p.draftId.techniqueVersion.toString, p.cacheValue)))))
+      ~ ("p" -> JArray(hash.policyHash.toList.map(p => JArray(List(p.draftId.ruleId.value, p.draftId.directiveRId.serialize, p.draftId.techniqueVersion.serialize, p.cacheValue)))))
       )
     )
   }
@@ -143,15 +141,11 @@ object NodeConfigurationHash {
 
     def readPolicy(p: JValue) = {
       p match {
-        case JArray(List(JString(ruleId), JString(directiveId), JString(techniqueVerion), JInt(policyHash))) =>
+        case JArray(List(JString(ruleId), JString(directiveRId), JString(techniqueVerion), JInt(policyHash))) =>
           for {
             version <- TechniqueVersion.parse(techniqueVerion).leftMap(err => (err, p))
-            res     <- try {
-                         Right(PolicyHash(PolicyId(RuleId(ruleId), DirectiveId(directiveId), version), policyHash.toInt))
-                       } catch {
-                         case ex: TechniqueVersionFormatException => Left((s"Technique version for policy '${ruleId}@@${directiveId}' was not recognized: ${techniqueVerion}", p))
-                       }
-          } yield res
+            rid     <- DirectiveRId.parse(directiveRId).leftMap(err => (err, p))
+          } yield PolicyHash(PolicyId(RuleId(ruleId), rid, version), policyHash.toInt)
       }
     }
 

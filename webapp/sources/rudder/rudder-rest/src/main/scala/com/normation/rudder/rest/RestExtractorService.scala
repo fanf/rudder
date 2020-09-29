@@ -502,9 +502,9 @@ final case class RestExtractorService (
             techniqueRepository.getTechniqueVersions(techniqueName).find(_ == version) match {
               case Some(version) => techniqueRepository.get(TechniqueId(techniqueName,version)) match {
                 case Some(technique) => Full(technique)
-                case None => Failure(s" Technique '${techniqueName.value}' version '${version.displayPath}' is not a valid Technique")
+                case None => Failure(s" Technique '${techniqueName.value}' version '${version.serialize}' is not a valid Technique")
               }
-              case None => Failure(s" version '${version.displayPath}' of Technique '${techniqueName.value}'  is not valid")
+              case None => Failure(s" version '${version.serialize}' of Technique '${techniqueName.value}'  is not valid")
             }
           case None => techniqueRepository.getLastTechniqueByName(techniqueName) match {
             case Some(technique) => Full(technique)
@@ -520,7 +520,7 @@ final case class RestExtractorService (
           case Some(version) =>
             techniqueRepository.getTechniqueVersions(techniqueName).find(_ == version) match {
               case Some(version) => Full(Some(version))
-              case None => Failure(s" version '${version.displayPath}' of technique '${techniqueName.value}' is not valid")
+              case None => Failure(s" version '${version.serialize}' of technique '${techniqueName.value}' is not valid")
             }
           case None => Full(None)
      }
@@ -773,7 +773,7 @@ final case class RestExtractorService (
       priority         <- extractOneValue(params, "priority")(toInt)
       parameters       <- extractOneValue(params, "parameters")(toDirectiveParam)
       techniqueName    <- extractOneValue(params, "techniqueName")(x => Full(TechniqueName(x)))
-      techniqueVersion <- extractOneValue(params, "techniqueVersion")(x => TechniqueVersion.parse(x).toOption ?~! s"Error parsing '${x}' as a technique version.")
+      techniqueVersion <- extractOneValue(params, "techniqueVersion")(x => TechniqueVersion.parse(x).toBox)
       policyMode       <- extractOneValue(params, "policyMode")(PolicyMode.parseDefault(_).toBox)
       tagsList         <- extractList(params, "tags")(sequence(_)(toTag))
       tags             = tagsList.map(t => Tags(t.toSet))
@@ -852,7 +852,7 @@ final case class RestExtractorService (
       priority         <- extractJsonInt(json,"priority")
       parameters       <- extractJsonDirectiveParam(json)
       techniqueName    <- extractJsonString(json, "techniqueName", x => Full(TechniqueName(x)))
-      techniqueVersion <- extractJsonString(json, "techniqueVersion", x => TechniqueVersion.parse(x).toOption ?~! s"Error parsing '${x}' as a technique version.")
+      techniqueVersion <- extractJsonString(json, "techniqueVersion", x => TechniqueVersion.parse(x).toBox)
       policyMode       <- extractJsonString(json, "policyMode", PolicyMode.parseDefault(_).toBox)
       tags             <- extractTagsFromJson(json \ "tags")  ?~! "Error when extracting Directive tags"
     } yield {

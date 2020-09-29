@@ -40,6 +40,7 @@ package com.normation.rudder.services.reports
 import com.normation.cfclerk.domain.TechniqueVersionHelper
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.rudder.domain.policies.DirectiveRId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports.AggregatedStatusReport
 import com.normation.rudder.domain.reports.DirectiveStatusReport
@@ -67,18 +68,18 @@ class ReportingServiceUtilsTest extends Specification {
   val node2 = NodeId("node2")
   val rule1 = RuleId("rule1")
   val rule2 = RuleId("rule2")
-  val dir1  = DirectiveId("dir1")
-  val dir2  = DirectiveId("dir2")
+  val dir1  = DirectiveRId(DirectiveId("dir1"))
+  val dir2  = DirectiveRId(DirectiveId("dir2"))
 
   val expiration = new DateTime(0) // not used
 
   val noOverrides = Nil
-  def dirReport(id: DirectiveId) = (id, DirectiveStatusReport(id, Map()))
-  def rnReport(nodeId: NodeId, ruleId: RuleId, directives: DirectiveId*) = {
+  def dirReport(id: DirectiveRId) = (id, DirectiveStatusReport(id, Map()))
+  def rnReport(nodeId: NodeId, ruleId: RuleId, directives: DirectiveRId*) = {
     RuleNodeStatusReport(node1, rule1, None, None, directives.map(dirReport _).toMap, expiration)
   }
 
-  def thisOverrideThatOn(overrider: RuleId, overriden: RuleId, directive: DirectiveId) = {
+  def thisOverrideThatOn(overrider: RuleId, overriden: RuleId, directive: DirectiveRId) = {
     OverridenPolicy(
         PolicyId(overriden, directive, TechniqueVersionHelper("1.0")) //this one is
       , PolicyId(overrider, directive, TechniqueVersionHelper("1.0")) //overriden by that one

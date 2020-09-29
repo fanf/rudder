@@ -53,12 +53,13 @@ import com.normation.rudder.services.policies.NodeConfigData
 import com.normation.rudder.services.policies.BoundPolicyDraft
 import org.joda.time.DateTime
 import com.normation.inventory.domain.AgentType
+import com.normation.rudder.domain.policies.DirectiveRId
 
 
 @RunWith(classOf[JUnitRunner])
 class PolicyAgregationTest extends Specification {
   implicit def str2pId(id: String) = TechniqueId(TechniqueName(id), TechniqueVersionHelper("1.0"))
-  implicit def str2PolicyId(id: String) = PolicyId(RuleId("r_"+id), DirectiveId("d_"+id), TechniqueVersionHelper("1.0"))
+  implicit def str2PolicyId(id: String) = PolicyId(RuleId("r_"+id), DirectiveRId(DirectiveId("d_"+id)), TechniqueVersionHelper("1.0"))
 
   def compareValues(expected: Seq[(String, String)], actual1: Seq[String], actual2: Seq[String]) = {
     val actual = actual1.zip(actual2)
@@ -133,7 +134,7 @@ class PolicyAgregationTest extends Specification {
       , false
       , None
       , BundleOrder(id.ruleId.value)
-      , BundleOrder(id.directiveId.value)
+      , BundleOrder(id.directiveRId.serialize)
       , Set()
     )
   }

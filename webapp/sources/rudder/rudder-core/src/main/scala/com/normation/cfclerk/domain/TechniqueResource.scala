@@ -64,7 +64,7 @@ sealed trait TechniqueResourceId {
  * The name must not contain the extension.
  */
 final case class TechniqueResourceIdByName(techniqueId: TechniqueId, name: String) extends TechniqueResourceId {
-    def displayPath: String = techniqueId.displayPath + "/" + name
+    def displayPath: String = techniqueId.serialize + "/" + name
 }
 
 /**

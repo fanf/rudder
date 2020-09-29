@@ -88,6 +88,7 @@ import com.normation.rudder.repository.WoDirectiveRepository
 
 import scala.jdk.CollectionConverters._
 import com.normation.zio._
+import com.normation.box._
 
 trait NcfError extends RudderError {
   def message : String
@@ -390,7 +391,6 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
 
         params <- Control.sequence(method_info.parameters) {
           p =>
-            import  com.normation.box.EitherToBox
             for {
               (_,value) <- Box(method.parameters.find(_._1 == p.id))
               escaped   <- parameterTypeService.translate(value, p.parameterType, AgentType.CfeCommunity).toBox

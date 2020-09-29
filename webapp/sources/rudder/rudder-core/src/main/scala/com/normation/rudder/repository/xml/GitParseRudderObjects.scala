@@ -40,7 +40,12 @@ package com.normation.rudder.repository.xml
 import java.nio.file.Paths
 
 import com.normation.GitVersion.RevId
+import com.normation.cfclerk.domain.Technique
+import com.normation.cfclerk.domain.TechniqueId
+import com.normation.cfclerk.domain.TechniqueName
+import com.normation.cfclerk.domain.TechniqueVersion
 import com.normation.cfclerk.services.GitRepositoryProvider
+import com.normation.cfclerk.xmlparsers.TechniqueParser
 import com.normation.errors.IOResult
 import com.normation.errors._
 import com.normation.rudder.domain.parameters.GlobalParameter
@@ -66,9 +71,9 @@ import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.Repository
 import zio._
 import zio.syntax._
-import com.normation.errors.effectUioUnit
 import com.normation.rudder.domain.logger.ConfigurationLoggerPure
 import com.normation.rudder.domain.policies.DirectiveId
+import com.normation.utils.Version
 import com.softwaremill.quicklens._
 
 final case class GitRootCategory(
@@ -76,6 +81,20 @@ final case class GitRootCategory(
 ) {
   def directoryPath = root + "/"
 }
+
+object GitRootCategory {
+  def getGitDirectoryPath(rootDirectory: String): GitRootCategory = {
+    val root = {
+      val p = rootDirectory.trim
+      if(p.size == 0) ""
+      else if(p.endsWith("/")) p.substring(0, p.size-1)
+      else p
+    }
+
+    GitRootCategory(root)
+  }
+}
+
 // utilities
 trait GitParseCommon[T] {
 
@@ -93,14 +112,7 @@ trait GitParseCommon[T] {
   def getArchiveForRevTreeId(revTreeId:ObjectId): IOResult[T]
 
   def getGitDirectoryPath(rootDirectory: String): GitRootCategory = {
-    val root = {
-      val p = rootDirectory.trim
-      if(p.size == 0) ""
-      else if(p.endsWith("/")) p.substring(0, p.size-1)
-      else p
-    }
-
-    GitRootCategory(root)
+    GitRootCategory.getGitDirectoryPath(rootDirectory)
   }
 }
 
@@ -326,6 +338,62 @@ class GitParseGroupLibrary(
   }
 }
 
+class GitParseTechniqueLibrary(
+    techniqueParser   : TechniqueParser
+  , val repo          : GitRepositoryProvider
+  , libRootDirectory  : String //relative name to git root file
+  , techniqueMetadata : String
+) {
+
+  /**
+   * Get a technique for the specific given revisionId;
+   */
+  def getTechnique(name: TechniqueName, version: Version, revId: RevId): IOResult[Option[Technique]] = {
+    val root = GitRootCategory.getGitDirectoryPath(libRootDirectory).root
+    val id   = TechniqueId(name, TechniqueVersion(version, Some(revId)))
+    (for {
+      _      <- ConfigurationLoggerPure.revision.debug(s"Looking for technique: ${id.show}")
+      treeId <- GitFindUtils.findRevTreeFromRevString(repo.db, revId.value)
+      _      <- ConfigurationLoggerPure.revision.trace(s"Git tree corresponding to revisionId: ${revId.value}: ${treeId.toString}")
+      paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id.withDefaultRevId.serialize}/${techniqueMetadata}"))
+      _      <- ConfigurationLoggerPure.revision.trace(s"Found candidate paths: ${paths}")
+      tech   <- paths.size match {
+                  case 0 =>
+                    ConfigurationLoggerPure.debug(s"Technique ${id.show} not found") *>
+                    None.succeed
+                  case 1 =>
+                    val path = paths.head
+
+                    (for {
+                      t <- loadTechnique(repo.db, treeId, path, id)
+                    } yield {
+                      // we need to correct techniqueId revision to the one we just looked-up.
+                      // (it's normal to not have it serialized)
+                      Some(t.modify(_.id.version.revId).setTo(Some(revId)))
+                    }).tapError(err =>
+                      ConfigurationLoggerPure.revision.debug(s"Impossible to find technique with id/revision: '${id.show}': ${err.fullMsg}.")
+                    )
+                  case _ =>
+                    Unexpected(s"There is more than one technique with ID '${id}' in git: ${paths.mkString(",")}").fail
+                 }
+    } yield {
+      tech
+    }).tapBoth(err => ConfigurationLoggerPure.error(err.fullMsg), _ => ConfigurationLoggerPure.debug(s" -> found it!"))
+  }
+
+
+  def loadTechnique(db: Repository, revTreeId: ObjectId, gitPath: String, id: TechniqueId): IOResult[Technique] = {
+    for {
+      xml <- GitFindUtils.getFileContent(db, revTreeId, gitPath){ inputStream =>
+               ParseXml(inputStream, Some(gitPath)).chainError(s"Error when parsing file '${gitPath}' as XML")
+             }
+      res <- techniqueParser.parseXml(xml, id).toIO.chainError(s"Error when unserializing technique from file '${gitPath}'")
+    } yield {
+      res
+    }
+  }
+}
+
 class GitParseActiveTechniqueLibrary(
     categoryUnserialiser: ActiveTechniqueCategoryUnserialisation
   , uptUnserialiser     : ActiveTechniqueUnserialisation
@@ -342,12 +410,15 @@ class GitParseActiveTechniqueLibrary(
    */
   def getDirective(id: DirectiveId, revId: RevId): IOResult[Option[(ActiveTechnique, Directive)]] = {
     val root = getGitDirectoryPath(libRootDirectory).root
-    for {
+    (for {
       _      <- ConfigurationLoggerPure.revision.debug(s"Looking for directive: ${DirectiveRId(id, Some(revId)).show}")
       treeId <- GitFindUtils.findRevTreeFromRevString(repo.db, revId.value)
-      paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id}.xml"))
+      _      <- ConfigurationLoggerPure.revision.trace(s"Git tree corresponding to revisionId: ${revId.value}: ${treeId.toString}")
+      paths  <- GitFindUtils.listFiles(repo.db, treeId, List(root), List(s"${id.value}.xml"))
+      _      <- ConfigurationLoggerPure.revision.trace(s"Found candidate paths: ${paths}")
       pair   <- paths.size match {
                   case 0 =>
+                    ConfigurationLoggerPure.debug(s"Directive ${DirectiveRId(id, Some(revId)).show} not found") *>
                     None.succeed
                   case 1 =>
                     val path = paths.head
@@ -361,30 +432,29 @@ class GitParseActiveTechniqueLibrary(
                       // (it's normal to not have it serialized. We could perhaps make load
                       val rd = (d
                         .modify(_.revId).setTo(Some(revId))
-                        .modify(_.techniqueVersion).using(v => v.copy(revId = Some(revId)))
+                        // we need to check if the technique version wasn't already frozen
+                        .modify(_.techniqueVersion).using(v => if(v.revId.isEmpty) v.copy(revId = Some(revId)) else v)
                       )
                       Some((at, rd))
-                    }).catchAll(err =>
-                      ConfigurationLoggerPure.revision.debug(s"Impossible to find directive with id/revision: '${DirectiveRId(id, Some(revId))}': ${err.fullMsg}.") *> err.fail
+                    }).tapError(err =>
+                      ConfigurationLoggerPure.revision.debug(s"Impossible to find directive with id/revision: '${DirectiveRId(id, Some(revId)).show}': ${err.fullMsg}.")
                     )
                   case _ =>
                     Unexpected(s"There is more than one directive with ID '${id}' in git: ${paths.mkString(",")}").fail
                  }
     } yield {
       pair
-    }
+    }).tapError(err => ConfigurationLoggerPure.error(err.fullMsg)).tap(_ => ConfigurationLoggerPure.debug(s" -> found it!"))
   }
 
 
   def loadDirective(db: Repository, revTreeId: ObjectId, directiveGitPath: String): IOResult[Directive] = {
     for {
-      _      <- effectUioUnit("load directive...")
       oldXml <- GitFindUtils.getFileContent(db, revTreeId, directiveGitPath){ inputStream =>
                   ParseXml(inputStream, Some(directiveGitPath)).chainError(s"Error when parsing file '${directiveGitPath}' as a directive")
                 }
-      _      <- effectUioUnit("Done!")
       xml    <- xmlMigration.getUpToDateXml(oldXml).toIO
-      res    <- piUnserialiser.unserialise(xml).toIO.chainError(s"Error when unserializing directive for file '${directiveGitPath}'")
+      res    <- piUnserialiser.unserialise(xml).toIO.chainError(s"Error when unserializing directive from file '${directiveGitPath}'")
     } yield {
       res._2
     }

@@ -252,7 +252,7 @@ final case class ChangeLine (
     JsObj (
         ( "nodeName"      -> JsExp.strToJsExp(nodeName.getOrElse(report.nodeId.value)) )
       , ( "message"       -> escapeHTML(report.message) )
-      , ( "directiveName" -> escapeHTML(directiveName.getOrElse(report.directiveId.value)) )
+      , ( "directiveName" -> escapeHTML(directiveName.getOrElse(report.directiveRId.serialize)) )
       , ( "component"     -> escapeHTML(report.component) )
       , ( "value"         -> escapeHTML(report.keyValue) )
       , ( "executionDate" -> DateFormaterService.serialize(report.executionTimestamp ))
@@ -277,7 +277,7 @@ object ChangeLine {
         val lines = for {
           change <- changesOnInterval
           nodeName = allNodeInfos.get(change.nodeId).map (_.hostname)
-          directiveName = directiveLib.allDirectives.get(DirectiveRId(change.directiveId)).map(_._2.name)
+          directiveName = directiveLib.allDirectives.get(change.directiveRId).map(_._2.name)
         } yield {
           ChangeLine(change, nodeName , ruleName, directiveName)
         }
@@ -358,7 +358,7 @@ final case class DirectiveComplianceLine (
         ( "directive"        -> escapeHTML(directive.name)            )
       , ( "id"               -> directive.id.value                    )
       , ( "techniqueName"    -> escapeHTML(techniqueName)             )
-      , ( "techniqueVersion" -> escapeHTML(techniqueVersion.toString) )
+      , ( "techniqueVersion" -> escapeHTML(techniqueVersion.serialize))
       , ( "compliance"       -> jsCompliance(compliance)              )
       , ( "compliancePercent"-> compliance.compliance                 )
       , ( "details"          -> details.json                          )
@@ -491,7 +491,7 @@ object ComplianceData extends Loggable {
       nodeInfo            <- allNodeInfos.get(nodeId)
     } yield {
 
-      val directivesMode = aggregate.directives.keys.map(x => directiveLib.allDirectives.get(DirectiveRId(x)).flatMap(_._2.policyMode)).toSet
+      val directivesMode = aggregate.directives.keys.map(x => directiveLib.allDirectives.get(x).flatMap(_._2.policyMode)).toSet
       val (policyMode,explanation) = ComputePolicyMode.nodeModeOnRule(nodeInfo.policyMode, globalMode)(directivesMode)
 
       val details = getDirectivesComplianceDetails(aggregate.directives.values.toSet, directiveLib, globalMode, ComputePolicyMode.directiveModeOnNode(nodeInfo.policyMode, globalMode))
@@ -536,7 +536,7 @@ object ComplianceData extends Loggable {
       val details = getOverridenDirectiveDetails(overridesByRules.getOrElse(ruleId, Nil), directiveLib, rules) ++
                     getDirectivesComplianceDetails(aggregate.directives.values.toSet, directiveLib, globalMode, ComputePolicyMode.directiveModeOnNode(nodeMode, globalMode))
 
-      val directivesMode = aggregate.directives.keys.map(x => directiveLib.allDirectives.get(DirectiveRId(x)).flatMap(_._2.policyMode)).toSet
+      val directivesMode = aggregate.directives.keys.map(x => directiveLib.allDirectives.get(x).flatMap(_._2.policyMode)).toSet
       val (policyMode,explanation) = ComputePolicyMode.ruleModeOnNode(nodeMode, globalMode)(directivesMode)
       RuleComplianceLine (
           rule
@@ -561,9 +561,9 @@ object ComplianceData extends Loggable {
     val overridesData = for {
       // we don't want to write an overriden directive several time for the same overriding rule/directive.
       over                            <- overrides.groupBy(_.overridenBy).map(_._2.head)
-      (overridenTech , overridenDir)  <- directiveLib.allDirectives.get(DirectiveRId(over.policy.directiveId))
+      (overridenTech , overridenDir)  <- directiveLib.allDirectives.get(over.policy.directiveRId)
       rule                            <- rules.find( _.id == over.overridenBy.ruleId)
-      (overridingTech, overridingDir) <- directiveLib.allDirectives.get(DirectiveRId(over.overridenBy.directiveId))
+      (overridingTech, overridingDir) <- directiveLib.allDirectives.get(over.overridenBy.directiveRId)
     } yield {
       val overridenTechName    = overridenTech.techniques.get(overridenDir.techniqueVersion).map(_.name).getOrElse("Unknown technique")
       val overridenTechVersion = overridenDir.techniqueVersion
@@ -619,7 +619,7 @@ object ComplianceData extends Loggable {
   ) : List[DirectiveComplianceLine] = {
     val directivesComplianceData = for {
       directiveStatus                  <- directivesReport
-      (fullActiveTechnique, directive) <- directiveLib.allDirectives.get(DirectiveRId(directiveStatus.directiveId))
+      (fullActiveTechnique, directive) <- directiveLib.allDirectives.get(directiveStatus.directiveRId)
     } yield {
       val techniqueName    = fullActiveTechnique.techniques.get(directive.techniqueVersion).map(_.name).getOrElse("Unknown technique")
       val techniqueVersion = directive.techniqueVersion

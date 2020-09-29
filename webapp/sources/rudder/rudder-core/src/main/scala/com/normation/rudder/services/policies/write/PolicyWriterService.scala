@@ -38,7 +38,6 @@
 package com.normation.rudder.services.policies.write
 
 import com.normation.cfclerk.domain.TechniqueFile
-import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.domain.TechniqueResourceId
 import com.normation.cfclerk.domain.TechniqueTemplate
 import com.normation.cfclerk.services.TechniqueRepository
@@ -149,6 +148,8 @@ object WriteTimer {
     f <- Ref.make(0L)
   } yield WriteTimer(a, b, c, d, e, f)
 }
+
+final case class ToRead(techniqueId: TechniqueResourceId, agentType: AgentType, outpath: String)
 
 class PolicyWriterServiceImpl(
     techniqueRepository       : TechniqueRepository
@@ -310,7 +311,15 @@ class PolicyWriterServiceImpl(
 
     val interestingNodeConfigs = allNodeConfigs.collect { case (nodeId, nodeConfiguration) if (nodesToWrite.contains(nodeId)) => nodeConfiguration }.toSeq
 
-    val techniqueIds           = interestingNodeConfigs.flatMap( _.getTechniqueIds ).toSet
+    //collect templates and files to read
+    val (templateToRead, fileToRead) = allNodeConfigs.foldLeft((Set.empty[ToRead], Set.empty[ToRead])) { case (current, (_, conf)) =>
+      conf.policies.map(_.technique).foldLeft(current) { case ((templates, files), next) =>
+        (
+            templates ++ next.agentConfig.templates.map(x => ToRead(x.id, next.agentConfig.agentType, x.outPath))
+          , files     ++ next.agentConfig.files.map(    x => ToRead(x.id, next.agentConfig.agentType, x.outPath))
+        )
+      }
+    }
 
     //debug - but don't fails for debugging !
     val logNodeConfigurations = ZIO.when(logNodeConfig.isDebugEnabled) {
@@ -362,8 +371,8 @@ class PolicyWriterServiceImpl(
       // we need for yield that to free all agent specific resources
       _ <- for {
         pair <- for {
-          templates         <- readTemplateFromFileSystem(techniqueIds)
-          resources         <- readResourcesFromFileSystem(techniqueIds)
+          templates         <- readTemplateFromFileSystem(templateToRead.toSeq)
+          resources         <- readResourcesFromFileSystem(fileToRead.toSeq)
           // Clearing cache
           _                 <- IOResult.effect(fillTemplates.clearCache)
           readTemplateTime2 <- currentTimeMillis
@@ -578,7 +587,7 @@ class PolicyWriterServiceImpl(
                        (replaced, dest) = replacedDest
                        t1               <- currentTimeNanos
                        _                <- File(info.newFolder, dest).createParentsAndWrite(replaced).chainError(
-                                               s"Bad format in Technique ${info.id.toString} (file: ${info.destination})"
+                                               s"Bad format in Technique ${info.id.displayPath} (file: ${info.destination})"
                                            )
                        t2               <- currentTimeNanos
                        _                <- writeTimer.writeTemplate.update(_ + t2 - t1)
@@ -676,16 +685,8 @@ class PolicyWriterServiceImpl(
    * for a given resource IDs, you can have different out path for different agent.
    */
   private[this] def readTemplateFromFileSystem(
-      techniqueIds: Set[TechniqueId]
+      templatesToRead: Seq[ToRead]
   )(implicit timeout: Duration, maxParallelism: Int): IOResult[Map[(TechniqueResourceId, AgentType), TechniqueTemplateCopyInfo]] = {
-
-    //list of (template id, template out path)
-    val templatesToRead = for {
-      technique <- techniqueRepository.getByIds(techniqueIds.toSeq)
-      template  <- technique.agentConfigs.flatMap(cfg => cfg.templates.map(t => (t.id, cfg.agentType, t.outPath)))
-    } yield {
-      template
-    }
 
     /*
      * NOTE : this is inefficient and store in a lot of multiple time the same content
@@ -693,7 +694,7 @@ class PolicyWriterServiceImpl(
      */
     for {
       t0  <- currentTimeMillis
-      res <- (parrallelSequence(templatesToRead) { case (templateId, agentType, templateOutPath) =>
+      res <- (parrallelSequence(templatesToRead) { case ToRead(templateId, agentType, templateOutPath) =>
                for {
                  copyInfo <- techniqueRepository.getTemplateContent(templateId) { optInputStream =>
                                optInputStream match {
@@ -725,19 +726,12 @@ class PolicyWriterServiceImpl(
    * for a given resource IDs, you can have different out path for different agent.
    */
   private[this] def readResourcesFromFileSystem(
-     techniqueIds: Set[TechniqueId]
+     staticResourceToRead: Seq[ToRead]
   )(implicit timeout: Duration, maxParallelism: Int): IOResult[Map[(TechniqueResourceId, AgentType), TechniqueResourceCopyInfo]] = {
-
-    val staticResourceToRead = for {
-      technique      <- techniqueRepository.getByIds(techniqueIds.toSeq)
-      staticResource <- technique.agentConfigs.flatMap(cfg => cfg.files.map(t => (t.id, cfg.agentType, t.outPath)))
-    } yield {
-      staticResource
-    }
 
     for {
       t0  <- currentTimeMillis
-      res <- (parrallelSequence(staticResourceToRead) { case (templateId, agentType, templateOutPath) =>
+      res <- (parrallelSequence(staticResourceToRead) { case ToRead(templateId, agentType, templateOutPath) =>
                for {
                  copyInfo <- techniqueRepository.getFileContent(templateId) { optInputStream =>
                                optInputStream match {
@@ -769,15 +763,15 @@ class PolicyWriterServiceImpl(
     val csvContent = for {
       policy <- policies.sortBy(_.directiveOrder.value)
     } yield {
-      ( policy.id.directiveId.value ::
-        policy.policyMode.getOrElse(policyMode.mode).name ::
-        policy.technique.generationMode.name ::
-        policy.technique.agentConfig.runHooks.nonEmpty ::
-        policy.technique.id.name ::
-        policy.technique.id.version ::
-        policy.technique.isSystem ::
-        policy.directiveOrder.value ::
-        Nil
+      (policy.id.directiveRId.serialize ::
+       policy.policyMode.getOrElse(policyMode.mode).name ::
+       policy.technique.generationMode.name ::
+       policy.technique.agentConfig.runHooks.nonEmpty ::
+       policy.technique.id.name.value ::
+       policy.technique.id.version.serialize ::
+       policy.technique.isSystem ::
+       policy.directiveOrder.value ::
+       Nil
       ).mkString("\"","\",\"","\"")
 
     }
@@ -945,11 +939,11 @@ class PolicyWriterServiceImpl(
     }
 
     resources.get((file.id, agentType)) match {
-      case None    => Unexpected(s"Can not open the technique resource file ${file.id} for reading").fail
+      case None    => Unexpected(s"Can not open the technique resource file ${file.id.displayPath} for reading").fail
       case Some(s) =>
         for {
           _ <- destination.createParentsAndWrite(s.content).chainError(
-                 s"Error when copying technique resoure file '${file.id}' to '${destination.pathAsString}'"
+                 s"Error when copying technique resoure file '${file.id.displayPath}' to '${destination.pathAsString}'"
                )
         } yield {
           destination.pathAsString

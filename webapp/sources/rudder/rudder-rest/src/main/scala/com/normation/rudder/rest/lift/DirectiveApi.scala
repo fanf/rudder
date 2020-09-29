@@ -313,7 +313,7 @@ class DirectiveAPIService2 (
     for {
       name            <- Box(restDirective.name) ?~! s"Directive name is not defined in request data."
       technique       <- restExtractor.extractTechnique(restDirective.techniqueName, restDirective.techniqueVersion)  ?~! s"Technique is not correctly defined in request data."
-      activeTechnique <- readDirective.getActiveTechnique(technique.id.name).notOptional(s"Technique '${technique.id.displayPath}' cannot be found.").toBox
+      activeTechnique <- readDirective.getActiveTechnique(technique.id.name).notOptional(s"Technique '${technique.id.serialize}' cannot be found.").toBox
       baseDirective   =  Directive(directiveId, None, technique.id.version,Map(),name,"",None, _isEnabled = true)
       result          =  actualDirectiveCreation(restDirective,baseDirective,activeTechnique,technique) _
     } yield {
@@ -369,7 +369,7 @@ class DirectiveAPIService2 (
                             } else {
                               Box(techniqueRepository.get(updatedTechniqueId))
                             }
-                          ) ?~ s"Could not find technique ${updatedTechniqueId.name.value} with version ${updatedTechniqueId.version.displayPath}."
+                          ) ?~ s"Could not find technique ${updatedTechniqueId.name.value} with version ${updatedTechniqueId.version.serialize}."
 
        updatedDirective = restDirective.updateDirective(oldDirective)
        // Check parameters of the new Directive with the current technique version, It will check that parameters are ok with the new technique

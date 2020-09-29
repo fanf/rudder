@@ -743,7 +743,7 @@ final case class ContextForNoAnswer(
           RunComplianceInfo.PolicyModeError.AgentAbortMessage(r.keyValue, r.message)
       }.toSet
       val mixed = ruleNodeStatusReports.collect { case r => r.directives.collect { case (_, d) if (d.compliance.badPolicyMode > 0) =>
-        RunComplianceInfo.PolicyModeError.TechniqueMixedMode(s"Error for node '${nodeId.value}' in directive '${d.directiveId.value}': either that directive is"+
+        RunComplianceInfo.PolicyModeError.TechniqueMixedMode(s"Error for node '${nodeId.value}' in directive '${d.directiveRId.show}': either that directive is"+
             " not sending the correct Policy Mode reports (for example Enforce reports in place of Audit one - does the directive's Technique is up-to-date?)"+
             " or at least one other directive on that node based on the same Technique sends reports for a different Policy Mode")
       }.toSet }.flatten
@@ -824,7 +824,7 @@ final case class ContextForNoAnswer(
 
                                    val reportsForThatNodeRule: Seq[ResultReports] = reportsPerRule.getOrElse(ruleId, Seq[ResultReports]())
 
-                                   val reports = reportsForThatNodeRule.groupBy(x => (x.directiveId, x.component) )
+                                   val reports = reportsForThatNodeRule.groupBy(x => (x.directiveRId, x.component) )
 
                                    val expectedComponents = (for {
                                      directive  <- directives
@@ -920,7 +920,7 @@ final case class ContextForNoAnswer(
         if (missing.nonEmpty || unexpected.nonEmpty) {
           DirectiveStatusReport.merge(expected ++ missing ++ unexpected)
         } else {
-          expected.map( dir => (dir.directiveId, dir)).toMap
+          expected.map( dir => (dir.directiveRId, dir)).toMap
         }
       }
       (
@@ -998,7 +998,7 @@ final case class ContextForNoAnswer(
         , ruleId
         , mergeInfo.run
         , mergeInfo.configId
-        , seq.groupBy(_.directiveId).map{ case (directiveId, reportsByDirectives) =>
+        , seq.groupBy(_.directiveRId).map{ case (directiveId, reportsByDirectives) =>
           (directiveId, DirectiveStatusReport(directiveId, reportsByDirectives.groupBy(_.component).map { case (component, reportsByComponents) =>
             (component, ComponentStatusReport(component, reportsByComponents.groupBy(_.keyValue).map { case (keyValue, reportsByComponent) =>
               (keyValue, ComponentValueStatusReport(keyValue, keyValue, reportsByComponent.map(r => MessageStatusReport(ReportType.Unexpected, r.message)).toList))
@@ -1014,7 +1014,7 @@ final case class ContextForNoAnswer(
    */
   private[this] def buildUnexpectedDirectives(reports: Seq[Reports]): Seq[DirectiveStatusReport] = {
     reports.map { r =>
-      DirectiveStatusReport(r.directiveId, Map(r.component ->
+      DirectiveStatusReport(r.directiveRId, Map(r.component ->
         ComponentStatusReport(r.component, Map(r.keyValue ->
           ComponentValueStatusReport(r.keyValue, r.keyValue, MessageStatusReport(ReportType.Unexpected, r.message) :: Nil)
         )))

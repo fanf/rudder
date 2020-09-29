@@ -171,7 +171,7 @@ class HistorizationServiceImpl(
     val directives = directiveLib.allDirectives.flatMap { case (did, (fullActiveTechnique, directive)) =>
       fullActiveTechnique.techniques.get(directive.techniqueVersion) match {
         case None =>
-          HistorizationLogger.error(s"Could not find version ${directive.techniqueVersion} for Technique with name ${fullActiveTechnique.techniqueName} for Directive ${directive.id.value}")
+          HistorizationLogger.error(s"Could not find version '${directive.techniqueVersion.show}' for Technique with name ${fullActiveTechnique.techniqueName.value} for Directive ${directive.id.value}")
           None
         case Some(t) => Some((did, (t, fullActiveTechnique, directive)))
       }

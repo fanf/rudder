@@ -62,9 +62,9 @@ final case class TechniqueVersion(version: Version, revId: Option[RevId] = None)
   def withDefaultRevId = TechniqueVersion(version)
 
   // intended for debug
-  def show = displayPath
+  def show = serialize
   // for serialisation on path
-  def displayPath = revId.fold(
+  def serialize = revId.fold(
     version.toVersionString
   )(
     r => version.toVersionString + "+" + r.value
@@ -74,12 +74,15 @@ final case class TechniqueVersion(version: Version, revId: Option[RevId] = None)
 
 object TechniqueVersion {
 
-  def authorizedChar = """[.0-9]+""".r.pattern
-
   /*
    * A technique version is *much* simpler than a full blown version.
    * We can only have: a.b.c.etc+commitId
+   *
+   * NOTE: it seems that in existing env, sometimes epoch was written when it should
+   * not have. So we must accept also leading number+":".
    */
+  def authorizedChar = """([0-9]:)*[.0-9]+""".r.pattern
+  
   def parse(value: String): Either[String, TechniqueVersion] = {
     val (v, revId) = {
       val parts = value.split("\\+")

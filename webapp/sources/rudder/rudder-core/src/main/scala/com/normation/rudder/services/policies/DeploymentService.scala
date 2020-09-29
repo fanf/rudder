@@ -1395,10 +1395,10 @@ object RuleExpectedReportBuilder extends Loggable {
         // As we flattened previously, we only need/want "head"
         val pvar = policy.policyVars.head
         DirectiveExpectedReports(
-            pvar.policyId.directiveId
+            pvar.policyId.directiveRId
           , pvar.policyMode
           , policy.technique.isSystem
-          , componentsFromVariables(policy.technique, policy.id.directiveId, pvar)
+          , componentsFromVariables(policy.technique, policy.id.directiveRId, pvar)
         )
       }
 
@@ -1406,7 +1406,7 @@ object RuleExpectedReportBuilder extends Loggable {
     }.toList
   }
 
-  def componentsFromVariables(technique: PolicyTechnique, directiveId: DirectiveId, vars: PolicyVars) : List[ComponentExpectedReport] = {
+  def componentsFromVariables(technique: PolicyTechnique, directiveRId: DirectiveRId, vars: PolicyVars) : List[ComponentExpectedReport] = {
 
     // Computes the components values, and the unexpanded component values
     val getTrackingVariableCardinality : (Seq[String], Seq[String]) = {
@@ -1415,19 +1415,19 @@ object RuleExpectedReportBuilder extends Loggable {
       (vars.expandedVars.get(boundingVar), vars.originalVars.get(boundingVar)) match {
         case (None, None) =>
           PolicyGenerationLogger.debug("Could not find the bounded variable %s for %s in ParsedPolicyDraft %s".format(
-              boundingVar, vars.trackerVariable.spec.name, directiveId.value))
+              boundingVar, vars.trackerVariable.spec.name, directiveRId.serialize))
           (Seq(DEFAULT_COMPONENT_KEY),Seq()) // this is an autobounding policy
         case (Some(variable), Some(originalVariables)) if (variable.values.size==originalVariables.values.size) =>
           (variable.values, originalVariables.values)
         case (Some(variable), Some(originalVariables)) =>
           PolicyGenerationLogger.warn("Expanded and unexpanded values for bounded variable %s for %s in ParsedPolicyDraft %s have not the same size : %s and %s".format(
-              boundingVar, vars.trackerVariable.spec.name, directiveId.value,variable.values, originalVariables.values ))
+              boundingVar, vars.trackerVariable.spec.name, directiveRId.serialize,variable.values, originalVariables.values ))
           (variable.values, originalVariables.values)
         case (None, Some(originalVariables)) =>
           (Seq(DEFAULT_COMPONENT_KEY),originalVariables.values) // this is an autobounding policy
         case (Some(variable), None) =>
           PolicyGenerationLogger.warn("Somewhere in the expansion of variables, the bounded variable %s for %s in ParsedPolicyDraft %s appeared, but was not originally there".format(
-              boundingVar, vars.trackerVariable.spec.name, directiveId.value))
+              boundingVar, vars.trackerVariable.spec.name, directiveRId.serialize))
           (variable.values,Seq()) // this is an autobounding policy
 
       }
@@ -1449,7 +1449,7 @@ object RuleExpectedReportBuilder extends Loggable {
             val unexpandedValues = vars.originalVars.get(varName).map( _.values.toList).getOrElse(Nil)
             if (values.size != unexpandedValues.size)
               PolicyGenerationLogger.warn("Caution, the size of unexpanded and expanded variables for autobounding variable in section %s for directive %s are not the same : %s and %s".format(
-                  section.componentKey, directiveId.value, values, unexpandedValues ))
+                  section.componentKey, directiveRId.serialize, values, unexpandedValues ))
             Some(ComponentExpectedReport(section.name, values, unexpandedValues))
         }
       } else {
@@ -1460,8 +1460,8 @@ object RuleExpectedReportBuilder extends Loggable {
     if(allComponents.isEmpty) {
       //that log is outputed one time for each directive for each node using a technique, it's far too
       //verbose on debug.
-      PolicyGenerationLogger.trace("Technique '%s' does not define any components, assigning default component with expected report = 1 for Directive %s".format(
-        technique.id, directiveId))
+      PolicyGenerationLogger.trace(s"Technique '${technique.id.show}' does not define any components, assigning default component with " +
+                                   s"expected report = 1 for directive ${directiveRId.show}")
 
       val trackingVarCard = getTrackingVariableCardinality
       List(ComponentExpectedReport(technique.id.name.value, trackingVarCard._1.toList, trackingVarCard._2.toList))

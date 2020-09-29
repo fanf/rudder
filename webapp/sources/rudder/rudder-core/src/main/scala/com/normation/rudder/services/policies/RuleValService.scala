@@ -122,7 +122,7 @@ class RuleValServiceImpl(
         Full(None)
       case Some((fullActiveTechnique, directive)) =>
         for {
-          technique <- Box(fullActiveTechnique.techniques.get(directive.techniqueVersion)) ?~! s"Version '${directive.techniqueVersion}' of technique '${fullActiveTechnique.techniqueName}' is not available for directive '${directive.name}' [${directive.id.value}]"
+          technique <- Box(fullActiveTechnique.techniques.get(directive.techniqueVersion)) ?~! s"Version '${directive.techniqueVersion.show}' of technique '${fullActiveTechnique.techniqueName.value}' is not available for directive '${directive.name}' [${directive.id.value}]"
           varSpecs = technique.rootSection.getAllVariables ++ technique.systemVariableSpecs :+ technique.trackerVariableSpec
           vared <- buildVariables(varSpecs, directive.parameters)
           exists <- {
@@ -140,7 +140,7 @@ class RuleValServiceImpl(
             logger.trace(s"Creating a ParsedPolicyDraft '${fullActiveTechnique.techniqueName}' from the ruleId ${ruleId.value}")
 
             Some(ParsedPolicyDraft(
-                PolicyId(ruleId, id.id, technique.id.version)
+                PolicyId(ruleId, id, technique.id.version)
               , ruleName
               , directive.name
               , technique

@@ -76,7 +76,7 @@ object ReportingServiceUtils {
     val toKeep = nodeReports.values.flatMap( _.reports ).filter(_.ruleId == ruleId).toList
     // we don't keep overrides for a directive which is already in "toKeep"
     val toKeepDir = toKeep.map(_.directives.keySet).toSet.flatten
-    val overrides = nodeReports.values.flatMap( _.overrides.filterNot(r => toKeepDir.contains(r.policy.directiveId))).toList.distinct
+    val overrides = nodeReports.values.flatMap( _.overrides.filterNot(r => toKeepDir.contains(r.policy.directiveRId))).toList.distinct
     RuleStatusReport(ruleId, toKeep, overrides)
   }
 }

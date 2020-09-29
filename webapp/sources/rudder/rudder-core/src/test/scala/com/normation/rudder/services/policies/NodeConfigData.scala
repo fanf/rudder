@@ -116,6 +116,7 @@ import com.normation.eventlog.EventActor
 import net.liftweb.common.Full
 import net.liftweb.common.Box
 import com.normation.eventlog.ModificationId
+import com.normation.rudder.domain.policies.DirectiveRId
 import com.normation.rudder.services.servers.PolicyServerManagementService
 import com.normation.rudder.repository.FullNodeGroupCategory
 import org.apache.commons.io.FileUtils
@@ -658,7 +659,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   //root has 4 system directive, let give them some variables
   //
   implicit class UnsafeGet(repo: TechniqueRepositoryImpl) {
-    def unsafeGet(id: TechniqueId) = repo.get(id).getOrElse(throw new RuntimeException(s"Bad init for test: technique '${id.displayPath}' not found"))
+    def unsafeGet(id: TechniqueId) = repo.get(id).getOrElse(throw new RuntimeException(s"Bad init for test: technique '${id.serialize}' not found"))
   }
 
   val commonTechnique = techniqueRepository.unsafeGet(TechniqueId(TechniqueName("common"), TechniqueVersionHelper("1.0")))
@@ -721,7 +722,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   )
 
   def common(nodeId: NodeId, allNodeInfos: Map[NodeId, NodeInfo]) = {
-    val id = PolicyId(RuleId("hasPolicyServer-root"), DirectiveId("common-root"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("hasPolicyServer-root"), DirectiveRId(DirectiveId ("common-root")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "Rudder system policy: basic setup (common)"
@@ -743,7 +744,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   }
 
   val serverRole = {
-    val id = PolicyId(RuleId("server-roles"), DirectiveId("server-roles-directive"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("server-roles"), DirectiveRId(DirectiveId("server-roles-directive")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "Rudder system policy: Server roles"
@@ -765,7 +766,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   }
 
   val distributePolicy = {
-    val id = PolicyId(RuleId("root-DP"), DirectiveId("root-distributePolicy"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("root-DP"), DirectiveRId(DirectiveId("root-distributePolicy")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "distributePolicy"
@@ -786,7 +787,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   val inventoryAll = {
-    val id = PolicyId(RuleId("inventory-all"), DirectiveId("inventory-all"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("inventory-all"), DirectiveRId(DirectiveId("inventory-all")), TechniqueVersionHelper("1.0"))
       draft(
         id
       , "Rudder system policy: daily inventory"
@@ -814,7 +815,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   lazy val clock = {
-    val id = PolicyId(RuleId("rule1"), DirectiveId("directive1"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("rule1"), DirectiveRId(DirectiveId("directive1")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "10. Global configuration for all nodes"
@@ -866,7 +867,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
     , id, "", None, ""
   )
   lazy val rpm = {
-    val id = PolicyId(RuleId("rule2"), DirectiveId("directive2"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("rule2"), DirectiveRId(DirectiveId("directive2")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "50. Deploy PLOP STACK"
@@ -896,7 +897,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   lazy val pkg = {
-    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-0df8d5e8549f"), DirectiveId("16617aa8-1f02-4e4a-87b6-d0bcdfb4019f"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-0df8d5e8549f"), DirectiveRId(DirectiveId("16617aa8-1f02-4e4a-87b6-d0bcdfb4019f")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "60-rule-technique-std-lib"
@@ -928,7 +929,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   lazy val fileTemplate1 = {
-    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-0df8d5e8549f"), DirectiveId("e9a1a909-2490-4fc9-95c3-9d0aa01717c9"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-0df8d5e8549f"), DirectiveRId(DirectiveId("e9a1a909-2490-4fc9-95c3-9d0aa01717c9")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "60-rule-technique-std-lib"
@@ -958,7 +959,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   lazy val fileTemplate2 = {
-    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-0df8d5e8549f"), DirectiveId("99f4ef91-537b-4e03-97bc-e65b447514cc"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-0df8d5e8549f"), DirectiveRId(DirectiveId("99f4ef91-537b-4e03-97bc-e65b447514cc")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "60-rule-technique-std-lib"
@@ -975,7 +976,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
 
   // fileTemplate3 is a copy of fileTemplate2 but provided by an other rule
   lazy val fileTemplate3 = {
-    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-000000000000"), DirectiveId("99f4ef91-537b-4e03-97bc-e65b447514cc"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("ff44fb97-b65e-43c4-b8c2-000000000000"), DirectiveRId(DirectiveId("99f4ef91-537b-4e03-97bc-e65b447514cc")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "99-rule-technique-std-lib"
@@ -1001,7 +1002,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   val ncf1 = {
-    val id = PolicyId(RuleId("208716db-2675-43b9-ab57-bfbab84346aa"), DirectiveId("16d86a56-93ef-49aa-86b7-0d10102e4ea9"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("208716db-2675-43b9-ab57-bfbab84346aa"), DirectiveRId(DirectiveId("16d86a56-93ef-49aa-86b7-0d10102e4ea9")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "50-rule-technique-ncf"
@@ -1043,7 +1044,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
   }
 
   def copyGitFileDirectives(i:Int) = {
-    val id = PolicyId(RuleId("rulecopyGitFile"), DirectiveId(DIRECTIVE_NAME_COPY_GIT_FILE+i), TechniqueVersionHelper("2.3"))
+    val id = PolicyId(RuleId("rulecopyGitFile"), DirectiveRId(DirectiveId(DIRECTIVE_NAME_COPY_GIT_FILE+i)), TechniqueVersionHelper("2.3"))
     draft(
         id
       , "90-copy-git-file"
@@ -1115,7 +1116,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   lazy val gvd1 = {
-    val id = PolicyId(RuleId("rule1"), DirectiveId("directive1"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("rule1"), DirectiveRId(DirectiveId("directive1")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "10. Global configuration for all nodes"
@@ -1139,7 +1140,7 @@ class TestNodeConfiguration(prefixTestResources: String = "") {
      ).map(v => (v.spec.name, v)).toMap
   }
   lazy val gvd2 = {
-    val id = PolicyId(RuleId("rule1"), DirectiveId("directive2"), TechniqueVersionHelper("1.0"))
+    val id = PolicyId(RuleId("rule1"), DirectiveRId(DirectiveId("directive2")), TechniqueVersionHelper("1.0"))
     draft(
         id
       , "10. Global configuration for all nodes"

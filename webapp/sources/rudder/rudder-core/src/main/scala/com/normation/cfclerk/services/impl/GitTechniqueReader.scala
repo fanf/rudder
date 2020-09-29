@@ -322,7 +322,7 @@ class GitTechniqueReader(
 
   override def getMetadataContent[T](techniqueId: TechniqueId)(useIt : Option[InputStream] => IOResult[T]) : IOResult[T] = {
     //build a treewalk with the path, given by metadata.xml
-    val path = techniqueId.displayPath + "/" + techniqueDescriptorName
+    val path = techniqueId.serialize + "/" + techniqueDescriptorName
     //has package id are unique among the whole tree, we are able to find a
     //template only base on the packageId + name.
 
@@ -368,7 +368,7 @@ class GitTechniqueReader(
       val name = techniqueResourceId.name + postfixName.getOrElse("")
       techniqueResourceId match {
         case TechniqueResourceIdByName(tid, _) =>
-          (tid.version.revId, new FileTreeFilter(canonizedRelativePath, s"${tid.withDefaultRevId.displayPath}/${name}"))
+          (tid.version.revId, new FileTreeFilter(canonizedRelativePath, s"${tid.withDefaultRevId.serialize}/${name}"))
         case TechniqueResourceIdByPath(Nil, revId, _) =>
           (revId, new FileTreeFilter(None, name))
         case TechniqueResourceIdByPath(parents, revId, _) =>
@@ -840,11 +840,11 @@ class GitTechniqueReader(
   private[this] def getTechniquePath(techniqueInfos: TechniquesInfo) : Set[(TechniquePath, TechniqueId)] = {
     val set = scala.collection.mutable.Set[(TechniquePath, TechniqueId)]()
     techniqueInfos.rootCategory.techniqueIds.foreach { id =>
-      set += ((TechniquePath( "/" + id.displayPath), id))
+      set += ((TechniquePath( "/" + id.serialize), id))
     }
     techniqueInfos.subCategories.foreach { case (id,cat) =>
       val path = id.toString
-      cat.techniqueIds.foreach { t => set += ((TechniquePath(path + "/" + t.displayPath), t)) }
+      cat.techniqueIds.foreach { t => set += ((TechniquePath(path + "/" + t.serialize), t)) }
     }
     //also add template "by path"
     val techniques = techniqueInfos.techniques.flatMap { case(_, set) => set.map { case(_, t) => t } }

@@ -52,6 +52,7 @@ import com.normation.cfclerk.domain.SectionVariableSpec
 import org.joda.time.DateTime
 import cats.data.NonEmptyList
 import com.normation.cfclerk.domain.TechniqueVersionHelper
+import com.normation.rudder.domain.policies.DirectiveRId
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.domain.reports.ExpectedReportsSerialisation
 import net.liftweb.json._
@@ -115,9 +116,9 @@ class NodeExpectedReportTest extends Specification {
 
   val r1 = RuleId("rule_1")
   val r2 = RuleId("rule_2")
-  val d1 = DirectiveId("directive_1")
-  val d2 = DirectiveId("directive_2")
-  val d3 = DirectiveId("directive_3")
+  val d1 = DirectiveRId(DirectiveId("directive_1"))
+  val d2 = DirectiveRId(DirectiveId("directive_2"))
+  val d3 = DirectiveRId(DirectiveId("directive_3"))
 
   val p1_id = PolicyId(r1, d1, TechniqueVersionHelper("1.0"))
   val p1 = Policy(
