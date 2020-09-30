@@ -748,7 +748,7 @@ class ExecutionBatchTest extends Specification {
     }
 
     "have one detailed rule success directive when we create it with one success report" in {
-      nodeStatus(one).reports.head.directives.head._1 === DirectiveId("policy")
+      nodeStatus(one).reports.head.directives.head._1.serialize === "policy"
     }
 
     "have no detailed rule non-success directive when we create it with one success report" in {

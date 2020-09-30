@@ -208,7 +208,7 @@ object BuildBundleSequence {
    * We don't want to include these technique in the bundle sequence,
    * obviously
    */
-  implicit final class NoBundleTechnique(val bundles: List[TechniqueBundles]) extends AnyVal {
+  implicit final class NoBundleTechnique(private val bundles: List[TechniqueBundles]) extends AnyVal {
     def removeEmptyBundle: List[TechniqueBundles] = bundles.filterNot(_.main.isEmpty)
   }
 }
@@ -238,7 +238,7 @@ class BuildBundleSequence(
 
     // Fetch the policies configured and sort them according to (rules, directives)
 
-    val sortedPolicies = sortPolicies(policies)
+    val sortedPolicies = PolicyOrdering.sort(policies)
 
     // Then builds bundles and inputs:
     // - build list of inputs file to include: all the outPath of templates that should be "included".
@@ -356,34 +356,6 @@ class BuildBundleSequence(
       }
       TechniqueBundles(name, policy.id.directiveRId, policy.technique.id, Nil, bundles, Nil, policy.technique.isSystem, policyMode, policy.technique.useMethodReporting)
     }
-  }
-
-  /*
-   * Sort the techniques according to the order of the associated BundleOrder of Policy.
-   * Sort at best: sort rule then directives, and take techniques on that order, only one time.
-   *
-   * CAREFUL: this method only take care of sorting based on "BundleOrder", other sorting (like
-   * "system must go first") are not taken into account here !
-   */
-  def sortPolicies(
-      policies: List[Policy]
-  ): List[Policy] = {
-    def compareBundleOrder(a: Policy, b: Policy): Boolean = {
-      // We use rule name, then directive name. For same rule name and directive name, we
-      // differentiate on technique id, then on directive id (to keep diff minimal)
-      BundleOrder.compareList(List(a.ruleOrder, a.directiveOrder, BundleOrder(a.id.getRudderUniqueId))
-                            , List(b.ruleOrder, b.directiveOrder, BundleOrder(b.id.getRudderUniqueId))
-      ) <= 0
-    }
-    val sorted = policies.sortWith(compareBundleOrder)
-
-    //some debug info to understand what order was used for each node:
-    // it's *extremelly* versbose, perhaps it should have it's own logger.
-    if(PolicyGenerationLogger.isTraceEnabled) {
-      val logSorted = sorted.map(p => s"${p.technique.id.serialize}: [${p.ruleOrder.value} | ${p.directiveOrder.value}]").mkString("[","][", "]")
-      PolicyGenerationLogger.trace(s"Sorted Technique (and their Rules and Directives used to sort): ${logSorted}")
-    }
-    sorted
   }
 }
 
@@ -575,7 +547,7 @@ final case class JsonRunHook(
 )
 
 object JsonRunHookSer {
-  implicit class ToJson(val h: NodeRunHook) extends AnyVal {
+  implicit class ToJson(private val h: NodeRunHook) extends AnyVal {
     import net.liftweb.json._
     def jsonParam: String = {
       val jh = JsonRunHook(

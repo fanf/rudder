@@ -874,7 +874,7 @@ trait PromiseGeneration_BuildNodeContext {
           case Full(x) => res.copy(ok = res.ok + x)
         }
       }
-      PolicyGenerationLogger.timing.debug(s"Merge group properties took ${timeNanoMergeProp/(1_000_000)} ms for ${nodeIds.size} nodes")
+      PolicyGenerationLogger.timing.debug(s"Merge group properties took ${timeNanoMergeProp/(1000000)} ms for ${nodeIds.size} nodes")
       all
     }
   }

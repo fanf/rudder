@@ -85,6 +85,7 @@ import com.normation.rudder.domain.logger.NodeConfigurationLogger
 import better.files._
 import com.normation.rudder.domain.logger.PolicyGenerationLogger
 import com.normation.rudder.domain.logger.PolicyGenerationLoggerPure
+import com.normation.rudder.services.policies.BundleOrder
 import com.normation.templates.FillTemplateThreadUnsafe
 import com.normation.templates.FillTemplateTimer
 
@@ -117,7 +118,7 @@ object PolicyWriterServiceImpl {
                                                   , PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_EXECUTE)
 
   //an utility that write text in a file and create file parents if needed
-  implicit class CreateParentAndWrite(val file: File) extends AnyVal {
+  implicit class CreateParentAndWrite(private val file: File) extends AnyVal {
     // open file mode for create or overwrite mode
     def createParentsAndWrite(text: String) = IOResult.effect {
       file.parent.createDirectoryIfNotExists(true).setPermissions(defaultFolderPermissions)
@@ -125,6 +126,41 @@ object PolicyWriterServiceImpl {
     }
   }
 }
+
+/*
+ * Sort Policy by order based on rule name / directive name and consistent
+ * between different places (rudder-directives.cf, rudder-directives.csv...)
+ */
+object PolicyOrdering {
+  /*
+   * Sort the techniques according to the order of the associated BundleOrder of Policy.
+   * Sort at best: sort rule then directives, and take techniques on that order, only one time.
+   *
+   * CAREFUL: this method only take care of sorting based on "BundleOrder", other sorting (like
+   * "system must go first") are not taken into account here !
+   */
+  def sort(
+      policies: Seq[Policy]
+  ): Seq[Policy] = {
+    def compareBundleOrder(a: Policy, b: Policy): Boolean = {
+      // We use rule name, then directive name. For same rule name and directive name, we
+      // differentiate on technique id, then on directive id (to keep diff minimal)
+      BundleOrder.compareList(List(a.ruleOrder, a.directiveOrder, BundleOrder(a.id.getRudderUniqueId))
+                            , List(b.ruleOrder, b.directiveOrder, BundleOrder(b.id.getRudderUniqueId))
+      ) <= 0
+    }
+    val sorted = policies.sortWith(compareBundleOrder)
+
+    //some debug info to understand what order was used for each node:
+    // it's *extremelly* versbose, perhaps it should have it's own logger.
+    if(PolicyGenerationLogger.isTraceEnabled) {
+      val logSorted = sorted.map(p => s"${p.technique.id.serialize}: [${p.ruleOrder.value} | ${p.directiveOrder.value}]").mkString("[","][", "]")
+      PolicyGenerationLogger.trace(s"Sorted Technique (and their Rules and Directives used to sort): ${logSorted}")
+    }
+    sorted
+  }
+}
+
 
 /*
  * Timer accumulator for write part, in nanoseconds
@@ -761,7 +797,8 @@ class PolicyWriterServiceImpl(
     val path = File(paths.newFolder, "rudder-directives.csv")
 
     val csvContent = for {
-      policy <- policies.sortBy(_.directiveOrder.value)
+      // use the same order than for rudder-directive.cf
+      policy <- PolicyOrdering.sort(policies)
     } yield {
       (policy.id.directiveRId.serialize ::
        policy.policyMode.getOrElse(policyMode.mode).name ::
