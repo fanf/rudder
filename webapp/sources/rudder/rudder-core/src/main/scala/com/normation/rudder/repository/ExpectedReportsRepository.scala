@@ -41,7 +41,8 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.reports._
 import net.liftweb.common.Box
-
+import com.normation.box._
+import com.normation.errors._
 
 trait UpdateExpectedReportsRepository {
 
@@ -54,7 +55,10 @@ trait UpdateExpectedReportsRepository {
   /**
    * Close opened expected node configurations for the given nodeID.
    */
-  def closeNodeConfigurations(nodeId: NodeId): Box[NodeId]
+  def closeNodeConfigurationsPure(nodeId: NodeId): IOResult[NodeId]
+  def closeNodeConfigurations(nodeId: NodeId): Box[NodeId] = {
+    closeNodeConfigurationsPure(nodeId).toBox
+  }
 
   /**
    * Delete all node config id info that finished before date

@@ -54,8 +54,9 @@ import com.normation.rudder.domain.logger.ApplicationLogger
 import com.unboundid.ldap.sdk.DN
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
-
+import com.normation.errors._
 import com.normation.box._
+import zio.syntax._
 
 /**
  * This service allows to manage properties linked to the root policy server,
@@ -79,7 +80,10 @@ trait PolicyServerManagementService {
   /**
    * Delete things related to a relay (groups, rules, directives)
    */
-  def deleteRelaySystemObjects(policyServerId: NodeId): Box[Unit]
+  def deleteRelaySystemObjectsPure(policyServerId: NodeId): IOResult[Unit]
+  def deleteRelaySystemObjects(policyServerId: NodeId): Box[Unit] = {
+    deleteRelaySystemObjectsPure(policyServerId).toBox
+  }
 
 }
 
@@ -165,14 +169,12 @@ class PolicyServerManagementServiceImpl(
    * - rule: ruleId=${RELAY_UUID}-DP,ou=Rules,ou=Rudder,cn=rudder-configuration
    * - rule: ruleId=hasPolicyServer-${RELAY_UUID},ou=Rules,ou=Rudder,cn=rudder-configuration
    */
-  def deleteRelaySystemObjects(policyServerId: NodeId): Box[Unit] = {
+  override def deleteRelaySystemObjectsPure(policyServerId: NodeId): IOResult[Unit] = {
     if(policyServerId == Constants.ROOT_POLICY_SERVER_ID) {
-      Failure("Root server configuration elements can't be deleted")
+      Inconsistency("Root server configuration elements can't be deleted").fail
     } else { // we don't have specific validation to do: if the node is not a policy server, nothing will be done
       def DN(child: String, parentDN: DN) = new DN(child+","+parentDN.toString)
       val id = policyServerId.value
-
-// nodeGroupId=hasPolicyServer-b887aee5-f191-45cd-bb2d-9e3f5b30d06e,groupCategoryId=SystemGroups,groupCategoryId=GroupRoot,ou=Rudder,cn=rudder-configuration
 
       for {
         con <- ldap
@@ -184,7 +186,7 @@ class PolicyServerManagementServiceImpl(
         _   <- con.delete(DN(s"ruleId=hasPolicyServer-${id}", dit.RULES.dn))
         _   =  ApplicationLogger.info(s"System configuration object (rules, directives, groups) related to relay '${id}' were successfully deleted.")
       } yield ()
-    }.toBox
+    }
   }
 }
 
