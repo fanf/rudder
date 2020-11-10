@@ -66,6 +66,11 @@ trait UpdateExpectedReportsRepository {
   def deleteNodeConfigIdInfo(date:DateTime) : Box[Int]
 
   /**
+   * Delete nodes_info for one node, typically when deleting it.
+   */
+  def deleteNodeInfos(nodeId: NodeId): IOResult[Unit]
+
+  /**
    * Archive all NodeConfigurations closed before a date
    */
   def archiveNodeConfigurations(date: DateTime) : Box[Int]

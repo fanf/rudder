@@ -58,7 +58,6 @@ import bootstrap.liftweb.RudderConfig
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.policies.PolicyModeOverrides._
 import com.normation.rudder.domain.policies.GlobalPolicyMode
-import com.normation.rudder.hooks.HookReturnCode.Interrupt
 import com.normation.rudder.hooks.HookReturnCode
 import com.normation.box._
 import com.normation.cfclerk.domain.HashAlgoConstraint.SHA1
@@ -873,7 +872,6 @@ object DisplayNode extends Loggable {
 
   private[this] def removeNode(nodeId: NodeId) : JsCmd = {
     val modId = ModificationId(uuidGen.newUuid)
-    import com.normation.rudder.services.servers.DeletionResult._
     removeNodeService.removeNodePure(nodeId, RudderConfig.RUDDER_DEFAULT_DELETE_NODE_MODE, modId, CurrentUser.actor).toBox match {
       case Full(_) =>
         asyncDeploymentAgent ! AutomaticStartDeployment(modId, CurrentUser.actor)

@@ -589,6 +589,11 @@ class UpdateExpectedReportsJdbcRepository(
     }
   }
 
+  def deleteNodeInfos(nodeId: NodeId): IOResult[Unit] = {
+    transactIOResult(s"Error when deleting nodes_info from base for ${nodeId.value}")(xa =>
+      sql"""delete from nodes_info where node_id = ${nodeId.value}""".update.run.transact(xa)
+    ).unit
+  }
 }
 
 final case class ReportAndNodeMapping(

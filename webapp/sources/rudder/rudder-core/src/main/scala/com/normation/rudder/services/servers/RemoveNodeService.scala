@@ -525,15 +525,18 @@ class RemoveNodeServiceImpl(
 
 
 /*
- * Close expected reports date.
- * Should we delete them if node is erased ?
+ * Close expected reports for node.
+ * Also delete nodes_info for that node.
  */
 class CloseNodeConfiguration(expectedReportsRepository: UpdateExpectedReportsRepository) extends PostNodeDeleteAction {
   override def run(nodeId: NodeId, mode: DeleteMode, info: Option[NodeInfo], status: Set[InventoryStatus]): UIO[Unit] = {
-    NodeLoggerPure.Delete.debug(s"  - close expected reports for '${nodeId.value}'") *>
-    expectedReportsRepository.closeNodeConfigurationsPure(nodeId).catchAll(err =>
-      NodeLoggerPure.Delete.error(s"Error when closing expected reports for node ${(nodeId, info).name}")
-    ).unit
+    for {
+      _ <- NodeLoggerPure.Delete.debug(s"  - close expected reports for '${nodeId.value}'")
+      _ <- expectedReportsRepository.closeNodeConfigurationsPure(nodeId).catchAll(err =>
+             NodeLoggerPure.Delete.error(s"Error when closing expected reports for node ${(nodeId, info).name}")
+           ).unit
+      _ <- expectedReportsRepository.deleteNodeInfos(nodeId).catchAll(err => NodeLoggerPure.Delete.error(err.msg))
+    } yield ()
   }
 }
 // when the node is a policy server, delete directive/rule/group related to it
@@ -677,3 +680,5 @@ class CleanUpNodePolicyFiles(varRudderShare: String) extends PostNodeDeleteActio
     )
   }
 }
+
+
