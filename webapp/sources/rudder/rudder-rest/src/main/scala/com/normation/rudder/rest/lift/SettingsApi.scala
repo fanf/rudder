@@ -73,6 +73,8 @@ import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import com.normation.box._
 import com.normation.errors._
+import com.normation.rudder.repository.json.DataExtractor.CompleteJson
+import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
 import zio._
 import zio.syntax._
 
@@ -936,6 +938,14 @@ final case object RestContinueGenerationOnError extends RestBooleanSetting {
 
       implicit val formats = DefaultFormats
 
+      def extractAllowedNetDiff(json: JObject) = {
+        (for {
+         addOpt <- OptionnalJson.extractJsonListString(json, "add")
+         deleteOpt  <- OptionnalJson.extractJsonListString(json, "delete")
+        } yield {
+          AllowedNetDiff(addOpt.getOrElse(Nil), deleteOpt.getOrElse(Nil))
+        })
+      }
       val result = for {
         nodeInfo <- nodeInfoService.getNodeInfo(nodeId)
         isServer <- nodeInfo match {
@@ -947,15 +957,17 @@ final case object RestContinueGenerationOnError extends RestBooleanSetting {
             Failure(s"Could not find node information for id '${id}', this node does not exist")
         }
         json     =  if (req.json_?) {
-                      req.json.getOrElse(JNothing) \ "allowed_networks"
+                      req.json.getOrElse(JNothing)
                     } else {
-                      req.params.get("allowed_networks").flatMap(_.headOption.flatMap(parseOpt)).getOrElse(JNothing)
+                      req.params.get("allowed_networks").flatMap(_.headOption.flatMap(parseOpt)).map(j => JObject(JField("allowed_networks",j))).getOrElse(JNothing)
                     }
         // lift is dumb and have zero problem not erroring on extraction from JNothing
         msg      = s"""Impossible to parse allowed networks diff json. Expected {"allowed_networks": {"add":["192.168.2.0/24", ...]",""" +
                    s""" "delete":["192.168.1.0/24", ...]"}}, got: ${if(json == JNothing) "nothing" else compactRender(json)}"""
-        _        <- if(json == JNothing) Failure(msg) else Full(())
-        diff     <- try { Full(json.extract[AllowedNetDiff]) } catch { case ex => Failure(msg) }
+        diff     <- (CompleteJson.extractJsonObj(json, "allowed_networks", extractAllowedNetDiff)) match {
+                      case _ : EmptyBox => Failure(msg)
+                      case Full(diff) => Full(diff)
+                    }
         _        <- sequence(diff.add)(checkAllowedNetwork)
         res      <- policyServerManagementService.updateAuthorizedNetworks(nodeId, diff.add, diff.delete, modificationId, actor)
       } yield {
