@@ -956,7 +956,6 @@ final case object RestContinueGenerationOnError extends RestBooleanSetting {
                    s""" "delete":["192.168.1.0/24", ...]"}}, got: ${if(json == JNothing) "nothing" else compactRender(json)}"""
         _        <- if(json == JNothing) Failure(msg) else Full(())
         diff     <- try { Full(json.extract[AllowedNetDiff]) } catch { case ex => Failure(msg) }
-        _        =  println("extracted: " + diff)
         _        <- sequence(diff.add)(checkAllowedNetwork)
         res      <- policyServerManagementService.updateAuthorizedNetworks(nodeId, diff.add, diff.delete, modificationId, actor)
       } yield {
