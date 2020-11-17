@@ -43,7 +43,6 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.function.BiPredicate
 import java.util.function.Consumer
 
-import cats.data.NonEmptyList
 import com.normation.box._
 import com.normation.errors._
 import com.normation.eventlog.EventActor
@@ -104,18 +103,15 @@ object DeletionResult {
   final case object Success                                           extends DeletionResult
   final case class  Error(err: RudderError)                           extends DeletionResult
 
-  def merge(one: DeletionResult, other: List[DeletionResult]): IOResult[Unit] = {
-    if((one :: other).forall(_ == Success)) UIO.unit
-    else {
-      val errors = (one::other).filterNot(_ == Success).map(e => e match {
-        case Error(err)          => err
-        case PreHookFailed(err)  => Inconsistency(s"Pre hook error: ${err.msg}")
-        case PostHookFailed(err) => Inconsistency(s"Post hook error: ${err.msg}")
-        case Success             => Unexpected(s"Success in deletionResult error processing: this case should node be reached, please report a bug.")
-      })
-      Accumulated(NonEmptyList.fromListUnsafe(errors)).fail // we know it's non-empty since they are not success
-    }
+  def resolve(results : List[DeletionResult])  = {
+   results.accumulate(_ match {
+      case Error(err) => err.fail
+      case PreHookFailed(err) => Inconsistency(s"Pre hook error: ${err.msg}").fail
+      case PostHookFailed(err) => Inconsistency(s"Post hook error: ${err.msg}").fail
+      case Success => UIO.unit
+    })
   }
+
 }
 
 sealed trait DeleteMode { def name: String }
@@ -269,7 +265,7 @@ class RemoveNodeServiceImpl(
                       } yield r).catchAll(err => Error(err).succeed)
                     } else Success.succeed
            // if any of the previous cases were in error, we want to stop here
-           res    <- DeletionResult.merge(res1, res2 :: res3 :: Nil)
+           res    <- DeletionResult.resolve(res1:: res2 :: res3 :: Nil)
            // in all cases, run postNodeDeletionAction
           _       <- NodeLoggerPure.Delete.debug(s"-> execute clean-up actions for node '${nodeId.value}'")
           actions <- postNodeDeleteActions.get
