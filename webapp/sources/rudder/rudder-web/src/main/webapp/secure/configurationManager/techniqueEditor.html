@@ -63,7 +63,11 @@
       <div class="modal-footer">
         <button class="btn btn-primary btn-outline pull-left" ng-click="cancel()">Cancel <i class="fa fa-arrow-left"></i></button>
         <button class="btn btn-primary" ng-click="discard()">Discard Changes <i class="fa fa-times-circle"></i></button>
-        <button class="btn btn-success" ng-disabled="ui.editForm.$invalid" ng-click="save()">Save Changes <i class="fa fa-download"></i></button>
+        <button class="btn btn-success" ng-disabled="ui.editForm.$invalid" ng-click="save()"
+                $(document).on('mouseover','.popover-bs',function(){
+        $(this).bsPopover('show');
+        });
+        $('.tooltip-bs').bsTooltip();>Save Changes <i class="fa fa-download"></i></button>
       </div>
     </script>
     <script id="RestoreWarningModal.html"   type="text/ng-template" >
