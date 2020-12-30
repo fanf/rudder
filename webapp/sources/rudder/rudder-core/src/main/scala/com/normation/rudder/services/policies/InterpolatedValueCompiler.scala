@@ -41,12 +41,16 @@ package com.normation.rudder.services.policies
 import com.normation.box._
 import com.normation.errors._
 import com.normation.inventory.domain.AgentType
-import com.normation.rudder.domain.policies.PolicyModeOverrides
-import com.normation.rudder.services.policies.PropertyParserTokens._
-import net.liftweb.common._
 import com.normation.rudder.domain.nodes.GenericProperty
+import com.normation.rudder.domain.policies.PolicyModeOverrides
+import com.normation.rudder.services.nodes.EngineOption
+import com.normation.rudder.services.nodes.PropertyEngineService
+import com.normation.rudder.services.policies.PropertyParserTokens._
+import com.normation.zio.ZioRuntime
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigValue
+import net.liftweb.common._
+
 
 /**
  * A parser that handle parameterized value of
@@ -172,6 +176,8 @@ object PropertyParserTokens {
   final case class Param(path: List[String])       extends AnyVal with Interpolation
   //here, we keep the case as it is given
   final case class Property(path: List[String], opt: Option[PropertyOption]) extends Interpolation
+  final case class RudderEngine(engine: String, method: List[String], opt: Option[List[EngineOption]] ) extends Interpolation
+
 
   //here, we have node property option
   sealed trait PropertyOption extends Any
@@ -184,8 +190,17 @@ object PropertyParserTokens {
 
 }
 
+trait AnalyseInterpolationWithPropertyService {
+  def propertyEngineService: PropertyEngineService
+
+  def expandWithPropertyEngine(engineName: String , nameSpace: List[String], opt: Option[List[EngineOption]]): IOResult[String] = {
+    propertyEngineService.process(engineName, nameSpace, opt)
+  }
+}
 
 trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
+
+  def expandWithPropertyEngine(engineName: String , nameSpace: List[String], opt: Option[List[EngineOption]]): IOResult[String]
 
   /*
    * Number of time we allows to recurse for interpolated variable
@@ -225,6 +240,7 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
   }
 
   /*
+
    * The three following methods analyse token one by one and
    * given the token, build the function to execute to get
    * the final string (that may not succeed at run time, because of
@@ -236,6 +252,9 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
       case NonRudderVar(s)     => Right(s"$${${s}}")
       case NodeAccessor(path)  => getNodeAccessorTarget(context, path)
       case Param(path)         => getRudderGlobalParam(context, path)
+      case RudderEngine(e, m, o) =>
+          val io = expandWithPropertyEngine(e, m, o)
+        ZioRuntime.runNow(io.either)
       case Property(path, opt) => opt match {
         case None =>
           getNodeProperty(context, path)
@@ -327,7 +346,9 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
 
 }
 
-object AnalyseParamInterpolation extends AnalyseInterpolation[ParamInterpolationContext => PureResult[String], ParamInterpolationContext] {
+class AnalyseParamInterpolation(p: PropertyEngineService)
+  extends AnalyseInterpolation[ParamInterpolationContext => PureResult[String], ParamInterpolationContext]
+    with AnalyseInterpolationWithPropertyService {
 
   /**
    * Retrieve the global parameter from the node context.
@@ -365,9 +386,13 @@ object AnalyseParamInterpolation extends AnalyseInterpolation[ParamInterpolation
       }
     }
   }
+
+  override def propertyEngineService: PropertyEngineService = p
 }
 
-object AnalyseNodeInterpolation extends AnalyseInterpolation[ConfigValue, InterpolationContext] {
+
+class AnalyseNodeInterpolation(p: PropertyEngineService)
+  extends AnalyseInterpolation[ConfigValue, InterpolationContext] with AnalyseInterpolationWithPropertyService {
 
   /**
    * Retrieve the global parameter from the node context.
@@ -395,20 +420,25 @@ object AnalyseNodeInterpolation extends AnalyseInterpolation[ConfigValue, Interp
       }
     }
   }
+
+  override def propertyEngineService: PropertyEngineService = p
 }
 
-class InterpolatedValueCompilerImpl extends InterpolatedValueCompiler {
+class InterpolatedValueCompilerImpl(p: PropertyEngineService) extends InterpolatedValueCompiler {
+
+  val analyseNode = new AnalyseNodeInterpolation(p)
+  val analyseParam = new AnalyseParamInterpolation(p)
 
   /*
    * just call the parser on a value, and in case of successful parsing, interprete
    * the resulting AST (seq of token)
    */
   override def compile(value: String): PureResult[InterpolationContext => PureResult[String]] = {
-    PropertyParser.parse(value).map(AnalyseNodeInterpolation.parseToken)
+    PropertyParser.parse(value).map(t => analyseNode.parseToken(t))
   }
 
   override def compileParam(value: String): PureResult[ParamInterpolationContext => PureResult[String]] = {
-    PropertyParser.parse(value).map(AnalyseParamInterpolation.parseToken)
+    PropertyParser.parse(value).map(t => analyseParam.parseToken(t))
   }
 
   def translateToAgent(value: String, agent : AgentType): Box[String] = {
@@ -422,6 +452,13 @@ class InterpolatedValueCompilerImpl extends InterpolatedValueCompiler {
       case NonRudderVar(s)    => s"$${${s}}"
       case NodeAccessor(path) => s"$${rudder.node.${path.mkString(".")}}"
       case Param(name)         => s"$${rudder.param.${name}}"
+      case RudderEngine(e, m, o) =>
+        val opt = o match {
+          case Some(options) => options.map(o => s"| ${o.name} = ${o.value}").mkString(" ")
+          case None          => ""
+        }
+        // should not happen since a non expanded engine property should lead to an error
+        s"[missing value for: $${engine.${e}[${m.mkString("][")}] ${opt}]"
       case Property(path, opt) => agent match {
         case AgentType.Dsc =>
           s"$$($$node.properties[${path.mkString("][")}])"
@@ -435,7 +472,8 @@ class InterpolatedValueCompilerImpl extends InterpolatedValueCompiler {
 
 object PropertyParser {
 
-  import fastparse._, NoWhitespace._
+  import fastparse._
+  import NoWhitespace._
 
   def parse(value: String): PureResult[List[Token]] = {
     fastparse.parse(value, all(_)) match {
@@ -477,15 +515,24 @@ object PropertyParser {
   // other cases of ${}: cfengine variables, etc
   def otherVariable[_: P]: P[NonRudderVar] = P( (variableId ~ ".").rep(0) ~ variableId ).map { case (begin, end) =>  NonRudderVar((begin :+ end).mkString(".")) }
 
-  def interpolatedVariable [_: P]   : P[Interpolation] = P( rudderVariable | nodeProperty )
+  def interpolatedVariable [_: P]   : P[Interpolation] = P( rudderVariable | nodeProperty | rudderEngine )
   //identifier for step in the path or param names
 
   //an interpolated variable looks like: ${rudder.XXX}, or ${RuDder.xXx}
   // after "${rudder." there is no backtracking to an "otherProp" or string possible.
   def rudderVariable[_: P]  : P[Interpolation] = P( IgnoreCase("rudder") ~ space ~ "." ~ space ~/ (rudderNode | parameters | oldParameter) )
 
+  def rudderEngine[_: P]  : P[Interpolation] = P( IgnoreCase("engine") ~ space ~ "." ~ space ~/ (rudderEngineFormat) )
+
   //a node path looks like: ${rudder.node.HERE.PATH}
   def rudderNode[_: P]  : P[Interpolation] = P( IgnoreCase("node") ~/ space ~ "." ~ space ~/ variableId.rep(sep = space ~ "." ~ space) ).map { seq => NodeAccessor(seq.toList) }
+
+  // ${engine.name[val][val2] | option1 = xxx | option2 = xxx}
+  def rudderEngineFormat[_: P]  : P[Interpolation] = P(propertyId ~/ arrayNames  ~/ engineOption.? ).map{
+    case (name, methods, opt) => RudderEngine(name, methods, opt)
+  }
+
+//  def rudderEngineArg[_: P]  : P[String] = P( space ~ "(" ~/ space ~/ ("\"" | "\"\"\"") ~/ propertyId ~/ space ~/ ("\"" | "\"\"\"") ~ space ~ ")" ~ space)
 
   //a parameter old syntax looks like: ${rudder.param.PARAM_NAME}
   def oldParameter[_: P]  : P[Interpolation] = P(IgnoreCase("param") ~ space ~ "." ~/ space ~/ variableId).map{ p => Param(p :: Nil) }
@@ -502,6 +549,11 @@ object PropertyParser {
 
   //here, the number of " must be strictly decreasing - ie. triple quote before
   def nodePropertyOption[_: P]  : P[PropertyOption] = P( space ~ "|" ~/ space ~ ( onNodeOption | defaultOption ) )
+
+  def engineOption[_: P]  : P[List[EngineOption]] = P( (space ~ "|"  ~/ space ~ propertyId ~ space ~ "=" ~/ space ~/ propertyId).rep(1)).map{ opts =>
+    opts.toList.map(o => EngineOption(o._1, o._2))
+  }
+
 
   def defaultOption[_: P]  : P[DefaultValue] = P( IgnoreCase("default") ~/ space ~ "=" ~/ space ~/ ( P( string("\"") |string("\"\"\"") | emptyString  | variable.map(_ :: Nil)) ) ).map(DefaultValue(_))
   def onNodeOption[_: P]   : P[InterpreteOnNode.type] = P( IgnoreCase("node")).map(_ => InterpreteOnNode)
