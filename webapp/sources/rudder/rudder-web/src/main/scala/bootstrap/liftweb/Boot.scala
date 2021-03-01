@@ -403,11 +403,7 @@ class Boot extends Loggable {
         , Menu("techniqueEditor", <span>Techniques</span>) /
           "secure" / (name+"Manager") / "techniqueEditor"
           >> LocGroup((name+"Manager"))
-          >> TestAccess ( () => userIsAllowed("/secure/index",AuthorizationType.Technique.Read) )
-        , Menu("newTechniqueEditor", <span>new Techniques</span>) /
-          "secure" / (name+"Manager") / "newTechniqueEditor"
-          >> LocGroup((name+"Manager"))
-          >> TestAccess ( () => userIsAllowed("/secure/index",AuthorizationType.Technique.Read) )
+          >> TestAccess ( () => userIsAllowed("/secure/index",AuthorizationType.Technique.Read))
 
         , Menu(name+"ParameterManagement", <span>Parameters</span>) /
             "secure" / (name+"Manager") / "parameterManagement"
