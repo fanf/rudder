@@ -51,7 +51,7 @@ showMethod ui method index =
                 ] []
               ]
           ) ::
-          if (List.member Dsc method.agentSupport) then  [ img [ src "../../techeditor/css/dsc-icon.svg",  class "dsc-icon" ] [] ] else []
+          if (List.member Dsc method.agentSupport) then  [ img [ src "../../images/dsc-icon.svg",  class "dsc-icon" ] [] ] else []
         )
        ::
       case method.documentation of
@@ -134,7 +134,7 @@ methodsList model =
            , button [ class ("btn btn-default" ++ (if filter.agent == Just Cfengine then " active" else "")), onClick (UpdateMethodFilter {filter | agent = Just Cfengine }) ] [text "Classic"]
            , button [ class ("btn btn-default" ++ (if filter.agent == Just Dsc then " active" else "")), onClick (UpdateMethodFilter {filter | agent = Just Dsc }) ] [
                text "DSC "
-             , img [ src ("../../techeditor/css/" ++ dscIcon),  class "dsc-icon" ] []
+             , img [ src ("../../images/" ++ dscIcon),  class "dsc-icon" ] []
              ]
            ]
          , div [ class "input-group" ] [

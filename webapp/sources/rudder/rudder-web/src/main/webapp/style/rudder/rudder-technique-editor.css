@@ -195,7 +195,8 @@ body > .ng-toast {
 .show-techniques .col-methods::after{
   content: "\f0c9";
   display: inline-block;
-  font: normal normal normal 14px/1 FontAwesome;
+  font: normal normal normal 14px/1 inherit;
+  font-family: "Font Awesome 5 Free";
   font-size: inherit;
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;

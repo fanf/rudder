@@ -101,7 +101,7 @@ techniqueTab model technique creation ui =
                        , div [ class "row form-group" ] [
                            label [ for "techniqueDescription", class "col-xs-12 control-label" ] [
                              span [ class "text-fit" ] [ text "Documentation" ]
-                           , img  [ class "markdown-icon tooltip-icon popover-bs",  src "../../techeditor/css/markdown-mark-solid.svg" ] []
+                           , img  [ class "markdown-icon tooltip-icon popover-bs",  src "../../images/markdown-mark-solid.svg" ] []
                                      --data-toggle="popover"
                                     -- data-trigger="hover"
                                     -- data-container="body"
