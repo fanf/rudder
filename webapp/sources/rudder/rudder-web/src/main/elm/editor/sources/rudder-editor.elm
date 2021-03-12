@@ -20,6 +20,7 @@ import JsonEncoder exposing ( encodeTechnique, encodeExportTechnique)
 import JsonDecoder exposing ( decodeTechnique)
 import File.Download
 import Browser.Dom
+import Conditions exposing (..)
 
 port copy : String -> Cmd msg
 
@@ -54,10 +55,10 @@ parseResponse (json, optJson, internalId) =
         GetFromStore tech o (TechniqueId internalId)
     Err _ -> Ignore
 
-mainInit : { contextPath : String  } -> ( Model, Cmd Msg )
+mainInit : { contextPath : String, hasWriteRights : Bool  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty [] Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model Nothing
+    model =  Model [] Dict.empty [] Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model Nothing initValues.hasWriteRights
   in
     (model, Cmd.batch ( [ getMethods model, getTechniquesCategories model ]) )
 
@@ -359,6 +360,7 @@ update msg model =
       ( { model | genericMethodsOpen = False } , Cmd.none )
 
     AddMethod method newId ->
+      if model.hasWriteRights then
       let
         newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""
         newModel =
@@ -372,8 +374,11 @@ update msg model =
             _ -> model
       in
         (  newModel , updatedStoreTechnique newModel )
+      else
+        (model,Cmd.none)
 
     DndEvent dndMsg ->
+      if model.hasWriteRights then
             let
 
 
@@ -391,6 +396,8 @@ update msg model =
                    _ -> (model, Cmd.none)
             in
                (newModel , Cmd.batch [  dndSystem.commands newModel.dnd, c ] )
+      else
+        (model,Cmd.none)
 
     MethodCallParameterModified call paramId newValue ->
       let

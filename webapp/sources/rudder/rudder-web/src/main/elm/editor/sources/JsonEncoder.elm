@@ -2,18 +2,18 @@ module  JsonEncoder exposing (..)
 
 import Json.Encode exposing (..)
 import DataTypes exposing (..)
-
+import Conditions exposing (..)
 
 encodeTechnique: Technique -> Value
 encodeTechnique technique =
   object [
-    ("bundle_name", string technique.id.value)
-  , ("version", string technique.version)
-  , ("name", string technique.name)
-  , ("description", string technique.description)
-  , ("category", string technique.category)
-  , ("parameter" , list encodeTechniqueParameters technique.parameters)
-  , ("method_calls", list encodeMethodCall technique.calls)
+    ("bundle_name", string technique.id.value )
+  , ("version", string technique.version )
+  , ("name", string technique.name )
+  , ("description", string technique.description )
+  , ("category", string technique.category )
+  , ("parameter" , list encodeTechniqueParameters technique.parameters )
+  , ("method_calls", list encodeMethodCall technique.calls )
   , ("resources", list encodeResource technique.resources )
   ]
 

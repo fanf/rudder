@@ -1,6 +1,7 @@
 module  JsonDecoder exposing (..)
 
 
+import Conditions exposing (..)
 import DataTypes exposing (..)
 import Json.Decode exposing (..)
 import Json.Decode.Pipeline exposing (..)
@@ -17,17 +18,6 @@ decodeCallParameter =
   succeed CallParameter
     |> required "name" (map ParameterId string)
     |> required "value" string
-
-
-
-parseOs: String -> Maybe OS
-parseOs os =
-  case os of
-    "linux" -> Just (Linux Nothing)
-    "debian" -> Just (Linux (Just (Debian { major = Nothing, minor = Nothing })))
-    "centos" -> Just (Linux (Just (Centos { major = Nothing, minor = Nothing })))
-    _ -> Nothing
-
 
 parseCondition : String -> Condition
 parseCondition class_context =
@@ -64,7 +54,6 @@ decodeTechnique =
     |> required "parameter" (list decodeTechniqueParameter)
     |> required "resources" (list decodeResource)
 
-
 decodeAgent : Decoder Agent
 decodeAgent =
   andThen (\v ->
@@ -73,7 +62,6 @@ decodeAgent =
       "dsc"      -> succeed Dsc
       _          -> fail (v ++ " is not a valid agent")
   ) string
-
 
 decodeConstraint: Decoder (List Constraint)
 decodeConstraint =

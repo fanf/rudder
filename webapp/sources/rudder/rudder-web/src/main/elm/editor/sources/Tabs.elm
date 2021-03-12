@@ -31,8 +31,8 @@ techniqueResource  resource =
     ]
 
 
-techniqueParameter :  Technique -> TechniqueParameter -> Bool -> Html Msg
-techniqueParameter technique param opened =
+techniqueParameter :  Model -> Technique -> TechniqueParameter -> Bool -> Html Msg
+techniqueParameter model technique param opened =
   let
     param_name =
       if (String.isEmpty param.name) then
@@ -52,7 +52,7 @@ techniqueParameter technique param opened =
       span [ class "border" ] []
     , div [ class "param" ] [
         div [ class "input-group" ] [
-          input [ type_ "text",  class "form-control", value param.name, placeholder "Parameter name", onInput (\s -> TechniqueParameterModified param.id {param | name = s }), required True] []
+          input [readonly (not model.hasWriteRights), type_ "text",  class "form-control", value param.name, placeholder "Parameter name", onInput (\s -> TechniqueParameterModified param.id {param | name = s }), required True] []
         , div [ class "input-group-btn" ] [
             button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" , onClick (Copy ("${" ++ (canonify param.name) ++ "}")) ] [
               i [ class "ion ion-clipboard" ] []
@@ -64,7 +64,7 @@ techniqueParameter technique param opened =
           text "Description "
         , i [ class (if opened then "fa fa-times" else "ion ion-edit") ] []
         ]
-      , if opened then textarea [ style "margin-top" "10px",  class "form-control",  rows 1,  value param.description, onInput (\s -> TechniqueParameterModified param.id {param | description = s })] [] else text "" -- msd-elastic
+      , if opened then textarea [ readonly (not model.hasWriteRights), style "margin-top" "10px",  class "form-control",  rows 1,  value param.description, onInput (\s -> TechniqueParameterModified param.id {param | description = s })] [] else text "" -- msd-elastic
       ]
     , div [ class "remove-item", onClick (TechniqueParameterRemoved param.id) ] [
         i [ class "fa fa-times"] []
@@ -89,7 +89,7 @@ techniqueTab model technique creation ui =
                        ,-} div [ class "row form-group" ] [--ng-class="{'has-error':ui.editForm.name.$dirty && (ui.editForm.name.$error.required || ui.editForm.name.$error.techniqueName)}">
                            label [ for "techniqueName", class "col-xs-12 control-label" ] [ text "Name" ]
                          , div  [ class "col-sm-8" ] [
-                             input [type_ "text" , id "techniqueName",  name "name",  class "form-control" , placeholder "Technique Name", value technique.name
+                             input [readonly (not model.hasWriteRights), type_ "text" , id "techniqueName",  name "name",  class "form-control" , placeholder "Technique Name", value technique.name
                               , onInput (\newName -> UpdateTechnique {technique | name = newName, id = TechniqueId(if creation then canonify newName else technique.id.value) })
                               ] []
                            ]
@@ -110,7 +110,7 @@ techniqueTab model technique creation ui =
                                    --  data-html="true"
                            ]
                          , div [ class "col-sm-8" ] [
-                             textarea [ name "description",  class "form-control technique-description", id "techniqueDescription", rows  4, value technique.description, placeholder "documentation"
+                             textarea [  readonly (not model.hasWriteRights), name "description",  class "form-control technique-description", id "techniqueDescription", rows  4, value technique.description, placeholder "documentation"
                              , onInput (\desc -> UpdateTechnique {technique | description = desc })
                              ] []--msd-elastic
                            ]
@@ -154,7 +154,7 @@ techniqueTab model technique creation ui =
               ]
             ]
           else
-            List.map (\p -> techniqueParameter technique p (List.member p.id ui.openedParameters ) ) technique.parameters
+            List.map (\p -> techniqueParameter model technique p (List.member p.id ui.openedParameters ) ) technique.parameters
       in
         div [ class "tab tab-parameters" ] [
           ul [ class "files-list parameters" ]

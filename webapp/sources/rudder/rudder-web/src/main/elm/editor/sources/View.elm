@@ -90,7 +90,7 @@ showTechnique model technique origin ui =
     div [ class "main-header" ] [
       div [ class "header-title" ] [
         h1 [] title
-      , div [ class "header-buttons btn-technique" ] [
+      , div [ class "header-buttons btn-technique", hidden (not model.hasWriteRights) ] [
           div [ class "btn-group" ] [
             button [ class "btn btn-default dropdown-toggle" , attribute "data-toggle" "dropdown" ] [
               text "Actions "
@@ -151,7 +151,7 @@ showTechnique model technique origin ui =
         , span [ class "badge badge-secondary" ] [
             span [] [ text (String.fromInt (List.length technique.calls ) ) ]
           ]
-        , if model.genericMethodsOpen then text "" else
+        , if (model.genericMethodsOpen || (not model.hasWriteRights) ) then text "" else
               button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [
                 text "Add "
               , i [ class "fa fa-plus-circle" ] []

@@ -7,6 +7,7 @@ import DnDList.Groups
 import Either exposing (Either(..))
 import Json.Decode exposing (Value)
 import Regex
+import Conditions exposing (..)
 
 type alias TechniqueId = {value : String}
 
@@ -98,22 +99,17 @@ config =
                 , operation = DnDList.Groups.InsertAfter
                 , comparator =
                    (\drag drop ->
-
-                     Debug.log "comp" (
                        case (drag,drop) of
                          (Left  _ , Left _ ) -> True
                          (Right _  , Right _ ) -> True
                          _ -> False
-                     )
                   )
                 , setter =
                    (\drag drop ->
-                     Debug.log "setter" (
                        case (drag,drop) of
                          (  Right _, Left method ) ->
                            Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") "")
                          _-> drop
-                     )
                   )
                 }
     }
@@ -137,6 +133,7 @@ type alias Model =
   , genericMethodsOpen : Bool
   , dnd : DnDList.Groups.Model
   , modal : Maybe ModalState
+  , hasWriteRights : Bool
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -186,99 +183,6 @@ type MethodCallMode = Opened | Closed
 type Tab =  General |  Parameters | Resources | None
 
 type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUIInfo
-
-type OS = AIX { version : Maybe  Int }| Linux (Maybe LinuxOS)  | Solaris { major : Maybe  Int, minor : Maybe Int } | Windows
-
-
-osName: Maybe OS -> String
-osName maybeOs =
-  case maybeOs of
-    Nothing -> "All"
-    Just os ->
-      case os of
-        AIX _ -> "AIX"
-        Solaris _ -> "Solaris"
-        Windows -> "Windows"
-        Linux Nothing -> "Linux"
-        Linux (Just linux) ->
-          case linux of
-            Debian _ -> "Debian (and derivatives)"
-            Ubuntu _ -> "Ubuntu"
-            RH _ -> "Red hat (and derivatives)"
-            Centos _ -> "CentOS"
-            Fedora _ -> "Fedora"
-            Oracle -> "Oracle Linux"
-            Amazon   -> "Amazon Linux"
-            Suse -> "SuSE family"
-            SLES _ -> "SLES"
-            SLED _ -> "SLED"
-            OpenSuse _ -> "OpenSuSE"
-            Slackware _ -> "Slackware"
-
-majorMinorVersionCondition: String -> { major : Maybe Int, minor : Maybe Int} -> String
-majorMinorVersionCondition s v =
-  case (v.major, v.minor) of
-    (Just major, Nothing) -> s ++ "_" ++ (String.fromInt major)
-    (Just major, Just minor) -> s ++ "_" ++ (String.fromInt major)++ "_" ++ (String.fromInt minor)
-    _ -> s
-
-
-versionSPCondition: String -> { version : Maybe Int, sp : Maybe Int} -> String
-versionSPCondition s v =
-  case (v.version, v.sp) of
-    (Just major, Nothing) -> s ++ "_" ++ (String.fromInt major)
-    (Just major, Just minor) -> s ++ "_" ++ (String.fromInt major)++ "_" ++ (String.fromInt minor)
-    _ -> s
-
-conditionLinux: LinuxOS -> String
-conditionLinux os =
-  case os of
-    Debian v -> majorMinorVersionCondition "debian" v
-    Ubuntu v -> majorMinorVersionCondition "ubuntu" v
-    RH v -> majorMinorVersionCondition "redhat" v
-    Centos v -> majorMinorVersionCondition "centos" v
-    Fedora v -> Maybe.withDefault "fedora" (Maybe.map (String.fromInt >> (++) "fedora_") v.version)
-    Oracle ->  "oracle_linux"
-    Amazon -> "amazon_linux"
-    Suse -> "suse"
-    SLES v -> versionSPCondition "sles" v
-    SLED v -> versionSPCondition "sled" v
-    OpenSuse v -> majorMinorVersionCondition "opensuse" v
-    Slackware v -> majorMinorVersionCondition "slackware" v
-
-conditionOs : OS -> String
-conditionOs os =
-  case os of
-    AIX v ->  Maybe.withDefault "aix" (Maybe.map (String.fromInt >> (++) "aix_") v.version)
-    Linux Nothing -> "linux"
-    Solaris v -> majorMinorVersionCondition "solaris" v
-    Windows -> "windows"
-    Linux (Just linuxOs) -> conditionLinux linuxOs
-
-conditionStr : Condition -> String
-conditionStr condition =
-  case condition.os of
-    Nothing -> condition.advanced
-    Just os ->
-      if (String.isEmpty condition.advanced) then conditionOs os else conditionOs os ++ "." ++ condition.advanced
-
-type alias Condition =
-  { os : Maybe OS
-  , advanced : String
-  }
-
-type LinuxOS = Debian { major : Maybe  Int, minor : Maybe Int }
-             | RH { major : Maybe  Int, minor : Maybe Int }
-             | Centos { major : Maybe  Int, minor : Maybe Int }
-             | Fedora { version : Maybe  Int}
-             | Ubuntu { major : Maybe  Int, minor : Maybe Int }
-             | Slackware { major : Maybe  Int, minor : Maybe Int }
-             | Suse
-             | Oracle
-             | Amazon
-             | SLES { version : Maybe  Int, sp : Maybe Int }
-             | SLED { version : Maybe  Int, sp : Maybe Int }
-             | OpenSuse  { major : Maybe  Int, minor : Maybe Int }
 
 type Msg =
     SelectTechnique Technique

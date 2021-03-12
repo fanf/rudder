@@ -24,7 +24,7 @@ techniqueList model techniques =
     div [ class "sidebar-header"] [
       div [ class "header-title" ] [
         h1 [] [ text "Techniques"]
-      , div [ class "header-buttons"] [ -- Need to add technique-write rights
+      , div [ class "header-buttons", hidden (not model.hasWriteRights)] [ -- Need to add technique-write rights
           label [class "btn btn-sm btn-primary", onClick StartImport] [
             text "Import "
           , i [ class "fa fa-upload" ] []

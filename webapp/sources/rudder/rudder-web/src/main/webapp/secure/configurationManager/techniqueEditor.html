@@ -15,11 +15,21 @@
     </div>
     <div id="technique-editor">
       <script>
+        var hasWriteRights = false;
+      </script>
+
+      <lift:authz role="technique_write">
+        <script>
+        var hasWriteRights = true;
+      </script>
+      </lift:authz>
+      <script>
 
 $(document).ready(function(){
   var main = document.getElementById("technique-editor")
   var initValues = {
     contextPath : contextPath
+  , hasWriteRights : hasWriteRights
   };
   var app  = Elm.Editor.init({node: main, flags: initValues});
   app.ports.copy.subscribe(function(value) {
