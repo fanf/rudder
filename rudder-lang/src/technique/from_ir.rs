@@ -167,6 +167,7 @@ fn statement_to_method_call(ir: &IR2, stmt: &Statement, condition: String) -> Ve
                 condition,
                 method_name,
                 component: extract_meta_string(&s.metadata, "component"),
+                id: extract_meta_string(&s.metadata, "id"),
             }]
         }
         Statement::StateDeclaration(s) => {
@@ -203,6 +204,7 @@ fn statement_to_method_call(ir: &IR2, stmt: &Statement, condition: String) -> Ve
                 condition,
                 method_name,
                 component: extract_meta_string(&s.metadata, "component"),
+                id: extract_meta_string(&s.metadata, "id"),
             }]
         }
         Statement::Case(_, enum_expressions) => enum_expressions
