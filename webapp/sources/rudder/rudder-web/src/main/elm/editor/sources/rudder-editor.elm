@@ -8,7 +8,6 @@ import Task
 import View exposing (view, checkTechniqueName, checkTechniqueId)
 import MethodCall exposing (checkConstraint, accumulateErrorConstraint)
 import Browser
-import Debug
 import Dict exposing (Dict)
 import Random
 import UUID
@@ -297,12 +296,12 @@ update msg model =
     GetTechniques (Ok  techniques) ->
       ({ model | techniques = techniques},  get () )
     GetTechniques (Err e) ->
-      Debug.log (Debug.toString e) ( model , Cmd.none )
+      ( model , Cmd.none )
 
     GetCategories (Ok  categories) ->
       ({ model | categories = List.sortBy .name categories},  get () )
     GetCategories (Err e) ->
-      Debug.log (Debug.toString e) ( model , Cmd.none )
+      ( model , Cmd.none )
 
     SaveTechnique (Ok  technique) ->
       let
@@ -316,13 +315,12 @@ update msg model =
       in
         ({ model | techniques = techniques, mode = newMode}, successNotification "Technique saved!" )
     SaveTechnique (Err e) ->
-      Debug.log (Debug.toString e) ( model , errorNotification (Debug.toString e) )
+      ( model , errorNotification "Error when saving technique")
 
     GetMethods (Ok  methods) ->
       ({ model | methods = methods}, getTechniques model  )
     GetMethods (Err e) ->
-      Debug.log (Debug.toString e) ( model , Cmd.none )
-
+      ( model , errorNotification "Error when getting methods" )
     CallApi apiCall ->
       ( model , apiCall model)
 
@@ -570,7 +568,7 @@ update msg model =
       in
         ({ model | mode = mode },  Cmd.none )
     GetTechniqueResources (Err e) ->
-      Debug.log (Debug.toString e) ( model , Cmd.none )
+      ( model , Cmd.none )
     Export ->
       let
         action = case model.mode of
@@ -588,7 +586,7 @@ update msg model =
     ImportFile file ->
       (model, Task.perform (ParseImportedFile file) (File.toString file) )
     ParseImportedFile file content ->
-      case Json.Decode.decodeString (Json.Decode.at ["data"] decodeTechnique ) (Debug.log "content" content) of
+      case Json.Decode.decodeString (Json.Decode.at ["data"] decodeTechnique ) content of
         Ok t ->
           let
             mode = TechniqueDetails t (Creation t.id) (TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) t.calls)) [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model))
@@ -596,7 +594,7 @@ update msg model =
           in
             ( newModel, Cmd.batch [ cmd, infoNotification ("Technique '"++ t.id.value ++ "' successfully imported, please save to create technique") ] )
         Err s ->
-         (model, errorNotification ("Error when importing technique from file " ++ (File.name file) ++ ", details: "++ (Debug.toString s)))
+         (model, errorNotification ("Error when importing technique from file " ++ (File.name file) ))
     ScrollCategory category ->
       let
         task = (Browser.Dom.getElement "methods-list-container") |> ((Browser.Dom.getViewportOf "methods-list-container") |> ((Browser.Dom.getElement category) |> Task.map3 (\elem viewport container -> viewport.viewport.y + elem.element.y - container.element.y ))  )  |> Task.andThen (Browser.Dom.setViewportOf "methods-list-container" 0)
