@@ -1,19 +1,19 @@
-module View exposing (..)
+module ViewTechnique exposing (..)
 
+import ApiCalls exposing (..)
 import DataTypes exposing (..)
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Tabs exposing (..)
-import TechniqueList exposing (..)
-import MethodCall exposing (..)
-import Dict exposing (Dict)
-import MethodsList exposing (..)
-import ApiCalls exposing (..)
-import File.Download
-import JsonEncoder
-import Json.Print
+import ViewMethod exposing (..)
+import ViewMethodsList exposing (..)
+import ViewTechniqueTabs exposing (..)
+import ViewTechniqueList exposing (..)
 
+--
+-- This file deals with the UI of one technique
+--
 
 checkTechniqueId origin technique model =
   case origin of
@@ -26,7 +26,6 @@ checkTechniqueId origin technique model =
            InvalidState InvalidStartId
          else
            ValidState
-
 
 checkTechniqueName technique model =
   if String.isEmpty technique.name then
@@ -43,14 +42,12 @@ isValidState state =
     ValidState -> True
     InvalidState _ -> False
 
-
-
-isValid: TechniqueUIInfo -> Bool
+isValid: TechniqueUiInfo -> Bool
 isValid ui =
   (isValidState ui.idState )  && ( isValidState ui.nameState ) && (List.all (isValidState) (List.concatMap (.validation >> Dict.values ) (Dict.values ui.callsUI)))
 
 
-showTechnique : Model -> Technique ->  TechniqueState -> TechniqueUIInfo -> Html Msg
+showTechnique : Model -> Technique ->  TechniqueState -> TechniqueUiInfo -> Html Msg
 showTechnique model technique origin ui =
   let
     activeTabClass = (\tab -> "ui-tabs-tab " ++ (if ui.tab == tab then "active" else ""))
@@ -86,99 +83,97 @@ showTechnique model technique origin ui =
             else
               [ span [class "technique-version" ] [ text technique.version ] , text (" - " ++ technique.name) ]
   in
-  div [ class "main-container" ] [
-    div [ class "main-header" ] [
-      div [ class "header-title" ] [
-        h1 [] title
-      , div [ class "header-buttons btn-technique", hidden (not model.hasWriteRights) ] [
-          div [ class "btn-group" ] [
-            button [ class "btn btn-default dropdown-toggle" , attribute "data-toggle" "dropdown" ] [
-              text "Actions "
-            , i [ class "caret" ] []
-            ]
-          , ul [ class "dropdown-menu" ] topButtons
-          ]
-        , button [ class "btn btn-primary", disabled (isUnchanged || creation) , onClick ResetTechnique ] [
-            text "Reset "
-          , i [ class "fa fa-undo"] []
-          ]
-        , button [ class "btn btn-success btn-save", disabled (isUnchanged || (not (isValid ui)) || ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
-            text "Save "
-          , i [ class ("fa fa-download " ++ (if ui.saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
-          ]
-        ]
-      ]
-    ]
-  , div [ class "main-navbar" ] [
-      ul [ class "ui-tabs-nav nav nav-tabs" ] [
-        li [ class (activeTabClass General) , onClick (SwitchTab General)] [
-          a [] [ text "General information" ]
-        ]
-      , li [ class (activeTabClass Parameters), onClick (SwitchTab Parameters) ] [
-          a [] [
-            text "Parameters "
-          , span [ class ( "badge badge-secondary badge-resources " ++ if List.isEmpty technique.parameters then "empty" else "") ] [
-              span [] [ text (String.fromInt (List.length technique.parameters)) ]
-            ]
-          ]
-        ]
-      , li [ class (activeTabClass Resources)  , onClick (SwitchTab Resources)] [
-          a [] [
-            text "Resources "
-          , span [  class  ( "badge badge-secondary badge-resources tooltip-bs " ++ if List.isEmpty technique.resources then "empty" else "") ] [
-               -- ng-class="{'empty' : selectedTechnique.resources.length <= 0}"
-               -- data-toggle="tooltip"
-               -- data-trigger="hover"
-               -- data-container="body"
-              --  data-placement="right"
-              --  data-title="{{getResourcesInfo()}}"
-               -- data-html="true"
-               -- data-delay='{"show":"400", "hide":"100"}'
-               -- >
-              if ((List.isEmpty technique.resources)|| (List.any (\s -> (s.state == Unchanged) || (s.state == Modified)) technique.resources) ) then span [ class "nb-resources" ] [text (String.fromInt (List.length (List.filter  (\s -> s.state == Unchanged || s.state == Modified) technique.resources ) ))] else text ""
-            , if not (List.isEmpty (List.filter (.state >> (==) New) technique.resources)) then  span [class "nb-resources new"] [ text ((String.fromInt (List.length (List.filter (.state >> (==) New) technique.resources))) ++ "+")] else text ""
-            , if not (List.isEmpty (List.filter (.state >> (==) Deleted) technique.resources)) then  span [class "nb-resources del"] [ text ((String.fromInt (List.length  (List.filter (.state >> (==) Deleted) technique.resources)) ++ "-"))] else text ""
-            ]
-          ]
-        ]
-      ]
-    ]
-  , div [ class "main-details", id "details"] [
-      div [ class "editForm",  name "ui.editForm" ] [
-        techniqueTab model technique creation ui
-      , h5 [] [
-          text "Generic Methods"
-        , span [ class "badge badge-secondary" ] [
-            span [] [ text (String.fromInt (List.length technique.calls ) ) ]
-          ]
-        , if (model.genericMethodsOpen || (not model.hasWriteRights) ) then text "" else
-              button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [
-                text "Add "
-              , i [ class "fa fa-plus-circle" ] []
+    div [ class "main-container" ] [
+      div [ class "main-header" ] [
+        div [ class "header-title" ] [
+          h1 [] title
+        , div [ class "header-buttons btn-technique", hidden (not model.hasWriteRights) ] [
+            div [ class "btn-group" ] [
+              button [ class "btn btn-default dropdown-toggle" , attribute "data-toggle" "dropdown" ] [
+                text "Actions "
+              , i [ class "caret" ] []
               ]
+            , ul [ class "dropdown-menu" ] topButtons
+            ]
+          , button [ class "btn btn-primary", disabled (isUnchanged || creation) , onClick ResetTechnique ] [
+              text "Reset "
+            , i [ class "fa fa-undo"] []
+            ]
+          , button [ class "btn btn-success btn-save", disabled (isUnchanged || (not (isValid ui)) || ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
+              text "Save "
+            , i [ class ("fa fa-download " ++ (if ui.saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
+            ]
+          ]
         ]
-     ,  div [ class "row"] [
-          ul [ id "methods", class "list-unstyled" ]
-            ( ( if List.isEmpty technique.calls then
-                  [ li [ id "no-methods" ] [
-                      text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+      ]
+    , div [ class "main-navbar" ] [
+        ul [ class "ui-tabs-nav nav nav-tabs" ] [
+          li [ class (activeTabClass General) , onClick (SwitchTab General)] [
+            a [] [ text "General information" ]
+          ]
+        , li [ class (activeTabClass Parameters), onClick (SwitchTab Parameters) ] [
+            a [] [
+              text "Parameters "
+            , span [ class ( "badge badge-secondary badge-resources " ++ if List.isEmpty technique.parameters then "empty" else "") ] [
+                span [] [ text (String.fromInt (List.length technique.parameters)) ]
+              ]
+            ]
+          ]
+        , li [ class (activeTabClass Resources)  , onClick (SwitchTab Resources)] [
+            a [] [
+              text "Resources "
+            , span [  class  ( "badge badge-secondary badge-resources tooltip-bs " ++ if List.isEmpty technique.resources then "empty" else "") ] [
+                 -- ng-class="{'empty' : selectedTechnique.resources.length <= 0}"
+                 -- data-toggle="tooltip"
+                 -- data-trigger="hover"
+                 -- data-container="body"
+                --  data-placement="right"
+                --  data-title="{{getResourcesInfo()}}"
+                 -- data-html="true"
+                 -- data-delay='{"show":"400", "hide":"100"}'
+                 -- >
+                if ((List.isEmpty technique.resources)|| (List.any (\s -> (s.state == Unchanged) || (s.state == Modified)) technique.resources) ) then span [ class "nb-resources" ] [text (String.fromInt (List.length (List.filter  (\s -> s.state == Unchanged || s.state == Modified) technique.resources ) ))] else text ""
+              , if not (List.isEmpty (List.filter (.state >> (==) New) technique.resources)) then  span [class "nb-resources new"] [ text ((String.fromInt (List.length (List.filter (.state >> (==) New) technique.resources))) ++ "+")] else text ""
+              , if not (List.isEmpty (List.filter (.state >> (==) Deleted) technique.resources)) then  span [class "nb-resources del"] [ text ((String.fromInt (List.length  (List.filter (.state >> (==) Deleted) technique.resources)) ++ "-"))] else text ""
+              ]
+            ]
+          ]
+        ]
+      ]
+    , div [ class "main-details", id "details"] [
+        div [ class "editForm",  name "ui.editForm" ] [
+          techniqueTab model technique creation ui
+        , h5 [] [
+            text "Generic Methods"
+          , span [ class "badge badge-secondary" ] [
+              span [] [ text (String.fromInt (List.length technique.calls ) ) ]
+            ]
+          , if (model.genericMethodsOpen || (not model.hasWriteRights) ) then text "" else
+                button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [
+                  text "Add "
+                , i [ class "fa fa-plus-circle" ] []
+                ]
+          ]
+       ,  div [ class "row"] [
+            ul [ id "methods", class "list-unstyled" ]
+              ( ( if List.isEmpty technique.calls then
+                    [ li [ id "no-methods" ] [
+                        text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+                      ]
                     ]
-                  ]
-              else
-                  List.indexedMap (\ index call ->
-                    let
-                          methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get call.id.value ui.callsUI)
-                    in
-                      showMethodCall model methodUi model.dnd (index) call
-                 ) technique.calls
-            ))
+                else
+                    List.indexedMap (\ index call ->
+                      let
+                            methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get call.id.value ui.callsUI)
+                      in
+                        showMethodCall model methodUi model.dnd (index) call
+                   ) technique.calls
+              ))
 
+          ]
         ]
       ]
     ]
-
-
-  ]
 
 view : Model -> Html Msg
 view model =

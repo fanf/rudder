@@ -1,16 +1,20 @@
-module TechniqueList exposing (..)
+module ViewTechniqueList exposing (..)
 
 import DataTypes exposing (..)
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Maybe.Extra
-import Dict
+
+--
+-- This file deals with the technique list UI
+-- (ie the part in the left of the UI)
+--
 
 techniqueList : Model -> List Technique -> Html Msg
 techniqueList model techniques =
   let
-
     filteredTechniques = List.sortBy .name (List.filter (\t -> (String.contains model.techniqueFilter t.name) || (String.contains model.techniqueFilter t.id.value) ) techniques)
     html =
       if List.isEmpty techniques then
@@ -20,32 +24,32 @@ techniqueList model techniques =
           []   ->  [ div [ class "empty"] [text "No technique matches the search filter."] ]
           list -> (List.map (techniqueItem model) list)
   in
-  div [ class "template-sidebar sidebar-left col-techniques", onClick OpenTechniques ] [
-    div [ class "sidebar-header"] [
-      div [ class "header-title" ] [
-        h1 [] [ text "Techniques"]
-      , div [ class "header-buttons", hidden (not model.hasWriteRights)] [ -- Need to add technique-write rights
-          label [class "btn btn-sm btn-primary", onClick StartImport] [
-            text "Import "
-          , i [ class "fa fa-upload" ] []
-          ]
-        , button [ class "btn btn-sm btn-success", onClick  (GenerateId (\s -> NewTechnique (TechniqueId s))) ] [
-            text "Create "
-          , i [ class "fa fa-plus-circle"] []
+    div [ class "template-sidebar sidebar-left col-techniques", onClick OpenTechniques ] [
+      div [ class "sidebar-header"] [
+        div [ class "header-title" ] [
+          h1 [] [ text "Techniques"]
+        , div [ class "header-buttons", hidden (not model.hasWriteRights)] [ -- Need to add technique-write rights
+            label [class "btn btn-sm btn-primary", onClick StartImport] [
+              text "Import "
+            , i [ class "fa fa-upload" ] []
+            ]
+          , button [ class "btn btn-sm btn-success", onClick  (GenerateId (\s -> NewTechnique (TechniqueId s))) ] [
+              text "Create "
+            , i [ class "fa fa-plus-circle"] []
+            ]
           ]
         ]
+      , div [ class "header-filter" ] [
+          input [ class "form-control",  type_ "text",  placeholder "Filter", onInput UpdateTechniqueFilter  ]  []
+        ]
       ]
-    , div [ class "header-filter" ] [
-        input [ class "form-control",  type_ "text",  placeholder "Filter", onInput UpdateTechniqueFilter  ]  []
-      ]
-    ]
-  , div [ class "sidebar-body" ] [
-      div [ class "techniques-list-container" ] [
-        ul [] html
+    , div [ class "sidebar-body" ] [
+        div [ class "techniques-list-container" ] [
+          ul [] html
 
+        ]
       ]
     ]
-  ]
 
 techniqueItem: Model -> Technique -> Html Msg
 techniqueItem model technique =

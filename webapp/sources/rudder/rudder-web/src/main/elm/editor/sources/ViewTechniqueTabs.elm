@@ -1,4 +1,4 @@
-module Tabs exposing (..)
+module ViewTechniqueTabs exposing (..)
 
 import DataTypes exposing (..)
 import Html exposing (..)
@@ -6,7 +6,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import String.Extra
 
-
+--
+-- This deals with the technique tabs UI (general info/parameters/resources)
+--
 
 techniqueResource : Resource -> Html Msg
 techniqueResource  resource =
@@ -71,7 +73,7 @@ techniqueParameter model technique param opened =
       ]
     ]
 
-techniqueTab : Model -> Technique -> Bool -> TechniqueUIInfo -> Html Msg
+techniqueTab : Model -> Technique -> Bool -> TechniqueUiInfo -> Html Msg
 techniqueTab model technique creation ui =
   case ui.tab of
     General -> div [ class "tab tab-general" ] [

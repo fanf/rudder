@@ -1,11 +1,25 @@
 module  ApiCalls exposing (..)
 
 import DataTypes exposing (..)
+import Dict
 import Http exposing (..)
 import JsonDecoder exposing (..)
 import JsonEncoder exposing (..)
 import Json.Decode
-import Dict
+
+
+--
+-- This files contains all API calls for the technique editor
+-- Summary:
+-- GET    /internal/techniques : get the list of techniques (from technique editor)
+-- GET    /internal/techniques/categories : get the list of techniques categories (all categories from lib)
+-- GET    /internal/methods : get the list of available generic methods
+-- PUT    /internal/techniques : create a new technique (error if existing)
+-- POST   /internal/techniques : update an existing technique (error if doesn't exist yet)
+-- DELETE /internal/techniques/${id}/${version} : delete given technique's version
+-- GET    /internal/techniques/${id}/${version}/resources : get resources for an existing technique
+-- GET    /internal/techniques/draft/${id}/1.0/resources : get resources for a newly created technique
+-- GET    /internal/techniques/draft/${id}/${version}/resources : get resources for a newly cloned technique
 
 
 getUrl: Model -> String -> String

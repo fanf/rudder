@@ -1,36 +1,36 @@
 port module Editor exposing (..)
 
-import DataTypes exposing (..)
 import ApiCalls exposing (..)
-import File
-import File.Select
-import Task
-import View exposing (view, checkTechniqueName, checkTechniqueId)
-import MethodCall exposing (checkConstraint, accumulateErrorConstraint)
 import Browser
-import Dict exposing (Dict)
-import Random
-import UUID
-import List.Extra
-import Either exposing (Either(..))
-import Json.Decode exposing (Value)
-import Json.Encode
-import JsonEncoder exposing ( encodeTechnique, encodeExportTechnique)
-import JsonDecoder exposing ( decodeTechnique)
-import File.Download
 import Browser.Dom
-import Conditions exposing (..)
+import DataTypes exposing (..)
+import Dict exposing ( Dict )
+import Either exposing ( Either(..) )
+import File
+import File.Download
+import File.Select
+import Json.Decode exposing ( Value )
+import Json.Encode
+import JsonEncoder exposing ( encodeTechnique, encodeExportTechnique )
+import JsonDecoder exposing ( decodeTechnique)
+import List.Extra
+import MethodConditions exposing (..)
+import Random
+import Task
+import UUID
+import ViewTechnique exposing ( view, checkTechniqueName, checkTechniqueId )
+import ViewMethod exposing ( accumulateErrorConstraint )
 
+--
+-- Port for interacting with external JS
+--
 port copy : String -> Cmd msg
-
 port store : (String , Value) -> Cmd msg
 port clear : String  -> Cmd msg
 port get : () -> Cmd msg
 port response: ((Value, Value, String) -> msg) -> Sub msg
-
 port openManager: String -> Cmd msg
 port updateResources : (() -> msg) -> Sub msg
-
 port successNotification : String -> Cmd msg
 port errorNotification   : String -> Cmd msg
 port warnNotification   : String -> Cmd msg
@@ -41,6 +41,7 @@ updateResourcesResponse model =
   case model.mode of
     TechniqueDetails _ s _ -> CallApi ( getRessources s )
     _ -> Ignore
+
 parseResponse: (Value, Value, String) -> Msg
 parseResponse (json, optJson, internalId) =
   case Json.Decode.decodeValue decodeTechnique json of
@@ -83,7 +84,6 @@ main =
     , subscriptions = subscriptions
     }
 
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
@@ -97,7 +97,7 @@ defaultMethodUiInfo = MethodCallUiInfo Closed CallParameters Dict.empty
 selectTechnique: Model -> Technique -> (Model, Cmd Msg)
 selectTechnique model technique =
   let
-    ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False ValidState ValidState
+    ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False ValidState ValidState
   in
     ({ model | mode = TechniqueDetails technique  (Edit technique) ui } )
       |> update OpenMethods
@@ -106,9 +106,44 @@ selectTechnique model technique =
 generator : Random.Generator String
 generator = Random.map (UUID.toString) UUID.generator
 
+--
+-- update loop --
+--
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
+-- utility methods
+    -- generate random id
+    GenerateId nextMsg ->
+      (model, Random.generate nextMsg generator)
+    -- do an API call
+    CallApi apiCall ->
+      ( model , apiCall model)
+    -- neutral element
+    Ignore ->
+      ( model , Cmd.none)
+    -- copy value to js
+    Copy value ->
+      (model, copy value)
+
+-- UI high level stuff: list/filter techniques, create/import/select technique
+
+    GetCategories (Ok categories) ->
+      ({ model | categories = List.sortBy .name categories},  get () )
+    GetCategories (Err _) ->
+      ( model , Cmd.none )
+
+    GetTechniques (Ok  techniques) ->
+      ({ model | techniques = techniques},  get () )
+    GetTechniques (Err _) ->
+      ( model , Cmd.none )
+
+    OpenTechniques ->
+      ( { model | genericMethodsOpen = False } , Cmd.none )
+
+    UpdateTechniqueFilter newFilter ->
+      ( { model | techniqueFilter = newFilter } , Cmd.none )
+
     SelectTechnique technique ->
       case model.mode of
         TechniqueDetails t _ _ ->
@@ -119,22 +154,34 @@ update msg model =
         _ ->
           selectTechnique model technique
 
-    CloneTechnique technique internalId ->
-      let
-        ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False Untouched Untouched
-      in
-        ({ model | mode = TechniqueDetails technique  (Clone technique internalId) ui } )
-          |> update OpenMethods
-          |> Tuple.first
-          |> update (Store "storedTechnique" (encodeTechnique technique))
-
     NewTechnique id ->
       let
-        ui = TechniqueUIInfo General Dict.empty [] False Untouched Untouched
+        ui = TechniqueUiInfo General Dict.empty [] False Untouched Untouched
         t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] [] []
         newModel =  { model | mode = TechniqueDetails t (Creation id) ui}
       in
         (newModel, updatedStoreTechnique newModel )
+
+    -- import a technique from a JSON file
+    StartImport ->
+        (model, File.Select.file [ "text/plain", "application/json" ]  ImportFile )
+    ImportFile file ->
+      (model, Task.perform (ParseImportedFile file) (File.toString file) )
+    ParseImportedFile file content ->
+      case Json.Decode.decodeString (Json.Decode.at ["data"] decodeTechnique ) content of
+        Ok t ->
+          let
+            mode = TechniqueDetails t (Creation t.id) (
+                     TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) t.calls)) [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model)
+                   )
+            (newModel, cmd) = (update (CallApi ( getRessources (Creation t.id) ))  {model | mode = mode })
+          in
+            ( newModel, Cmd.batch [ cmd, infoNotification ("Technique '"++ t.id.value ++ "' successfully imported, please save to create technique") ] )
+        Err _ ->
+         (model, errorNotification ("Error when importing technique from file " ++ (File.name file) ))
+
+
+-- Edit a technique: high level action: save/update, clone, export, switch tab
 
     SwitchTab tab ->
       let
@@ -144,70 +191,6 @@ update msg model =
            m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
-
-    OpenMethod callId ->
-      let
-        newMode =
-          case model.mode of
-           TechniqueDetails t o ui->
-             let
-               newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (\mui -> {mui | mode = Opened } )) ui.callsUI }
-             in
-              TechniqueDetails t o newUi
-           m -> m
-      in
-        ({ model | mode = newMode}, Cmd.none )
-
-    CloseMethod callId ->
-      let
-        newMode =
-          case model.mode of
-           TechniqueDetails t o ui->
-            let
-              newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (\mui -> {mui | mode = Closed })) ui.callsUI }
-            in
-              TechniqueDetails t o newUi
-           m -> m
-      in
-        ({ model | mode = newMode}, Cmd.none )
-
-    RemoveMethod callId ->
-      let
-        newMode =
-          case model.mode of
-           TechniqueDetails t o ui ->
-            let
-              technique = { t |  calls = List.filter (\c -> c.id /= callId ) t.calls }
-              newUi = {ui | callsUI = Dict.remove callId.value  ui.callsUI }
-            in
-            TechniqueDetails technique o newUi
-           m -> m
-        newModel = { model | mode = newMode}
-      in
-        (newModel, updatedStoreTechnique newModel )
-
-    GenerateId nextMsg ->
-      (model, Random.generate nextMsg generator)
-
-    CloneMethod call newId ->
-      let
-        clone = {call | id = newId }
-        newModel =
-          case model.mode of
-           TechniqueDetails t o ui ->
-             let
-               newMethods =
-                 let
-                  (end,beginning) = List.Extra.span (\c -> c.id == call.id ) (List.reverse t.calls)
-                 in
-                   List.reverse (List.append end (clone :: beginning))
-               technique = { t |  calls = newMethods}
-               newUi =  { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo)) ui.callsUI }
-             in
-               { model | mode = TechniqueDetails technique o newUi }
-           m -> model
-      in
-        (newModel, updatedStoreTechnique newModel )
 
     SwitchTabMethod callId newTab ->
       let
@@ -229,9 +212,83 @@ update msg model =
             TechniqueDetails _ o ui ->
 
               { model | mode = TechniqueDetails technique o {ui |  nameState = checkTechniqueName technique model, idState = checkTechniqueId o technique model } }
-            m -> model
+            _ -> model
       in
         (newModel, updatedStoreTechnique newModel )
+
+    Store _ _ ->
+      (model, updatedStoreTechnique model )
+
+    GetFromStore technique originTechnique newId ->
+            let
+              notification = case (List.Extra.find (.id >> (==) technique.id) model.techniques,originTechnique) of
+                (Nothing, Just _) -> warnNotification "Technique reloaded from cache was deleted, Saving will recreate it"
+                (Just _ , Nothing) -> warnNotification "Technique from cache was created, change name/id before saving"
+                (Just t , Just o) -> if t /= o then warnNotification "Technique reloaded from cache since you modified it, saving will overwrite current changes" else infoNotification "Technique reloaded from cache"
+                (Nothing, Nothing) -> infoNotification "Technique reloaded from cache"
+              state = Maybe.withDefault (Creation newId)  (Maybe.map Edit originTechnique)
+
+              ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False (checkTechniqueName technique model) (checkTechniqueId state technique model)
+            in
+              ({ model | mode = TechniqueDetails technique state ui } )
+                |> update OpenMethods
+                |>  Tuple.mapSecond (\c -> Cmd.batch [c, notification ])
+
+    CloneTechnique technique internalId ->
+      let
+        ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False Untouched Untouched
+      in
+        ({ model | mode = TechniqueDetails technique  (Clone technique internalId) ui } )
+          |> update OpenMethods
+          |> Tuple.first
+          |> update (Store "storedTechnique" (encodeTechnique technique))
+
+    SaveTechnique (Ok technique) ->
+      let
+        techniques = if (List.any (.id >> (==) technique.id) model.techniques) then
+           List.Extra.updateIf (.id >> (==) technique.id ) (always technique) model.techniques
+         else
+           technique :: model.techniques
+        newMode = case model.mode of
+                    TechniqueDetails t _ ui -> TechniqueDetails t (Edit technique) ui
+                    m -> m
+      in
+        ({ model | techniques = techniques, mode = newMode}, successNotification "Technique saved!" )
+
+    SaveTechnique (Err _) ->
+      ( model , errorNotification "Error when saving technique")
+
+    StartSaving ->
+     case model.mode of
+          TechniqueDetails t o ui ->
+            case o of
+              Edit _ ->
+               update (CallApi (saveTechnique t False)) { model | mode = TechniqueDetails t o ui }
+              _ ->
+               update (CallApi (saveTechnique t True)) { model | mode = TechniqueDetails t o ui }
+          _ -> (model, Cmd.none)
+
+    DeleteTechnique (Ok (techniqueId, _)) ->
+      let
+        techniques = List.filter (.id >> (/=) techniqueId) model.techniques
+        newMode = case model.mode of
+                     TechniqueDetails t _ _ -> if t.id == techniqueId then Introduction else model.mode
+                     _ -> model.mode
+
+      in
+        ({ model | mode = newMode, techniques = techniques}, infoNotification ("Successfully deleted technique '" ++ techniqueId.value ++  "'"))
+
+    DeleteTechnique (Err _) ->
+      ( model , errorNotification "Error when deleting technique")
+
+    OpenDeletionPopup technique ->
+      ( { model | modal = Just (DeletionValidation technique)}  , Cmd.none )
+
+    ClosePopup callback ->
+      let
+        (nm,cmd) = update callback { model | modal = Nothing}
+      in
+        (nm , Cmd.batch [  clear "storedTechnique", clear "originTechnique", cmd ] )
 
     ResetTechnique  ->
       let
@@ -246,9 +303,10 @@ update msg model =
                     Creation _ -> base
               in
                 { model | mode = TechniqueDetails technique s ui }
-            m -> model
+            _ -> model
       in
         (newModel, updatedStoreTechnique newModel )
+
     ResetMethodCall call  ->
       let
         newModel =
@@ -288,144 +346,25 @@ update msg model =
 
               in
                 { model | mode = TechniqueDetails updatedTechnique s { ui | callsUI = callUi } }
-            m -> model
+            _ -> model
       in
         (newModel, updatedStoreTechnique newModel )
 
-
-    GetTechniques (Ok  techniques) ->
-      ({ model | techniques = techniques},  get () )
-    GetTechniques (Err e) ->
-      ( model , Cmd.none )
-
-    GetCategories (Ok  categories) ->
-      ({ model | categories = List.sortBy .name categories},  get () )
-    GetCategories (Err e) ->
-      ( model , Cmd.none )
-
-    SaveTechnique (Ok  technique) ->
+    -- export a technique to its JSON descriptor
+    Export ->
       let
-        techniques = if (List.any (.id >> (==) technique.id) model.techniques) then
-           List.Extra.updateIf (.id >> (==) technique.id ) (always technique) model.techniques
-         else
-           technique :: model.techniques
-        newMode = case model.mode of
-                    TechniqueDetails t _ ui -> TechniqueDetails t (Edit technique) ui
-                    m -> m
+        action = case model.mode of
+                   TechniqueDetails t _ _ ->
+                     let
+                       data =  encodeExportTechnique t
+                       content = Json.Encode.encode 2 data
+                     in
+                       File.Download.string (t.id.value ++ ".json") "application/json" content
+                   _ -> Cmd.none
       in
-        ({ model | techniques = techniques, mode = newMode}, successNotification "Technique saved!" )
-    SaveTechnique (Err e) ->
-      ( model , errorNotification "Error when saving technique")
+        (model, action)
 
-    GetMethods (Ok  methods) ->
-      ({ model | methods = methods}, getTechniques model  )
-    GetMethods (Err e) ->
-      ( model , errorNotification "Error when getting methods" )
-    CallApi apiCall ->
-      ( model , apiCall model)
-
-
-    StartSaving ->
-     case model.mode of
-          TechniqueDetails t o ui ->
-            case o of
-              Edit _ ->
-               update (CallApi (saveTechnique t False)) { model | mode = TechniqueDetails t o ui }
-              _ ->
-               update (CallApi (saveTechnique t True)) { model | mode = TechniqueDetails t o ui }
-          _ -> (model, Cmd.none)
-
-    UpdateTechniqueFilter newFilter->
-      ( { model | techniqueFilter = newFilter } , Cmd.none)
-
-    UpdateMethodFilter newFilter->
-      let
-        ui = model.methodsUI
-      in
-        ( { model | methodsUI = { ui | filter = newFilter } } , Cmd.none )
-
-    ToggleDoc methodId ->
-      let
-        ui = model.methodsUI
-        newDocs = if List.member methodId ui.docsOpen then List.Extra.remove methodId ui.docsOpen else methodId :: ui.docsOpen
-      in
-        ( { model | methodsUI = { ui | docsOpen = newDocs } } , Cmd.none )
-
-    OpenMethods ->
-      ( { model | genericMethodsOpen = True } , Cmd.none )
-
-    OpenTechniques ->
-      ( { model | genericMethodsOpen = False } , Cmd.none )
-
-    AddMethod method newId ->
-      if model.hasWriteRights then
-      let
-        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""
-        newModel =
-          case model.mode of
-            TechniqueDetails t o ui ->
-              let
-                technique =  { t | calls = newCall :: t.calls }
-                newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
-              in
-              { model | mode = TechniqueDetails technique o newUi }
-            _ -> model
-      in
-        (  newModel , updatedStoreTechnique newModel )
-      else
-        (model,Cmd.none)
-
-    DndEvent dndMsg ->
-      if model.hasWriteRights then
-            let
-
-
-              ( newModel, c ) =
-                case model.mode of
-                   TechniqueDetails t o ui ->
-                    let
-                      (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) (Dict.values model.methods |> List.map (Left)))
-                      newMode = TechniqueDetails { t | calls = Either.rights calls } o ui
-                    in
-                      if (List.any (\call -> call.id.value == "") t.calls) then
-                        update (GenerateId (\id -> SetCallId (CallId id))) { model | dnd = d, mode = newMode }
-                      else
-                        ( { model | dnd = d, mode = newMode }, Cmd.none)
-                   _ -> (model, Cmd.none)
-            in
-               (newModel , Cmd.batch [  dndSystem.commands newModel.dnd, c ] )
-      else
-        (model,Cmd.none)
-
-    MethodCallParameterModified call paramId newValue ->
-      let
-        newModel =
-          case model.mode of
-            TechniqueDetails t o ui->
-              let
-
-                calls = List.Extra.updateIf (.id >> (==) call.id )  (\c -> { c | parameters =  List.Extra.updateIf (.id >> (==) paramId) (\p -> { p | value = newValue } ) c.parameters } ) t.calls
-                constraints = case Dict.get call.methodName.value model.methods of
-                           Just m -> Maybe.withDefault [] (Maybe.map (.constraints) (List.Extra.find (.name >> (==) paramId) m.parameters))
-                           Nothing -> []
-
-                updateCallUi = \optCui ->
-                  let
-                    base = case optCui of
-                            Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
-                            Just cui -> cui
-                    newValidation =  Dict.update paramId.value (always (Just (accumulateErrorConstraint  (CallParameter paramId newValue) constraints )))  base.validation
-                  in
-                    Just { base | validation = newValidation }
-                callUi  =
-                  Dict.update call.id.value updateCallUi  ui.callsUI
-                technique = { t | calls = calls }
-              in
-                { model | mode = TechniqueDetails technique o {ui | callsUI = callUi } }
-            _ -> model
-     in
-       ( newModel , updatedStoreTechnique newModel  )
-
+-- Edit a technique: parameter tab
 
     TechniqueParameterModified paramId newValue ->
       let
@@ -482,68 +421,9 @@ update msg model =
       in
         ({ model | mode = newMode}, Cmd.none )
 
-    SetCallId newId ->
-      let
-        newMode =
-          case model.mode of
-            TechniqueDetails t o ui ->
-              let
-                technique = { t | calls = List.Extra.updateIf (\c -> c.id.value == "") (\c -> { c | id = newId } ) t.calls }
-                newUi = { ui | callsUI = Dict.insert newId.value defaultMethodUiInfo ui.callsUI}
-              in
-                TechniqueDetails  technique o newUi
-            m -> m
-      in
-        ( { model | mode = newMode } , Cmd.none )
-    Ignore->
-      ( model , Cmd.none)
 
-    Copy value ->
-      (model, copy value)
-    Store key value ->
-      (model, updatedStoreTechnique model )
-    GetFromStore technique originTechnique newId ->
-            let
-              notification = case (List.Extra.find (.id >> (==) technique.id) model.techniques,originTechnique) of
-                (Nothing, Just _) -> warnNotification "Technique reloaded from cache was deleted, Saving will recreate it"
-                (Just _ , Nothing) -> warnNotification "Technique from cache was created, change name/id before saving"
-                (Just t , Just o) -> if t /= o then warnNotification "Technique reloaded from cache since you modified it, saving will overwrite current changes" else infoNotification "Technique reloaded from cache"
-                (Nothing, Nothing) -> infoNotification "Technique reloaded from cache"
-              state = Maybe.withDefault (Creation newId)  (Maybe.map Edit originTechnique)
+-- Edit a technique: resource tab, file manager, etc.
 
-              ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False (checkTechniqueName technique model) (checkTechniqueId state technique model)
-            in
-              ({ model | mode = TechniqueDetails technique state ui } )
-                |> update OpenMethods
-                |>  Tuple.mapSecond (\c -> Cmd.batch [c, notification ])
-    ToggleFilter ->
-      let
-        ui = model.methodsUI
-        filter = ui.filter
-        newState = case filter.state of
-                        FilterOpened ->  FilterClosed
-                        FilterClosed -> FilterOpened
-      in
-        ({ model | methodsUI = { ui | filter = {filter | state = newState } } } ,Cmd.none)
-    DeleteTechnique (Ok (techniqueId, _)) ->
-      let
-        techniques = List.filter (.id >> (/=) techniqueId) model.techniques
-        newMode = case model.mode of
-                     TechniqueDetails t _ _ -> if t.id == techniqueId then Introduction else model.mode
-                     _ -> model.mode
-
-      in
-        ({ model | mode = newMode, techniques = techniques}, infoNotification ("Successfully deleted technique '" ++ techniqueId.value ++  "'"))
-    DeleteTechnique (Err e) ->
-      ( model , errorNotification "Error when deleting technique")
-
-    OpenDeletionPopup technique ->
-      ( { model | modal = Just (DeletionValidation technique)}  , Cmd.none )
-    ClosePopup callback ->
-      let
-        (nm,cmd) = update callback { model | modal = Nothing}
-      in
-        (nm , Cmd.batch [  clear "storedTechnique", clear "originTechnique", cmd ] )
     OpenFileManager ->
       let
         cmd = case model.mode of
@@ -567,39 +447,168 @@ update msg model =
                  _ -> model.mode
       in
         ({ model | mode = mode },  Cmd.none )
-    GetTechniqueResources (Err e) ->
+    GetTechniqueResources (Err _) ->
       ( model , Cmd.none )
-    Export ->
+
+-- Edit a technique: generic method high level action (list/etc)
+
+    OpenMethods ->
+      ( { model | genericMethodsOpen = True } , Cmd.none )
+
+    GetMethods (Ok  methods) ->
+      ({ model | methods = methods}, getTechniques model  )
+
+    GetMethods (Err _) ->
+      ( model , errorNotification "Error when getting methods" )
+
+    ToggleFilter ->
       let
-        action = case model.mode of
-                   TechniqueDetails t _ _ ->
-                     let
-                       data =  encodeExportTechnique t
-                       content = Json.Encode.encode 2 data
-                     in
-                       File.Download.string (t.id.value ++ ".json") "application/json" content
-                   _ -> Cmd.none
+        ui = model.methodsUI
+        filter = ui.filter
+        newState = case filter.state of
+                        FilterOpened ->  FilterClosed
+                        FilterClosed -> FilterOpened
       in
-        (model, action)
-    StartImport ->
-        (model, File.Select.file [ "text/plain", "application/json" ]  ImportFile )
-    ImportFile file ->
-      (model, Task.perform (ParseImportedFile file) (File.toString file) )
-    ParseImportedFile file content ->
-      case Json.Decode.decodeString (Json.Decode.at ["data"] decodeTechnique ) content of
-        Ok t ->
-          let
-            mode = TechniqueDetails t (Creation t.id) (TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) t.calls)) [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model))
-            (newModel, cmd) = (update (CallApi ( getRessources (Creation t.id) ))  {model | mode = mode })
-          in
-            ( newModel, Cmd.batch [ cmd, infoNotification ("Technique '"++ t.id.value ++ "' successfully imported, please save to create technique") ] )
-        Err s ->
-         (model, errorNotification ("Error when importing technique from file " ++ (File.name file) ))
+        ({ model | methodsUI = { ui | filter = {filter | state = newState } } } ,Cmd.none)
+
+    UpdateMethodFilter newFilter->
+      let
+        ui = model.methodsUI
+      in
+        ( { model | methodsUI = { ui | filter = newFilter } } , Cmd.none )
+
+
     ScrollCategory category ->
       let
-        task = (Browser.Dom.getElement "methods-list-container") |> ((Browser.Dom.getViewportOf "methods-list-container") |> ((Browser.Dom.getElement category) |> Task.map3 (\elem viewport container -> viewport.viewport.y + elem.element.y - container.element.y ))  )  |> Task.andThen (Browser.Dom.setViewportOf "methods-list-container" 0)
+        task = (Browser.Dom.getElement "methods-list-container")
+            |> ((Browser.Dom.getViewportOf "methods-list-container")
+            |> ((Browser.Dom.getElement category)
+            |> Task.map3 (\elem viewport container -> viewport.viewport.y + elem.element.y - container.element.y ))  )
+            |> Task.andThen (Browser.Dom.setViewportOf "methods-list-container" 0)
       in
         (model, Task.attempt (always Ignore) task )
+
+    ToggleDoc methodId ->
+      let
+        ui = model.methodsUI
+        newDocs = if List.member methodId ui.docsOpen then List.Extra.remove methodId ui.docsOpen else methodId :: ui.docsOpen
+      in
+        ( { model | methodsUI = { ui | docsOpen = newDocs } } , Cmd.none )
+
+    AddMethod method newId ->
+      if model.hasWriteRights then
+      let
+        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""
+        newModel =
+          case model.mode of
+            TechniqueDetails t o ui ->
+              let
+                technique =  { t | calls = newCall :: t.calls }
+                newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
+              in
+              { model | mode = TechniqueDetails technique o newUi }
+            _ -> model
+      in
+        (  newModel , updatedStoreTechnique newModel )
+      else
+        (model,Cmd.none)
+
+    DndEvent dndMsg ->
+      if model.hasWriteRights then
+            let
+              ( newModel, c ) =
+                case model.mode of
+                   TechniqueDetails t o ui ->
+                    let
+                      (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) (Dict.values model.methods |> List.map (Left)))
+                      newMode = TechniqueDetails { t | calls = Either.rights calls } o ui
+                    in
+                      if (List.any (\call -> call.id.value == "") t.calls) then
+                        update (GenerateId (\id -> SetCallId (CallId id))) { model | dnd = d, mode = newMode }
+                      else
+                        ( { model | dnd = d, mode = newMode }, Cmd.none)
+                   _ -> (model, Cmd.none)
+            in
+               (newModel , Cmd.batch [  dndSystem.commands newModel.dnd, c ] )
+      else
+        (model,Cmd.none)
+
+    SetCallId newId ->
+      let
+        newMode =
+          case model.mode of
+            TechniqueDetails t o ui ->
+              let
+                technique = { t | calls = List.Extra.updateIf (\c -> c.id.value == "") (\c -> { c | id = newId } ) t.calls }
+                newUi = { ui | callsUI = Dict.insert newId.value defaultMethodUiInfo ui.callsUI}
+              in
+                TechniqueDetails technique o newUi
+            m -> m
+      in
+        ( { model | mode = newMode } , Cmd.none )
+
+-- Edit a technique: edit one generic method
+
+    OpenMethod callId ->
+      let
+        newMode =
+          case model.mode of
+           TechniqueDetails t o ui->
+             let
+               newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (\mui -> {mui | mode = Opened } )) ui.callsUI }
+             in
+              TechniqueDetails t o newUi
+           m -> m
+      in
+        ({ model | mode = newMode}, Cmd.none )
+
+    CloseMethod callId ->
+      let
+        newMode =
+          case model.mode of
+           TechniqueDetails t o ui->
+            let
+              newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (\mui -> {mui | mode = Closed })) ui.callsUI }
+            in
+              TechniqueDetails t o newUi
+           m -> m
+      in
+        ({ model | mode = newMode}, Cmd.none )
+
+    RemoveMethod callId ->
+      let
+        newMode =
+          case model.mode of
+           TechniqueDetails t o ui ->
+            let
+              technique = { t |  calls = List.filter (\c -> c.id /= callId ) t.calls }
+              newUi = {ui | callsUI = Dict.remove callId.value  ui.callsUI }
+            in
+            TechniqueDetails technique o newUi
+           m -> m
+        newModel = { model | mode = newMode}
+      in
+        (newModel, updatedStoreTechnique newModel )
+
+    CloneMethod call newId ->
+      let
+        clone = {call | id = newId }
+        newModel =
+          case model.mode of
+            TechniqueDetails t o ui ->
+              let
+                newMethods =
+                  let
+                   (end,beginning) = List.Extra.span (\c -> c.id == call.id ) (List.reverse t.calls)
+                  in
+                    List.reverse (List.append end (clone :: beginning))
+                technique = { t |  calls = newMethods}
+                newUi =  { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo)) ui.callsUI }
+              in
+                { model | mode = TechniqueDetails technique o newUi }
+            _ -> model
+      in
+        (newModel, updatedStoreTechnique newModel )
 
     UpdateCondition callId condition ->
       case model.mode of
@@ -609,3 +618,32 @@ update msg model =
           in
           (newModel, Cmd.none )
         _ -> (model,Cmd.none)
+
+    MethodCallParameterModified call paramId newValue ->
+      let
+        newModel =
+          case model.mode of
+            TechniqueDetails t o ui->
+              let
+
+                calls = List.Extra.updateIf (.id >> (==) call.id )  (\c -> { c | parameters =  List.Extra.updateIf (.id >> (==) paramId) (\p -> { p | value = newValue } ) c.parameters } ) t.calls
+                constraints = case Dict.get call.methodName.value model.methods of
+                           Just m -> Maybe.withDefault [] (Maybe.map (.constraints) (List.Extra.find (.name >> (==) paramId) m.parameters))
+                           Nothing -> []
+
+                updateCallUi = \optCui ->
+                  let
+                    base = case optCui of
+                            Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
+                            Just cui -> cui
+                    newValidation =  Dict.update paramId.value (always (Just (accumulateErrorConstraint  (CallParameter paramId newValue) constraints )))  base.validation
+                  in
+                    Just { base | validation = newValidation }
+                callUi  =
+                  Dict.update call.id.value updateCallUi  ui.callsUI
+                technique = { t | calls = calls }
+              in
+                { model | mode = TechniqueDetails technique o {ui | callsUI = callUi } }
+            _ -> model
+     in
+       ( newModel , updatedStoreTechnique newModel  )

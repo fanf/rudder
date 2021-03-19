@@ -1,15 +1,24 @@
-module MethodCall exposing (..)
+module ViewMethod exposing (..)
 
 import DataTypes exposing (..)
+import Dict
+import DnDList.Groups
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Dict
 import List.Extra
-import String.Extra
+import MethodConditions exposing (..)
 import Regex
-import DnDList.Groups
-import Conditions exposing (..)
+import String.Extra
+
+--
+-- This file deals with one method container (condition, parameters, etc)
+--
+
+{-
+  CONDITION
+-}
+noVersion = {major = Nothing, minor = Nothing }
 
 osList : List (Maybe OS)
 osList =
@@ -32,6 +41,8 @@ osList =
   , Just ( Solaris noVersion)
   ]
 
+-- VERSION in the condition part --
+-- some OS only have one version (+maybe service packs). Deals with it here
 hasVersion: Maybe OS -> Bool
 hasVersion os =
   case os of
@@ -49,6 +60,7 @@ getVersion os =
     Just (Linux (Just (SLED v))) -> v.version
     Just (AIX v) -> v.version
     _ -> Nothing
+
 updateVersion:  Maybe Int -> Maybe OS -> Maybe OS
 updateVersion newVersion os =
   case os of
@@ -58,6 +70,7 @@ updateVersion newVersion os =
     Just (AIX v) -> Just (AIX {v | version = newVersion})
     _ -> os
 
+-- for OS with service patcks
 hasSP: Maybe OS -> Bool
 hasSP os =
   case os of
@@ -79,6 +92,7 @@ updateSP os newSP =
     Just (Linux (Just (SLED v))) -> Just (Linux (Just (SLED {v | sp = newSP})))
     _ -> os
 
+-- most OS have a major+minor version
 hasMajorMinorVersion: Maybe OS -> Bool
 hasMajorMinorVersion os =
   case os of
@@ -115,6 +129,7 @@ getMinorVersion os =
     Just (Linux (Just (Slackware v))) -> v.minor
     Just (Solaris v) -> v.minor
     _ -> Nothing
+
 updateMajorVersion: Maybe Int -> Maybe OS -> Maybe OS
 updateMajorVersion newMajor os =
   case os of
@@ -137,20 +152,14 @@ updateMinorVersion newMinor os =
     Just (Linux (Just (OpenSuse v))) -> Just (Linux (Just (OpenSuse {v | minor = newMinor})))
     Just (Linux (Just (Slackware v))) -> Just (Linux (Just (Slackware {v | minor = newMinor})))
     Just (Solaris v) -> Just ( Solaris { v | minor = newMinor } )
-
     _ -> os
 
-osClass: Maybe OS -> String
-osClass maybeOs =
-  case maybeOs of
-    Nothing -> "optGroup"
-    Just os ->
-      case os of
-        AIX _ -> "optGroup"
-        Solaris _ -> "optGroup"
-        Windows -> "optGroup"
-        Linux Nothing -> "optGroup"
-        Linux (Just _) -> "optChild"
+-- /END VERSION in the condition part --
+
+
+{-
+  PARAMETERS
+-}
 
 getClassParameter: Method -> MethodParameter
 getClassParameter method =
@@ -224,9 +233,21 @@ checkConstraint call constraint =
                      InvalidState (ConstraintError [ "Parameter '" ++ call.id.value ++ "'  should be one of the value from the following list: " ++ (String.join ", " list)] )
 
 
-noVersion = {major = Nothing, minor = Nothing }
+{-
+  DISPLAY ONE METHOD EXTENDED
+-}
 
-strToVersion version =  String.toInt version
+osClass: Maybe OS -> String
+osClass maybeOs =
+  case maybeOs of
+    Nothing -> "optGroup"
+    Just os ->
+      case os of
+        AIX _ -> "optGroup"
+        Solaris _ -> "optGroup"
+        Windows -> "optGroup"
+        Linux Nothing -> "optGroup"
+        Linux (Just _) -> "optChild"
 
 showMethodTab: Model -> Method -> MethodCall -> MethodCallUiInfo -> Html Msg
 showMethodTab model method call uiInfo=
@@ -381,7 +402,7 @@ methodDetail method call ui model =
       , input [ readonly (not model.hasWriteRights), type_ "text", name "component", class "form-control", value call.component,  placeholder method.name] []
       ]
     , ul [ class "tabs-list"] [
-        li [ class (activeClass CallParameters), onClick (SwitchTabMethod call.id CallParameters) ] [text "Parameters"] -- click select param tabs, class active si selectionnée
+        li [ class (activeClass CallParameters), onClick (SwitchTabMethod call.id CallParameters) ] [text "Parameters"] -- click select param tabs, class active if selected
       , li [ class (activeClass Conditions), onClick (SwitchTabMethod call.id Conditions) ] [text "Conditions"]
       , li [class (activeClass Result), onClick (SwitchTabMethod call.id Result) ] [text "Result conditions"]
       ]

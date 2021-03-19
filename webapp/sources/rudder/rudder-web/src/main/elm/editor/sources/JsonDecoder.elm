@@ -1,10 +1,10 @@
 module  JsonDecoder exposing (..)
 
 
-import Conditions exposing (..)
 import DataTypes exposing (..)
 import Json.Decode exposing (..)
 import Json.Decode.Pipeline exposing (..)
+import MethodConditions exposing (..)
 
 decodeTechniqueParameter : Decoder TechniqueParameter
 decodeTechniqueParameter =
@@ -141,9 +141,9 @@ decodeResource =
   succeed Resource
     |> required "name" string
     |> required "state" (andThen (\s -> case s of
-                                     "new" -> succeed New
-                                     "untouched" -> succeed Unchanged
-                                     "modified" -> succeed Modified
-                                     "deleted" -> succeed Deleted
-                                     _ -> fail "not a valid state"
+                                          "new" -> succeed New
+                                          "untouched" -> succeed Unchanged
+                                          "modified" -> succeed Modified
+                                          "deleted" -> succeed Deleted
+                                          _ -> fail "not a valid state"
                         ) string)
