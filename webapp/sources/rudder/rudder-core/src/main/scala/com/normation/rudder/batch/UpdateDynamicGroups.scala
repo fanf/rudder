@@ -86,7 +86,7 @@ class UpdateDynamicGroups(
   , asyncDeploymentAgent         : AsyncDeploymentActor
   , uuidGen                      : StringUuidGenerator
   , updateInterval               : Int // in minutes
-  , getComputeDynGroupParallelism: () => Box[Int]
+  , getComputeDynGroupParallelism: () => Box[String]
 ) {
 
   private val propertyName = "rudder.batch.dyngroup.updateInterval"
@@ -276,7 +276,20 @@ class UpdateDynamicGroups(
           try {
 
             val maxParallelism = {
-              val t = getComputeDynGroupParallelism().getOrElse(1)
+              // We want to limit the number of parallel execution and threads to the number of core/2 (minimum 1) by default.
+              // This is taken from the system environment variable because we really want to be able to change it at runtime.
+              def threadForProc(mult: Double): Int = {
+                Math.max(1, (java.lang.Runtime.getRuntime.availableProcessors * mult).ceil.toInt)
+              }
+
+              val t = try {
+                getComputeDynGroupParallelism().getOrElse("1") match {
+                  case s if s.charAt(0) == 'x' => threadForProc(s.substring(1).toDouble)
+                  case other => other.toInt
+                }
+              } catch {
+                case ex: IllegalArgumentException => 1
+              }
               if (t < 1) {
                 logger.warn(s"You can't set 'rudder_compute_dyngroups_max_parallelism' so that there is less than 1 thread for computation")
                 1
@@ -284,14 +297,21 @@ class UpdateDynamicGroups(
                 t
               }
             }
-
+            logger.debug(s"Starting computation of dynamic groups with max ${maxParallelism} threads for computing groups without dependencies")
+            val initialTime = System.currentTimeMillis
             val result = (for {
               results <- dynGroupIds.accumulateParN(maxParallelism) { case dynGroupId =>
                 dynGroupUpdaterService.update(dynGroupId, modId, RudderEventActor, Some("Update group due to batch update of dynamic groups")).toIO.either.map(x => (dynGroupId, x))
               }
+
+              timeComputeNonDependantGroups = (System.currentTimeMillis - initialTime)
+              _                             = logger.debug(s"Computing dynamic groups without dependencies finished in ${timeComputeNonDependantGroups} ms")
+              preComputeDependantGroups     = System.currentTimeMillis
+
               results2 <- dynGroupsWithDependencyIds.accumulateParN(1) { case dynGroupId =>
                 dynGroupUpdaterService.update(dynGroupId, modId, RudderEventActor, Some("Update group due to batch update of dynamic groups")).toIO.either.map(x => (dynGroupId, x))
               }
+              _                             = logger.debug(s"Computing dynamic groups with dependencies finished in ${System.currentTimeMillis - preComputeDependantGroups} ms")
             } yield {
               results ++ results2
             }).toBox

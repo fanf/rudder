@@ -824,11 +824,11 @@ final case object RestContinueGenerationOnError extends RestBooleanSetting {
     def set = (value : Boolean, _, _) => configService.set_node_accept_duplicated_hostname(value)
   }
 
-  final case object RestComputeDynGroupMaxParallelism extends RestIntSetting {
+  final case object RestComputeDynGroupMaxParallelism extends RestStringSetting {
     val startPolicyGeneration = false
     val key = "rudder_compute_dyngroups_max_parallelism"
     def get = configService.rudder_compute_dyngroups_max_parallelism()
-    def set = (value : Int, _, _) => configService.set_rudder_compute_dyngroups_max_parallelism(value)
+    def set = (value : String, _, _) => configService.set_rudder_compute_dyngroups_max_parallelism(value)
   }
 
   // if the directive is missing for policy server, it may be because it misses dedicated allowed networks.
