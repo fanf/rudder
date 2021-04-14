@@ -349,31 +349,33 @@ class InternalLDAPQueryProcessor(
     // Now, groups resulting set of same DnType according to composition
     // Returns None if the resulting composition (using AND) leads to an empty set of Nodes, Some filtering otherwise
     def dnMapSets(normalizedQuery: LDAPNodeQuery, dnMapMapSets: Map[DnType, Map[String,Set[DN]]]) : Option[Map[DnType, Set[DN]]] = {
-      val mapSet = dnMapMapSets map { case (dnType, dnMapSet) =>
+      dnMapMapSets.foldLeft(Map[DnType, Set[DN]]().some){
+        // We got a None we can skip further folds
+        case (None, _ ) => None
+        case (Some(map),(dnType, dnMapSet)) =>
+        // Compute composition of all dn lists as an option, so that we can have the empty case as a None (see And branch)
         val dnSet: Option[Set[DN]] = normalizedQuery.composition match {
           case Or  => dnMapSet.foldLeft(Set[DN]().some){
             case (Some(a),b) =>  Some(a union b._2 )
             case (None,b)    =>  Some(b._2)
           }
           case And =>
-            dnMapSet.toList match {
-              case Nil => None
-              case head :: tail =>
-                val zero = if(head._2.isEmpty) None else head._2.some
+            if (dnMapSet.isEmpty) {
+              None
+            } else {
+              val ((_,head),tail) = (dnMapSet.head, dnMapSet.tail)
+                val zero = if(head.isEmpty) None else head.some
                 tail.foldLeft(zero) {
                   case (None   , _) =>
                     None
-                  case (Some(a), b) =>
-                    val intersect = a intersect b._2
+                  case (Some(a), (_,b)) =>
+                    val intersect = a intersect b
                     if(intersect.isEmpty) None else Some(intersect)
                 }
             }
         }
-        dnSet.map((dnType, _))
+        dnSet.map(dn => map +  ((dnType, dn)))
       }
-      import cats.implicits._
-      val res = mapSet.toList.sequence.map(_.toMap)
-      res
     }
 
 
@@ -444,11 +446,7 @@ class InternalLDAPQueryProcessor(
             //final query, add "match only server id" filter if needed
             rt      = nodeObjectTypes.copy(filter = finalLdapFilter)
             _       <- logPure.debug(s"[${debugId}] |- (final query) ${rt}")
-            entries <- for {
-                         results  <- executeQuery(rt.baseDn, rt.scope, nodeObjectTypes.objectFilter, rt.filter, finalSpecialFilters, select.toSet, nq.composition, debugId)
-                       } yield {
-                         results
-                       }
+            entries <- executeQuery(rt.baseDn, rt.scope, nodeObjectTypes.objectFilter, rt.filter, finalSpecialFilters, select.toSet, nq.composition, debugId)
           } yield entries).
               tapError(err => logPure.debug(s"[${debugId}] `-> error: ${err.fullMsg}")).
               tap(seq => logPure.debug(s"[${debugId}] `-> ${seq.size} results"))
@@ -460,7 +458,7 @@ class InternalLDAPQueryProcessor(
                       _      <- logPure.debug(s"[${debugId}] |- (need to get all nodeIds for inversion) ")
                       allIds <- executeQuery(nodeObjectTypes.baseDn, nodeObjectTypes.scope, nodeObjectTypes.objectFilter, Some(ALL), Set(), Set(), nq.composition, debugId)
                       ids    =  results.flatMap(x => x(A_NODE_UUID)).toSet
-                      res    =  allIds.collect { case e if(!ids.contains(e.value_!(A_NODE_UUID))) => e }
+                      res    =  allIds.filterNot( e => ids.contains(e.value_!(A_NODE_UUID)) )
                       _      <- logPure.debug(s"[${debugId}] |- (invert) entries after inversion: ${res.size}")
                     } yield {
                       res
