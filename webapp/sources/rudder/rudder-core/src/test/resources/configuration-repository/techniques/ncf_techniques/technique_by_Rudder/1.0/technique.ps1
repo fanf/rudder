@@ -38,4 +38,11 @@
     _rudder_common_report_na -componentName "Command execution" -componentKey "/bin/echo `"testing special characters ` è &é 'à é `"\" -message "Not applicable" -reportId $reportId -techniqueName $techniqueName -auditOnly:$auditOnly
   }
 
+  $class = "redhat"
+  if (Evaluate-Class $class $local_classes $system_classes) {
+    $local_classes = Merge-ClassContext $local_classes $(Command-Execution -Command "sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\x27issuer_o\x27} !~ /Let\x27s\s\\\s+Encrypt/i);#g'" -componentName "Test https://issues.rudder.io/issues/19173" -reportId $reportId -techniqueName $techniqueName -auditOnly:$auditOnly).get_item("classes")
+  } else {
+    _rudder_common_report_na -componentName "Test https://issues.rudder.io/issues/19173" -componentKey "sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\x27issuer_o\x27} !~ /Let\x27s\s\\\s+Encrypt/i);#g'" -message "Not applicable" -reportId $reportId -techniqueName $techniqueName -auditOnly:$auditOnly
+  }
+
 }

@@ -102,7 +102,7 @@ import org.specs2.specification.BeforeAfterAll
 @RunWith(classOf[JUnitRunner])
 class TestTechniqueWriter extends Specification with ContentMatchers with Loggable with BeforeAfterAll {
   sequential
-  lazy val basePath = "/tmp/test-technique-writer-" + DateTime.now.toString()
+  lazy val basePath = "/tmp/rudder-test-technique-writer-" + DateTime.now.toString()
 
   override def beforeAll(): Unit = {
     new File(basePath).mkdirs()
@@ -127,37 +127,21 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
 
   // Not used in test for now
   def readDirectives : RoDirectiveRepository = new RoDirectiveRepository {
-
     def getFullDirectiveLibrary(): IOResult[FullActiveTechniqueCategory] = ???
-
     def getDirective(directiveId: DirectiveId): IOResult[Option[Directive]] = ???
-
     def getDirectiveWithContext(directiveId: DirectiveId): IOResult[Option[(domain.Technique, ActiveTechnique, Directive)]] = ???
-
     def getActiveTechniqueAndDirective(id: DirectiveId): IOResult[Option[(ActiveTechnique, Directive)]] = ???
-
     def getDirectives(activeTechniqueId: ActiveTechniqueId, includeSystem: Boolean): IOResult[Seq[Directive]] = ???
-
     def getActiveTechniqueByCategory(includeSystem: Boolean): IOResult[SortedMap[List[ActiveTechniqueCategoryId], CategoryWithActiveTechniques]] = ???
-
     def getActiveTechniqueByActiveTechnique(id: ActiveTechniqueId): IOResult[Option[ActiveTechnique]] = ???
-
     def getActiveTechnique(techniqueName: TechniqueName): IOResult[Option[ActiveTechnique]] = ???
-
     def activeTechniqueBreadCrump(id: ActiveTechniqueId): IOResult[List[ActiveTechniqueCategory]] = ???
-
     def getActiveTechniqueLibrary: IOResult[ActiveTechniqueCategory] = ???
-
     def getAllActiveTechniqueCategories(includeSystem: Boolean): IOResult[Seq[ActiveTechniqueCategory]] = ???
-
     def getActiveTechniqueCategory(id: ActiveTechniqueCategoryId): IOResult[Option[ActiveTechniqueCategory]] = ???
-
     def getParentActiveTechniqueCategory(id: ActiveTechniqueCategoryId): IOResult[ActiveTechniqueCategory] = ???
-
     def getParentsForActiveTechniqueCategory(id: ActiveTechniqueCategoryId): IOResult[List[ActiveTechniqueCategory]] = ???
-
     def getParentsForActiveTechnique(id: ActiveTechniqueId): IOResult[ActiveTechniqueCategory] = ???
-
     def containsDirective(id: ActiveTechniqueCategoryId): UIO[Boolean] = ???
   }
 
@@ -179,25 +163,15 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
 
   def workflowLevelService: WorkflowLevelService = new WorkflowLevelService {
     def workflowLevelAllowsEnable: Boolean = ???
-
     def workflowEnabled: Boolean = ???
-
     def name: String = ???
-
     def getWorkflowService(): WorkflowService = ???
-
     def getForRule(actor: EventActor, change: RuleChangeRequest): Box[WorkflowService] = ???
-
     def getForDirective(actor: EventActor, change: DirectiveChangeRequest): Box[WorkflowService] = ???
-
     def getForNodeGroup(actor: EventActor, change: NodeGroupChangeRequest): Box[WorkflowService] = ???
-
     def getForGlobalParam(actor: EventActor, change: GlobalParamChangeRequest): Box[WorkflowService] = ???
-
     def getByDirective(id: DirectiveId, onlyPending: Boolean): Box[Vector[ChangeRequest]] = ???
-
     def getByNodeGroup(id: NodeGroupId, onlyPending: Boolean): Box[Vector[ChangeRequest]] = ???
-
     def getByRule(id: RuleId, onlyPending: Boolean): Box[Vector[ChangeRequest]] = ???
   }
 
@@ -340,6 +314,17 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
           , List((ParameterId("command"),"/bin/echo \"testing special characters ` è &é 'à é \"\\"))
           , "cfengine-community"
           , "Command execution"
+        ) ::
+        MethodCall(
+          /*
+           * Test escape of \, see: https://issues.rudder.io/issues/19173
+           * We don't do it correctly (we don't consistently escape '\' when there is 2 or more, but we can't change it.
+           * The problem is the consistancy between what we have in expected reports and in `rudder_reporting.cf`
+           */
+            BundleName("command_execution")
+          , List((ParameterId("command"),"""sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\x27issuer_o\x27} !~ /Let\x27s\s\\\s+Encrypt/i);#g'"""))
+          , "redhat"
+          , "Test #19173"
         ) ::
         MethodCall(
             BundleName("_logger")

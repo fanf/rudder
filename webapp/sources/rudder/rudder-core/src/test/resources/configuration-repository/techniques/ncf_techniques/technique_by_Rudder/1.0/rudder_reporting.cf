@@ -19,4 +19,8 @@ bundle agent technique_by_Rudder_rudder_reporting(technique_parameter)
                         unless => concat("redhat");
     "dummy_report_3" usebundle => log_na_rudder("Skipping method 'Package install' with key parameter 'openssh-server' since condition 'redhat' is not reached", "openssh-server", "${class_prefix}_package_install_openssh-server", @{args}),
                         unless => concat("redhat");
+    "dummy_report_5" usebundle => _method_reporting_context("Test https://issues.rudder.io/issues/19173", "sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\\x27issuer_o\\x27} !~ /Let\\x27s\\s\\\s+Encrypt/i);#g'"),
+                        unless => concat("redhat");
+    "dummy_report_5" usebundle => log_na_rudder("Skipping method 'Command execution' with key parameter 'sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\\x27issuer_o\\x27} !~ /Let\\x27s\\s\\\s+Encrypt/i);#g'' since condition 'redhat' is not reached", "sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\\x27issuer_o\\x27} !~ /Let\\x27s\\s\\\s+Encrypt/i);#g'", "${class_prefix}_command_execution_sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\\x27issuer_o\\x27} !~ /Let\\x27s\\s\\\s+Encrypt/i);#g'", @{args}),
+                        unless => concat("redhat");
 }

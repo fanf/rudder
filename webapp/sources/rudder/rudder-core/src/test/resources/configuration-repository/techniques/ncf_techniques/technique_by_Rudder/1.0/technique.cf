@@ -29,8 +29,12 @@ bundle agent technique_by_Rudder(technique_parameter)
                                                              if => concat("cfengine-community");
     "Command execution_${report_data.directive_id}_4" usebundle => command_execution("/bin/echo \"testing special characters ` è &é 'à é \"\\"),
                                                              if => concat("cfengine-community");
-    "Not sure we should test it ..._${report_data.directive_id}_5" usebundle => _method_reporting_context("Not sure we should test it ...", "NA"),
+    "Test https://issues.rudder.io/issues/19173_${report_data.directive_id}_5" usebundle => _method_reporting_context("Test https://issues.rudder.io/issues/19173", "sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\\x27issuer_o\\x27} !~ /Let\\x27s\\s\\\s+Encrypt/i);#g'"),
+                                                                                      if => concat("redhat");
+    "Test https://issues.rudder.io/issues/19173_${report_data.directive_id}_5" usebundle => command_execution("sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info->{\\x27issuer_o\\x27} !~ /Let\\x27s\\s\\\s+Encrypt/i);#g'"),
+                                                                                      if => concat("redhat");
+    "Not sure we should test it ..._${report_data.directive_id}_6" usebundle => _method_reporting_context("Not sure we should test it ...", "NA"),
                                                                           if => concat("any");
-    "Not sure we should test it ..._${report_data.directive_id}_5" usebundle => _logger("NA", "NA"),
+    "Not sure we should test it ..._${report_data.directive_id}_6" usebundle => _logger("NA", "NA"),
                                                                           if => concat("any");
 }

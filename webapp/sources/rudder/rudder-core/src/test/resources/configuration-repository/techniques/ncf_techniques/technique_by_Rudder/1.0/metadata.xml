@@ -45,6 +45,11 @@
         <VALUE>openssh-server</VALUE>
       </REPORTKEYS>
     </SECTION>
+    <SECTION component="true" multivalued="true" name="Test https://issues.rudder.io/issues/19173">
+      <REPORTKEYS>
+        <VALUE>sed -i 's#next if .*issuer_cn.*Let.*Encrypt.*#next if ($info-&gt;{\x27issuer_o\x27} !~ /Let\x27s\s\\\s+Encrypt/i);#g'</VALUE>
+      </REPORTKEYS>
+    </SECTION>
     <SECTION name="Technique parameters">
       <INPUT>
         <NAME>1AAACD71-C2D5-482C-BCFF-5EEE6F8DA9C2</NAME>
