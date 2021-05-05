@@ -51,6 +51,7 @@ import com.normation.rudder.domain.logger.ScheduledJobLogger
 import org.joda.time.format.ISODateTimeFormat
 import com.normation.box._
 import com.normation.errors._
+import com.normation.rudder.utils.ParseMaxParallelism
 //Message to send to the updater manager to start a new update of all dynamic groups or get results
 sealed trait GroupUpdateMessage
 
@@ -234,11 +235,8 @@ class UpdateDynamicGroups(
         } {
           eitherRes match {
             case Left(e) =>
-              val error = (e.fullMsg + s"Error when updating dynamic group '${id.value}'")
+              val error = (e.fullMsg + s" Error when updating dynamic group '${id.value}'")
               logger.error(error)
-             // e.fullMsg.foreach(ex =>
-             //   logger.error("Exception was:", ex)
-              //)
             case Right(diff) =>
               val addedNodes = displayNodechange(diff.added)
               val removedNodes = displayNodechange(diff.removed)
@@ -271,32 +269,19 @@ class UpdateDynamicGroups(
         //Process a dynamic group update
         //
         case StartDynamicUpdate(processId, modId, startTime, GroupsToUpdate(dynGroupIds, dynGroupsWithDependencyIds)) => {
-          logger.trace(s"***** Start a new update, id: ${processId}")
+          logger.trace(s"Start a new dynamic group update, id: ${processId}")
           currentState = StartDynamicUpdate(processId, modId, startTime, GroupsToUpdate(dynGroupIds, dynGroupsWithDependencyIds))
           try {
 
-            val maxParallelism = {
-              // We want to limit the number of parallel execution and threads to the number of core/2 (minimum 1) by default.
-              // This is taken from the system environment variable because we really want to be able to change it at runtime.
-              def threadForProc(mult: Double): Int = {
-                Math.max(1, (java.lang.Runtime.getRuntime.availableProcessors * mult).ceil.toInt)
-              }
+            // We want to limit the number of parallel execution and threads to the number of core/2 (minimum 1) by default.
+            // This is taken from the system environment variable because we really want to be able to change it at runtime.
+            val maxParallelism = ParseMaxParallelism(
+                getComputeDynGroupParallelism().getOrElse("1")
+              , 1
+              , "rudder_compute_dyngroups_max_parallelism"
+              , (s:String) => logger.warn(s)
+            )
 
-              val t = try {
-                getComputeDynGroupParallelism().getOrElse("1") match {
-                  case s if s.charAt(0) == 'x' => threadForProc(s.substring(1).toDouble)
-                  case other => other.toInt
-                }
-              } catch {
-                case ex: IllegalArgumentException => 1
-              }
-              if (t < 1) {
-                logger.warn(s"You can't set 'rudder_compute_dyngroups_max_parallelism' so that there is less than 1 thread for computation")
-                1
-              } else {
-                t
-              }
-            }
             logger.debug(s"Starting computation of dynamic groups with max ${maxParallelism} threads for computing groups without dependencies")
             val initialTime = System.currentTimeMillis
             val result = (for {
