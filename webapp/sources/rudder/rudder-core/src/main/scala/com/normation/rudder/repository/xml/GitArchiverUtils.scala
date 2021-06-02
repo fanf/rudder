@@ -71,9 +71,9 @@ trait GitArchiverUtils {
   }
 
   // semaphores to replace `synchronized`
-  val semaphoreAdd    = Semaphore.make(1).runNow
-  val semaphoreMove   = Semaphore.make(1).runNow
-  val semaphoreDelete = Semaphore.make(1).runNow
+  lazy val semaphoreAdd    = Semaphore.make(1).runNow
+  lazy val semaphoreMove   = Semaphore.make(1).runNow
+  lazy val semaphoreDelete = Semaphore.make(1).runNow
 
 
   def gitRepo : GitRepositoryProvider
