@@ -240,6 +240,8 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
   def ldapMapper     : LDAPEntityMapper
   def inventoryMapper: InventoryMapper
 
+  override def loggerName: String = this.getClass.getName
+
   val semaphore = Semaphore.make(1).runNow
   /*
    * Compare if cache is up to date (based on internal state of the cache)
@@ -369,6 +371,9 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
           }
         }
 
+        logEffect.trace(s"Updated entries are machineInventories: ${machineInventories.mkString(",")} \n" +
+          s"nodeInventories: ${nodeInventories.mkString(",")}  \n" +
+          s"nodes: ${nodes.mkString(",")} ")
 
         val t1 = System.currentTimeMillis
         TimingDebugLogger.debug(s"Getting updated node info entries: ${t1-t0}ms")
@@ -379,16 +384,17 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
         // same for the other two
         val newEntries = constructNodes(nodes, nodeInventories, machineInventories)
 
+        logEffect.debug(s"Found ${newEntries.size} new entries to update cache")
         // now construct the nodeInfo
 
 
         val updatedNodeInfos = (for {
           ldapNode <- newEntries
-          id  = ldapNode.nodeEntry.value_!(A_NODE_UUID)
-          res <- ldapMapper.convertEntriesToNodeInfos(
-            ldapNode.nodeEntry
-            , ldapNode.nodeInventoryEntry
-            , ldapNode.machineEntry).foldM(
+          id        = ldapNode.nodeEntry.value_!(A_NODE_UUID)
+          res      <- ldapMapper.convertEntriesToNodeInfos(
+                           ldapNode.nodeEntry
+                         , ldapNode.nodeInventoryEntry
+                         , ldapNode.machineEntry).foldM(
             err      =>
               logPure.error(s"An error occured while updating node cache: can not unserialize node with id '${id}', it will be ignored: ${err.fullMsg}") *> None.succeed
             , nodeInfo => Some((nodeInfo.id, (ldapNode,nodeInfo))).succeed
@@ -396,6 +402,8 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
         } yield {
           res
         }).flatten.toMap
+
+        logEffect.trace(s"Updated entries are updatedNodeInfos: ${updatedNodeInfos.mkString("\n")}")
 
         val t2 = System.currentTimeMillis
         TimingDebugLogger.debug(s"Converting ${updatedNodeInfos.size} node info entries to node info to update cache: ${t2-t1}ms")
@@ -412,9 +420,9 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
       // same for the other two
       // and construct relevant LDAPNodeInfo
       def constructNodes(
-                          nodes:  MutMap[String, LDAPEntry]
-                          , nodeInventories: MutMap[String, LDAPEntry]
-                          , machineInventories : MutMap[String, LDAPEntry]): Seq[LDAPNodeInfo] = {
+            nodes:  MutMap[String, LDAPEntry]
+          , nodeInventories: MutMap[String, LDAPEntry]
+          , machineInventories : MutMap[String, LDAPEntry]): Seq[LDAPNodeInfo] = {
 
         val managedNodeInventories = scala.collection.mutable.Buffer[String]()
         val managedMachineInventories = scala.collection.mutable.Buffer[String]()
@@ -444,6 +452,8 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
         } yield {
           ldapNode
         }
+
+        logEffect.trace(s"nodeEntries are nodeEntries: ${nodeEntries.mkString(",")}")
 
         val inventoryEntries = for {
           nodeInventory  <- nodeInventories
@@ -479,17 +489,19 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
           ldapNode
         }
 
-        val inventoriesEntries = (for {
+        logEffect.trace(s"inventoryEntries are inventoryEntries: ${inventoryEntries.mkString(",")}")
+
+        val machineInventoriesEntries = (for {
           machineInventory <- machineInventories
           containerDn      =  machineInventory._1
           continue         = !managedMachineInventories.contains(containerDn)
           ldapNode         <- if (!continue) {
             None
           } else {
-            // by construct, everything is in cache
+            // by construct, everything can be found in cache
             // the tricky part: there may be several nodes with the same containerDn
             val cacheEntries = nodeCache.map( x => x.nodeInfos.filter { case (nodeId, (ldap, nodeinfo)) =>
-              ldap.nodeInventoryEntry(A_CONTAINER_DN).equals(containerDn)})
+              ldap.nodeInventoryEntry(A_CONTAINER_DN).equals(Some(containerDn))})
             cacheEntries.map( _.map { case (id, (ldap, _)) =>
               LDAPNodeInfo(ldap.nodeEntry, ldap.nodeInventoryEntry, Some(machineInventory._2))
             }
@@ -499,7 +511,10 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
           ldapNode
         }).flatten
 
-        (nodeEntries ++ inventoryEntries ++ inventoriesEntries).toSeq
+
+        logEffect.trace(s"machineInventoriesEntries are machineInventoriesEntries: ${machineInventoriesEntries.mkString(",")}")
+
+        (nodeEntries ++ inventoryEntries ++ machineInventoriesEntries).toSeq
       }
 
       for {
