@@ -531,7 +531,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
      * date of the last modification
      * This is only for the init of cache
      */
-    def getDataFromBackend(lastKnowModification: DateTime): IOResult[LocalNodeInfoCache] = {
+    def getDataFromBackend(): IOResult[LocalNodeInfoCache] = {
       import scala.collection.mutable.{Map => MutMap}
 
       final case class AllNodeEntries(
@@ -539,11 +539,11 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
         , active : Seq[LDAPEntry]
       )
 
-      def getDataIO(lastKnowModification: DateTime): IOResult[AllNodeEntries] = {
+      def getDataIO(): IOResult[AllNodeEntries] = {
         for {
           con     <- ldap
           t0      <- currentTimeMillis
-          deleted <- con.search(removedDit.NODES.dn, One, AND(IS(OC_NODE), GTEQ(A_MOD_TIMESTAMP, GeneralizedTime(lastKnowModification).toString)), A_MOD_TIMESTAMP , "entryCSN")
+          deleted <- con.search(removedDit.NODES.dn, One, AND(IS(OC_NODE)), A_MOD_TIMESTAMP , "entryCSN")
           t1      <- currentTimeMillis
           active  <- getNodeInfoEntries(con, searchAttributes, AcceptedInventory)
           t2      <- currentTimeMillis
@@ -583,7 +583,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
         val t0 = System.currentTimeMillis
 
         // two vars to keep track of the new last modification time and entries csn
-        var lastModif = lastKnowModification
+        var lastModif = new DateTime(0)
         val entriesCSN = scala.collection.mutable.Buffer[String]()
 
 
@@ -639,7 +639,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
       }
 
       for {
-        data  <- getDataIO(lastKnowModification)
+        data  <- getDataIO()
         cache <- getUpdatedCache(data)
       } yield {
         cache
@@ -656,13 +656,13 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
           clean        <- isUpToDate()
           updatedCache <- if(notInit) {
                       for {
-                        lastUpdate <- IOResult.effect(nodeCache.map(_.lastModTime).getOrElse(new DateTime(0)))
-                        updated    <- getDataFromBackend(lastUpdate).foldM(
+                        //lastUpdate <- IOResult.effect(nodeCache.map(_.lastModTime).getOrElse(new DateTime(0)))
+                        updated    <- getDataFromBackend().foldM(
                           err      =>
                             IOResult.effect({nodeCache = None; ()}) *> Chained("Could not get node information from database", err).fail
                           , newCache =>
-                            logPure.debug(s"NodeInfo cache is initialized, last modification time: '${newCache.lastModTime}', last cache update:"+
-                              s" '${lastUpdate}' => reseting cache with ${newCache.nodeInfos.size} entries") *>
+                            logPure.debug(s"NodeInfo cache is now initialized, last modification time: '${newCache.lastModTime}', last cache update:"+
+                              s" with ${newCache.nodeInfos.size} entries") *>
                               logPure.trace(s"NodeInfo cache initialized entries: [${newCache.nodeInfos.keySet.map{ _.value }.mkString(", ")}]") *>
                               IOResult.effect({nodeCache = Some(newCache); () }) *>
                               newCache.nodeInfos.succeed
