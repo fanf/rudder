@@ -249,7 +249,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
   def isUpToDate(): IOResult[Boolean] = {
     IOResult.effect(nodeCache).flatMap {
       case Some(cache) => checkUpToDate(cache.lastModTime, cache.lastModEntryCSN)
-      case None        => checkUpToDate(new DateTime(0), Seq())
+      case None        => false.succeed  // an empty cache is never up to date
     }
   }
 
@@ -285,6 +285,112 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
   // we need modifyTimestamp to search for update and entryCSN to remove already processed entries
   private[this] val searchAttributes = nodeInfoAttributes :+ A_MOD_TIMESTAMP :+ "entryCSN"
 
+  import scala.collection.mutable.{Map => MutMap}
+
+  // goes over each 3 maps to ensure the consistency of the maps
+  // for each updated node, we need to look for matching nodeInventories and machineInventories
+  // same for the other two
+  // and construct relevant LDAPNodeInfo
+  def constructNodes(
+         nodes              : MutMap[String, LDAPEntry]
+       , nodeInventories    : MutMap[String, LDAPEntry]
+       , machineInventories : MutMap[String, LDAPEntry]): Seq[LDAPNodeInfo] = {
+
+    val managedNodeInventories = scala.collection.mutable.Buffer[String]()
+    val managedMachineInventories = scala.collection.mutable.Buffer[String]()
+
+    val nodeEntries = for {
+      nodeEntry  <- nodes
+      id         =  nodeEntry._1
+      _ = println(s"{id}")
+      cacheEntry = nodeCache.flatMap ( x => x.nodeInfos.get(NodeId(id)))
+      _ = println("after")
+      nodeInv    <- nodeInventories.get(id) match {
+        case Some(inv) => Some(inv)
+        case None      => // look in cache
+          managedNodeInventories += id
+          cacheEntry.map(_._1.nodeInventoryEntry)
+      }
+      machineInv = for {
+        containerDn  <- nodeInv(A_CONTAINER_DN)
+        machineEntry <- machineInventories.get(containerDn) match {
+          case Some(value) => Some(value)
+          case None        => // look in cache
+            managedMachineInventories += containerDn
+            cacheEntry.flatMap(_._1.machineEntry)
+        }
+      } yield {
+        machineEntry
+      }
+      ldapNode = LDAPNodeInfo(nodeEntry._2, nodeInv, machineInv)
+    } yield {
+      ldapNode
+    }
+println(nodeEntries)
+    logEffect.trace(s"nodeEntries are nodeEntries: ${nodeEntries.mkString(",")}")
+
+    val inventoryEntries = for {
+      nodeInventory  <- nodeInventories
+      id              = nodeInventory._1
+      continue        = !managedNodeInventories.contains(id)
+      ldapNode       <- if (!continue) {
+        None
+      } else {
+        // the node can only be in the cache by construct
+        // machine entry can be in ldap response or cache
+        for {
+          nodeInv    <- Some(nodeInventory._2)
+          cacheEntry  = nodeCache.flatMap ( x => x.nodeInfos.get(NodeId(id)))
+          nodeEntry  <- cacheEntry.map(_._1.nodeEntry)
+          machineInv = for {
+            containerDn  <- nodeInv(A_CONTAINER_DN)
+            machineEntry <- machineInventories.get(containerDn) match {
+              case Some(value) => Some(value)
+              case None        => // look in cache
+                managedMachineInventories += containerDn
+                cacheEntry.flatMap(_._1.machineEntry)
+            }
+          } yield {
+            machineEntry
+          }
+
+        } yield {
+          LDAPNodeInfo(nodeEntry, nodeInv, machineInv)
+        }
+
+      }
+    } yield {
+      ldapNode
+    }
+
+    logEffect.trace(s"inventoryEntries are inventoryEntries: ${inventoryEntries.mkString(",")}")
+
+    val machineInventoriesEntries = (for {
+      machineInventory <- machineInventories
+      containerDn      =  machineInventory._1
+      continue         = !managedMachineInventories.contains(containerDn)
+      ldapNode         <- if (!continue) {
+        None
+      } else {
+        // by construct, everything can be found in cache
+        // the tricky part: there may be several nodes with the same containerDn
+        val cacheEntries = nodeCache.map( x => x.nodeInfos.filter { case (nodeId, (ldap, nodeinfo)) =>
+          ldap.nodeInventoryEntry(A_CONTAINER_DN).equals(Some(containerDn))})
+        cacheEntries.map( _.map { case (id, (ldap, _)) =>
+          LDAPNodeInfo(ldap.nodeEntry, ldap.nodeInventoryEntry, Some(machineInventory._2))
+        }
+        )
+      }
+    } yield {
+      ldapNode
+    }).flatten
+
+
+    logEffect.trace(s"machineInventoriesEntries are machineInventoriesEntries: ${machineInventoriesEntries.mkString(",")}")
+
+    (nodeEntries ++ inventoryEntries ++ machineInventoriesEntries).toSeq
+  }
+
   /**
    * Remove a node from cache. It cannot fail - if node is not in cache, it is a success
    */
@@ -310,7 +416,6 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
      * date of the last modification
      */
     def getUpdatedDataFromBackend(lastKnowModification: DateTime): IOResult[LocalNodeInfoCache] = {
-      import scala.collection.mutable.{Map => MutMap}
 
       final case class UpdatedNodeEntries(
          deleted: Seq[LDAPEntry]
@@ -415,107 +520,6 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
         LocalNodeInfoCache(cache, lastModif, entriesCSN.toSeq, cache.filter{case(_, (_, n)) => !n.isPolicyServer && n.serverRoles.isEmpty}.size)
       }
 
-      // goes over each 3 maps to ensure the consistency of the maps
-      // for each updated node, we need to look for matching nodeInventories and machineInventories
-      // same for the other two
-      // and construct relevant LDAPNodeInfo
-      def constructNodes(
-            nodes:  MutMap[String, LDAPEntry]
-          , nodeInventories: MutMap[String, LDAPEntry]
-          , machineInventories : MutMap[String, LDAPEntry]): Seq[LDAPNodeInfo] = {
-
-        val managedNodeInventories = scala.collection.mutable.Buffer[String]()
-        val managedMachineInventories = scala.collection.mutable.Buffer[String]()
-
-        val nodeEntries = for {
-          nodeEntry  <- nodes
-          id         =  nodeEntry._1
-          cacheEntry <- nodeCache.map ( x => x.nodeInfos.get(NodeId(id)))
-          nodeInv    <- nodeInventories.get(id) match {
-            case Some(inv) => Some(inv)
-            case None      => // look in cache
-              managedNodeInventories += id
-              cacheEntry.map(_._1.nodeInventoryEntry)
-          }
-          machineInv = for {
-            containerDn  <- nodeInv(A_CONTAINER_DN)
-            machineEntry <- machineInventories.get(containerDn) match {
-              case Some(value) => Some(value)
-              case None        => // look in cache
-                managedMachineInventories += containerDn
-                cacheEntry.flatMap(_._1.machineEntry)
-            }
-          } yield {
-            machineEntry
-          }
-          ldapNode = LDAPNodeInfo(nodeEntry._2, nodeInv, machineInv)
-        } yield {
-          ldapNode
-        }
-
-        logEffect.trace(s"nodeEntries are nodeEntries: ${nodeEntries.mkString(",")}")
-
-        val inventoryEntries = for {
-          nodeInventory  <- nodeInventories
-          id              = nodeInventory._1
-          continue        = !managedNodeInventories.contains(id)
-          ldapNode       <- if (!continue) {
-            None
-          } else {
-            // the node can only be in the cache by construct
-            // machine entry can be in ldap response or cache
-            for {
-              cacheEntry <- nodeCache.map ( x => x.nodeInfos.get(NodeId(id)))
-              nodeInv     = nodeInventory._2
-              nodeEntry  <- cacheEntry.map(_._1.nodeEntry)
-              machineInv = for {
-                containerDn  <- nodeInv(A_CONTAINER_DN)
-                machineEntry <- machineInventories.get(containerDn) match {
-                  case Some(value) => Some(value)
-                  case None        => // look in cache
-                    managedMachineInventories += containerDn
-                    cacheEntry.flatMap(_._1.machineEntry)
-                }
-              } yield {
-                machineEntry
-              }
-
-            } yield {
-              LDAPNodeInfo(nodeEntry, nodeInv, machineInv)
-            }
-
-          }
-        } yield {
-          ldapNode
-        }
-
-        logEffect.trace(s"inventoryEntries are inventoryEntries: ${inventoryEntries.mkString(",")}")
-
-        val machineInventoriesEntries = (for {
-          machineInventory <- machineInventories
-          containerDn      =  machineInventory._1
-          continue         = !managedMachineInventories.contains(containerDn)
-          ldapNode         <- if (!continue) {
-            None
-          } else {
-            // by construct, everything can be found in cache
-            // the tricky part: there may be several nodes with the same containerDn
-            val cacheEntries = nodeCache.map( x => x.nodeInfos.filter { case (nodeId, (ldap, nodeinfo)) =>
-              ldap.nodeInventoryEntry(A_CONTAINER_DN).equals(Some(containerDn))})
-            cacheEntries.map( _.map { case (id, (ldap, _)) =>
-              LDAPNodeInfo(ldap.nodeEntry, ldap.nodeInventoryEntry, Some(machineInventory._2))
-            }
-            )
-          }
-        } yield {
-          ldapNode
-        }).flatten
-
-
-        logEffect.trace(s"machineInventoriesEntries are machineInventoriesEntries: ${machineInventoriesEntries.mkString(",")}")
-
-        (nodeEntries ++ inventoryEntries ++ machineInventoriesEntries).toSeq
-      }
 
       for {
         data  <- getUpdatedDataIO(lastKnowModification)
@@ -971,7 +975,6 @@ class NodeInfoServiceCachedImpl(
    */
   override def checkUpToDate(lastKnowModification: DateTime, lastModEntryCSN: Seq[String]): IOResult[Boolean] = {
     UIO(System.currentTimeMillis).flatMap { n0 =>
-
       //if last check is less than 100 ms ago, consider cache ok
       if(n0 - lastKnowModification.getMillis < minimumCacheValidityMillis) {
         true.succeed
