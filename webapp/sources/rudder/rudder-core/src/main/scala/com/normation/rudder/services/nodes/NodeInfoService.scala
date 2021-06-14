@@ -280,7 +280,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
   /*
    * Our cache
    */
-  private[this] var nodeCache = Option.empty[LocalNodeInfoCache]
+  protected[this] var nodeCache = Option.empty[LocalNodeInfoCache]
 
   // we need modifyTimestamp to search for update and entryCSN to remove already processed entries
   private[this] val searchAttributes = nodeInfoAttributes :+ A_MOD_TIMESTAMP :+ "entryCSN"
@@ -302,21 +302,23 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
     val nodeEntries = for {
       nodeEntry  <- nodes
       id         =  nodeEntry._1
-      _ = println(s"{id}")
       cacheEntry = nodeCache.flatMap ( x => x.nodeInfos.get(NodeId(id)))
-      _ = println("after")
       nodeInv    <- nodeInventories.get(id) match {
-        case Some(inv) => Some(inv)
-        case None      => // look in cache
+        case Some(inv) =>
+          // Node inventory with this is handled, so we should look for it again
           managedNodeInventories += id
+          Some(inv)
+        case None      => // look in cache
           cacheEntry.map(_._1.nodeInventoryEntry)
       }
       machineInv = for {
         containerDn  <- nodeInv(A_CONTAINER_DN)
         machineEntry <- machineInventories.get(containerDn) match {
-          case Some(value) => Some(value)
-          case None        => // look in cache
+          case Some(value) =>
+            // machine inventory is handled
             managedMachineInventories += containerDn
+            Some(value)
+          case None        => // look in cache
             cacheEntry.flatMap(_._1.machineEntry)
         }
       } yield {
@@ -326,7 +328,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
     } yield {
       ldapNode
     }
-println(nodeEntries)
+
     logEffect.trace(s"nodeEntries are nodeEntries: ${nodeEntries.mkString(",")}")
 
     val inventoryEntries = for {
@@ -345,9 +347,10 @@ println(nodeEntries)
           machineInv = for {
             containerDn  <- nodeInv(A_CONTAINER_DN)
             machineEntry <- machineInventories.get(containerDn) match {
-              case Some(value) => Some(value)
-              case None        => // look in cache
+              case Some(value) =>
                 managedMachineInventories += containerDn
+                Some(value)
+              case None        => // look in cache
                 cacheEntry.flatMap(_._1.machineEntry)
             }
           } yield {
@@ -362,7 +365,6 @@ println(nodeEntries)
     } yield {
       ldapNode
     }
-
     logEffect.trace(s"inventoryEntries are inventoryEntries: ${inventoryEntries.mkString(",")}")
 
     val machineInventoriesEntries = (for {
@@ -384,7 +386,6 @@ println(nodeEntries)
     } yield {
       ldapNode
     }).flatten
-
 
     logEffect.trace(s"machineInventoriesEntries are machineInventoriesEntries: ${machineInventoriesEntries.mkString(",")}")
 
