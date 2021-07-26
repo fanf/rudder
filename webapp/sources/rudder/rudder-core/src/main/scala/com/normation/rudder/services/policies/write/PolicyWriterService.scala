@@ -898,8 +898,8 @@ class PolicyWriterServiceImpl(
                         val source = Paths.get(rootPem.name)
                         val dest = File(paths.newFolder, filepaths.POLICY_SERVER_CERT)
                         // we can't overwrite a file with a symlink, so erase existing one
-                        //if(dest.exists) { dest.delete() }
-                        //Files.createSymbolicLink(dest.path, source,  File.Attributes.default:_*)
+                        if(dest.exists) { dest.delete() }
+                        Files.createSymbolicLink(dest.path, source,  File.Attributes.default:_*)
                         dest
                       }
                   }
