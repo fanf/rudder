@@ -84,6 +84,8 @@ import com.normation.rudder.repository.WoNodeGroupRepository
 import com.normation.rudder.repository.ldap.LDAPEntityMapper
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.queries.QueryProcessor
+import com.normation.rudder.services.reports.CacheComplianceQueueAction.InsertNodeInCache
+import com.normation.rudder.services.reports.{CachedFindRuleNodeStatusReports, CachedNodeConfigurationService}
 import com.normation.utils.Control.sequence
 import net.liftweb.common.Box
 import net.liftweb.common.Empty
@@ -197,20 +199,22 @@ class PostNodeAcceptanceHookScripts(
  * Rollback is always a "best effort" task.
  */
 class NewNodeManagerImpl(
-    override val ldap                 : LDAPConnectionProvider[RoLDAPConnection]
-  , override val pendingNodesDit      : InventoryDit
-  , override val acceptedNodesDit     : InventoryDit
-  , override val serverSummaryService : NodeSummaryServiceImpl
-  , override val smRepo               : LDAPFullInventoryRepository
-  , override val unitAcceptors        : Seq[UnitAcceptInventory]
-  , override val unitRefusors         : Seq[UnitRefuseInventory]
-  ,          val historyLogRepository : InventoryHistoryLogRepository
-  ,          val eventLogRepository   : EventLogRepository
-  , override val updateDynamicGroups  : UpdateDynamicGroups
-  ,          val cacheToClear         : List[CachedRepository]
-  ,              nodeInfoService      : NodeInfoService
-  ,              HOOKS_D              : String
-  ,              HOOKS_IGNORE_SUFFIXES: List[String]
+    override val ldap                  : LDAPConnectionProvider[RoLDAPConnection]
+  , override val pendingNodesDit       : InventoryDit
+  , override val acceptedNodesDit      : InventoryDit
+  , override val serverSummaryService  : NodeSummaryServiceImpl
+  , override val smRepo                : LDAPFullInventoryRepository
+  , override val unitAcceptors         : Seq[UnitAcceptInventory]
+  , override val unitRefusors          : Seq[UnitRefuseInventory]
+  ,          val historyLogRepository  : InventoryHistoryLogRepository
+  ,          val eventLogRepository    : EventLogRepository
+  , override val updateDynamicGroups   : UpdateDynamicGroups
+  ,          val cacheToClear          : List[CachedRepository]
+  , override val cachedNodeConfigurationService: CachedNodeConfigurationService
+  , override val cachedReportingService: CachedFindRuleNodeStatusReports
+  ,              nodeInfoService       : NodeInfoService
+  ,              HOOKS_D               : String
+  ,              HOOKS_IGNORE_SUFFIXES : List[String]
 ) extends NewNodeManager with ListNewNode with ComposedNewNodeManager with NewNodeManagerHooks {
 
   private[this] val codeHooks = collection.mutable.Buffer[NewNodeManagerHooks]()
@@ -320,6 +324,9 @@ trait ComposedNewNodeManager extends NewNodeManager with NewNodeManagerHooks {
   def eventLogRepository : EventLogRepository
 
   def updateDynamicGroups : UpdateDynamicGroups
+
+  def cachedNodeConfigurationService: CachedNodeConfigurationService
+  def cachedReportingService        : CachedFindRuleNodeStatusReports
 
   def cacheToClear: List[CachedRepository]
 
@@ -585,6 +592,15 @@ trait ComposedNewNodeManager extends NewNodeManager with NewNodeManagerHooks {
 
          // Update hooks for the node
          afterNodeAcceptedAsync(id)
+         // ping the NodeConfiguration Cache and NodeCompliance Cache about this new node
+
+         val addEvent = Seq((id, InsertNodeInCache(id)))
+         for {
+           _ <- cachedNodeConfigurationService.invalidateWithAction(addEvent).toBox ?~! s"Error when adding node ${id.value} to node configuration cache"
+           _ <- cachedReportingService.invalidateWithAction(addEvent).toBox ?~! s"Error when adding node ${id.value} to compliance cache"
+         } yield {
+           ()
+         }
          acceptationResults
        }
     )

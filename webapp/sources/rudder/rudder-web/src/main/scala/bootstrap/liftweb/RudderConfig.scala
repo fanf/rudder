@@ -2017,6 +2017,8 @@ object RudderConfig extends Loggable {
       , eventLogRepository
       , dyngroupUpdaterBatch
       , List(nodeInfoServiceImpl)
+      , cachedNodeConfigurationService
+      , reportingServiceImpl
       , nodeInfoServiceImpl
       , HOOKS_D
       , HOOKS_IGNORE_SUFFIXES
@@ -2234,7 +2236,7 @@ object RudderConfig extends Loggable {
 
   lazy val allBootstrapChecks = new SequentialImmediateBootStrapChecks(
       new CheckConnections(dataSourceProvider, rwLdap)
-    //, new CheckDIT(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl, rudderDitImpl, rwLdap)
+    , new CheckDIT(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl, rudderDitImpl, rwLdap)
     , new CheckInitUserTemplateLibrary(
         rudderDitImpl, rwLdap, techniqueRepositoryImpl,
         roLdapDirectiveRepository, woLdapDirectiveRepository, uuidGen, asyncDeploymentAgentImpl) //new CheckDirectiveBusinessRules()

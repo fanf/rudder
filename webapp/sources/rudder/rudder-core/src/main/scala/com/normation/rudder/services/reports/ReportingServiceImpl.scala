@@ -219,7 +219,7 @@ trait RuleOrNodeReportingServiceImpl extends ReportingService {
   def getUserNodeStatusReports() : Box[Map[NodeId, NodeStatusReport]] = {
     val n1 = System.currentTimeMillis
     for {
-      nodeIds            <- nodeInfoService.getAllNodeIds
+      nodeIds            <- nodeInfoService.getAllNodeIds()
       userRules          <- rulesRepo.getIds().toBox
       n2                 = System.currentTimeMillis
       _                  = TimingDebugLogger.trace(s"Reporting service - Get nodes and users rules in: ${n2 - n1}ms")
