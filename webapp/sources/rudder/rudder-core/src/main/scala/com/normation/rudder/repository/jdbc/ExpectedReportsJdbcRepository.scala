@@ -115,7 +115,6 @@ class FindExpectedReportsJdbcRepository(
   override def getExpectedReports(
       nodeConfigIds: Set[NodeAndConfigId]
   ): Box[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
-
     val batchedNodeConfigIds = nodeConfigIds.grouped(jdbcMaxBatchSize).toSeq
     sequence(batchedNodeConfigIds) { ids: Set[NodeAndConfigId] =>
       ids.toList match { //"in" param can't be empty
@@ -186,6 +185,21 @@ class FindExpectedReportsJdbcRepository(
       select distinct nodeid from nodeconfigurations
       where enddate is null and configuration like ${"%"+ruleId.value+"%"}
     """.query[NodeId].to[Set].transact(xa))
+  }
+
+  /**
+   * Return node ids associated to the rule (based on expectedreports (the one still pending)) for this Rule,
+   * only limited on the nodeIds in parameter (used when cache is incomplete)
+   */
+  override def findCurrentNodeIdsForRule(ruleId : RuleId, nodeIds: Set[NodeId]) : Box[Set[NodeId]] = {
+    if (nodeIds.isEmpty) Full(Set.empty[NodeId])
+    else {
+      transactRunBox(xa => sql"""
+        select distinct nodeid from nodeconfigurations
+        where enddate is null and configuration like ${"%" + ruleId.value + "%"}
+        and nodeid in (${nodeIds.map(id => s"'${id}'").mkString(",")})
+      """.query[NodeId].to[Set].transact(xa))
+    }
   }
 
 

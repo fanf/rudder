@@ -136,6 +136,7 @@ class CachedFindRuleNodeStatusReportsTest extends Specification {
     def getNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
     def getNode(nodeId: NodeId): Box[Node] = ???
     def getAllNodes() : Box[Map[NodeId, Node]] = ???
+    def getAllNodeIds(): Box[Set[NodeId]] = ???
     def getAllSystemNodeIds() : Box[Seq[NodeId]] = ???
     def getPendingNodeInfos(): Box[Map[NodeId, NodeInfo]] = ???
     def getPendingNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
@@ -168,7 +169,7 @@ class CachedFindRuleNodeStatusReportsTest extends Specification {
       override def findNodeStatusReport(nodeId: NodeId): Box[NodeStatusReport] = ???
       override def findUserNodeStatusReport(nodeId: NodeId): Box[NodeStatusReport] = ???
       override def findSystemNodeStatusReport(nodeId: NodeId): Box[NodeStatusReport] = ???
-
+      override def nodeConfigService: NodeConfigurationService = ???
       override def jdbcMaxBatchSize: Int = batchSize
       override def findRuleNodeStatusReports(nodeIds: Set[NodeId], ruleIds: Set[RuleId]): Box[Map[NodeId, NodeStatusReport]] = {
         updated = (updated ++ nodeIds)
@@ -176,6 +177,8 @@ class CachedFindRuleNodeStatusReportsTest extends Specification {
       }
     }
     override def nodeInfoService: NodeInfoService = testNodeInfoService
+    override def nodeConfigrationService: NodeConfigurationService = ???
+
     override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Map[NodeId, NodeStatusReport]] = ???
     override def findNodeStatusReport(nodeId: NodeId): Box[NodeStatusReport] = ???
     override def findUncomputedNodeStatusReports() : Box[Map[NodeId, NodeStatusReport]] = ???

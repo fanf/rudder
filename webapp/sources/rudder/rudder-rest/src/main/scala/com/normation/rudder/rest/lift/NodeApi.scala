@@ -412,7 +412,7 @@ class NodeApi (
       def errorMsg(ids: List[String]) = s"Error when trying to get status for nodes with IDs '${ids.mkString(",")}''"
       (for {
         ids      <- (restExtractorService.extractString("ids")(req)(ids => Full(ids.split(",").map(_.trim)))).map(_.map(_.toList).getOrElse(Nil)) ?~! "Error: 'ids' parameter not found"
-        accepted <- apiV2.nodeInfoService.getAll().map(_.keySet.map(_.value)) ?~! errorMsg(ids)
+        accepted <- apiV2.nodeInfoService.getAllNodeIds().map(_.map(_.value)) ?~! errorMsg(ids)
         pending  <- apiV2.nodeInfoService.getPendingNodeInfos().map(_.keySet.map(_.value)) ?~! errorMsg(ids)
         deleted  <- apiV2.nodeInfoService.getDeletedNodeInfos().map(_.keySet.map(_.value)) ?~! errorMsg(ids)
       } yield {

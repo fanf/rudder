@@ -62,7 +62,7 @@ import com.normation.rudder.reports.ComplianceModeService
 import com.normation.rudder.reports.AgentRunIntervalService
 import com.normation.rudder.reports.AgentRunInterval
 import com.normation.rudder.domain.logger.ComplianceDebugLogger
-import com.normation.rudder.services.reports.{CacheComplianceQueueAction, CachedFindRuleNodeStatusReports}
+import com.normation.rudder.services.reports.{CacheComplianceQueueAction, CachedFindRuleNodeStatusReports, CachedNodeConfigurationService}
 import com.normation.rudder.services.policies.write.PolicyWriterService
 import com.normation.rudder.reports.GlobalComplianceMode
 import com.normation.rudder.domain.appconfig.FeatureSwitch
@@ -597,8 +597,8 @@ trait PromiseGenerationService {
   ) : Box[Seq[NodeExpectedReports]]
 
   /**
-   * After updates of everything, notify compliace cache
-   * that it should forbid what it knows about the updated nodes
+   * After updates of everything, notify expected reports and compliance cache
+   * that it should forget what it knows about the updated nodes
    */
   def invalidateComplianceCache(actions: Seq[(NodeId, CacheComplianceQueueAction)]): Unit
 
@@ -653,6 +653,7 @@ class PromiseGenerationServiceImpl (
   , override val complianceCache  : CachedFindRuleNodeStatusReports
   , override val promisesFileWriterService: PolicyWriterService
   , override val writeNodeCertificatesPem: WriteNodeCertificatesPem
+  , override val cachedNodeConfigurationService: CachedNodeConfigurationService
   , override val getScriptEngineEnabled      : () => Box[FeatureSwitch]
   , override val getGlobalPolicyMode         : () => Box[GlobalPolicyMode]
   , override val getComputeDynGroups         : () => Box[Boolean]
@@ -1312,6 +1313,7 @@ trait PromiseGeneration_updateAndWriteRule extends PromiseGenerationService {
 trait PromiseGeneration_setExpectedReports extends PromiseGenerationService {
   def complianceCache  : CachedFindRuleNodeStatusReports
   def confExpectedRepo : UpdateExpectedReportsRepository
+  def cachedNodeConfigurationService: CachedNodeConfigurationService
 
   override def computeExpectedReports(
       allNodeConfigurations: Map[NodeId, NodeConfiguration]
@@ -1340,6 +1342,7 @@ trait PromiseGeneration_setExpectedReports extends PromiseGenerationService {
   }
 
   override def invalidateComplianceCache(actions: Seq[(NodeId, CacheComplianceQueueAction)]): Unit = {
+    cachedNodeConfigurationService.invalidateWithAction(actions).runNow
     complianceCache.invalidateWithAction(actions).runNow
   }
 
