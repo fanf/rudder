@@ -109,7 +109,6 @@ import com.normation.rudder.services.queries.CmdbQueryParser
 import com.normation.rudder.services.queries.DefaultStringQueryParser
 import com.normation.rudder.services.queries.DynGroupUpdaterServiceImpl
 import com.normation.rudder.services.queries.JsonQueryLexer
-import com.normation.rudder.services.reports.CacheComplianceQueueAction
 import com.normation.rudder.services.servers.DeleteMode
 import com.normation.rudder.services.system.DebugInfoScriptResult
 import com.normation.rudder.services.system.DebugInfoService
@@ -152,6 +151,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.xml.Elem
 import com.normation.box._
 import com.normation.rudder.domain.nodes.NodeGroupId
+import com.normation.rudder.services.reports.CacheExpectedReportAction
 
 
 /*
@@ -273,7 +273,7 @@ object RestTestSetUp {
     override def runPreHooks(generationTime: DateTime, systemEnv: HookEnvPairs): Box[Unit] = ???
     override def runPostHooks(generationTime: DateTime, endTime: DateTime, idToConfiguration: Map[NodeId, NodeInfo], systemEnv: HookEnvPairs, nodeIdsPath: String): Box[Unit] = ???
     override def runFailureHooks(generationTime: DateTime, endTime: DateTime, systemEnv: HookEnvPairs, errorMessage: String, errorMessagePath: String): Box[Unit] = ???
-    override def invalidateComplianceCache(actions: Seq[(NodeId, CacheComplianceQueueAction)]): Unit = ???
+    override def invalidateComplianceCache(actions: Seq[(NodeId, CacheExpectedReportAction)]): Unit = ???
   }
   val asyncDeploymentAgent = new AsyncDeploymentActor(policyGeneration, eventLogger, deploymentStatusSerialisation, () => Duration("0s").succeed, () => AllGeneration.succeed)
 

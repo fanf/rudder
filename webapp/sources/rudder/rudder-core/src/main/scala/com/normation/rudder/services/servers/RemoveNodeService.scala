@@ -85,7 +85,8 @@ import com.normation.rudder.services.nodes.NodeInfoService.A_MOD_TIMESTAMP
 import com.normation.rudder.services.nodes.NodeInfoServiceCached
 import com.normation.rudder.services.policies.write.NodePoliciesPaths
 import com.normation.rudder.services.policies.write.PathComputer
-import com.normation.rudder.services.reports.CacheComplianceQueueAction.RemoveNodeInCache
+import com.normation.rudder.services.reports.CacheComplianceQueueAction.ExpectedReportAction
+import com.normation.rudder.services.reports.CacheExpectedReportAction.RemoveNodeInCache
 import com.normation.rudder.services.reports.{CachedFindRuleNodeStatusReports, CachedNodeConfigurationService}
 import com.normation.rudder.services.servers.DeletionResult._
 import com.unboundid.ldap.sdk.Modification
@@ -531,12 +532,11 @@ class RemoveNodeFromComplianceCache(
        configurationService: CachedNodeConfigurationService
      , cachedCompliance    : CachedFindRuleNodeStatusReports) extends PostNodeDeleteAction {
   override def run(nodeId: NodeId, mode: DeleteMode, info: Option[NodeInfo], status: Set[InventoryStatus]): UIO[Unit] = {
-      val removalEvent = Seq((nodeId, RemoveNodeInCache(nodeId)))
       for {
         _            <- NodeLoggerPure.Delete.debug(s"  - remove node ${nodeId.value} from compliance and expected report cache")
-        _            <- configurationService.invalidateWithAction(removalEvent).catchAll(err =>
+        _            <- configurationService.invalidateWithAction(Seq((nodeId, RemoveNodeInCache(nodeId)))).catchAll(err =>
                           NodeLoggerPure.Delete.error(s"Error when removing node ${nodeId.value} from node configuration cache: ${err.fullMsg}"))
-        _            <- cachedCompliance.invalidateWithAction(removalEvent).catchAll(err =>
+        _            <- cachedCompliance.invalidateWithAction(Seq((nodeId, ExpectedReportAction(RemoveNodeInCache(nodeId))))).catchAll(err =>
                             NodeLoggerPure.Delete.error(s"Error when removing node ${nodeId.value} from compliance cache: ${err.fullMsg}"))
       } yield {
         ()

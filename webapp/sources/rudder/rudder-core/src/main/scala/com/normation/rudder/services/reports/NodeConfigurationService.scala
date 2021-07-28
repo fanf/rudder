@@ -119,7 +119,7 @@ class CachedNodeConfigurationService(
    * invalidation request.
    * // unsure if its a CacheComplianceQueueAction or another queueaction
    */
-  private[this] val invalidateNodeConfigurationRequest = Queue.dropping[List[(NodeId, CacheComplianceQueueAction)]](1).runNow
+  private[this] val invalidateNodeConfigurationRequest = Queue.dropping[List[(NodeId, CacheExpectedReportAction)]](1).runNow
 
   /**
    * We need a semaphore to protect queue content merge-update
@@ -148,7 +148,7 @@ class CachedNodeConfigurationService(
    * we need to keep order
    */
   val updateCacheFromRequest: IO[Nothing, Unit] = invalidateNodeConfigurationRequest.take.flatMap(invalidatedIds =>
-    ZIO.foreach_(invalidatedIds.map(_._2) : List[CacheComplianceQueueAction])(action =>
+    ZIO.foreach_(invalidatedIds.map(_._2) : List[CacheExpectedReportAction])(action =>
       performAction(action).catchAll(err =>
         // when there is an error with an action on the cache, it can becomes inconsistant and we need to (try to) reinit it
         logger.error(s"Error when updating NodeConfiguration cache for node: [${action.nodeId.value}]: ${err.fullMsg}")) *>
@@ -172,17 +172,14 @@ class CachedNodeConfigurationService(
   /**
    * Do something with the action we received
    */
-  private[this] def performAction(action: CacheComplianceQueueAction): IOResult[Unit] = {
-    import CacheComplianceQueueAction._
+  private[this] def performAction(action: CacheExpectedReportAction): IOResult[Unit] = {
+    import CacheExpectedReportAction._
     // in a semaphore
     semaphore.withPermit(
        action match {
                           case insert: InsertNodeInCache => cache.update( _ + (insert.nodeId -> None))
                           case delete: RemoveNodeInCache => cache.update( _.removed(delete.nodeId) )
                           case update: UpdateNodeConfiguration => cache.update( _ + (update.nodeId -> Some(update.nodeConfiguration)))
-                          case something =>
-                            Inconsistency(s"NodeConfiguration service cache received unknown command : ${something}").fail
-                           // should not happen
                    }
     )
   }
@@ -191,7 +188,7 @@ class CachedNodeConfigurationService(
    * invalidate with an action to do something
    * order is important
    */
-  def invalidateWithAction(actions: Seq[(NodeId, CacheComplianceQueueAction)]): IOResult[Unit] = {
+  def invalidateWithAction(actions: Seq[(NodeId, CacheExpectedReportAction)]): IOResult[Unit] = {
     ZIO.when(actions.nonEmpty) {
       logger.debug(s"Node Configuration cache: invalidation request for nodes with action: [${actions.map(_._1).map { _.value }.mkString(",")}]") *>
         invalidateMergeUpdateSemaphore.withPermit(for {

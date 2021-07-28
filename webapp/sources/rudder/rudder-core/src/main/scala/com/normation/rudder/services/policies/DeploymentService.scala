@@ -106,6 +106,7 @@ import com.normation.rudder.utils.ParseMaxParallelism
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.rudder.domain.reports.BlockExpectedReport
 import com.normation.rudder.domain.reports.ValueExpectedReport
+import com.normation.rudder.services.reports.CacheExpectedReportAction
 
 /**
  * A deployment hook is a class that accept callbacks.
@@ -347,7 +348,7 @@ trait PromiseGenerationService {
 
       /// now, if there was failed config or failed write, time to show them
       //invalidate compliance may be very very long - make it async
-      invalidationActions   = expectedReports.map(x => (x.nodeId, CacheComplianceQueueAction.UpdateNodeConfiguration(x.nodeId, x)))
+      invalidationActions   = expectedReports.map(x => (x.nodeId, CacheExpectedReportAction.UpdateNodeConfiguration(x.nodeId, x)))
       _                     =  ZioRuntime.runNow(IOResult.effect(invalidateComplianceCache (invalidationActions)).run.unit.forkDaemon)
 
       _                     =  {
@@ -600,7 +601,7 @@ trait PromiseGenerationService {
    * After updates of everything, notify expected reports and compliance cache
    * that it should forget what it knows about the updated nodes
    */
-  def invalidateComplianceCache(actions: Seq[(NodeId, CacheComplianceQueueAction)]): Unit
+  def invalidateComplianceCache(actions: Seq[(NodeId, CacheExpectedReportAction)]): Unit
 
   /**
    * Store groups and directive in the database
@@ -1341,9 +1342,9 @@ trait PromiseGeneration_setExpectedReports extends PromiseGenerationService {
     }.toList
   }
 
-  override def invalidateComplianceCache(actions: Seq[(NodeId, CacheComplianceQueueAction)]): Unit = {
+  override def invalidateComplianceCache(actions: Seq[(NodeId, CacheExpectedReportAction)]): Unit = {
     cachedNodeConfigurationService.invalidateWithAction(actions).runNow
-    complianceCache.invalidateWithAction(actions).runNow
+    complianceCache.invalidateWithAction(actions.map { case (k,v) => (k,CacheComplianceQueueAction.ExpectedReportAction(v))}).runNow
   }
 
   override def saveExpectedReports(

@@ -42,9 +42,10 @@ import bootstrap.liftweb.BootstrapLogger
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.reports.CachedFindRuleNodeStatusReports
 import javax.servlet.UnavailableException
-import com.normation.box._
-import com.normation.rudder.services.reports.CacheComplianceQueueAction.InsertNodeInCache
+import com.normation.rudder.services.reports.CacheExpectedReportAction.InsertNodeInCache
+import com.normation.rudder.services.reports.CacheComplianceQueueAction.ExpectedReportAction
 import net.liftweb.common.EmptyBox
+import com.normation.box._
 
 /**
  * At startup, we preload node compliance cache
@@ -57,7 +58,7 @@ class LoadNodeComplianceCache(nodeInfoService: NodeInfoService, reportingService
   override def checks() : Unit = {
     (for {
       nodeIds <- nodeInfoService.getAllNodesIds()
-      _       <- reportingService.invalidateWithAction(nodeIds.toSeq.map(x => (x, InsertNodeInCache(x))))
+      _       <- reportingService.invalidateWithAction(nodeIds.toSeq.map(x => (x, ExpectedReportAction(InsertNodeInCache(x)))))
     } yield ()).toBox match {
       case eb: EmptyBox =>
         val err = eb ?~! s"Error when loading node compliance cache:"

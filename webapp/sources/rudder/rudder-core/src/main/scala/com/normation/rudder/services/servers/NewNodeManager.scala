@@ -84,7 +84,8 @@ import com.normation.rudder.repository.WoNodeGroupRepository
 import com.normation.rudder.repository.ldap.LDAPEntityMapper
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.queries.QueryProcessor
-import com.normation.rudder.services.reports.CacheComplianceQueueAction.InsertNodeInCache
+import com.normation.rudder.services.reports.CacheComplianceQueueAction.ExpectedReportAction
+import com.normation.rudder.services.reports.CacheExpectedReportAction.InsertNodeInCache
 import com.normation.rudder.services.reports.{CachedFindRuleNodeStatusReports, CachedNodeConfigurationService}
 import com.normation.utils.Control.sequence
 import net.liftweb.common.Box
@@ -594,10 +595,9 @@ trait ComposedNewNodeManager extends NewNodeManager with NewNodeManagerHooks {
          afterNodeAcceptedAsync(id)
          // ping the NodeConfiguration Cache and NodeCompliance Cache about this new node
 
-         val addEvent = Seq((id, InsertNodeInCache(id)))
          for {
-           _ <- cachedNodeConfigurationService.invalidateWithAction(addEvent).toBox ?~! s"Error when adding node ${id.value} to node configuration cache"
-           _ <- cachedReportingService.invalidateWithAction(addEvent).toBox ?~! s"Error when adding node ${id.value} to compliance cache"
+           _ <- cachedNodeConfigurationService.invalidateWithAction(Seq((id, InsertNodeInCache(id)))).toBox ?~! s"Error when adding node ${id.value} to node configuration cache"
+           _ <- cachedReportingService.invalidateWithAction(Seq((id, ExpectedReportAction(InsertNodeInCache(id))))).toBox ?~! s"Error when adding node ${id.value} to compliance cache"
          } yield {
            ()
          }

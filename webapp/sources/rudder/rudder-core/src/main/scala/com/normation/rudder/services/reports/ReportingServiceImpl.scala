@@ -92,11 +92,16 @@ object ReportingServiceUtils {
  * * update node configuration (after a policy generation, with new nodeconfiguration)
  * * set the node in node answer state (with the new compliance?)
  */
+sealed trait CacheExpectedReportAction { def nodeId:NodeId }
+object CacheExpectedReportAction {
+  final case class InsertNodeInCache      (nodeId: NodeId                                          ) extends CacheExpectedReportAction
+  final case class RemoveNodeInCache      (nodeId: NodeId                                          ) extends CacheExpectedReportAction
+  final case class UpdateNodeConfiguration(nodeId: NodeId, nodeConfiguration: NodeExpectedReports  ) extends CacheExpectedReportAction // convert the nodestatursreport to pending, with info from last run
+}
+
 sealed trait CacheComplianceQueueAction { def nodeId:NodeId }
 object CacheComplianceQueueAction {
-  final case class InsertNodeInCache      (nodeId: NodeId                                          ) extends CacheComplianceQueueAction
-  final case class RemoveNodeInCache      (nodeId: NodeId                                          ) extends CacheComplianceQueueAction
-  final case class UpdateNodeConfiguration(nodeId: NodeId, nodeConfiguration: NodeExpectedReports  ) extends CacheComplianceQueueAction // convert the nodestatursreport to pending, with info from last run
+  final case class ExpectedReportAction   (action: CacheExpectedReportAction                       )  extends CacheComplianceQueueAction { def nodeId = action.nodeId }
   final case class InitializeCompliance   (nodeId: NodeId, nodeCompliance: Option[NodeStatusReport]) extends CacheComplianceQueueAction // do we need this?
   final case class UpdateCompliance       (nodeId: NodeId, nodeCompliance: NodeStatusReport        ) extends CacheComplianceQueueAction
   final case class SetNodeNoAnswer        (nodeId: NodeId, actionDate: DateTime                    ) extends CacheComplianceQueueAction
@@ -351,6 +356,8 @@ trait CachedFindRuleNodeStatusReports extends ReportingService with CachedReposi
    */
   private[this] def performAction(actions: List[CacheComplianceQueueAction]): IOResult[Unit] = {
     import CacheComplianceQueueAction._
+    import CacheExpectedReportAction._
+
     ReportLoggerPure.Cache.debug(s"Performing action ${actions.headOption}") *>
     // get type of action
     (actions.headOption match {
@@ -367,11 +374,11 @@ trait CachedFindRuleNodeStatusReports extends ReportingService with CachedReposi
             _       <-  IOResult.effectNonBlocking { cache = cache ++ updates }
           } yield ())
 
-        case delete: RemoveNodeInCache =>
+        case ExpectedReportAction((RemoveNodeInCache(_))) =>
           for {
             deletes <- ZIO.foreach(actions) { case a => a match {
-                         case x: RemoveNodeInCache => x.nodeId.succeed
-                         case x                    => Inconsistency(s"Error: found an action of incorrect type in a 'delete' for cache: ${x}").fail
+                         case ExpectedReportAction((RemoveNodeInCache(nodeId))) => nodeId.succeed
+                         case x                                                 => Inconsistency(s"Error: found an action of incorrect type in a 'delete' for cache: ${x}").fail
                        }}
             _       <-  IOResult.effectNonBlocking { cache = cache.removedAll(deletes) }
           } yield ()
