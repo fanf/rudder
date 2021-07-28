@@ -1404,7 +1404,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     override def getAll(): Box[Map[NodeId, NodeInfo]] = getGenericAll(AcceptedInventory, _info).toBox
 
     override def getAllNodes(): Box[Map[NodeId, Node]] = getAll().map(_.map(kv => (kv._1, kv._2.node)))
-    override def getAllNodeIds(): Box[Set[NodeId]] = getAllNodes.map(_.keySet)
+    override def getAllNodesIds(): IOResult[Set[NodeId]] = getAllNodes().map(_.keySet).toIO
     override def getAllSystemNodeIds(): Box[Seq[NodeId]] = {
       nodeBase.get.map(_.collect { case (id, n)  if(n.info.isSystem) => id }.toSeq ).toBox
     }

@@ -41,13 +41,11 @@ import com.normation.errors._
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.{ReportLogger, ReportLoggerPure}
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.{NodeAndConfigId, NodeExpectedReports, NodeStatusReport}
+import com.normation.rudder.domain.reports.{NodeAndConfigId, NodeExpectedReports}
 import com.normation.rudder.repository.{CachedRepository, FindExpectedReportRepository}
 import com.normation.rudder.services.nodes.NodeInfoService
-import com.normation.utils.Control.sequence
 import com.normation.zio._
 import net.liftweb.common._
-import org.joda.time._
 import zio._
 import zio.syntax._
 
@@ -66,7 +64,7 @@ trait NodeConfigurationService {
    */
   def findNodeExpectedReports(
          nodeConfigIds: Set[NodeAndConfigId]
-      ): Box[Map[NodeAndConfigId, Option[NodeExpectedReports]]]
+      ): IOResult[Map[NodeAndConfigId, Option[NodeExpectedReports]]]
 
   /**
    * get the current expected reports
@@ -135,7 +133,7 @@ class CachedNodeConfigurationService(
     logEffect.debug("Init cache in NodeConfigurationService")
     for {
       // first, get all nodes
-      nodeIds <- nodeInfoService.getAllNodeIds().toIO
+      nodeIds <- nodeInfoService.getAllNodesIds()
       _       <- semaphore.withPermit {
         // void the cache
         IOResult.effect({ cache = nodeIds.map(_ -> None).toMap })
@@ -289,14 +287,14 @@ class CachedNodeConfigurationService(
    */
   def findNodeExpectedReports(
       nodeConfigIds: Set[NodeAndConfigId]
-    ): Box[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
+    ): IOResult[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
     // first get them in cache
     val inCache = cache.map { case (id, expected) => expected match {
       case None => None
       case Some(nodeExpectedReport) =>
         val nodeAndConfigId = NodeAndConfigId(id, nodeExpectedReport.nodeConfigId)
         if (nodeConfigIds.contains(nodeAndConfigId)) {
-          Some(nodeAndConfigId, expected) // returns from the cache if it match
+          Some((nodeAndConfigId, expected)) // returns from the cache if it match
         } else {
           None
         }
@@ -312,7 +310,7 @@ class CachedNodeConfigurationService(
     } yield {
       fromDb ++ inCache
     }
-  }
+  }.toIO
 }
 
 
@@ -329,8 +327,8 @@ class NodeConfigurationServiceImpl(
    */
   def findNodeExpectedReports(
         nodeConfigIds: Set[NodeAndConfigId]
-      ): Box[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
-    confExpectedRepo.getExpectedReports(nodeConfigIds)
+      ): IOResult[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
+    confExpectedRepo.getExpectedReports(nodeConfigIds).toIO
   }
 
   /**

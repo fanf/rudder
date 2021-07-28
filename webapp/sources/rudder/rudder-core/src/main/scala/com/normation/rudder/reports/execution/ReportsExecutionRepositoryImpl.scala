@@ -50,7 +50,6 @@ import com.normation.errors.{BoxToIO, IOResult}
 import com.normation.rudder.domain.logger.TimingDebugLogger
 import com.normation.utils.Control.sequence
 import com.normation.rudder.domain.reports.{ExpectedReportsSerialisation, NodeAndConfigId, NodeConfigId, NodeExpectedReports}
-import com.normation.rudder.repository.FindExpectedReportRepository
 import com.normation.rudder.services.reports.NodeConfigurationService
 import org.joda.time.DateTime
 import zio.interop.catz._
@@ -87,7 +86,7 @@ final case class RoReportsExecutionRepositoryImpl (
       // by construct, we do have a nodeConfigId
       agentsRuns = lastRunByNode.map(x => (x._1, NodeAndConfigId(x._1, x._2.nodeConfigVersion.get)))
 
-      expectedReports <- nodeConfigService.findNodeExpectedReports(agentsRuns.values.toSet).toIO
+      expectedReports <- nodeConfigService.findNodeExpectedReports(agentsRuns.values.toSet)
 
       runs = agentsRuns.map { case (nodeId, nodeAndConfigId) =>
         (nodeId,

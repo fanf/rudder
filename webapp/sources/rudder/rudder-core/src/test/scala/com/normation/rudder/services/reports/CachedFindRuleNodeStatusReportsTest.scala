@@ -136,7 +136,7 @@ class CachedFindRuleNodeStatusReportsTest extends Specification {
     def getNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
     def getNode(nodeId: NodeId): Box[Node] = ???
     def getAllNodes() : Box[Map[NodeId, Node]] = ???
-    def getAllNodeIds(): Box[Set[NodeId]] = ???
+    def getAllNodesIds(): IOResult[Set[NodeId]] = ???
     def getAllSystemNodeIds() : Box[Seq[NodeId]] = ???
     def getPendingNodeInfos(): Box[Map[NodeId, NodeInfo]] = ???
     def getPendingNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
@@ -177,7 +177,6 @@ class CachedFindRuleNodeStatusReportsTest extends Specification {
       }
     }
     override def nodeInfoService: NodeInfoService = testNodeInfoService
-    override def nodeConfigrationService: NodeConfigurationService = ???
 
     override def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Map[NodeId, NodeStatusReport]] = ???
     override def findNodeStatusReport(nodeId: NodeId): Box[NodeStatusReport] = ???

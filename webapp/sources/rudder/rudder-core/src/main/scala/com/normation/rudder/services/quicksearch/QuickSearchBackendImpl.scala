@@ -226,7 +226,7 @@ object QSLdapBackend {
 
     for {
       connection  <- ldap
-      nodeIds     <- nodeInfos.getAllNodeIds.toIO
+      nodeIds     <- nodeInfos.getAllNodesIds
       entries     <- connection.search(nodeDit.BASE_DN, Sub, filter, returnedAttributes:_*)
     } yield {
 

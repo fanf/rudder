@@ -97,7 +97,6 @@ object CacheComplianceQueueAction {
   final case class RemoveNodeInCache      (nodeId: NodeId                                          ) extends CacheComplianceQueueAction
   final case class InitializeCompliance   (nodeId: NodeId, nodeCompliance: Option[NodeStatusReport]) extends CacheComplianceQueueAction // do we need this?
   final case class UpdateCompliance       (nodeId: NodeId, nodeCompliance: NodeStatusReport        ) extends CacheComplianceQueueAction
-  final case class InitNodeConfiguration  (nodeId: NodeId, nodeConfiguration: NodeExpectedReports  ) // unsure about keeping this one
   final case class UpdateNodeConfiguration(nodeId: NodeId, nodeConfiguration: NodeExpectedReports  ) extends CacheComplianceQueueAction // convert the nodestatursreport to pending, with info from last run
   final case class SetNodeNoAnswer        (nodeId: NodeId, actionDate: DateTime                    ) extends CacheComplianceQueueAction
   final case class ExpiredCompliance      (nodeId: NodeId                                          ) extends CacheComplianceQueueAction
@@ -132,7 +131,6 @@ class CachedReportingServiceImpl(
   val directivesRepo   = defaultFindRuleNodeStatusReports.directivesRepo
   val rulesRepo        = defaultFindRuleNodeStatusReports.rulesRepo
 
-  val nodeConfigrationService = nodeConfigService
   def findUncomputedNodeStatusReports() : Box[Map[NodeId, NodeStatusReport]] = defaultFindRuleNodeStatusReports.findUncomputedNodeStatusReports()
 
 }
@@ -219,7 +217,7 @@ trait RuleOrNodeReportingServiceImpl extends ReportingService {
   def getUserNodeStatusReports() : Box[Map[NodeId, NodeStatusReport]] = {
     val n1 = System.currentTimeMillis
     for {
-      nodeIds            <- nodeInfoService.getAllNodeIds()
+      nodeIds            <- nodeInfoService.getAllNodesIds().toBox
       userRules          <- rulesRepo.getIds().toBox
       n2                 = System.currentTimeMillis
       _                  = TimingDebugLogger.trace(s"Reporting service - Get nodes and users rules in: ${n2 - n1}ms")
@@ -295,7 +293,6 @@ trait CachedFindRuleNodeStatusReports extends ReportingService with CachedReposi
   def nodeInfoService                 : NodeInfoService
   def batchSize                       : Int
 
-  def nodeConfigrationService         : NodeConfigurationService
   /**
    * The cache is managed node by node.
    * A missing nodeId mean that the cache wasn't initialized for

@@ -56,9 +56,9 @@ class LoadNodeComplianceCache(nodeInfoService: NodeInfoService, reportingService
   @throws(classOf[ UnavailableException ])
   override def checks() : Unit = {
     (for {
-      nodeIds <- nodeInfoService.getAllNodeIds()
-      _       <- reportingService.invalidateWithAction(nodeIds.toSeq.map(x => (x, InsertNodeInCache(x)))).toBox
-    } yield ()) match {
+      nodeIds <- nodeInfoService.getAllNodesIds()
+      _       <- reportingService.invalidateWithAction(nodeIds.toSeq.map(x => (x, InsertNodeInCache(x))))
+    } yield ()).toBox match {
       case eb: EmptyBox =>
         val err = eb ?~! s"Error when loading node compliance cache:"
         BootstrapLogger.warn(err.messageChain)
