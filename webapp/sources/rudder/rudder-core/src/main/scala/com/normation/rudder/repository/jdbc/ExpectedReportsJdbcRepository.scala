@@ -58,6 +58,7 @@ import com.normation.rudder.domain.logger.ReportLogger
 import com.normation.utils.Control.sequence
 import doobie.free.connection
 import zio.interop.catz._
+import zio.syntax._
 
 class PostgresqlInClause(
     //max number of element to switch from in (...) to in(values(...)) clause
@@ -191,10 +192,10 @@ class FindExpectedReportsJdbcRepository(
    * Return node ids associated to the rule (based on expectedreports (the one still pending)) for this Rule,
    * only limited on the nodeIds in parameter (used when cache is incomplete)
    */
-  override def findCurrentNodeIdsForRule(ruleId : RuleId, nodeIds: Set[NodeId]) : Box[Set[NodeId]] = {
-    if (nodeIds.isEmpty) Full(Set.empty[NodeId])
+  override def findCurrentNodeIdsForRule(ruleId : RuleId, nodeIds: Set[NodeId]) : IOResult[Set[NodeId]] = {
+    if (nodeIds.isEmpty) Set.empty[NodeId].succeed
     else {
-      transactRunBox(xa => sql"""
+      transactIOResult(s"Error when getting nodes for rule '${ruleId.value}' from expected reports")(xa => sql"""
         select distinct nodeid from nodeconfigurations
         where enddate is null and configuration like ${"%" + ruleId.value + "%"}
         and nodeid in (${nodeIds.map(id => s"'${id}'").mkString(",")})

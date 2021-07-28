@@ -94,30 +94,29 @@ class ReportingServiceTest extends DBCommon with BoxSpecMatcher {
   }
 
   object nodeInfoService extends NodeInfoService {
-    def getLDAPNodeInfo(nodeIds: Set[NodeId], predicates: Seq[NodeInfoMatcher], composition: CriterionComposition) : Box[Set[LDAPNodeInfo]] = ???
-    def getNodeInfo(nodeId: NodeId) : Box[Option[NodeInfo]] = ???
-    def getNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
+    def getLDAPNodeInfo(nodeIds: Set[NodeId], predicates: Seq[NodeInfoMatcher], composition: CriterionComposition) : IOResult[Set[LDAPNodeInfo]] = ???
+    def getNodeInfo(nodeId: NodeId) : IOResult[Option[NodeInfo]] = ???
     def getNode(nodeId: NodeId): Box[Node] = ???
-    def getAllNodes() : Box[Map[NodeId, Node]] = ???
+    def getAllNodes() : IOResult[Map[NodeId, Node]] = ???
     def getAllNodesIds(): IOResult[Set[NodeId]] = ???
-    def getAllSystemNodeIds() : Box[Seq[NodeId]] = ???
-    def getPendingNodeInfos(): Box[Map[NodeId, NodeInfo]] = ???
-    def getPendingNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
-    def getDeletedNodeInfos(): Box[Map[NodeId, NodeInfo]] = ???
-    def getDeletedNodeInfoPure(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
+    def getAllSystemNodeIds() : IOResult[Seq[NodeId]] = ???
+    def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = ???
+    def getPendingNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
+    def getDeletedNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = ???
+    def getDeletedNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
     def getNumberOfManagedNodes: Int = ???
-    val getAll : Box[Map[NodeId, NodeInfo]] = {
+    val getAll : IOResult[Map[NodeId, NodeInfo]] = {
       def build(id: String, mode: Option[PolicyMode]) = {
         val node1 = NodeConfigData.node1.node
         NodeConfigData.node1.copy(node = node1.copy(id = NodeId(id), policyMode = mode))
       }
-      Full(Seq(
+      Seq(
           build("n0", None)
         , build("n1", Some(PolicyMode.Enforce))
         , build("n2", Some(PolicyMode.Audit))
         , build("n3", Some(PolicyMode.Enforce))
         , build("n4", Some(PolicyMode.Audit))
-      ).map(n => (n.id, n)).toMap)
+      ).map(n => (n.id, n)).toMap.succeed
     }
   }
 
@@ -153,7 +152,7 @@ class ReportingServiceTest extends DBCommon with BoxSpecMatcher {
     def defaultFindRuleNodeStatusReports: DefaultFindRuleNodeStatusReports = null
     def nodeInfoService: NodeInfoService = self.nodeInfoService
     def nodeConfigrationService : NodeConfigurationService = null
-    def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): Box[Map[NodeId, NodeStatusReport]] = null
+    def findDirectiveRuleStatusReportsByRule(ruleId: RuleId): IOResult[Map[NodeId, NodeStatusReport]] = null
     def findNodeStatusReport(nodeId: NodeId) : Box[NodeStatusReport] = null
     def findUserNodeStatusReport(nodeId: NodeId) : Box[NodeStatusReport] = null
     def findSystemNodeStatusReport(nodeId: NodeId) : Box[NodeStatusReport] = null

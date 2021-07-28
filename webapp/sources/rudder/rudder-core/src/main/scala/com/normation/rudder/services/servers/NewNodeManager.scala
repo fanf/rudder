@@ -168,7 +168,7 @@ class PostNodeAcceptanceHookScripts(
     val postHooksTime =  System.currentTimeMillis
     HooksLogger.debug(s"Executing post-node-acceptance hooks for node with id '${nodeId.value}'")
     for {
-      optNodeInfo   <- nodeInfoService.getNodeInfo(nodeId)
+      optNodeInfo   <- nodeInfoService.getNodeInfo(nodeId).toBox
       nodeInfo      <- optNodeInfo match {
                          case None    => Failure(s"Just accepted node with id '${nodeId.value}' was not found - perhaps a bug?"+
                                                   " Please report with /var/log/rudder/webapp/DATE_OF_DAY.stdout.log file attached")

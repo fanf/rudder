@@ -740,7 +740,7 @@ trait PromiseGeneration_performeIO extends PromiseGenerationService {
   def getGlobalPolicyMode: () => Box[GlobalPolicyMode]
 
   override def findDependantRules() : Box[Seq[Rule]] = roRuleRepo.getAll(true).toBox
-  override def getAllNodeInfos(): Box[Map[NodeId, NodeInfo]] = nodeInfoService.getAll()
+  override def getAllNodeInfos(): Box[Map[NodeId, NodeInfo]] = nodeInfoService.getAll().toBox
   override def getDirectiveLibrary(): Box[FullActiveTechniqueCategory] = roDirectiveRepository.getFullDirectiveLibrary().toBox
   override def getGroupLibrary(): Box[FullNodeGroupCategory] = roNodeGroupRepository.getFullGroupLibrary().toBox
   override def getAllGlobalParameters: Box[Seq[GlobalParameter]] = parameterService.getAllGlobalParameters()

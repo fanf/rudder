@@ -533,7 +533,7 @@ object RestTestSetUp {
   val nodeInfo = mockNodes.nodeInfoService
   val softDao = mockNodes.softwareDao
   val roReportsExecutionRepository = new RoReportsExecutionRepository {
-    override def getNodesLastRun(nodeIds: Set[NodeId]): Box[Map[NodeId, Option[AgentRunWithNodeConfig]]] = Full(Map())
+    override def getNodesLastRun(nodeIds: Set[NodeId]): IOResult[Map[NodeId, Option[AgentRunWithNodeConfig]]] = Map.empty[NodeId, Option[AgentRunWithNodeConfig]].succeed
 
     def getNodesAndUncomputedCompliance(): IOResult[Map[NodeId, Option[AgentRunWithNodeConfig]]] = ???
 

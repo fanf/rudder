@@ -36,16 +36,17 @@
 */
 
 package com.normation.rudder.services.reports
-import com.normation.box._
+
 import com.normation.errors._
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.domain.logger.{ReportLogger, ReportLoggerPure}
+import com.normation.rudder.domain.logger.ReportLoggerPure
 import com.normation.rudder.domain.policies.RuleId
-import com.normation.rudder.domain.reports.{NodeAndConfigId, NodeExpectedReports}
-import com.normation.rudder.repository.{CachedRepository, FindExpectedReportRepository}
+import com.normation.rudder.domain.reports.NodeAndConfigId
+import com.normation.rudder.domain.reports.NodeExpectedReports
+import com.normation.rudder.repository.CachedRepository
+import com.normation.rudder.repository.FindExpectedReportRepository
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.zio._
-import net.liftweb.common._
 import zio._
 import zio.syntax._
 
@@ -70,24 +71,24 @@ trait NodeConfigurationService {
    * get the current expected reports
    * fails if request expected reports for a non existent node
    */
-  def getCurrentExpectedReports(nodeIds: Set[NodeId]): Box[Map[NodeId, Option[NodeExpectedReports]]]
+  def getCurrentExpectedReports(nodeIds: Set[NodeId]): IOResult[Map[NodeId, Option[NodeExpectedReports]]]
 
   /**
    * get the nodes applying the rule
    *
    */
-  def findNodesApplyingRule(ruleId: RuleId): Box[Set[NodeId]]
+  def findNodesApplyingRule(ruleId: RuleId): IOResult[Set[NodeId]]
 }
 
 class CachedNodeConfigurationService(
     val confExpectedRepo: FindExpectedReportRepository
   , val nodeInfoService : NodeInfoService
-  ) extends NodeConfigurationService with CachedRepository {
+) extends NodeConfigurationService with CachedRepository {
 
 
   val semaphore = Semaphore.make(1).runNow
 
-  val logEffect = ReportLogger.Cache
+  val logger = ReportLoggerPure.Cache
 
 
   /**
@@ -104,9 +105,12 @@ class CachedNodeConfigurationService(
    * Note that a clear cache will None the cache
    *
    * A query to fetch nodeexpectedreports that is not in the cache will return None
-   * (if node exists), or fail if node does not exists
+   * (if node exists), or fail if node does not exists.
+   *
+   * Ref allows atomic action on the map, but concurrent non-atomic changes (ex: if
+   * you need to something iterativelly to update the cache) still need to be behind a semaphore.
    */
-  private[this] var cache = Map.empty[NodeId, Option[NodeExpectedReports]]
+  private[this] val cache = Ref.make(Map.empty[NodeId, Option[NodeExpectedReports]]).runNow
 
   /**
    * The queue of invalidation request.
@@ -130,39 +134,38 @@ class CachedNodeConfigurationService(
   // batching saves memory, but is slower
   // i think it's safer to do the batching part, but i'd like to be sure of that
   def init() : IOResult[Unit] = {
-    logEffect.debug("Init cache in NodeConfigurationService")
     for {
+      _       <- logger.debug("Init cache in NodeConfigurationService")
       // first, get all nodes
       nodeIds <- nodeInfoService.getAllNodesIds()
-      _       <- semaphore.withPermit {
-        // void the cache
-        IOResult.effect({ cache = nodeIds.map(_ -> None).toMap })
-      }
+                 // void the cache
+      _       <- semaphore.withPermit(cache.set(nodeIds.map(_ -> None).toMap))
     } yield ()
-
   }
+
   /**
    * Update logic. We take message from queue one at a time, and process.
    * we need to keep order
    */
   val updateCacheFromRequest: IO[Nothing, Unit] = invalidateNodeConfigurationRequest.take.flatMap(invalidatedIds =>
     ZIO.foreach_(invalidatedIds.map(_._2) : List[CacheComplianceQueueAction])(action =>
-    {
-      (for {
-        _  <- performAction(action)
-      } yield ()).catchAll(err => ReportLoggerPure.Cache.error(s"Error when updating NodeConfiguration cache for node: [${action.nodeId.value}]: ${err.fullMsg}"))
-    }
+      performAction(action).catchAll(err =>
+        // when there is an error with an action on the cache, it can becomes inconsistant and we need to (try to) reinit it
+        logger.error(s"Error when updating NodeConfiguration cache for node: [${action.nodeId.value}]: ${err.fullMsg}")) *>
+        init().catchAll(err => logger.error(s"NoceConfiguration cache re-init after error failed, please try to restart app"))
     )
   )
+
   // start updating
   updateCacheFromRequest.forever.forkDaemon.runNow
+
   /**
    * Clear cache. Try a reload asynchronously, disregarding
    * the result
    */
   override def clearCache(): Unit = {
     init().runNow
-    logEffect.debug("Node expected reports cache cleared")
+    logger.logEffect.debug("Node expected reports cache cleared")
   }
 
 
@@ -174,9 +177,9 @@ class CachedNodeConfigurationService(
     // in a semaphore
     semaphore.withPermit(
        action match {
-                          case insert: InsertNodeInCache => IOResult.effectNonBlocking {  cache = cache + (insert.nodeId -> None) }
-                          case delete: RemoveNodeInCache => IOResult.effectNonBlocking {  cache = cache.removed(delete.nodeId) }
-                          case update: UpdateNodeConfiguration => IOResult.effectNonBlocking {  cache = cache + (update.nodeId -> Some(update.nodeConfiguration)) }
+                          case insert: InsertNodeInCache => cache.update( _ + (insert.nodeId -> None))
+                          case delete: RemoveNodeInCache => cache.update( _.removed(delete.nodeId) )
+                          case update: UpdateNodeConfiguration => cache.update( _ + (update.nodeId -> Some(update.nodeConfiguration)))
                           case something =>
                             Inconsistency(s"NodeConfiguration service cache received unknown command : ${something}").fail
                            // should not happen
@@ -190,7 +193,7 @@ class CachedNodeConfigurationService(
    */
   def invalidateWithAction(actions: Seq[(NodeId, CacheComplianceQueueAction)]): IOResult[Unit] = {
     ZIO.when(actions.nonEmpty) {
-      ReportLoggerPure.Cache.debug(s"Node Configuration cache: invalidation request for nodes with action: [${actions.map(_._1).map { _.value }.mkString(",")}]") *>
+      logger.debug(s"Node Configuration cache: invalidation request for nodes with action: [${actions.map(_._1).map { _.value }.mkString(",")}]") *>
         invalidateMergeUpdateSemaphore.withPermit(for {
           elements     <- invalidateNodeConfigurationRequest.takeAll
           allActions   =  (elements.flatten ++ actions)
@@ -198,119 +201,80 @@ class CachedNodeConfigurationService(
         } yield ())
     }
   }
-  // ? question ?
-  // how to properly ensure that cache is synchro ?
-  // we have the begin date of the nodeexpectedreport that my offer a way to ensure that we don't replace
-  // a value with something older
 
-  // Merge the data with the cache
-  // Strategy:
-  // * if nodeId is not in cache, remove the nodeId
-  // * if the nodeId is in cache, and value is None, augment cache
-  // * if the nodeid is in cache, and value is not None, pick the most recent value to augment cache
-  // Returns the values merged with cache
-  private[this] def mergeDataFromDBWithCache(fromDb: Map[NodeId, Option[NodeExpectedReports]]):IOResult[ Map[NodeId, Option[NodeExpectedReports]] ] = {
-    // In a semaphore, nothing should change the cache
-    semaphore.withPermit(
-      IOResult.effect({
-      val mergedEntries = fromDb.map {  case (nodeId, expFromDb) => cache.get(nodeId) match {
-        case None => None // nodeid not in cache, dropping
-        case Some(value) => value match { // node id in cache
-          case None => Some((nodeId -> expFromDb)) // with no value, the one from DB is better (even if none)
-          case Some(entry) => // now we must compare with the one from DB
-            expFromDb match {
-              case None => Some((nodeId -> value))
-              case Some(db) if db.beginDate.isAfter(entry.beginDate) => Some((nodeId -> expFromDb)) // data fom db is newer
-              case _ => // value from cache is newer
-                Some((nodeId -> value))
-            }
-        }
-      }}.flatten.toMap
-      // Now merge with the cache
-      cache = cache ++ mergedEntries
-
-      // returns the mergedEntries
-      mergedEntries
-    })
-    )
-  }
   /**
    * get the current expected reports
    */
-  def getCurrentExpectedReports(nodeIds: Set[NodeId]): Box[Map[NodeId, Option[NodeExpectedReports]]] = {
-    // First, get all nodes from cache (even the none)
-    val dataFromCache = cache.filter{  case (nodeId, _) => nodeIds.contains(nodeId) }
+  def getCurrentExpectedReports(nodeIds: Set[NodeId]): IOResult[Map[NodeId, Option[NodeExpectedReports]]] = {
+    // In a semaphore, nothing should change the cache
+    semaphore.withPermit(for {
+      // First, get all nodes from cache (even the none)
+      dataFromCache <- cache.get.map(_.filter{  case (nodeId, _) => nodeIds.contains(nodeId) })
 
-    // now fetch others from database, if necessary
-    // if the configuration is none, then cache isn't inited for it
-    val dataUnitialized = dataFromCache.filter{ case (nodeId, option) => option.isEmpty}.keySet
+      // now fetch others from database, if necessary
+      // if the configuration is none, then cache isn't inited for it
+      dataUnitialized = dataFromCache.filter{ case (nodeId, option) => option.isEmpty}.keySet
+      fromDb     <- confExpectedRepo.getCurrentExpectedsReports(dataUnitialized).toIO
+      _          <- logger.trace(s"Fetch from DB ${fromDb.size} current expected reports")
 
-    for {
-      fromDb     <- confExpectedRepo.getCurrentExpectedsReports(dataUnitialized)
-      _          = logEffect.trace(s"Fetch from DB ${fromDb.size} current expected reports")
-      mergedData <- mergeDataFromDBWithCache(fromDb).toBox
+      // ? question ?
+      // how to properly ensure that cache is synchro ?
+      // We only process unitialized node conf here, so we can only get better - ie, if
+      // it a "none" config from db, well it was already that in `dataUnitialized`
+      // All update which could insert older data in cache are processed in `performAction`
+      // So we can just merge the cache here
+      newConfs   <- cache.updateAndGet(_ ++ fromDb)
     } yield {
-      dataFromCache ++ mergedData
-    }
+      newConfs
+    })
   }
 
   /**
    * get the nodes applying the rule
    *
    */
-  def findNodesApplyingRule(ruleId: RuleId): Box[Set[NodeId]] = {
-    // I wanted to put this in the semaphore, but couldn't get the types to works
-    // check if any node is not in cache
-    val nodesNotInCache = cache.filter{ case (_, value) => value.isEmpty }.keySet
-
-    val dataFromCache = cache.filter { case (_, option) => option match {
-      case None => false
-      case Some(nodeExpectedReports) =>
-        nodeExpectedReports.ruleExpectedReports.map(_.ruleId).contains(ruleId)
-    }}.keySet
-
-    if (nodesNotInCache.isEmpty) {
-      Full(dataFromCache)
-    } else {
-      // query the repo and merge
-      for {
-        fromRepo <- confExpectedRepo.findCurrentNodeIdsForRule(ruleId, nodesNotInCache)
-      } yield {
-        dataFromCache ++ fromRepo
-      }
+  def findNodesApplyingRule(ruleId: RuleId): IOResult[Set[NodeId]] = {
+    // this don't need to be in a semaphore, since it's only one atomic cache read
+    for {
+      nodeConfs       <- cache.get
+      nodesNotInCache =  nodeConfs.collect { case (k, value) if(value.isEmpty) => k }.toSet
+      dataFromCache   =  nodeConfs.collect { case (k, Some(nodeExpectedReports)) if(nodeExpectedReports.ruleExpectedReports.map(_.ruleId).contains(ruleId)) => k}.toSet
+      fromRepo        <- if (nodesNotInCache.isEmpty) {
+                           Set.empty[NodeId].succeed
+                         } else { // query the repo
+                           confExpectedRepo.findCurrentNodeIdsForRule(ruleId, nodesNotInCache)
+                         }
+    } yield {
+      dataFromCache ++ fromRepo
     }
   }
-
 
   /**
    * retrieve expected reports by config version
    */
-  def findNodeExpectedReports(
-      nodeConfigIds: Set[NodeAndConfigId]
-    ): IOResult[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
-    // first get them in cache
-    val inCache = cache.map { case (id, expected) => expected match {
-      case None => None
-      case Some(nodeExpectedReport) =>
-        val nodeAndConfigId = NodeAndConfigId(id, nodeExpectedReport.nodeConfigId)
-        if (nodeConfigIds.contains(nodeAndConfigId)) {
-          Some((nodeAndConfigId, expected)) // returns from the cache if it match
-        } else {
-          None
-        }
-    }}.flatten.toMap
-
-    // search for all others in repo
-    // here, we could do something clever by filtering all those with None enddate and add them in repo
-    // but I don't want to be double clever
-    val missingNodeConfigIds = nodeConfigIds -- inCache.keySet
-
+  def findNodeExpectedReports(nodeConfigIds: Set[NodeAndConfigId]): IOResult[Map[NodeAndConfigId, Option[NodeExpectedReports]]] = {
+    // first get the config which are current (no enddate) from cache. It should be the majority, hopefully
     for {
-      fromDb <- confExpectedRepo.getExpectedReports(missingNodeConfigIds)
+      allCached <- cache.get
+      inCache   =  allCached.map { case (id, expected) => expected match {
+                    case None => None
+                    case Some(nodeExpectedReport) =>
+                      val nodeAndConfigId = NodeAndConfigId(id, nodeExpectedReport.nodeConfigId)
+                      if (nodeConfigIds.contains(nodeAndConfigId)) {
+                        Some((nodeAndConfigId, expected)) // returns from the cache if it match
+                      } else {
+                        None
+                      }
+                  }}.flatten.toMap
+      // search for all others in repo
+      // here, we could do something clever by filtering all those with None enddate and add them in repo
+      // but I don't want to be double clever
+      missingNodeConfigIds = nodeConfigIds -- inCache.keySet
+      fromDb <- confExpectedRepo.getExpectedReports(missingNodeConfigIds).toIO
     } yield {
       fromDb ++ inCache
     }
-  }.toIO
+  }
 }
 
 
@@ -335,16 +299,16 @@ class NodeConfigurationServiceImpl(
    * get the current expected reports
    * fails if request expected reports for a non existent node
    */
-  def getCurrentExpectedReports(nodeIds: Set[NodeId]): Box[Map[NodeId, Option[NodeExpectedReports]]] = {
-    confExpectedRepo.getCurrentExpectedsReports(nodeIds)
+  def getCurrentExpectedReports(nodeIds: Set[NodeId]): IOResult[Map[NodeId, Option[NodeExpectedReports]]] = {
+    confExpectedRepo.getCurrentExpectedsReports(nodeIds).toIO
   }
 
   /**
    * get the nodes applying the rule
    *
    */
-  def findNodesApplyingRule(ruleId: RuleId): Box[Set[NodeId]] = {
-    confExpectedRepo.findCurrentNodeIds(ruleId)
+  def findNodesApplyingRule(ruleId: RuleId): IOResult[Set[NodeId]] = {
+    confExpectedRepo.findCurrentNodeIds(ruleId).toIO
   }
 }
 

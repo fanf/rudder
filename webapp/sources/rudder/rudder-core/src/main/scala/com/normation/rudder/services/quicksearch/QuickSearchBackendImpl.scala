@@ -65,7 +65,6 @@ import scala.util.control.NonFatal
 import net.liftweb.common.Loggable
 
 import com.normation.box._
-import com.normation.errors._
 
 /**
  * Correctly quote a token
@@ -226,7 +225,7 @@ object QSLdapBackend {
 
     for {
       connection  <- ldap
-      nodeIds     <- nodeInfos.getAllNodesIds
+      nodeIds     <- nodeInfos.getAllNodesIds()
       entries     <- connection.search(nodeDit.BASE_DN, Sub, filter, returnedAttributes:_*)
     } yield {
 

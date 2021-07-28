@@ -62,7 +62,7 @@ import com.normation.box._
 import com.normation.inventory.domain.AgentType
 import com.normation.rudder.web.model.JsNodeId
 import org.joda.time.DateTime
-
+import com.normation.errors._
 
 /**
  * Display the last reports of a server
@@ -110,7 +110,7 @@ class ReportDisplayer(
     def refreshData : Box[JsCmd] = {
       for {
         report  <- getReports(node.id)
-        data    <- getComplianceData(node.id, report)
+        data    <- getComplianceData(node.id, report).toBox
         runDate : Option[DateTime] = report.runInfo match {
           case a : ComputeCompliance => Some(a.lastRunDateTime)
           case a : LastRunAvailable  => Some(a.lastRunDateTime)
@@ -450,7 +450,7 @@ class ReportDisplayer(
   }
 
   private[this] def showReportDetail(reports: NodeStatusReport, node: NodeInfo, withCompliance: Boolean, tableId : String, id : String, getReports : NodeId => Box[NodeStatusReport]): NodeSeq = {
-    val data = getComplianceData(node.id, reports).map(_.json).getOrElse(JsArray())
+    val data = getComplianceData(node.id, reports).map(_.json).toBox.getOrElse(JsArray())
 
     val jsFunctionName = if(withCompliance) {
       "createRuleComplianceTable"
@@ -466,12 +466,12 @@ class ReportDisplayer(
     """))
   }
 
-  private[this] def getComplianceData(nodeId: NodeId, reportStatus: NodeStatusReport) = {
+  private[this] def getComplianceData(nodeId: NodeId, reportStatus: NodeStatusReport): IOResult[JsTableData[RuleComplianceLine]] = {
     for {
-      directiveLib <- directiveRepository.getFullDirectiveLibrary().toBox
+      directiveLib <- directiveRepository.getFullDirectiveLibrary()
       allNodeInfos <- getAllNodeInfos()
-      rules        <- ruleRepository.getAll(true).toBox
-      globalMode   <- configService.rudder_global_policy_mode().toBox
+      rules        <- ruleRepository.getAll(true)
+      globalMode   <- configService.rudder_global_policy_mode()
     } yield {
       ComplianceData.getNodeByRuleComplianceDetails(nodeId, reportStatus, allNodeInfos, directiveLib, rules, globalMode)
     }
