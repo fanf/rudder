@@ -41,7 +41,6 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import better.files.File
 import cats.data.NonEmptyList
-import cats.implicits._
 import com.normation.box._
 import com.normation.errors._
 import com.normation.inventory.domain.AcceptedInventory
@@ -92,8 +91,6 @@ import com.normation.rudder.services.policies.write.PolicyWriterService
 import com.normation.rudder.services.reports.CacheComplianceQueueAction
 import com.normation.rudder.services.reports.CachedFindRuleNodeStatusReports
 import com.normation.utils.Control._
-import com.normation.zio._
-import com.softwaremill.quicklens._
 import net.liftweb.common._
 import net.liftweb.json.JsonAST.JArray
 import net.liftweb.json.JsonAST.JObject
@@ -775,28 +772,17 @@ trait PromiseGeneration_BuildNodeContext {
   def systemVarService: SystemVariableService
 
   // we should get the context to replace the value (PureResult[String] to String)
-  def parseJValue(value: JValue, context: InterpolationContext): JValue = {
-    def rec(v: JValue): JValue = v match {
-      case JObject(l) => JObject(l.map { field => field.copy(value = rec(field.value)) })
-      case JArray(l)  => JArray(l.map(rec))
-      case JString(s) =>
-        // What to do if the compilation fails ?
-        //  1. Keep the value by default and log error ?
-        //  2. Return a RudderError ?
-        //  3. Other ?
-        (for {
-          v <- interpolatedValueCompiler.compile(s).chainError(s"Error when looking for interpolation variable '${s}' in node property")
-          s <- v(context)
-        } yield {
-          s
-        }) match {
-          case Left(err) =>
-            // Not sure about what to log if we don't want to send and error
-            PolicyGenerationLogger.error(s"Interpolation variable in node property fails, keeping value ${s}, cause: ${err.fullMsg}")
-            JString(s)
-          case Right(interpolatedString) => JString(interpolatedString)
-        }
-      case x          => x
+  def parseJValue(value: JValue, context: InterpolationContext): IOResult[JValue] = {
+    def rec(v: JValue): IOResult[JValue] = v match {
+      case JObject(l) => ZIO.foreach(l){ field => rec(field.value).map(x => field.copy(value = x) ) }.map(JObject(_))
+      case JArray(l)  => ZIO.foreach(l){ v => rec(v) }.map(JArray(_))
+      case JString(s) => for {
+                           v <- interpolatedValueCompiler.compile(s).toIO.chainError(s"Error when looking for interpolation variable '${s}' in node property")
+                           s <- v(context)
+                         } yield {
+                           JString(s)
+                         }
+      case x          => x.succeed
     }
     rec(value)
   }
@@ -833,7 +819,7 @@ trait PromiseGeneration_BuildNodeContext {
      *   - to node info parameters: ok
      *   - to parameters : hello loops!
      */
-    def buildParams(parameters: List[GlobalParameter]): PureResult[Map[GlobalParameter, ParamInterpolationContext => PureResult[String]]] = {
+    def buildParams(parameters: List[GlobalParameter]): PureResult[Map[GlobalParameter, ParamInterpolationContext => IOResult[String]]] = {
       parameters.accumulatePure { param =>
         for {
           p <- interpolatedValueCompiler.compileParam(param.valueAsString).chainError(s"Error when looking for interpolation variable in global parameter '${param.name}'")
@@ -858,10 +844,10 @@ trait PromiseGeneration_BuildNodeContext {
                             , globalPolicyMode
                             , parameters.map { case (p, i) => (p.name, i) }
                           )
-          nodeParam   <- parameters.toList.traverse { case (param, interpol) =>
+          nodeParam   <- ZIO.foreach(parameters.toList) { case (param, interpol) =>
                             for {
                               i <- interpol(context)
-                              v <- GenericProperty.parseValue(i)
+                              v <- GenericProperty.parseValue(i).toIO
                               p =  param.withValue(v)
                             } yield {
                               (p.name, p)
@@ -880,9 +866,13 @@ trait PromiseGeneration_BuildNodeContext {
             , nodeParam.map{case(k, g) => (k, g.value)}.toMap
           )
           _            =  {timeNanoMergeProp = timeNanoMergeProp + System.nanoTime - timeMerge}
-          propsCompiled = mergedProps.map { p =>
-                            p.copy(prop = NodeProperty(p.prop.config.getString("name"), parseJValue(p.prop.toJson, contextEngine).toString.toConfigValue, None, None))
-                          }
+          propsCompiled <- ZIO.foreach(mergedProps) { p =>
+                            for {
+                              x <- parseJValue(p.prop.toJson, contextEngine)
+                            } yield {
+                              p.copy(prop = NodeProperty(p.prop.config.getString("name"), x.toString.toConfigValue, None, None))
+                            }
+                          }.toBox
           nodeInfo     =  info.modify(_.node.properties).setTo(propsCompiled.map(_.prop))
           nodeContext  <- systemVarService.getSystemVariables(nodeInfo, allNodeInfos, nodeTargets, globalSystemVariables, globalAgentRun, globalComplianceMode: ComplianceMode)
           // now we set defaults global parameters to all nodes
@@ -1107,7 +1097,7 @@ object BuildNodeConfiguration extends Loggable {
                                                       ret        <- (for {
                                                                       //bind variables with interpolated context
                                                                       t2_0              <- nanoTime
-                                                                      expandedVariables <- draft.variables(context).toIO
+                                                                      expandedVariables <- draft.variables(context)
                                                                       t2_1              <- nanoTime
                                                                       _                 <- counters.sumTimeExpandeVar.update(_ + t2_1 - t2_0)
                                                                       // And now, for each variable, eval - if needed - the result

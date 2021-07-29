@@ -61,7 +61,9 @@ import com.normation.rudder.services.nodes.EngineOption
 import com.normation.rudder.services.nodes.PropertyEngineServiceImpl
 import com.normation.rudder.services.nodes.RudderPropertyEngine
 import com.typesafe.config.ConfigValue
-import zio.syntax.ToZio
+import zio.syntax._
+import zio._
+import com.normation.zio._
 
 /**
  * Test how parametrized variables are replaced for
@@ -135,7 +137,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       variables: Seq[Variable]
     , pContext : ParamInterpolationContext
   )(test:Seq[Seq[String]] => org.specs2.execute.Result) : org.specs2.execute.Result  = {
-    lookupParam(variables, pContext) match {
+    lookupParam(variables, pContext).either.runNow match {
       case Left(err)  => failure("Error in test: " + err.fullMsg)
       case Right(res) => test(res.values.map( _.values ).toSeq)
     }
@@ -146,8 +148,8 @@ class TestNodeAndGlobalParameterLookup extends Specification {
     , lookupParam: ParamInterpolationContext
   ) = {
     (for {
-      params <- lookupParam.parameters.toList.traverse { case (k, c) => c(lookupParam).map((k, _)) }
-      p      <- params.toList.traverse { case (k, value) => GenericProperty.parseValue(value).map(v => (k, v))}
+      params <- ZIO.foreach(lookupParam.parameters.toList) { case (k, c) => c(lookupParam).map((k, _)) }
+      p      <- ZIO.foreach(params.toList) { case (k, value) => GenericProperty.parseValue(value).map(v => (k, v)).toIO}
       res    <- lookupService.lookupNodeParameterization(variables)(toNodeContext(lookupParam, p.toMap))
     } yield res)
   }
@@ -190,7 +192,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
   val badChars = """$¹ ${plop} (foo) \$ @ %plop & \\ | $[xas]^"""
   val dangerousChars = ParameterForConfiguration("danger", badChars)
 
-  def p(params: ParameterForConfiguration*): Map[String, ParamInterpolationContext => PureResult[String]] = {
+  def p(params: ParameterForConfiguration*): Map[String, ParamInterpolationContext => IOResult[String]] = {
     import cats.implicits._
     params.toList.traverse { param =>
       for {
@@ -631,7 +633,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
         , comp("policyserver.admin", context.policyServerInfo.localAdministratorAccountName)
       )
 
-      accessors must contain( (x:(String, ParamInterpolationContext => PureResult[String], String)) => (x._2(context) match {
+      accessors must contain( (x:(String, ParamInterpolationContext => IOResult[String], String)) => (x._2(context).either.runNow match {
         case Right(result) => result must beEqualTo(x._3)
         case Left(err) => ko(s"Error when evaluating context for accessor ${x._1} with expected result '${x._3}': " + err.fullMsg)
       })).forall
@@ -641,7 +643,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       val badAccessor = "rudder.node.foo"
       compiler.compileParam("${"+badAccessor+"}") match {
         case Left(err) => ko("Error when parsing interpolated value: " + err.fullMsg)
-        case Right(i) => i(context) match {
+        case Right(i) => i(context).either.runNow match {
           case Right(res) => ko(s"When interpreted, an unkown accessor '${badAccessor}' should yield an error")
           case Left(_) => ok
         }
@@ -653,18 +655,18 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       val res = "p1 replaced"
       val i = compileAndGet("${rudder.param.p1}")
       val c = context.copy(parameters = Map(
-          ("p1", (i:ParamInterpolationContext) => Right(res))
+          ("p1", (i:ParamInterpolationContext) => res.succeed)
       ))
-      i(c) must beEqualTo(Right(res))
+      i(c).either.runNow must beEqualTo(Right(res))
     }
 
     "correctly interpret simple param with new syntax on string" in {
       val res = "p1 replaced"
       val i = compileAndGet("${rudder.parameters[p1]}")
       val c = context.copy(parameters = Map(
-          ("p1", (i:ParamInterpolationContext) => Right(res))
+          ("p1", (i:ParamInterpolationContext) => res.succeed)
       ))
-      i(c) must beEqualTo(Right(res))
+      i(c).either.runNow must beEqualTo(Right(res))
     }
 
     "correctly interpret simple param with new syntax on json" in {
@@ -672,14 +674,14 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       val json = s"""{"p2": "${res}"}"""
       val i = compileAndGet("${rudder.parameters[p1][p2]}")
       val c = context.copy(parameters = Map(
-          ("p1", (i:ParamInterpolationContext) => Right(json))
+          ("p1", (i:ParamInterpolationContext) => json.succeed)
       ))
-      i(c) must beEqualTo(Right(res))
+      i(c).either.runNow must beEqualTo(Right(res))
     }
 
     "fails on missing param in context" in {
       val i = compileAndGet("${rudder.param.p1}")
-      i(context) match {
+      i(context).either.runNow match {
         case Right(_) => ko("The parameter should not have been found")
         case Left(_) => ok
       }
@@ -691,9 +693,9 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       val p1value = compileAndGet("${rudder.param.p2}")
       val c = context.copy(parameters = Map(
           ("p1", p1value)
-        , ("p2", (i:ParamInterpolationContext) => Right(res))
+        , ("p2", (i:ParamInterpolationContext) => res.succeed)
       ))
-      i(c) must beEqualTo(Right(res))
+      i(c).either.runNow must beEqualTo(Right(res))
     }
 
     "correctly replace maxDepth-1 parameter with interpolated values" in {
@@ -707,11 +709,11 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           ("p1", p1value)
         , ("p2", p2value)
         , ("p3", p3value)
-        , ("p4", (i:ParamInterpolationContext) => Right(res))
+        , ("p4", (i:ParamInterpolationContext) => res.succeed)
       ))
 
       (analyseParam.maxEvaluationDepth == 5) and
-      (i(c) must beEqualTo(Right(res)))
+      (i(c).either.runNow must beEqualTo(Right(res)))
     }
 
     "fails to replace maxDepth parameter with interpolated values" in {
@@ -726,11 +728,11 @@ class TestNodeAndGlobalParameterLookup extends Specification {
         , ("p2", p2value)
         , ("p3", p3value)
         , ("p4", p3value)
-        , ("p5", (i:ParamInterpolationContext) => Right(res))
+        , ("p5", (i:ParamInterpolationContext) => res.succeed)
       ))
 
       (analyseParam.maxEvaluationDepth == 5) and
-      (i(c) match {
+      (i(c).either.runNow match {
         case Right(_) => ko("Was expecting an error due to too deep evaluation")
         case Left(_) => ok
       })
@@ -742,21 +744,28 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           ("p1", i)
       ))
 
-      i(c) match {
+      i(c).either.runNow match {
         case Right(_) => ko("Was expecting an error due to too deep evaluation")
         case Left(_) => ok
       }
     }
 
 
+    //utility class to help run the IORestul
+    def runParseJValue(value: JValue, context: InterpolationContext): JValue = {
+      buildContext.parseJValue(value, context).either.runNow match {
+        case Left(err) => throw new RuntimeException(s"Error when interpolating '${value}': ${err.fullMsg}")
+        case Right(v)  => v
+      }
+    }
 
     "interpolate engine in JSON" in {
       val before = """{"login":"admin", "password":"${engine.fakeEncryptorEngineTesting[password_test] | option1 = foo | option2 = bar}"}"""
       val after = """{"login":"admin", "password":"encrypted-string-test"}"""
-      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
+      runParseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
     }
 
-    "interpolate unknown engine in JSON" in {
+    "interpolate unknown engine in JSON must raise en error" in {
       val before =
         """{
           |  "login" : "admin",
@@ -766,7 +775,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           |}
           |""".stripMargin
 
-      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(before))
+      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())).either.runNow must beLeft
     }
 
     "interpolate engine in nested JSON object" in {
@@ -788,7 +797,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           |}
           |""".stripMargin
 
-      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
+      runParseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
     }
 
     "interpolate engine in JSON array" in {
@@ -805,7 +814,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           |  "data" : ["foo", "encrypted-string-test", "bar"]
           |}
           |""".stripMargin
-      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
+      runParseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
     }
 
     "interpolate engine in nested JSON array" in {
@@ -838,7 +847,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           |  ]
           |}
           |""".stripMargin
-      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
+      runParseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
     }
 
     "interpolate engine multiple time" in {
@@ -885,7 +894,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
           |}
           |""".stripMargin
 
-      buildContext.parseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
+      runParseJValue(JsonParser.parse(before), toNodeContext(context, Map())) must beEqualTo(JsonParser.parse(after))
     }
   }
 
@@ -929,19 +938,19 @@ class TestNodeAndGlobalParameterLookup extends Specification {
 
 
     "fails when the curly brace after ${rudder. is not closed" in {
-      getError(lookupParam(Seq(badUnclosed), context)) must beMatching(
+      getError(lookupParam(Seq(badUnclosed), context).either.runNow) must beMatching(
         """.*\Q'== ${rudder.param.foo =='. Error message is: Expected "}":1:23, found "=="\E.*""".r
       )
     }
 
     "fails when the part after ${rudder.} is empty" in {
-      getError(lookupParam(Seq(badEmptyRudder), context)) must beMatching(
+      getError(lookupParam(Seq(badEmptyRudder), context).either.runNow) must beMatching(
         """.*\Q'== ${rudder.} =='. Error message is: Expected (rudderNode | parameters | oldParameter):1:13, found "} =="\E.*""".r
       )
     }
 
     "fails when the part after ${rudder.} is not recognised" in {
-      getError(lookupParam(Seq(badUnknown), context.copy(parameters = p(fooParam)))) must beMatching(
+      getError(lookupParam(Seq(badUnknown), context.copy(parameters = p(fooParam))).either.runNow) must beMatching(
          """.*\Q'== ${rudder.foo} =='. Error message is: Expected (rudderNode | parameters | oldParameter):1:13, found "foo} =="\E.*""".r
       )
     }
@@ -992,7 +1001,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       val node = context.nodeInfo.node.copy(properties = p)
       val c = context.copy(nodeInfo = context.nodeInfo.copy(node = node))
 
-      i(c)
+      i(c).either.runNow
     }
 
     val json = """{  "Europe" : {  "France"  : "Paris" }   }"""
@@ -1056,11 +1065,11 @@ class TestNodeAndGlobalParameterLookup extends Specification {
 
     "not matter in nodes path accessor" in {
       val i = compileAndGet("${rudder.node.HoStNaMe}")
-      i(context) must beEqualTo(Right("node1.localhost"))
+      i(context).either.runNow must beEqualTo(Right("node1.localhost"))
     }
 
     "matter for parameter names" in {
-      getError(lookupParam(Seq(paramNameCaseSensitive), context)) must beMatching(
+      getError(lookupParam(Seq(paramNameCaseSensitive), context).either.runNow) must beMatching(
         """.*\QMissing parameter '${node.parameter[Foo]}\E.*""".r
       )
     }
@@ -1069,11 +1078,11 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       val i = compileAndGet("${rudder.param.xX}")
       val c = context.copy(parameters = Map(
           //test all combination
-          ("XX", (i:ParamInterpolationContext) => Right("bad"))
-        , ("Xx", (i:ParamInterpolationContext) => Right("bad"))
-        , ("xx", (i:ParamInterpolationContext) => Right("bad"))
+          ("XX", (i:ParamInterpolationContext) => "bad".succeed)
+        , ("Xx", (i:ParamInterpolationContext) => "bad".succeed)
+        , ("xx", (i:ParamInterpolationContext) => "bad".succeed)
       ))
-      i(c) match {
+      i(c).either.runNow match {
         case Right(_) => ko("No, case must matter!")
         case Left(err) => err.msg must beEqualTo("Missing parameter '${node.parameter[xX]}'")
       }
@@ -1091,7 +1100,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
         val node = context.nodeInfo.node.copy(properties = props)
         val c = context.copy(nodeInfo = context.nodeInfo.copy(node = node))
 
-        i(c)
+        i(c).either.runNow
       }
 
       compare("DataCenter", "datacenter") must haveClass[Left[_,_]]

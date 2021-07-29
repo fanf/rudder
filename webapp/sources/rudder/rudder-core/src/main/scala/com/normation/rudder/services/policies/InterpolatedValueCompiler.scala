@@ -46,11 +46,11 @@ import com.normation.rudder.domain.policies.PolicyModeOverrides
 import com.normation.rudder.services.nodes.EngineOption
 import com.normation.rudder.services.nodes.PropertyEngineService
 import com.normation.rudder.services.policies.PropertyParserTokens._
-import com.normation.zio.ZioRuntime
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigValue
 import net.liftweb.common._
-
+import zio._
+import zio.syntax._
 
 /**
  * A parser that handle parameterized value of
@@ -133,8 +133,8 @@ trait InterpolatedValueCompiler {
    * Return a Box, where Full denotes a successful
    * parsing of all values, and EmptyBox. an error.
    */
-  def compile(value: String): PureResult[InterpolationContext => PureResult[String]]
-  def compileParam(value: String): PureResult[ParamInterpolationContext => PureResult[String]]
+  def compile(value: String): PureResult[InterpolationContext => IOResult[String]]
+  def compileParam(value: String): PureResult[ParamInterpolationContext => IOResult[String]]
 
   /**
    *
@@ -227,12 +227,10 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
    * The funny part that for each token adds the interpretation of the token
    * by composing interpretation function.
    */
-  def parseToken(tokens:List[Token]): I => PureResult[String] = {
+  def parseToken(tokens:List[Token]): I => IOResult[String] = {
     def build(context: I) = {
-      val init: PureResult[String] = Right("")
-      (tokens).foldLeft(init) {
-        case (Right(str), token) => analyse(context, token).map(s => (str + s))
-        case (Left(err) , _    ) => Left(err)
+      ZIO.foldLeft(tokens)("") { case (str, token) =>
+        analyse(context, token).map(s => (str + s))
       }
     }
 
@@ -246,21 +244,19 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
    * the final string (that may not succeed at run time, because of
    * unknown parameter, etc)
    */
-  def analyse(context: I, token:Token): PureResult[String] = {
+  def analyse(context: I, token:Token): IOResult[String] = {
     token match {
-      case CharSeq(s)          => Right(s)
-      case NonRudderVar(s)     => Right(s"$${${s}}")
-      case NodeAccessor(path)  => getNodeAccessorTarget(context, path)
-      case Param(path)         => getRudderGlobalParam(context, path)
-      case RudderEngine(e, m, o) =>
-          val io = expandWithPropertyEngine(e, m, o)
-        ZioRuntime.runNow(io.either)
-      case Property(path, opt) => opt match {
+      case CharSeq(s)            => s.succeed
+      case NonRudderVar(s)       => s"$${${s}}".succeed
+      case NodeAccessor(path)    => getNodeAccessorTarget(context, path).toIO
+      case Param(path)           => getRudderGlobalParam(context, path)
+      case RudderEngine(e, m, o) => expandWithPropertyEngine(e, m, o)
+      case Property(path, opt)   => opt match {
         case None =>
-          getNodeProperty(context, path)
+          getNodeProperty(context, path).toIO
         case Some(InterpreteOnNode) =>
           //in that case, we want to exactly output the agent-compatible string. For now, easy, only one string
-          Right(("${node.properties[" + path.mkString("][") + "]}"))
+          ("${node.properties[" + path.mkString("][") + "]}").succeed
         case Some(DefaultValue(optionTokens)) =>
           //in that case, we want to find the default value.
           //we authorize to have default value = ${node.properties[bla][bla][bla]|node},
@@ -268,8 +264,8 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
           for {
             default <- parseToken(optionTokens)(context)
             prop    <- getNodeProperty(context, path) match {
-                         case Left(_)  => Right(default)
-                         case Right(s) => Right(s)
+                         case Left(_)  => default.succeed
+                         case Right(s) => s.succeed
                        }
           } yield {
             prop
@@ -281,7 +277,7 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
   /**
    * Retrieve the global parameter from the node context.
    */
-  def getRudderGlobalParam(context: I, path: List[String]): PureResult[String]
+  def getRudderGlobalParam(context: I, path: List[String]): IOResult[String]
 
 
   /**
@@ -347,27 +343,27 @@ trait AnalyseInterpolation[T, I <: GenericInterpolationContext[T]] {
 }
 
 class AnalyseParamInterpolation(p: PropertyEngineService)
-  extends AnalyseInterpolation[ParamInterpolationContext => PureResult[String], ParamInterpolationContext]
+  extends AnalyseInterpolation[ParamInterpolationContext => IOResult[String], ParamInterpolationContext]
     with AnalyseInterpolationWithPropertyService {
 
   /**
    * Retrieve the global parameter from the node context.
    */
-  def getRudderGlobalParam(context: ParamInterpolationContext, path: List[String]): PureResult[String] = {
+  override def getRudderGlobalParam(context: ParamInterpolationContext, path: List[String]): IOResult[String] = {
     val errmsg = s"Missing parameter '$${node.parameter[${path.mkString("][")}]}'"
     path match {
       //we should not reach that case since we enforce at leat one match of [...] in the parser
-      case Nil       => Left(Unexpected(s"The syntax $${rudder.parameters} is invalid, only $${rudder.parameters[name]} is accepted"))
+      case Nil       => Unexpected(s"The syntax $${rudder.parameters} is invalid, only $${rudder.parameters[name]} is accepted").fail
       case h :: tail => context.parameters.get(h) match {
         case Some(value) =>
           if(context.depth >= maxEvaluationDepth) {
-            Left(Unexpected(s"""Can not evaluted global parameter "${h}" because it uses an interpolation variable that depends upon """
-             + s"""other interpolated variables in a stack more than ${maxEvaluationDepth} in depth. We fear it's a circular dependancy."""))
+            Unexpected(s"""Can not evaluted global parameter "${h}" because it uses an interpolation variable that depends upon """
+             + s"""other interpolated variables in a stack more than ${maxEvaluationDepth} in depth. We fear it's a circular dependancy.""").fail
           } else {
             // we need to check if we were looking for a string or a json value
             for {
               firtLevel <- value(context.copy(depth = context.depth+1))
-              res       <- tail match {
+              res       <- (tail match {
                              case Nil     => Right(firtLevel)
                              case subpath =>
                                val config = ConfigFactory.parseString(s"""{"x":${firtLevel}}""")
@@ -377,12 +373,12 @@ class AnalyseParamInterpolation(p: PropertyEngineService)
                                } else {
                                  Left(Inconsistency(errmsg))
                                }
-                           }
+                           }).toIO
             } yield {
               res
             }
           }
-        case _ => Left(Unexpected(errmsg))
+        case _ => Unexpected(errmsg).fail
       }
     }
   }
@@ -397,7 +393,7 @@ class AnalyseNodeInterpolation(p: PropertyEngineService)
   /**
    * Retrieve the global parameter from the node context.
    */
-  def getRudderGlobalParam(context: InterpolationContext, path: List[String]): PureResult[String] = {
+  def getRudderGlobalParam(context: InterpolationContext, path: List[String]): IOResult[String] = {
     val errmsg = s"Missing parameter '$${node.parameter[${path.mkString("][")}]}'"
     path match {
       //we should not reach that case since we enforce at leat one match of [...] in the parser
@@ -419,7 +415,7 @@ class AnalyseNodeInterpolation(p: PropertyEngineService)
         }
       }
     }
-  }
+  }.toIO
 
   override def propertyEngineService: PropertyEngineService = p
 }
@@ -433,11 +429,11 @@ class InterpolatedValueCompilerImpl(p: PropertyEngineService) extends Interpolat
    * just call the parser on a value, and in case of successful parsing, interprete
    * the resulting AST (seq of token)
    */
-  override def compile(value: String): PureResult[InterpolationContext => PureResult[String]] = {
+  override def compile(value: String): PureResult[InterpolationContext => IOResult[String]] = {
     PropertyParser.parse(value).map(t => analyseNode.parseToken(t))
   }
 
-  override def compileParam(value: String): PureResult[ParamInterpolationContext => PureResult[String]] = {
+  override def compileParam(value: String): PureResult[ParamInterpolationContext => IOResult[String]] = {
     PropertyParser.parse(value).map(t => analyseParam.parseToken(t))
   }
 
