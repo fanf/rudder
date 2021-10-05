@@ -480,19 +480,19 @@ class ExecutionBatchTest extends Specification {
 
     val badReports = Seq[ResultReports](
       new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
-    , new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c2", executionTimestamp, "message")
+    , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c2", executionTimestamp, "message")
     , new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c1", executionTimestamp, "message")
-    , new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+    , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
     // bad ones
     , new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
     )
 
     val expectedComponent = BlockExpectedReport(
       "blockRoot"
-      , ReportingLogic.FocusReport("block2")
+      , ReportingLogic.SumReport
       , BlockExpectedReport(
           "block1"
-          , ReportingLogic.FocusReport("component1")
+          , ReportingLogic.SumReport
           , new ValueExpectedReport(
             "component1"
             , List( "b1c1")
@@ -504,7 +504,7 @@ class ExecutionBatchTest extends Specification {
           )  :: Nil
         ) :: BlockExpectedReport(
           "block2"
-          , ReportingLogic.FocusReport("component1")
+          , ReportingLogic.SumReport
           , new ValueExpectedReport(
             "component1"
             , List( "b2c1")
@@ -522,6 +522,9 @@ class ExecutionBatchTest extends Specification {
 
     "return a success block " in {
       withGood.compliance === ComplianceLevel(success = 1)
+      // error:
+      //Expected :[p:0 s:1 r:0 e:0 u:0 m:0 nr:0 na:0 rd:0 c:0 ana:0 nc:0 ae:0 bpm:0]
+      //Actual   :[p:0 s:0 r:2 e:0 u:6 m:2 nr:0 na:0 rd:0 c:0 ana:0 nc:0 ae:0 bpm:0]
     }
     "return a component with 4 key values " in {
       withGood.componentValues.size === 4
