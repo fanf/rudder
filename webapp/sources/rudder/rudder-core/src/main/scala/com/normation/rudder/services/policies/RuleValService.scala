@@ -65,17 +65,11 @@ class RuleValServiceImpl(
   private[this] def buildVariables(
       variableSpecs: Seq[(List[SectionSpec], VariableSpec)]
     , context      : Map[String, Seq[String]]
-    , debugLog     : Boolean
   ) : Box[Map[(List[String],String), Variable]] = {
 
     Full(
       variableSpecs.map { case (parents, spec) =>
-        if (debugLog) {
-          println("<<<<<<")
-          logger.info(spec)
-          logger.warn(parents)
-        }
-        val res = context.get(spec.name) match {
+        context.get(spec.name) match {
           case None => spec.toVariable()
             ((parents.map(_.name),spec.toVariable().spec.name) ,spec.toVariable())
           case Some(seqValues) =>
@@ -83,13 +77,6 @@ class RuleValServiceImpl(
             assert(seqValues.toSet == newVar.values.toSet)
             ((parents.map(_.name),newVar.spec.name) ,newVar)
         }
-        if (debugLog) {
-          logger.info(res)
-
-          println(">>>>>>")
-        }
-
-        res
       }.toMap
     )
   }
@@ -136,9 +123,7 @@ class RuleValServiceImpl(
         for {
           technique <- Box(fullActiveTechnique.techniques.get(directive.techniqueVersion)) ?~! s"Version '${directive.techniqueVersion.debugString}' of technique '${fullActiveTechnique.techniqueName.value}' is not available for directive '${directive.name}' [${directive.id.uid.value}]"
           varSpecs = technique.rootSection.getAllVariablesBySection(Nil) ++ technique.systemVariableSpecs.map((Nil,_)) :+ ((Nil, technique.trackerVariableSpec))
-          _ = if (!technique.isSystem) println(varSpecs)
-          vared <- buildVariables(varSpecs, directive.parameters,!technique.isSystem)
-          _ = if (!technique.isSystem) logger.warn(vared)
+          vared <- buildVariables(varSpecs, directive.parameters)
           exists <- {
             if (vared.isDefinedAt((Nil, technique.trackerVariableSpec.name))) {
               Full("OK")

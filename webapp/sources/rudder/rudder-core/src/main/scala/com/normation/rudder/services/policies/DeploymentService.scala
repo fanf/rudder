@@ -1438,7 +1438,6 @@ object RuleExpectedReportBuilder extends Loggable {
       val directives = seq.map { policy =>
         // from a policy, get one "directive expected reports" by directive.
         // As we flattened previously, we only need/want "head"
-        //if (policy) logger.info(policy.policyVars)
         val pvar = policy.policyVars.head
         DirectiveExpectedReports(
             pvar.policyId.directiveId

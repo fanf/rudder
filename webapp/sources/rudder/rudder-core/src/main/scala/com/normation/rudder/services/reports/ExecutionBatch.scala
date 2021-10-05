@@ -362,9 +362,6 @@ object ExecutionBatch extends Loggable {
   final def checkExpectedVariable(expected : String,effective : String) : Boolean = {
     val isVar = matchCFEngineVars.pattern.matcher(expected).matches()
     if (isVar) { // If this is not a var, there isn't anything to replace.
-      println(expected)
-      println(effective)
-      println(replaceCFEngineVars(expected).matcher(effective).matches())
       replaceCFEngineVars(expected).matcher(effective).matches()
     } else {
       expected == effective
@@ -948,7 +945,6 @@ final case class ContextForNoAnswer(
                                      Seq[DirectiveStatusReport]()
                                    })
 
-                                   if (ruleId == RuleId("32377fd7-02fd-43d0-aab7-28460a91347b")) logger.error(unexpected)
                                    val t4 = System.nanoTime
                                    u3 += t4-t3
 
@@ -965,12 +961,9 @@ final case class ContextForNoAnswer(
                                          })
                                      }
 
-
-                                   if (ruleId == RuleId("32377fd7-02fd-43d0-aab7-28460a91347b")) logger.error(expected.filter(_.directiveId == DirectiveId(DirectiveUid("e041f5e8-c57a-4b80-a42f-58ccf612de96"))))
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
-
-
+        
                                    ( unexpected, expected)
                                 }
     } yield {
