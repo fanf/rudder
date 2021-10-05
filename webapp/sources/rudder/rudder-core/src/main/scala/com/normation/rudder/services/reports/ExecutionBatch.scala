@@ -876,7 +876,7 @@ final case class ContextForNoAnswer(
 
     val reports = reportsForThatNodeRule.groupBy(x => (x.directiveId, x.component) )
 
-    val expectedComponents: Map[(DirectiveId, List[EffectiveExpectedComponent]), (PolicyMode, ReportType, ComponentExpectedReport)] = (for {
+    val expectedComponents: Map[(DirectiveId, List[EffectiveExpectedComponent]), (PolicyMode, ReportType)] = (for {
       directive  <- directives
       policyMode =  PolicyMode.directivePolicyMode(
                            modes.globalPolicyMode
@@ -894,7 +894,7 @@ final case class ContextForNoAnswer(
 
     } yield {
 
-      ((directive.directiveId, getExpectedComponents(component)), (policyMode, missingReportStatus, component))
+      ((directive.directiveId, getExpectedComponents(component)), (policyMode, missingReportStatus))
     }).toMap
     val t2 = System.nanoTime
     timer.u1 += t2-t1
@@ -930,7 +930,7 @@ final case class ContextForNoAnswer(
       expectedComponents.groupBy(_._1._1).map {
         case (directiveId, expectedComponentsForDirective) =>
           DirectiveStatusReport(directiveId, expectedComponentsForDirective.flatMap {
-            case ((directiveId, components), (policyMode, missingReportStatus, component)) =>
+            case ((directiveId, components), (policyMode, missingReportStatus)) =>
               val r = components.map { c =>
                 val filteredReports = reports.flatMap { case ((id, cname), r) => r.filter(value => directiveId == id && cname == c.value.componentName && c.value.componentsValues.exists(v => checkExpectedVariable(v, value.keyValue))) }.toList
                 checkExpectedComponentWithReports(c.component, filteredReports, missingReportStatus, policyMode, unexpectedInterpretation)
