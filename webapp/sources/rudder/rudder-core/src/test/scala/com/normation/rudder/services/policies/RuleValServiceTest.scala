@@ -212,7 +212,7 @@ class RuleValServiceTest extends Specification {
         variables(null).either.runNow match {
           case Left(_) => ko("Error when parsing variable")
           case Right(vars) =>
-            vars.get(("component1" :: "root section" :: Nil, reportKeysVariableName("component1"))) match {
+            vars.get(ComponentId(reportKeysVariableName("component1"), "component1" :: "root section" :: Nil)) match {
             case None => ko(s"Excepted variable variable_component1, but got nothing. The variables are ${variables}")
             case Some(variable) =>
               variable.values.size === 3 and

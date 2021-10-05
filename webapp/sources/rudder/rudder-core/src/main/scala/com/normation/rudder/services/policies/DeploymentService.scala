@@ -1457,7 +1457,7 @@ object RuleExpectedReportBuilder extends Loggable {
     val getTrackingVariableCardinality : (Seq[String], Seq[String]) = {
       val boundingVar = vars.trackerVariable.spec.boundingVariable.getOrElse(vars.trackerVariable.spec.name)
       // now the cardinality is the length of the boundingVariable
-      (vars.expandedVars.filter(_._1._2 == boundingVar), vars.originalVars.filter(_._1._2 == boundingVar)) match {
+      (vars.expandedVars.filter(_._1.value == boundingVar), vars.originalVars.filter(_._1.value == boundingVar)) match {
         case (m, n) if m.isEmpty && n.isEmpty =>
           PolicyGenerationLogger.debug("Could not find the bounded variable %s for %s in ParsedPolicyDraft %s".format(
               boundingVar, vars.trackerVariable.spec.name, directiveId.serialize))
@@ -1504,8 +1504,8 @@ object RuleExpectedReportBuilder extends Loggable {
                 ValueExpectedReport(section.name, expandedValues, unexpandedValues) :: children
             }
           case Some(rule) =>
-            val innerExpandedVars = vars.expandedVars.filter(_._1._1.contains(section.name)).values.groupMapReduce(_.spec.name)(_.values.toList)(_ ++ _)
-            val innerUnexpandedVars = vars.originalVars.filter(_._1._1.contains(section.name)).values.groupMapReduce(_.spec.name)(_.values.toList)(_ ++ _)
+            val innerExpandedVars = vars.expandedVars.filter(_._1.parents.contains(section.name)).values.groupMapReduce(_.spec.name)(_.values.toList)(_ ++ _)
+            val innerUnexpandedVars = vars.originalVars.filter(_._1.parents.contains(section.name)).values.groupMapReduce(_.spec.name)(_.values.toList)(_ ++ _)
 
             val children = section.children.collect{case c : SectionSpec => c }.flatMap(sectionToExpectedReports(innerExpandedVars, innerUnexpandedVars)).toList
             BlockExpectedReport(section.name, rule, children) :: Nil

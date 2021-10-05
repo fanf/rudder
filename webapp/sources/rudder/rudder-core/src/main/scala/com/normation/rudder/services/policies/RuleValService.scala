@@ -54,7 +54,7 @@ import zio.syntax._
 trait RuleValService {
   def buildRuleVal(rule: Rule, directiveLib: FullActiveTechniqueCategory, groupLib: FullNodeGroupCategory, allNodeInfos: Map[NodeId, NodeInfo]) : Box[RuleVal]
 
-  def lookupNodeParameterization(variables:Map[(List[String],String), Variable]): InterpolationContext => IOResult[Map[(List[String],String), Variable]]
+  def lookupNodeParameterization(variables:Map[ComponentId, Variable]): InterpolationContext => IOResult[Map[ComponentId, Variable]]
 }
 
 
@@ -65,17 +65,17 @@ class RuleValServiceImpl(
   private[this] def buildVariables(
       variableSpecs: Seq[(List[SectionSpec], VariableSpec)]
     , context      : Map[String, Seq[String]]
-  ) : Box[Map[(List[String],String), Variable]] = {
+  ) : Box[Map[ComponentId, Variable]] = {
 
     Full(
       variableSpecs.map { case (parents, spec) =>
         context.get(spec.name) match {
           case None => spec.toVariable()
-            ((parents.map(_.name),spec.toVariable().spec.name) ,spec.toVariable())
+            (ComponentId(spec.toVariable().spec.name, parents.map(_.name)) ,spec.toVariable())
           case Some(seqValues) =>
             val newVar = spec.toVariable(seqValues)
             assert(seqValues.toSet == newVar.values.toSet)
-            ((parents.map(_.name),newVar.spec.name) ,newVar)
+            (ComponentId(newVar.spec.name, parents.map(_.name)) ,newVar)
         }
       }.toMap
     )
@@ -91,7 +91,7 @@ class RuleValServiceImpl(
    * We must exclude variable from ncf technique, that are processed differently, because
    * the provided value is not managed by rudder (it is on a cfengine file elsewhere).
    */
-  override def lookupNodeParameterization(variables: Map[(List[String],String),Variable]): InterpolationContext => IOResult[Map[(List[String],String) , Variable]] = {
+  override def lookupNodeParameterization(variables: Map[ComponentId,Variable]): InterpolationContext => IOResult[Map[ComponentId , Variable]] = {
     (context:InterpolationContext) =>
       variables.accumulate { case (key,variable) => variable.spec match {
         //do not touch ncf variables
@@ -124,16 +124,17 @@ class RuleValServiceImpl(
           technique <- Box(fullActiveTechnique.techniques.get(directive.techniqueVersion)) ?~! s"Version '${directive.techniqueVersion.debugString}' of technique '${fullActiveTechnique.techniqueName.value}' is not available for directive '${directive.name}' [${directive.id.uid.value}]"
           varSpecs = technique.rootSection.getAllVariablesBySection(Nil) ++ technique.systemVariableSpecs.map((Nil,_)) :+ ((Nil, technique.trackerVariableSpec))
           vared <- buildVariables(varSpecs, directive.parameters)
+          trackerVariableComponentId = ComponentId(technique.trackerVariableSpec.name, Nil)
           exists <- {
-            if (vared.isDefinedAt((Nil, technique.trackerVariableSpec.name))) {
+            if (vared.isDefinedAt(trackerVariableComponentId)) {
               Full("OK")
             } else {
               logger.error("Cannot find key %s in Directive %s when building Rule %s".format(technique.trackerVariableSpec.name, id.debugString, ruleId.value))
               Failure("Cannot find key %s in Directibe %s when building Rule %s".format(technique.trackerVariableSpec.name, id.debugString, ruleId.value))
             }
           }
-          trackerVariable <- vared.get((Nil, technique.trackerVariableSpec.name))
-          otherVars = vared - ((Nil ,technique.trackerVariableSpec.name))
+          trackerVariable <- vared.get(trackerVariableComponentId)
+          otherVars = vared - trackerVariableComponentId
           //only normal vars can be interpolated
         } yield {
             logger.trace(s"Creating a ParsedPolicyDraft '${fullActiveTechnique.techniqueName}' from the ruleId ${ruleId.value}")

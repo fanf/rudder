@@ -288,6 +288,12 @@ final case class PolicyId(ruleId: RuleId, directiveId: DirectiveId, techniqueVer
   lazy val getRudderUniqueId = (techniqueVersion.serialize + "_" + directiveId.serialize).replaceAll("""\W""","_")
 }
 
+case class ComponentId (
+    value : String
+  , parents : List[String]
+)
+
+
 /*
  * A policy "vars" is all the var data for a policy (expandedVars, originalVars,
  * trackingKey). They are grouped together in policy because some policy can
@@ -296,8 +302,8 @@ final case class PolicyId(ruleId: RuleId, directiveId: DirectiveId, techniqueVer
 final case class PolicyVars(
     policyId       : PolicyId
   , policyMode     : Option[PolicyMode]
-  , expandedVars   : Map[(List[String],String), Variable]
-  , originalVars   : Map[(List[String],String), Variable] // variable with non-expanded ${node.prop etc} values
+  , expandedVars   : Map[ComponentId, Variable]
+  , originalVars   : Map[ComponentId, Variable] // variable with non-expanded ${node.prop etc} values
   , trackerVariable: TrackerVariable
 )
 
@@ -467,13 +473,13 @@ final case class ParsedPolicyDraft(
   , isSystem         : Boolean
   , policyMode       : Option[PolicyMode]
   , trackerVariable  : TrackerVariable
-  , variables        : InterpolationContext => IOResult[Map[(List[String],String),Variable]]
-  , originalVariables: Map[(List[String],String), Variable] // the original variable, unexpanded
+  , variables        : InterpolationContext => IOResult[Map[ComponentId,Variable]]
+  , originalVariables: Map[ComponentId, Variable] // the original variable, unexpanded
   , ruleOrder        : BundleOrder
   , directiveOrder   : BundleOrder
 ) {
 
-  def toBoundedPolicyDraft(expandedVars: Map[(List[String],String),Variable]) = {
+  def toBoundedPolicyDraft(expandedVars: Map[ComponentId,Variable]) = {
     BoundPolicyDraft(
         id             = id
       , ruleName       = ruleName
@@ -505,8 +511,8 @@ final case class BoundPolicyDraft(
   , directiveName  : String // human readable name of the original directive, for ex for log
   , technique      : Technique
   , acceptationDate: DateTime
-  , expandedVars   : Map[(List[String],String),Variable] // contains vars with expanded parameters
-  , originalVars   : Map[(List[String],String),Variable] // contains original, pre-compilation, variable values
+  , expandedVars   : Map[ComponentId,Variable] // contains vars with expanded parameters
+  , originalVars   : Map[ComponentId,Variable] // contains original, pre-compilation, variable values
   , trackerVariable: TrackerVariable
   , priority       : Int
   , isSystem       : Boolean
@@ -525,7 +531,7 @@ final case class BoundPolicyDraft(
       trackerVariable.spec.boundingVariable match {
         case None | Some("") | Some(null) => (trackerVariable, Seq(trackerVariable))
         case Some(value) =>
-          originalVars.filter(_._1._2 == value).values.toList match {
+          originalVars.filter(_._1.value == value).values.toList match {
             //should not happen, techniques consistency are checked
             case Nil=> throw new IllegalArgumentException("No valid bounding found for trackerVariable " + trackerVariable.spec.name + " found in directive " + id.directiveId.debugString)
             case variable => (trackerVariable, variable)
