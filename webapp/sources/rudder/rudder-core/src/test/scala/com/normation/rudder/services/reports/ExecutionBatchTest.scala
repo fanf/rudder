@@ -528,9 +528,6 @@ class ExecutionBatchTest extends Specification {
 
     "return a success block " in {
       withGood.compliance === ComplianceLevel(success = 1, repaired = 3)
-      // error:
-      //Expected :[p:0 s:1 r:0 e:0 u:0 m:0 nr:0 na:0 rd:0 c:0 ana:0 nc:0 ae:0 bpm:0]
-      //Actual   :[p:0 s:0 r:2 e:0 u:6 m:2 nr:0 na:0 rd:0 c:0 ana:0 nc:0 ae:0 bpm:0]
     }
     "return one root component with 4 key values " in {
       println(withGood.components("blockRoot"))

@@ -859,14 +859,14 @@ final case class ContextForNoAnswer(
   ): RuleNodeStatusReport = {
 
     case class EffectiveExpectedComponent (
-      parents : List[BlockExpectedReport]
-    , value : ValueExpectedReport
+      component : ComponentExpectedReport
+    , value     : ValueExpectedReport
     )
 
     def getExpectedComponents(component : ComponentExpectedReport) : List[EffectiveExpectedComponent] = {
       component match {
-        case c : ValueExpectedReport => EffectiveExpectedComponent(Nil, c) :: Nil
-        case c : BlockExpectedReport => c.subComponents.flatMap(getExpectedComponents).map(exp => exp.copy(parents = c :: exp.parents))
+        case c : ValueExpectedReport => EffectiveExpectedComponent(c, c) :: Nil
+        case c : BlockExpectedReport => c.subComponents.flatMap(getExpectedComponents).map(exp => exp.copy(component = c.copy(subComponents = exp.component :: Nil)))
       }
     }
 
@@ -898,6 +898,7 @@ final case class ContextForNoAnswer(
     }).toMap
     val t2 = System.nanoTime
     timer.u1 += t2-t1
+
     /*
      * now we have three cases:
      * - expected component without reports => missing (modulo changes only interpretation)
@@ -928,12 +929,13 @@ final case class ContextForNoAnswer(
     val expected: Iterable[DirectiveStatusReport] =
       expectedComponents.groupBy(_._1._1).map {
         case (directiveId, expectedComponentsForDirective) =>
-          DirectiveStatusReport(directiveId, expectedComponentsForDirective.map {
+          DirectiveStatusReport(directiveId, expectedComponentsForDirective.flatMap {
             case ((directiveId, components), (policyMode, missingReportStatus, component)) =>
-
-              val filteredReports = components.flatMap(c => reports.flatMap{case ((id,cname),r) =>  r.filter(value => directiveId == id && cname == c.value.componentName && c.value.componentsValues.exists(v => checkExpectedVariable(v,value.keyValue)))})
-
-              (component.componentName, checkExpectedComponentWithReports(component, filteredReports, missingReportStatus, policyMode, unexpectedInterpretation))
+              val r = components.map { c =>
+                val filteredReports = reports.flatMap { case ((id, cname), r) => r.filter(value => directiveId == id && cname == c.value.componentName && c.value.componentsValues.exists(v => checkExpectedVariable(v, value.keyValue))) }.toList
+                checkExpectedComponentWithReports(c.component, filteredReports, missingReportStatus, policyMode, unexpectedInterpretation)
+              }
+              ComponentStatusReport.merge(r)
           })
       }
 
