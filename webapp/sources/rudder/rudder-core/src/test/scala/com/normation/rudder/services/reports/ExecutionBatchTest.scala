@@ -522,8 +522,9 @@ class ExecutionBatchTest extends Specification {
     val ruleExpectedReports = RuleExpectedReports(RuleId("cr"), directiveExpectedReports :: Nil)
     val mergeInfo = MergeInfo(NodeId("nodeId"), None, None, DateTime.now())
 
-
+    println(s"*******************************")
     val withGood = ExecutionBatch.getComplianceForRule(mergeInfo, reports   , mode, ruleExpectedReports, strictUnexpectedInterpretation, new ComputeComplianceTimer()).directives("policy")
+    println(s"******************************88*")
     val withBad  = ExecutionBatch.getComplianceForRule(mergeInfo, badReports, mode, ruleExpectedReports, strictUnexpectedInterpretation, new ComputeComplianceTimer()).directives("policy")
 
     "return a success block " in {
@@ -539,6 +540,11 @@ class ExecutionBatchTest extends Specification {
     "return 3 component with the key values b1c1,b1c2,b2c2 which is repaired " in {
       val block1 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block1").get
       val block2 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block2").get
+
+      println(s"whole : ${withGood.compliance}")
+      println(s"root  : ${withGood.components("blockRoot").compliance}")
+      println(s"block1: ${block1.compliance}")
+      println(s"block2: ${block2.compliance}")
 
       (block1.componentValues("b1c1").messages.size === 1) and
       (block1.componentValues("b1c1").messages.head.reportType ===  EnforceRepaired) and
@@ -1393,34 +1399,34 @@ class ExecutionBatchTest extends Specification {
     }
   }
 
-  "performance for mergeCompareByRule" should {
-    val nbRuleInit = 12
-    val initData = buildDataForMergeCompareByRule("test", nbRuleInit, 12, 4)
-
-    val nodeList = (1 to 100).map("nodeId_" + _).toSeq
-
-    val runData = nodeList.map(buildDataForMergeCompareByRule(_, 15, 12, 5))
-
-    "init correctly" in {
-      val result = (ExecutionBatch.mergeCompareByRule _).tupled(initData)
-      result.size === nbRuleInit and
-      result.toSeq.map(x => x.compliance).map(x => x.success).sum === 576
-    }
-
-    "run fast enough" in {
-      runData.map(x =>  (ExecutionBatch.mergeCompareByRule _).tupled(x) )
-
-      val t0 = System.currentTimeMillis
-
-      for (i <- 1 to 10) {
-        val t0_0 = System.currentTimeMillis
-        runData.map(x => (ExecutionBatch.mergeCompareByRule _).tupled(x))
-        val t1_1 = System.currentTimeMillis
-        logger.trace(s"${i}th call to mergeCompareByRule for ${nodeList.size} nodes took ${t1_1-t0_0}ms")
-      }
-      val t1 = System.currentTimeMillis
-      logger.debug(s"Time to run test is ${t1-t0} ms")
-      (t1-t0) must be lessThan( 50000 ) // On my Dell XPS15, this test runs in 7500-8500 ms
-    }
-  }
+//  "performance for mergeCompareByRule" should {
+//    val nbRuleInit = 12
+//    val initData = buildDataForMergeCompareByRule("test", nbRuleInit, 12, 4)
+//
+//    val nodeList = (1 to 100).map("nodeId_" + _).toSeq
+//
+//    val runData = nodeList.map(buildDataForMergeCompareByRule(_, 15, 12, 5))
+//
+//    "init correctly" in {
+//      val result = (ExecutionBatch.mergeCompareByRule _).tupled(initData)
+//      result.size === nbRuleInit and
+//      result.toSeq.map(x => x.compliance).map(x => x.success).sum === 576
+//    }
+//
+//    "run fast enough" in {
+//      runData.map(x =>  (ExecutionBatch.mergeCompareByRule _).tupled(x) )
+//
+//      val t0 = System.currentTimeMillis
+//
+//      for (i <- 1 to 10) {
+//        val t0_0 = System.currentTimeMillis
+//        runData.map(x => (ExecutionBatch.mergeCompareByRule _).tupled(x))
+//        val t1_1 = System.currentTimeMillis
+//        logger.trace(s"${i}th call to mergeCompareByRule for ${nodeList.size} nodes took ${t1_1-t0_0}ms")
+//      }
+//      val t1 = System.currentTimeMillis
+//      logger.debug(s"Time to run test is ${t1-t0} ms")
+//      (t1-t0) must be lessThan( 50000 ) // On my Dell XPS15, this test runs in 7500-8500 ms
+//    }
+//  }
 }
