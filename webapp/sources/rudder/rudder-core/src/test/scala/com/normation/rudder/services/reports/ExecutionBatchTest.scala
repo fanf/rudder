@@ -58,6 +58,7 @@ import org.specs2.runner._
 import com.normation.rudder.reports.AgentRunInterval
 import com.normation.rudder.services.reports.ExecutionBatch.ComputeComplianceTimer
 import com.normation.rudder.services.reports.ExecutionBatch.MergeInfo
+import com.normation.rudder.services.reports.UnexpectedReportBehavior.UnboundVarValues
 
 
 
@@ -556,6 +557,67 @@ class ExecutionBatchTest extends Specification {
 
   }
 
+  "Sub block with looping component and same component names are not correctly reported, see https://issues.rudder.io/issues/20071" should {
+    val reportsWithLoop = Seq[ResultReports](
+      new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
+    , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b1c2", executionTimestamp, "message")
+    , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b2c1", executionTimestamp, "message")
+    , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "loop1", executionTimestamp, "message_1")
+    , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "loop2", executionTimestamp, "message_2")
+    , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "loop3", executionTimestamp, "message_3")
+    )
+
+    val expectedComponent = BlockExpectedReport(
+      "blockRoot"
+      , ReportingLogic.SumReport
+      , BlockExpectedReport(
+          "block1"
+          , ReportingLogic.SumReport
+          , new ValueExpectedReport(
+            "component1"
+            , List( "b1c1")
+            , List( "b1c1")
+          )  :: new ValueExpectedReport(
+            "component2"
+            , List("b1c2")
+            , List("b1c2")
+          )  :: Nil
+        ) :: BlockExpectedReport(
+          "block2"
+          , ReportingLogic.SumReport
+          , new ValueExpectedReport(
+            "component1"
+            , List( "b2c1")
+            , List( "b2c1")
+          )  :: new ValueExpectedReport(
+            "component2"
+            , List("${loop}")
+            , List("${loop}")
+          )  :: Nil
+        ) :: Nil
+    )
+    val directiveExpectedReports = DirectiveExpectedReports(DirectiveId(DirectiveUid("policy")), None, false, expectedComponent :: Nil)
+    val ruleExpectedReports = RuleExpectedReports(RuleId("cr"), directiveExpectedReports :: Nil)
+    val mergeInfo = MergeInfo(NodeId("nodeId"), None, None, DateTime.now())
+
+
+    val withLoop = ExecutionBatch.getComplianceForRule(mergeInfo, reportsWithLoop, mode, ruleExpectedReports, UnexpectedReportInterpretation(Set(UnboundVarValues)), new ComputeComplianceTimer()).directives("policy")
+
+    "return one too many repaired because it is match two time " in {
+      withLoop.compliance === ComplianceLevel(success = 4, repaired = 3)
+    }
+    "return one root component with 4 key values " in {
+      withLoop.components("blockRoot").componentValues.size === 4
+    }
+    "return 1 loop component with the key values loopX which is success, and one too many time because we don't count correctly" in {
+      val block2 = withLoop.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block2").get
+
+      (block2.componentValues("${loop}").messages.size === 4)
+    }
+
+
+  }
+
 
   "Sub block with same component names are authorised, with reporting focus " should {
     val reports = Seq[ResultReports](
@@ -615,7 +677,6 @@ class ExecutionBatchTest extends Specification {
       withGood.compliance === ComplianceLevel(success = 1)
     }
     "return one root component with 4 key values " in {
-      println(withGood.components("blockRoot"))
       withGood.components("blockRoot").componentValues.size === 4
     }
     "return 3 component with the key values b1c1,b1c2,b2c2 which is repaired " in {
@@ -701,7 +762,6 @@ class ExecutionBatchTest extends Specification {
       withGood.compliance === ComplianceLevel(repaired = 1)
     }
     "return one root component with 4 key values " in {
-      println(withGood.components("blockRoot"))
       withGood.components("blockRoot").componentValues.size === 4
     }
     "return 3 component with the key values b1c1,b1c2,b2c2 which is repaired " in {

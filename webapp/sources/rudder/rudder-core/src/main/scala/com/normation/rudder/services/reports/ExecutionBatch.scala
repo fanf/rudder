@@ -921,7 +921,6 @@ final case class ContextForNoAnswer(
       Seq[DirectiveStatusReport]()
     })
 
-    if (ruleId == RuleId("32377fd7-02fd-43d0-aab7-28460a91347b")) logger.error(unexpected)
     val t4 = System.nanoTime
     timer.u3 += t4-t3
 
@@ -940,7 +939,6 @@ final case class ContextForNoAnswer(
       }
 
 
-    if (ruleId == RuleId("32377fd7-02fd-43d0-aab7-28460a91347b")) logger.error(expected.filter(_.directiveId == DirectiveId(DirectiveUid("e041f5e8-c57a-4b80-a42f-58ccf612de96"))))
     val t5 = System.nanoTime
     timer.u4 += t5-t4
 
@@ -1199,13 +1197,13 @@ final case class ContextForNoAnswer(
         )
 
         /*
-     * This function recursively try to pair the first report from input list with one of the component
-     * value.
-     * If no component value is found for the report, it is set aside in an "unexpected" list.
-     * A value can hold at most one report safe if:
-     * - the report is the exact duplicate of the one already paired AND UnexpectedReportBehavior.AllowsDuplicate is set
-     * - the report is variable AND UnexpectedReportBehavior.UnboundVarValues is set
-     */
+         * This function recursively try to pair the first report from input list with one of the component
+         * value.
+         * If no component value is found for the report, it is set aside in an "unexpected" list.
+         * A value can hold at most one report safe if:
+         * - the report is the exact duplicate of the one already paired AND UnexpectedReportBehavior.AllowsDuplicate is set
+         * - the report is variable AND UnexpectedReportBehavior.UnboundVarValues is set
+         */
         def recPairReports(reports: List[ResultReports], freeValues: List[Value], pairedValues: List[Value], unexpected: List[ResultReports], mode: UnexpectedReportInterpretation): (List[Value], List[ResultReports]) = {
           // utility function: given a list of Values and one report, try to find a value whose pattern matches reports component value.
           // the first matching value is used (they must be sorted by specificity).
@@ -1219,7 +1217,7 @@ final case class ContextForNoAnswer(
           //   values (or if not runtime, at least a sequence obtained through a variable).
           // Be careful: the list of values must be kept sorted in the same order as paramater!
           def findMatchingValue(
-            report: ResultReports
+              report: ResultReports
             , values: List[Value]
             , dropDuplicated: (Value, ResultReports) => Boolean
             , incrementCardinality: (Value, ResultReports) => Boolean
