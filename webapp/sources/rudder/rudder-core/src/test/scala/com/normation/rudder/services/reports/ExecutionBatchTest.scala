@@ -472,7 +472,7 @@ class ExecutionBatchTest extends Specification {
     }
   }
 
-  "Sub block with same component names are authorised, with reporting focus " should {
+  "Sub block with same component names are authorised, with reporting sum " should {
     val reports = Seq[ResultReports](
       new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
     , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b1c2", executionTimestamp, "message")
@@ -552,6 +552,177 @@ class ExecutionBatchTest extends Specification {
 
     "only one reports in plus, mark the whole key unexpected" in {
       withBad.compliance === ComplianceLevel(success = 1,  unexpected = 2, repaired = 2)
+    }
+
+  }
+
+
+  "Sub block with same component names are authorised, with reporting focus " should {
+    val reports = Seq[ResultReports](
+      new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b1c2", executionTimestamp, "message")
+      , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b2c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+    )
+
+    val badReports = Seq[ResultReports](
+      new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b1c2", executionTimestamp, "message")
+      , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b2c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+      // bad ones
+      , new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+    )
+
+    val expectedComponent = BlockExpectedReport(
+      "blockRoot"
+      , ReportingLogic.FocusReport("block2")
+      , BlockExpectedReport(
+        "block1"
+        , ReportingLogic.FocusReport("component1")
+        , new ValueExpectedReport(
+          "component1"
+          , List( "b1c1")
+          , List( "b1c1")
+        )  :: new ValueExpectedReport(
+          "component2"
+          , List("b1c2")
+          , List("b1c2")
+        )  :: Nil
+      ) :: BlockExpectedReport(
+        "block2"
+        , ReportingLogic.FocusReport("component1")
+        , new ValueExpectedReport(
+          "component1"
+          , List( "b2c1")
+          , List( "b2c1")
+        )  :: new ValueExpectedReport(
+          "component2"
+          , List("b2c2")
+          , List("b2c2")
+        )  :: Nil
+      ) :: Nil
+    )
+    val directiveExpectedReports = DirectiveExpectedReports(DirectiveId(DirectiveUid("policy")), None, false, expectedComponent :: Nil)
+    val ruleExpectedReports = RuleExpectedReports(RuleId("cr"), directiveExpectedReports :: Nil)
+    val mergeInfo = MergeInfo(NodeId("nodeId"), None, None, DateTime.now())
+
+
+    val withGood = ExecutionBatch.getComplianceForRule(mergeInfo, reports   , mode, ruleExpectedReports, strictUnexpectedInterpretation, new ComputeComplianceTimer()).directives("policy")
+    val withBad  = ExecutionBatch.getComplianceForRule(mergeInfo, badReports, mode, ruleExpectedReports, strictUnexpectedInterpretation, new ComputeComplianceTimer()).directives("policy")
+
+    "return a success block " in {
+      withGood.compliance === ComplianceLevel(success = 1)
+    }
+    "return one root component with 4 key values " in {
+      println(withGood.components("blockRoot"))
+      withGood.components("blockRoot").componentValues.size === 4
+    }
+    "return 3 component with the key values b1c1,b1c2,b2c2 which is repaired " in {
+      val block1 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block1").get
+      val block2 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block2").get
+
+      (block1.componentValues("b1c1").messages.size === 1) and
+        (block1.componentValues("b1c1").messages.head.reportType ===  EnforceRepaired) and
+        (block1.componentValues("b1c2").messages.size === 1) and
+        (block1.componentValues("b1c2").messages.head.reportType ===  EnforceRepaired) and
+        (block2.componentValues("b2c2").messages.size === 1) and
+        (block2.componentValues("b2c2").messages.head.reportType ===  EnforceRepaired)
+    }
+    "return a component with the key values b2c1 which is a success " in {
+      val block2 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block2").get
+      block2.componentValues("b2c1").messages.size === 1 and
+        block2.componentValues("b2c1").messages.head.reportType ===  EnforceSuccess
+    }
+
+    "Ignore the unexpected reports from components that are not within the focus" in {
+      withBad.compliance === ComplianceLevel(success = 1)
+    }
+
+  }
+
+
+
+  "Sub block with same component names are authorised, with reporting worst " should {
+    val reports = Seq[ResultReports](
+      new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b1c2", executionTimestamp, "message")
+      , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b2c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+    )
+
+    val badReports = Seq[ResultReports](
+      new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b1c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b1c2", executionTimestamp, "message")
+      , new ResultSuccessReport (executionTimestamp, "cr", "policy", "nodeId", 12, "component1", "b2c1", executionTimestamp, "message")
+      , new ResultRepairedReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+      // bad ones
+      , new ResultSuccessReport(executionTimestamp, "cr", "policy", "nodeId", 12, "component2", "b2c2", executionTimestamp, "message")
+    )
+
+    val expectedComponent = BlockExpectedReport(
+      "blockRoot"
+      , ReportingLogic.WorstReport
+      , BlockExpectedReport(
+        "block1"
+        , ReportingLogic.SumReport
+        , new ValueExpectedReport(
+          "component1"
+          , List( "b1c1")
+          , List( "b1c1")
+        )  :: new ValueExpectedReport(
+          "component2"
+          , List("b1c2")
+          , List("b1c2")
+        )  :: Nil
+      ) :: BlockExpectedReport(
+        "block2"
+        , ReportingLogic.SumReport
+        , new ValueExpectedReport(
+          "component1"
+          , List( "b2c1")
+          , List( "b2c1")
+        )  :: new ValueExpectedReport(
+          "component2"
+          , List("b2c2")
+          , List("b2c2")
+        )  :: Nil
+      ) :: Nil
+    )
+    val directiveExpectedReports = DirectiveExpectedReports(DirectiveId(DirectiveUid("policy")), None, false, expectedComponent :: Nil)
+    val ruleExpectedReports = RuleExpectedReports(RuleId("cr"), directiveExpectedReports :: Nil)
+    val mergeInfo = MergeInfo(NodeId("nodeId"), None, None, DateTime.now())
+
+
+    val withGood = ExecutionBatch.getComplianceForRule(mergeInfo, reports   , mode, ruleExpectedReports, strictUnexpectedInterpretation, new ComputeComplianceTimer()).directives("policy")
+    val withBad  = ExecutionBatch.getComplianceForRule(mergeInfo, badReports, mode, ruleExpectedReports, strictUnexpectedInterpretation, new ComputeComplianceTimer()).directives("policy")
+
+    "return a repaired block " in {
+      withGood.compliance === ComplianceLevel(repaired = 1)
+    }
+    "return one root component with 4 key values " in {
+      println(withGood.components("blockRoot"))
+      withGood.components("blockRoot").componentValues.size === 4
+    }
+    "return 3 component with the key values b1c1,b1c2,b2c2 which is repaired " in {
+      val block1 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block1").get
+      val block2 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block2").get
+
+      (block1.componentValues("b1c1").messages.size === 1) and
+        (block1.componentValues("b1c1").messages.head.reportType ===  EnforceRepaired) and
+        (block1.componentValues("b1c2").messages.size === 1) and
+        (block1.componentValues("b1c2").messages.head.reportType ===  EnforceRepaired) and
+        (block2.componentValues("b2c2").messages.size === 1) and
+        (block2.componentValues("b2c2").messages.head.reportType ===  EnforceRepaired)
+    }
+    "return a component with the key values b2c1 which is a success " in {
+      val block2 = withGood.components("blockRoot").asInstanceOf[BlockStatusReport].subComponents.find(_.componentName == "block2").get
+      block2.componentValues("b2c1").messages.size === 1 and
+        block2.componentValues("b2c1").messages.head.reportType ===  EnforceSuccess
+    }
+
+    "Return an unexpected Block" in {
+      withBad.compliance === ComplianceLevel(unexpected = 1)
     }
 
   }
