@@ -1199,20 +1199,21 @@ response:
       "data": {
         "directives": [
           {
-            "name": "Active Techniques",
-            "description": "This is the root category for active techniques.It contains subcategories,actives techniques and directives",
+            "name": "ActiveTechniques",
+            "description": "Thisistherootcategoryforactivetechniques.Itcontainssubcategories,activestechniquesanddirectives",
             "subCategories": [
               {
-                "name": "Application management",
-                "description": "This category contains Techniques designed to install,configure and manage applications",
+                "name": "Applicationmanagement",
+                "description": "ThiscategorycontainsTechniquesdesignedtoinstall,configureandmanageapplications",
                 "subCategories": [],
                 "techniques": [
                   {
-                    "name": "packageManagement",
+                    "id": "packageManagement",
+                    "name": "Packages",
                     "directives": [
                       {
                         "id": "16617aa8-1f02-4e4a-87b6-d0bcdfb4019f",
-                        "displayName": "directive 16617aa8-1f02-4e4a-87b6-d0bcdfb4019f",
+                        "displayName": "directive16617aa8-1f02-4e4a-87b6-d0bcdfb4019f",
                         "shortDescription": "",
                         "longDescription": "",
                         "techniqueName": "packageManagement",
@@ -1241,7 +1242,7 @@ response:
                                   "sections": [
                                     {
                                       "section": {
-                                        "name": "Package architecture",
+                                        "name": "Packagearchitecture",
                                         "vars": [
                                           {
                                             "var": {
@@ -1260,7 +1261,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Package manager",
+                                        "name": "Packagemanager",
                                         "vars": [
                                           {
                                             "var": {
@@ -1273,7 +1274,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Package version",
+                                        "name": "Packageversion",
                                         "vars": [
                                           {
                                             "var": {
@@ -1292,7 +1293,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Post-modification script",
+                                        "name": "Post-modificationscript",
                                         "vars": [
                                           {
                                             "var": {
@@ -1326,7 +1327,7 @@ response:
                                   "sections": [
                                     {
                                       "section": {
-                                        "name": "Package architecture",
+                                        "name": "Packagearchitecture",
                                         "vars": [
                                           {
                                             "var": {
@@ -1345,7 +1346,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Package manager",
+                                        "name": "Packagemanager",
                                         "vars": [
                                           {
                                             "var": {
@@ -1358,7 +1359,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Package version",
+                                        "name": "Packageversion",
                                         "vars": [
                                           {
                                             "var": {
@@ -1377,7 +1378,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Post-modification script",
+                                        "name": "Post-modificationscript",
                                         "vars": [
                                           {
                                             "var": {
@@ -1403,7 +1404,8 @@ response:
                     ]
                   },
                   {
-                    "name": "rpmPackageInstallation",
+                    "id": "rpmPackageInstallation",
+                    "name": "Packages(RHEL/CentOS/SuSE/RPM)",
                     "directives": [
                       {
                         "id": "directive2",
@@ -1418,7 +1420,7 @@ response:
                             "sections": [
                               {
                                 "section": {
-                                  "name": "Check interval",
+                                  "name": "Checkinterval",
                                   "vars": [
                                     {
                                       "var": {
@@ -1431,7 +1433,7 @@ response:
                               },
                               {
                                 "section": {
-                                  "name": "RHEL/CentOS/SuSE packages",
+                                  "name": "RHEL/CentOS/SuSEpackages",
                                   "vars": [
                                     {
                                       "var": {
@@ -1449,7 +1451,7 @@ response:
                                   "sections": [
                                     {
                                       "section": {
-                                        "name": "Package version",
+                                        "name": "Packageversion",
                                         "vars": [
                                           {
                                             "var": {
@@ -1474,7 +1476,7 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Post-modification hook",
+                                        "name": "Post-modificationhook",
                                         "vars": [
                                           {
                                             "var": {
@@ -1496,7 +1498,7 @@ response:
                               },
                               {
                                 "section": {
-                                  "name": "ZMD process"
+                                  "name": "ZMDprocess"
                                 }
                               }
                             ]
@@ -1513,12 +1515,13 @@ response:
                 ]
               },
               {
-                "name": "Distributing files",
-                "description": "\n Manage node files.\n ",
+                "name": "Distributingfiles",
+                "description": "\nManagenodefiles.\n",
                 "subCategories": [],
                 "techniques": [
                   {
-                    "name": "copyGitFile",
+                    "id": "copyGitFile",
+                    "name": "Filedownload(Rudderserver)",
                     "directives": [
                       {
                         "id": "directive-copyGitFile",
@@ -1533,11 +1536,11 @@ response:
                             "sections": [
                               {
                                 "section": {
-                                  "name": "Copy file and PostHook",
+                                  "name": "CopyfileandPostHook",
                                   "sections": [
                                     {
                                       "section": {
-                                        "name": "Copy file",
+                                        "name": "Copyfile",
                                         "vars": [
                                           {
                                             "var": {
@@ -1592,7 +1595,7 @@ response:
                                           },
                                           {
                                             "section": {
-                                              "name": "Linux Options",
+                                              "name": "LinuxOptions",
                                               "vars": [
                                                 {
                                                   "var": {
@@ -1638,12 +1641,12 @@ response:
                                     },
                                     {
                                       "section": {
-                                        "name": "Post-modification hook",
+                                        "name": "Post-modificationhook",
                                         "vars": [
                                           {
                                             "var": {
                                               "name": "COPYFILE_POST_HOOK_COMMAND",
-                                              "value": "/bin/echo Value_0.json"
+                                              "value": "/bin/echoValue_0.json"
                                             }
                                           },
                                           {
@@ -1670,11 +1673,12 @@ response:
                     ]
                   },
                   {
-                    "name": "fileTemplate",
+                    "id": "fileTemplate",
+                    "name": "Filecontent(fromremotetemplate)",
                     "directives": [
                       {
                         "id": "e9a1a909-2490-4fc9-95c3-9d0aa01717c9",
-                        "displayName": "directive e9a1a909-2490-4fc9-95c3-9d0aa01717c9",
+                        "displayName": "directivee9a1a909-2490-4fc9-95c3-9d0aa01717c9",
                         "shortDescription": "",
                         "longDescription": "",
                         "techniqueName": "fileTemplate",
@@ -1685,11 +1689,11 @@ response:
                             "sections": [
                               {
                                 "section": {
-                                  "name": "Apply template",
+                                  "name": "Applytemplate",
                                   "sections": [
                                     {
                                       "section": {
-                                        "name": "Load Template from a file or text input",
+                                        "name": "LoadTemplatefromafileortextinput",
                                         "vars": [
                                           {
                                             "var": {
@@ -1706,7 +1710,7 @@ response:
                                           {
                                             "var": {
                                               "name": "FILE_TEMPLATE_RAW_TEMPLATE",
-                                              "value": "some content"
+                                              "value": "somecontent"
                                             }
                                           },
                                           {
@@ -1719,7 +1723,7 @@ response:
                                         "sections": [
                                           {
                                             "section": {
-                                              "name": "Expand template"
+                                              "name": "Expandtemplate"
                                             }
                                           },
                                           {
@@ -1737,22 +1741,22 @@ response:
                                           },
                                           {
                                             "section": {
-                                              "name": "Put permissions"
+                                              "name": "Putpermissions"
                                             }
                                           },
                                           {
                                             "section": {
-                                              "name": "Templates directory permissions"
+                                              "name": "Templatesdirectorypermissions"
                                             }
                                           },
                                           {
                                             "section": {
-                                              "name": "Templates location"
+                                              "name": "Templateslocation"
                                             }
                                           },
                                           {
                                             "section": {
-                                              "name": "UNIX specific options",
+                                              "name": "UNIXspecificoptions",
                                               "vars": [
                                                 {
                                                   "var": {
@@ -1804,7 +1808,7 @@ response:
                       },
                       {
                         "id": "ff44fb97-b65e-43c4-b8c2-0df8d5e8549f",
-                        "displayName": "directive ff44fb97-b65e-43c4-b8c2-0df8d5e8549f",
+                        "displayName": "directiveff44fb97-b65e-43c4-b8c2-0df8d5e8549f",
                         "shortDescription": "",
                         "longDescription": "",
                         "techniqueName": "fileTemplate",
@@ -1815,11 +1819,11 @@ response:
                             "sections": [
                               {
                                 "section": {
-                                  "name": "Apply template",
+                                  "name": "Applytemplate",
                                   "sections": [
                                     {
                                       "section": {
-                                        "name": "Load Template from a file or text input",
+                                        "name": "LoadTemplatefromafileortextinput",
                                         "vars": [
                                           {
                                             "var": {
@@ -1836,7 +1840,7 @@ response:
                                           {
                                             "var": {
                                               "name": "FILE_TEMPLATE_RAW_TEMPLATE",
-                                              "value": "some content"
+                                              "value": "somecontent"
                                             }
                                           },
                                           {
@@ -1849,7 +1853,7 @@ response:
                                         "sections": [
                                           {
                                             "section": {
-                                              "name": "Expand template"
+                                              "name": "Expandtemplate"
                                             }
                                           },
                                           {
@@ -1867,22 +1871,22 @@ response:
                                           },
                                           {
                                             "section": {
-                                              "name": "Put permissions"
+                                              "name": "Putpermissions"
                                             }
                                           },
                                           {
                                             "section": {
-                                              "name": "Templates directory permissions"
+                                              "name": "Templatesdirectorypermissions"
                                             }
                                           },
                                           {
                                             "section": {
-                                              "name": "Templates location"
+                                              "name": "Templateslocation"
                                             }
                                           },
                                           {
                                             "section": {
-                                              "name": "UNIX specific options",
+                                              "name": "UNIXspecificoptions",
                                               "vars": [
                                                 {
                                                   "var": {
@@ -1937,16 +1941,17 @@ response:
                 ]
               },
               {
-                "name": "Meta Techniques",
-                "description": "\n Meta Techniques created using the ncf framework.\n ",
+                "name": "MetaTechniques",
+                "description": "\nMetaTechniquescreatedusingthencfframework.\n",
                 "subCategories": [],
                 "techniques": [
                   {
-                    "name": "Create_file",
+                    "id": "Create_file",
+                    "name": "Createafile",
                     "directives": [
                       {
                         "id": "16d86a56-93ef-49aa-86b7-0d10102e4ea9",
-                        "displayName": "directive 16d86a56-93ef-49aa-86b7-0d10102e4ea9",
+                        "displayName": "directive16d86a56-93ef-49aa-86b7-0d10102e4ea9",
                         "shortDescription": "",
                         "longDescription": "",
                         "techniqueName": "Create_file",
@@ -1957,11 +1962,11 @@ response:
                             "sections": [
                               {
                                 "section": {
-                                  "name": "Directory create",
+                                  "name": "Directorycreate",
                                   "vars": [
                                     {
                                       "var": {
-                                        "name": "expectedReportKey Directory create",
+                                        "name": "expectedReportKeyDirectorycreate",
                                         "value": "directory_create_/tmp/foo"
                                       }
                                     }
@@ -1970,11 +1975,11 @@ response:
                               },
                               {
                                 "section": {
-                                  "name": "File create",
+                                  "name": "Filecreate",
                                   "vars": [
                                     {
                                       "var": {
-                                        "name": "expectedReportKey File create",
+                                        "name": "expectedReportKeyFilecreate",
                                         "value": "file_create_/tmp/foo/bar"
                                       }
                                     }
@@ -1983,7 +1988,7 @@ response:
                               },
                               {
                                 "section": {
-                                  "name": "Technique parameters",
+                                  "name": "Techniqueparameters",
                                   "vars": [
                                     {
                                       "var": {
@@ -2006,53 +2011,60 @@ response:
                     ]
                   },
                   {
-                    "name": "technique_any",
+                    "id": "technique_any",
+                    "name": "TestTechniquecreatedthroughRudderAPI",
                     "directives": []
                   },
                   {
-                    "name": "technique_by_Rudder",
+                    "id": "technique_by_Rudder",
+                    "name": "TestTechniquecreatedthroughRudderAPI",
                     "directives": []
                   }
                 ]
               },
               {
-                "name": "System Techniques",
-                "description": "\n This category contains internal Techniques (system).\n These Techniques should not be used directly.\n ",
+                "name": "SystemTechniques",
+                "description": "\nThiscategorycontainsinternalTechniques(system).\nTheseTechniquesshouldnotbeuseddirectly.\n",
                 "subCategories": [],
                 "techniques": [
                   {
-                    "name": "common",
+                    "id": "common",
+                    "name": "Commonpolicies",
                     "directives": []
                   },
                   {
-                    "name": "distributePolicy",
+                    "id": "distributePolicy",
+                    "name": "Distributethepolicytoservers",
                     "directives": []
                   },
                   {
-                    "name": "inventory",
+                    "id": "inventory",
+                    "name": "Makeaninventoryofthenode",
                     "directives": []
                   },
                   {
-                    "name": "server-roles",
+                    "id": "server-roles",
+                    "name": "Serverroles",
                     "directives": []
                   }
                 ]
               },
               {
-                "name": "System settings",
-                "description": "This category contains Techniques to configure the basic components of a system:name resolution,time synchronization,remote access,networking...",
+                "name": "Systemsettings",
+                "description": "ThiscategorycontainsTechniquestoconfigurethebasiccomponentsofasystem:nameresolution,timesynchronization,remoteaccess,networking...",
                 "subCategories": [
                   {
                     "name": "Miscellaneous",
-                    "description": "This sub-category contains various Techniques to configure system settings.",
+                    "description": "Thissub-categorycontainsvariousTechniquestoconfiguresystemsettings.",
                     "subCategories": [],
                     "techniques": [
                       {
-                        "name": "clockConfiguration",
+                        "id": "clockConfiguration",
+                        "name": "Timesettings",
                         "directives": [
                           {
                             "id": "directive1",
-                            "displayName": "10.Clock Configuration",
+                            "displayName": "10.ClockConfiguration",
                             "shortDescription": "",
                             "longDescription": "",
                             "techniqueName": "clockConfiguration",
@@ -2063,7 +2075,7 @@ response:
                                 "sections": [
                                   {
                                     "section": {
-                                      "name": "Hardware clock (RTC)",
+                                      "name": "Hardwareclock(RTC)",
                                       "vars": [
                                         {
                                           "var": {
@@ -2082,7 +2094,7 @@ response:
                                   },
                                   {
                                     "section": {
-                                      "name": "Time synchronization (NTP)",
+                                      "name": "Timesynchronization(NTP)",
                                       "vars": [
                                         {
                                           "var": {
@@ -2094,7 +2106,7 @@ response:
                                       "sections": [
                                         {
                                           "section": {
-                                            "name": "clock ntpservers",
+                                            "name": "clockntpservers",
                                             "vars": [
                                               {
                                                 "var": {
@@ -2110,7 +2122,7 @@ response:
                                   },
                                   {
                                     "section": {
-                                      "name": "Time zone",
+                                      "name": "Timezone",
                                       "vars": [
                                         {
                                           "var": {
@@ -2133,11 +2145,12 @@ response:
                         ]
                       },
                       {
-                        "name": "genericVariableDefinition",
+                        "id": "genericVariableDefinition",
+                        "name": "Variable(string)",
                         "directives": [
                           {
                             "id": "gvd-directive2",
-                            "displayName": "00.Generic Variable Def #2",
+                            "displayName": "00.GenericVariableDef#2",
                             "shortDescription": "",
                             "longDescription": "",
                             "techniqueName": "genericVariableDefinition",
@@ -2148,12 +2161,12 @@ response:
                                 "sections": [
                                   {
                                     "section": {
-                                      "name": "Variable definition",
+                                      "name": "Variabledefinition",
                                       "vars": [
                                         {
                                           "var": {
                                             "name": "GENERIC_VARIABLE_CONTENT",
-                                            "value": "value from gvd #2 should be second"
+                                            "value": "valuefromgvd#2shouldbesecond"
                                           }
                                         },
                                         {
@@ -2176,7 +2189,7 @@ response:
                           },
                           {
                             "id": "gvd-directive1",
-                            "displayName": "99.Generic Variable Def #1",
+                            "displayName": "99.GenericVariableDef#1",
                             "shortDescription": "",
                             "longDescription": "",
                             "techniqueName": "genericVariableDefinition",
@@ -2187,12 +2200,12 @@ response:
                                 "sections": [
                                   {
                                     "section": {
-                                      "name": "Variable definition",
+                                      "name": "Variabledefinition",
                                       "vars": [
                                         {
                                           "var": {
                                             "name": "GENERIC_VARIABLE_CONTENT",
-                                            "value": "value from gvd #1 should be first"
+                                            "value": "valuefromgvd#1shouldbefirst"
                                           }
                                         },
                                         {

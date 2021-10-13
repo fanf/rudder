@@ -928,7 +928,6 @@ object RudderConfig extends Loggable {
         roRuleCategoryRepository
       , roRuleRepository
       , woRuleCategoryRepository
-      , ruleCategoryService
       , restDataSerializer
     )
   val ruleApiService13 =
@@ -938,11 +937,13 @@ object RudderConfig extends Loggable {
       , uuidGen
       , asyncDeploymentAgent
       , workflowLevelService
-      , restExtractorService
-      , restDataSerializer
       , roRuleCategoryRepository
       , woRuleCategoryRepository
-      , ruleCategoryService
+      , roDirectiveRepository
+      , roNodeGroupRepository
+      , nodeInfoService
+      , configService.rudder_global_policy_mode _
+      , ruleApplicationStatus
     )
 
   val directiveApiService2 =
