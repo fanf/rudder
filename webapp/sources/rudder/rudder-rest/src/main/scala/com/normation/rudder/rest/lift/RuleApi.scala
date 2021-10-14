@@ -41,6 +41,7 @@ import com.normation.GitVersion
 import com.normation.rudder.apidata.RestDataSerializer
 import com.normation.eventlog.EventActor
 import com.normation.eventlog._
+import com.normation.inventory.domain.NodeId
 import com.normation.rudder.UserService
 import com.normation.rudder.batch.AsyncDeploymentActor
 import com.normation.rudder.batch.AutomaticStartDeployment
@@ -67,6 +68,7 @@ import com.normation.rudder.services.workflows.RuleChangeRequest
 import com.normation.rudder.services.workflows.RuleModAction
 import com.normation.rudder.services.workflows.WorkflowLevelService
 import com.normation.utils.StringUuidGenerator
+
 import net.liftweb.common.Box
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Full
@@ -76,11 +78,13 @@ import net.liftweb.http.Req
 import net.liftweb.json.JArray
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json._
+
 import com.normation.box._
 import com.normation.errors._
 import com.normation.rudder.api.ApiVersion
 import com.normation.rudder.apidata.DetailLevel
 import com.normation.rudder.apidata.FullDetails
+
 import zio._
 import zio.syntax._
 import com.normation.rudder.rest._
@@ -89,9 +93,15 @@ import com.normation.rudder.apidata.JsonResponseObjects._
 import com.normation.rudder.apidata.MinimalDetails
 import com.normation.rudder.apidata.ZioJsonExtractor
 import com.normation.rudder.apidata.implicits._
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.rudder.domain.policies.ApplicationStatus
+import com.normation.rudder.domain.policies.Directive
 import com.normation.rudder.domain.policies.GlobalPolicyMode
+import com.normation.rudder.domain.policies.RuleTargetInfo
 import com.normation.rudder.domain.policies.RuleUid
+import com.normation.rudder.repository.FullActiveTechniqueCategory
+import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.RoNodeGroupRepository
 import com.normation.rudder.rest.implicits._
@@ -674,6 +684,9 @@ class RuleApiService6(
 
 }
 
+
+final case class RuleApplicationStatus(policyMode: (String, String),  applicationStatusDetails: (String, Option[String]))
+
 class RuleApiService14 (
     readRule             : RoRuleRepository
   , writeRule            : WoRuleRepository
@@ -715,6 +728,16 @@ class RuleApiService14 (
   }
 
 
+  def getRuleApplicationStatus(rule: Rule, groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory, nodesLib: Map[NodeId, NodeInfo], globalMode: GlobalPolicyMode): RuleApplicationStatus = {
+    val directives = rule.directiveIds.flatMap(directiveLib.allDirectives.get(_)).map{case (a,d)=> (a.toActiveTechnique(), d)}
+    val nodes = groupLib.getNodeIds(rule.targets, nodesLib).flatMap(nodesLib.get)
+    val allTargets = rule.targets.flatMap(groupLib.allTargets.get).map(_.toTargetInfo)
+    val policyMode = ComputePolicyMode.ruleMode(globalMode, directives.map(_._2), nodes.map(_.policyMode))
+    val applicationStatus = applicationService.isApplied(rule,groupLib,directiveLib,nodesLib)
+    val applicationStatusDetails = ApplicationStatus.details(rule,applicationStatus, allTargets, directives, nodes)
+    RuleApplicationStatus(policyMode, applicationStatusDetails)
+  }
+
   def listRules(): IOResult[Seq[JRRule]] = {
     for {
       rules <- readRule.getAll(false).chainError("Could not fetch Rules")
@@ -726,15 +749,9 @@ class RuleApiService14 (
     } yield {
       for {
         rule <- rules.sortBy(_.id.serialize)
-        directives = rule.directiveIds.flatMap(directiveLib.allDirectives.get(_)).map{case (a,d)=> (a.toActiveTechnique(), d)}
-        nodes = groupLib.getNodeIds(rule.targets, nodesLib).flatMap(nodesLib.get)
-        allTargets = rule.targets.flatMap(groupLib.allTargets.get).map(_.toTargetInfo)
-        policyMode = ComputePolicyMode.ruleMode(globalMode, directives.map(_._2), nodes.map(_.policyMode))
-        applicationStatus = applicationService.isApplied(rule,groupLib,directiveLib,nodesLib)
-        applicationStatusDetails = ApplicationStatus.details(rule,applicationStatus, allTargets, directives, nodes)
-
       } yield {
-        JRRule.fromRule(rule, None, Some(policyMode._1),Some(applicationStatusDetails))
+        val status = getRuleApplicationStatus(rule, groupLib, directiveLib, nodesLib, globalMode)
+        JRRule.fromRule(rule, None, Some(status.policyMode._1),Some(status.applicationStatusDetails))
       }
     }
 
@@ -802,16 +819,9 @@ class RuleApiService14 (
       groupLib <- readGroup.getFullGroupLibrary()
       nodesLib <- readNodes.getAll()
       globalMode  <- getGlobalPolicyMode()
-
-      directives = rule.directiveIds.flatMap(directiveLib.allDirectives.get(_)).map{case (a,d)=> (a.toActiveTechnique(), d)}
-      nodes = groupLib.getNodeIds(rule.targets, nodesLib).flatMap(nodesLib.get)
-      allTargets = rule.targets.flatMap(groupLib.allTargets.get).map(_.toTargetInfo)
-      policyMode = ComputePolicyMode.ruleMode(globalMode, directives.map(_._2), nodes.map(_.policyMode))._1
-      applicationStatus = applicationService.isApplied(rule,groupLib,directiveLib,nodesLib)
-      applicationStatusDetails = ApplicationStatus.details(rule,applicationStatus, allTargets, directives, nodes)
-
     } yield {
-      JRRule.fromRule(rule, None, Some(policyMode), Some(applicationStatusDetails))
+      val status = getRuleApplicationStatus(rule, groupLib, directiveLib, nodesLib, globalMode)
+      JRRule.fromRule(rule, None, Some(status.policyMode._1), Some(status.applicationStatusDetails))
     }
 
   }
@@ -856,15 +866,9 @@ class RuleApiService14 (
       globalMode  <- getGlobalPolicyMode()
       rulesMap =  ( for {
         rule <- rules.sortBy(_.id.serialize)
-        directives = rule.directiveIds.flatMap(directiveLib.allDirectives.get(_)).map{case (a,d)=> (a.toActiveTechnique(), d)}
-        nodes = groupLib.getNodeIds(rule.targets, nodesLib).flatMap(nodesLib.get)
-        allTargets = rule.targets.flatMap(groupLib.allTargets.get).map(_.toTargetInfo)
-        policyMode = ComputePolicyMode.ruleMode(globalMode, directives.map(_._2), nodes.map(_.policyMode))
-        applicationStatus = applicationService.isApplied(rule,groupLib,directiveLib,nodesLib)
-        applicationStatusDetails = ApplicationStatus.details(rule,applicationStatus, allTargets, directives, nodes)
-
       } yield {
-        (rule, Some(policyMode._1),Some(applicationStatusDetails))
+        val status = getRuleApplicationStatus(rule, groupLib, directiveLib, nodesLib, globalMode)
+        (rule, Some(status.policyMode._1), Some(status.applicationStatusDetails))
       }).groupBy(_._1.categoryId.value)
     } yield {
       // root category is given itself as a parent, which looks like a bug

@@ -59,7 +59,7 @@ object ApplicationStatus {
     applicationStatus match {
       case FullyApplied => ("In application", None)
       case PartiallyApplied(seq) =>
-        val why = seq.map { case (at, d) => "Directive " + d.name + " disabled" }.mkString(", ")
+        val why = seq.map { case (at, d) => "Directive '" + d.name + "' disabled" }.mkString(", ")
         ("Partially applied", Some(why))
       case x: NotAppliedStatus =>
 
@@ -79,7 +79,7 @@ object ApplicationStatus {
           ) ++
             directives.flatMap {
               case (activeTechnique, directive) =>
-                Seq((!directive.isEnabled, "Directive " + directive.name + " disabled")
+                Seq((!directive.isEnabled, "Directive '" + directive.name + "' disabled")
                   , (!activeTechnique.isEnabled, "Technique for '" + directive.name + "' disabled")
                 )
             }

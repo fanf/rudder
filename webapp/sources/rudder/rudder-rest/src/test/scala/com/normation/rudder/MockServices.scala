@@ -744,6 +744,7 @@ class MockDirectives(mockTechniques: MockTechniques) {
           , that.description
           , that.children.flatMap(root.allCategories.get(_))
           , that.items.flatMap(root.allActiveTechniques.get(_))
+          , that.isSystem
         )
         root.addActiveTechniqueCategory(into, full).succeed
       }.map(_.toActiveTechniqueCategory())
