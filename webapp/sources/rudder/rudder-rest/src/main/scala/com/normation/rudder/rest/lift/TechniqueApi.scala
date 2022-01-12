@@ -156,7 +156,7 @@ class TechniqueApi (
           resourceFileService.getResourcesFromDir(s"workspace/${techniqueInfo._1}/${techniqueInfo._2}/resources", techniqueInfo._1, techniqueInfo._2)
         } else {
           for {
-            optTechnique <- techniqueReader.readTechniquesMetadataFile.map(_.find(_.bundleName.value == techniqueInfo._1))
+            optTechnique <- techniqueReader.readTechniquesMetadataFile.map(_._1.find(_.bundleName.value == techniqueInfo._1))
             resources <- optTechnique.map(resourceFileService.getResources).getOrElse(Inconsistency(s"No technique found when looking for technique '${techniqueInfo._1}' resources").fail)
           } yield {
             resources
@@ -271,8 +271,8 @@ class TechniqueApi (
       val modId = ModificationId(uuidGen.newUuid)
       val response= for {
         _          <- techniqueReader.updateTechniquesMetadataFile
-        methods    <- techniqueReader.readMethodsMetadataFile
-        techniques <- techniqueReader.readTechniquesMetadataFile
+        res <- techniqueReader.readTechniquesMetadataFile
+        (techniques,methods) = res
         _          <- ZIO.foreach(techniques)(t => techniqueWriter.writeTechnique(t, methods, modId, authzToken.actor))
       } yield {
         JArray(techniques.map(techniqueSerializer.serializeTechniqueMetadata(_,methods)))
@@ -643,7 +643,7 @@ class TechniqueAPIService14 (
           case Some(v) => at.techniques.get(v).toSeq.map((v,_))
         }
       } yield {
-        val optEditor = techniques.find(t => t.bundleName.value == technique.id.name.value && t.version.value == version.version.toVersionString)
+        val optEditor = techniques._1.find(t => t.bundleName.value == technique.id.name.value && t.version.value == version.version.toVersionString)
         JRTechnique.fromTechnique(technique,optEditor,methods)
 
       }
@@ -652,8 +652,8 @@ class TechniqueAPIService14 (
     for {
       lib              <- readDirective.getFullDirectiveLibrary()
       activeTechniques =  lib.allActiveTechniques.values.toSeq
-      methods <- techniqueReader.readMethodsMetadataFile
-      techniques <- techniqueReader.readTechniquesMetadataFile
+      res <- techniqueReader.readTechniquesMetadataFile
+      (techniques,methods) = res
     } yield {
       val json = {
         for {

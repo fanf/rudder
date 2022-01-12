@@ -2,7 +2,6 @@ package com.normation.rudder.ncf
 
 import java.time.Instant
 import better.files._
-
 import com.normation.errors.IOResult
 import com.normation.errors.Inconsistency
 import com.normation.errors._
@@ -15,18 +14,21 @@ import com.normation.rudder.repository.xml.RudderPrettyPrinter
 import com.normation.rudder.rest.RestExtractorService
 import com.normation.rudder.services.user.PersonIdentService
 import com.normation.utils.StringUuidGenerator
-
 import net.liftweb.json.JsonAST.JArray
 import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.parse
-
 import zio.ZIO
 import zio.ZIO._
 import zio.syntax._
 import com.normation.rudder.domain.eventlog.RudderEventActor
+import com.normation.rudder.domain.logger.ApplicationLoggerPure
 import com.normation.rudder.git.GitConfigItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
 import com.normation.rudder.repository.xml.XmlArchiverUtils
+import zio.Ref
+import com.normation.zio._
+
+import java.util.concurrent.TimeUnit
 
 class TechniqueReader(
     restExtractor                         : RestExtractorService
@@ -44,6 +46,9 @@ class TechniqueReader(
   val ncfRootDir = configuration_repository / relativePath
   val methodsFile = ncfRootDir / "generic_methods.json"
 
+
+  val currentTimeMillis = ZIO.accessM[_root_.zio.clock.Clock](_.get.currentTime(TimeUnit.MILLISECONDS)).provide(ZioRuntime.environment)
+  val currentTimeNanos  = ZIO.accessM[_root_.zio.clock.Clock](_.get.nanoTime).provide(ZioRuntime.environment)
 
 
   def getAllTechniqueFiles(currentPath : File): IOResult[List[File]]= {
@@ -63,7 +68,7 @@ class TechniqueReader(
       result
     }
   }
-  def readTechniquesMetadataFile: IOResult[List[EditorTechnique]] = {
+  def readTechniquesMetadataFile: IOResult[(List[EditorTechnique], Map[BundleName, GenericMethod])] = {
     for {
       methods        <- readMethodsMetadataFile
       techniqueFiles <- getAllTechniqueFiles(configuration_repository / "techniques")
@@ -72,7 +77,7 @@ class TechniqueReader(
                             .chainError("An Error occured while extracting data from techniques ncf API")
                         )
     } yield {
-      techniques
+      (techniques,methods)
     }
   }
 
@@ -101,20 +106,31 @@ class TechniqueReader(
       needsUpdate
     }
   }
-
-  def readMethodsMetadataFile : IOResult[Map[BundleName, GenericMethod]] = {
+  private[this] val methodsCache = Ref.make((Instant.EPOCH, Map[BundleName, GenericMethod]())).runNow
+  def getMethodsMetadata : IOResult[Map[BundleName, GenericMethod]] = {
     for {
-      _                    <- ZIO.whenM(doesMethodsMetadataFileNeedsUpdate) {
-                                updateMethodsMetadataFile.map(_.code).unit
-                              }
-      genericMethodContent <- IOResult.effect(s"error while reading ${methodsFile.pathAsString}")(methodsFile.contentAsString)
-      methods              <- parse(genericMethodContent) match {
+      methodsFileModifiedTime <- IOResult.effect(methodsFile.lastModifiedTime())
+      cache <- methodsCache.get
+      methods <- if (methodsFileModifiedTime.isAfter(cache._1)) {
+        readMethodsMetadataFile
+      } else {
+        cache._2.succeed
+      }
+    } yield {
+      methods
+    }
+  }
+def readMethodsMetadataFile : IOResult[Map[BundleName, GenericMethod]] = {
+   for {
+     genericMethodContent <- IOResult.effect(s"error while reading ${methodsFile.pathAsString}")(methodsFile.contentAsString)
+     methods              <- parse(genericMethodContent) match {
                                 case JObject(fields) =>
                                   restExtractor.extractGenericMethod(JArray(fields.map(_.value))).map(_.map(m => (m.id, m)).toMap).toIO
                                   .chainError(s"An Error occured while extracting data from generic methods ncf API")
 
                                 case a => Inconsistency(s"Could not extract methods from ncf api, expecting an object got: ${a}").fail
                               }
+     _ <- methodsCache.set((Instant.now(), methods))
     } yield {
       methods
     }
