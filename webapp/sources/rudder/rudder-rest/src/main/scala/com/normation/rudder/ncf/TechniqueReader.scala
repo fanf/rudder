@@ -111,13 +111,29 @@ class TechniqueReader(
   }
   private[this] val methodsCache = RefM.make((Instant.EPOCH, Map[BundleName, GenericMethod]())).runNow
   def getMethodsMetadata : IOResult[Map[BundleName, GenericMethod]] = {
+    readMethodsMetadataFile
+  }
+
+  def readMethodsMetadataFile : IOResult[Map[BundleName, GenericMethod]] = {
     for {
       methodsFileModifiedTime <- IOResult.effect(methodsFile.lastModifiedTime())
       methods <- methodsCache.getAndUpdate { case (instant, cache) =>
                   if (methodsFileModifiedTime.isAfter(instant)) {
                     for {
                       now <- currentTimeMillis
-                      m   <- readMethodsMetadataFile
+                      m   <-for {
+                              genericMethodContent <- IOResult.effect(s"error while reading ${methodsFile.pathAsString}")(methodsFile.contentAsString)
+                              methods              <- parse(genericMethodContent) match {
+                                                        case JObject(fields) =>
+                                                          restExtractor.extractGenericMethod(JArray(fields.map(_.value))).map(_.map(m => (m.id, m)).toMap).toIO
+                                                          .chainError(s"An Error occured while extracting data from generic methods ncf API")
+
+                                                        case a => Inconsistency(s"Could not extract methods from ncf api, expecting an object got: ${a}").fail
+                                                      }
+                            } yield {
+                              methods
+                            }
+
                     } yield {
                       (Instant.ofEpochMilli(now), m)
                     }
@@ -127,21 +143,6 @@ class TechniqueReader(
                 }
     } yield {
       methods._2
-    }
-  }
-
-  def readMethodsMetadataFile : IOResult[Map[BundleName, GenericMethod]] = {
-    for {
-      genericMethodContent <- IOResult.effect(s"error while reading ${methodsFile.pathAsString}")(methodsFile.contentAsString)
-      methods              <- parse(genericMethodContent) match {
-                                case JObject(fields) =>
-                                  restExtractor.extractGenericMethod(JArray(fields.map(_.value))).map(_.map(m => (m.id, m)).toMap).toIO
-                                  .chainError(s"An Error occured while extracting data from generic methods ncf API")
-
-                                case a => Inconsistency(s"Could not extract methods from ncf api, expecting an object got: ${a}").fail
-                              }
-    } yield {
-      methods
     }
   }
 
