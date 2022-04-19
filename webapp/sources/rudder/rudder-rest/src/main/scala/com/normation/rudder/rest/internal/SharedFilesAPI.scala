@@ -86,7 +86,7 @@ class SharedFilesAPI(
   }
   def serialize(file:File) : IOResult[JValue] = {
     import net.liftweb.json.JsonDSL._
-    IOResult.effect(s"Error when serializing file ${file.name}") {
+    IOResult.attempt(s"Error when serializing file ${file.name}") {
       val date = new DateTime(Instant.ofEpochMilli(Files.getLastModifiedTime(file.path, File.LinkOptions.noFollow:_*).toMillis))
       ( ("name"  -> file.name)
       ~ ("size"  -> (try { file.size } catch {case _ : NoSuchFileException => 0L }))
@@ -180,14 +180,14 @@ class SharedFilesAPI(
     }
   }
   def setPerms(rawPerms: String)(file : File) : IOResult[LiftResponse] = {
-    IOResult.effect {
+    IOResult.attempt {
       val perms = PosixFilePermissions.fromString(rawPerms).asScala.toSet
       file.setPermissions(perms)
       basicSuccessResponse
     }
   }
   def removeFile(file : File) : IOResult[LiftResponse] = {
-    IOResult.effect {
+    IOResult.attempt {
       file.delete(true)
       basicSuccessResponse
     }
@@ -224,7 +224,7 @@ class SharedFilesAPI(
     }
   }
   def createFolder(newdirectory : File) : IOResult[LiftResponse] = {
-    IOResult.effect {
+    IOResult.attempt {
       newdirectory.createDirectoryIfNotExists(false)
       basicSuccessResponse
     }

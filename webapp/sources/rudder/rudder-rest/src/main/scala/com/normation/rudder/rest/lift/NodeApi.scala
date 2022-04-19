@@ -1372,7 +1372,7 @@ class NodeApiService8 (
     val copy = (os: OutputStream, timeout: Duration) => {
       for {
         _   <- NodeLoggerPure.debug(s"Executing remote run call: ${request.toString}")
-        opt <- IOResult.effect {
+        opt <- IOResult.attempt {
                 request.exec{ case (status,headers,is) =>
                   NodeLogger.debug(s"Processing remote-run on ${nodeId.value}: HTTP status ${status}") // this one is written two times - why ??
                   if (status >= 200 && status < 300) {
@@ -1393,12 +1393,12 @@ class NodeApiService8 (
                   case _ => error
                 }
 
-                NodeLoggerPure.error(errorMessageWithHint(err.fullMsg)) *> IOResult.effect {
+                NodeLoggerPure.error(errorMessageWithHint(err.fullMsg)) *> IOResult.attempt {
                   os.write(errorMessageWithHint(err.msg).getBytes)
                   os.flush
                   os.close()
                 }
-              }.timeout(timeout).provide(ZioRuntime.environment)
+              }.timeout(timeout)
         _   <- NodeLoggerPure.debug("Done processing remote run request")
         _   <- opt.notOptional(errorMessageWithHint(s"request timed out after ${(timeout.render)}"))
       } yield ()
@@ -1410,15 +1410,15 @@ class NodeApiService8 (
 
 
     (for {
-      in  <- IOResult.effect(new PipedInputStream(pipeSize))
-      out <- IOResult.effect(new PipedOutputStream(in))
+      in  <- IOResult.attempt(new PipedInputStream(pipeSize))
+      out <- IOResult.attempt(new PipedOutputStream(in))
       _   <- NodeLoggerPure.trace("remote-run: reading stream from remote API")
       _   <- copy(out, readTimeout).forkDaemon // read from HTTP request
-      res <- IOResult.effect(copyStreamTo(pipeSize, in) _) // give the writer function waiting for out
+      res <- IOResult.attempt(copyStreamTo(pipeSize, in) _) // give the writer function waiting for out
       // don't close out here, it was closed inside `copy`
     } yield res).catchAll { err =>
       NodeLoggerPure.error(errorMessageWithHint(err.fullMsg)) *>
-      IOResult.effect(copyStreamTo(pipeSize, new ByteArrayInputStream(errorMessageWithHint(err.msg).getBytes(StandardCharsets.UTF_8))) _)
+      IOResult.attempt(copyStreamTo(pipeSize, new ByteArrayInputStream(errorMessageWithHint(err.msg).getBytes(StandardCharsets.UTF_8))) _)
     }.runNow
   }
 

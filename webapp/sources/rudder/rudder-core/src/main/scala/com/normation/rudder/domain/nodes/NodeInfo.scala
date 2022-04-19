@@ -290,7 +290,7 @@ object NodeKeyHash {
                         case Some(x) => x.succeed
                       })
                     // read the PEM b64 pubkey string
-      pubkeyInfo <- IOResult.effect( parser.readObject.asInstanceOf[SubjectPublicKeyInfo] )
+      pubkeyInfo <- IOResult.attempt( parser.readObject.asInstanceOf[SubjectPublicKeyInfo] )
                     // when bouncy castle doesn't successfuly load key, pubkeyinfo is null
       _          <- if(pubkeyInfo == null) Inconsistency(s"Error when reading key (it is likely malformed)").fail else UIO.unit
     } yield {
@@ -321,11 +321,11 @@ object NodeKeyHash {
                         Inconsistency(s"The CFEngine public key used an unsupported algorithm '${unknownAlgo.toString}'. Only RSA is supported").fail
                     })
                     // actually decode the key...
-      keyspec    <- IOResult.effect( new X509EncodedKeySpec(pubkeyInfo.getEncoded) )
+      keyspec    <- IOResult.attempt( new X509EncodedKeySpec(pubkeyInfo.getEncoded) )
                     // into an RSA public key.
-      rsaPubkey  <- IOResult.effect( keyFactory.generatePublic(keyspec).asInstanceOf[RSAPublicKey] )
-      digest     <- IOResult.effect( MessageDigest.getInstance(algo) )
-      hexString  <- IOResult.effect("An error occured with node key hash") {
+      rsaPubkey  <- IOResult.attempt( keyFactory.generatePublic(keyspec).asInstanceOf[RSAPublicKey] )
+      digest     <- IOResult.attempt( MessageDigest.getInstance(algo) )
+      hexString  <- IOResult.attempt("An error occured with node key hash") {
                       // here, we must use the hexa-string representation,
                       // because if we directly use ".toByteArray", a leading
                       // 0x00 is happened if the modulus is positif. It should
@@ -356,8 +356,8 @@ object NodeKeyHash {
    */
   protected def sha256Digest(pubkey: Array[Byte]): IOResult[Array[Byte]] = {
     for {
-      sha256 <- IOResult.effect( MessageDigest.getInstance("SHA-256") )
-      digest <- IOResult.effect("An error occured with node key hash") {
+      sha256 <- IOResult.attempt( MessageDigest.getInstance("SHA-256") )
+      digest <- IOResult.attempt("An error occured with node key hash") {
                   sha256.update(pubkey)
                   sha256.digest
                 }
@@ -376,7 +376,7 @@ object NodeKeyHash {
   def getSha256Digest(key: PublicKey): IOResult[Array[Byte]] = {
     for {
       pubkeyInfo <- getPubkeyInfo(key)
-      encoded    <- IOResult.effect(pubkeyInfo.getEncoded())
+      encoded    <- IOResult.attempt(pubkeyInfo.getEncoded())
       digest     <- sha256Digest(encoded)
     } yield {
       digest
@@ -396,7 +396,7 @@ object NodeKeyHash {
       (pubkeyInfo,_) =  res
                         // when bouncy castle doesn't successfuly load key, pubkeyinfo is null
       _              <- if(pubkeyInfo == null) Inconsistency(s"Error when reading key (it is likely malformed)").fail else UIO.unit
-      pubkey         <- IOResult.effect(pubkeyInfo.getEncoded)
+      pubkey         <- IOResult.attempt(pubkeyInfo.getEncoded)
       digest         <- sha256Digest(pubkey)
     } yield {
       digest

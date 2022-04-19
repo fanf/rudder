@@ -400,7 +400,7 @@ object GenericProperty {
    * Parse a value that was correctly serialized to hocon (ie string are quoted, etc)
    */
   def parseSerialisedValue(value: String): PureResult[ConfigValue] = {
-    PureResult.effect(s"Error: value is not parsable as a property: ${value}") {
+    PureResult.attempt(s"Error: value is not parsable as a property: ${value}") {
       ConfigFactory.parseString(
         // it's necessary to put it on its own line to avoid pb with comments/multilines
         s"""{"x":

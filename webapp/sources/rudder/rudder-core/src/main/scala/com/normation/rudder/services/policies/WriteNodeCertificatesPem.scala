@@ -49,7 +49,7 @@ import com.normation.rudder.hooks.Cmd
 import com.normation.rudder.hooks.RunNuCommand
 import com.normation.zio.ZioRuntime
 import zio._
-import zio.duration.Duration
+import zio.Duration
 import zio.syntax._
 
 /**
@@ -93,7 +93,7 @@ class WriteNodeCertificatesPemImpl(reloadScriptPath: Option[String]) extends Wri
                   case _              => None
                 })}
       writen <- writeCertificatesToNew(allCertsNew, certs)
-      moved  <- IOResult.effect(allCertsNew.moveTo(file)(File.CopyOptions(overwrite = true)))
+      moved  <- IOResult.attempt(allCertsNew.moveTo(file)(File.CopyOptions(overwrite = true)))
       hook   <- execHook(reloadScriptPath)
     } yield ()
   }
@@ -107,12 +107,12 @@ class WriteNodeCertificatesPemImpl(reloadScriptPath: Option[String]) extends Wri
     implicit val writeAppend = File.OpenOptions.append
 
     for {
-      _ <- ZIO.when(file.exists)(IOResult.effect(file.delete()))
+      _ <- ZIO.when(file.exists)(IOResult.attempt(file.delete()))
       _ <- ZIO.foreach(certs) { cert =>
-             IOResult.effect(file.writeText(cert + "\n"))
+             IOResult.attempt(file.writeText(cert + "\n"))
            }
       // Ensure that file exists even if no certificate exists
-      _ <- ZIO.when(file.notExists)(IOResult.effect(file.createFileIfNotExists()))
+      _ <- ZIO.when(file.notExists)(IOResult.attempt(file.createFileIfNotExists()))
     } yield ()
   }
 

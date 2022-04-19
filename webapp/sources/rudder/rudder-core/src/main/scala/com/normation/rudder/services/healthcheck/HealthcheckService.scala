@@ -71,7 +71,7 @@ class HealthcheckService(checks: List[Check]) {
 final object CheckCoreNumber extends Check {
   def name: CheckName = CheckName("CPU cores")
   def run: IOResult[HealthcheckResult] = for {
-    availableCores <- IOResult.effect(getRuntime.availableProcessors)
+    availableCores <- IOResult.attempt(getRuntime.availableProcessors)
   } yield {
     availableCores match {
       // Should not happen, but not critical by itself
@@ -107,7 +107,7 @@ final object CheckFreeSpace extends Check {
     }
 
     for {
-      paritionSpaceInfos <- IOResult.effect {
+      paritionSpaceInfos <- IOResult.attempt {
                               partitionToCheck.map { x =>
                                 val file = new io.File(x)
                                 SpaceInfo(x, file.getUsableSpace, file.getTotalSpace)

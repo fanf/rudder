@@ -71,8 +71,8 @@ trait LDIFInventoryLogger extends Any {
 
 object DefaultLDIFInventoryLogger {
   val logger = NamedZioLogger("trace.ldif.in.file")
-  val defaultLogDir = System.getProperty("java.io.tmpdir") +
-    System.getProperty("file.separator") + "LDIFLogReport"
+  val defaultLogDir = java.lang.System.getProperty("java.io.tmpdir") +
+    java.lang.System.getProperty("file.separator") + "LDIFLogReport"
 }
 
 import java.io.File
@@ -106,10 +106,10 @@ class DefaultLDIFInventoryLogger(val LDIFLogDir:String = DefaultLDIFInventoryLog
   ) : Task[String] = {
     val LDIFFile = fileFromName(inventoryName,tag)
     ZIO.when(logger.logEffect.isTraceEnabled) {
-      IO.bracket(IO.effect(new LDIFWriter(LDIFFile)))(writer =>  IO.effect(writer.close).catchAll(ex =>
+      ZIO.acquireReleaseWith(IO.attempt(new LDIFWriter(LDIFFile)))(writer => IO.attempt(writer.close).catchAll(ex =>
         logger.debug("LDIF log for inventory processing: " + LDIFFile.getAbsolutePath)
       )) { writer =>
-        Task.effect {
+        Task.attempt {
           val ldif = LDIFRecords //that's important, else we evaluate again and again LDIFRecords
 
           if(ldif.nonEmpty) { //don't check it if logger trace is not enabled

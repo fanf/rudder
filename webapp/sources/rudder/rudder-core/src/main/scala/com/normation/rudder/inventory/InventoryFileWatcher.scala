@@ -39,7 +39,12 @@ package com.normation.rudder.inventory
 
 import com.normation.inventory.domain.InventoryProcessingLogger
 
-import better.files._
+import com.normation.zio.ZioRuntime
+import scala.concurrent.ExecutionContext
+
+import zio._
+import zio.syntax._
+import com.normation.zio._
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.TrueFileFilter
 import org.joda.time.DateTime
@@ -100,7 +105,7 @@ object InventoryProcessingUtils {
   }
 
   def makeManagedStream(file: File, kind: String = "inventory") = IOManaged.makeM[InputStream] {
-    IOResult.effect(s"Error when trying to read ${kind} file '${file.name}'")(file.newInputStream)
+    IOResult.attempt(s"Error when trying to read ${kind} file '${file.name}'")(file.newInputStream)
   }(_.close())
   def makeFileExists(file: File) = IOManaged.make[Boolean](file.exists)(_ => ())
 }
@@ -132,7 +137,6 @@ class InventoryFileWatcher(
   val cronForMissed = new SchedulerMissedNotify(
       cleaner
     , collectOldInventoriesFrequency
-    , ZioRuntime.environment
   )
 
   def startGarbageCollection: Unit = {
@@ -144,10 +148,10 @@ class InventoryFileWatcher(
   }
 
   // That reference holds watcher instance to be able to stop them if asked
-  val ref = RefM.make(Option.empty[Watchers]).runNow
+  val ref = Ref.Synchronized.make(Option.empty[Watchers]).runNow
 
   def startWatcher() = semaphore.withPermit(
-    ref.update(opt =>
+    ref.updateZIO(opt =>
       opt match {
         case Some(_) => // does nothing
           InventoryProcessingLogger.info(s"Starting incoming inventory watcher ignored (already started).") *>
@@ -168,7 +172,7 @@ class InventoryFileWatcher(
   ).either.runNow
 
   def stopWatcher() = semaphore.withPermit(
-    ref.update(opt =>
+    ref.updateZIO(opt =>
       opt match {
         case None    => //ok
           InventoryProcessingLogger.info(s"Stopping incoming inventory watcher ignored (already stopped).")*>
@@ -197,7 +201,7 @@ class InventoryFileWatcher(
  */
 final class Watchers(incoming: FileMonitor, updates: FileMonitor) {
   def start(): IOResult[Unit] = {
-    IOResult.effect {
+    IOResult.attempt {
       // Execution context is not used here - binding to scala default global to satisfy scalac
       incoming.start()(scala.concurrent.ExecutionContext.global)
       updates.start()(scala.concurrent.ExecutionContext.global)
@@ -205,7 +209,7 @@ final class Watchers(incoming: FileMonitor, updates: FileMonitor) {
     }
   }
   def stop(): IOResult[Unit] = {
-    IOResult.effect {
+    IOResult.attempt {
       incoming.close()
       updates.close()
       Right(())
@@ -277,10 +281,10 @@ object Watchers {
         override def start()(implicit executionContext: ExecutionContext): Unit = {
           (
             (
-              IOResult.effect(this.watch(root, 0)) *>
+              IOResult.attempt(this.watch(root, 0)) *>
               (for {
-                k <- IOResult.effect(service.take())
-                _ <- IOResult.effect(process(k))
+                k <- IOResult.attempt(service.take())
+                _ <- IOResult.attempt(process(k))
               } yield ()).forever
             ).catchAll(err =>
               err.cause match {
@@ -350,14 +354,14 @@ class CheckExistingInventoryFilesImpl(
   }
 
   def addFiles(files: List[File]): UIO[Unit] = {
-    ZIO.foreach_(files)(file => fileProcessor.addFilePure(file).catchAll(err =>
+    ZIO.foreachDiscard(files)(file => fileProcessor.addFilePure(file).catchAll(err =>
       InventoryProcessingLogger.error(s"Error when processing old inventory file '${file.path}': ${err.fullMsg}")
     ))
   }
 
   def deleteFiles(files: List[ToClean]): UIO[Unit] = {
-    ZIO.foreach_(files) { f =>
-      (ZIO.effect(f.file.delete()) *> InventoryProcessingLogger.info(s"Deleting file '${f.file.name}': ${f.why}")).catchAll(err =>
+    ZIO.foreachDiscard(files) { f =>
+      (ZIO.attempt(f.file.delete()) *> InventoryProcessingLogger.info(s"Deleting file '${f.file.name}': ${f.why}")).catchAll(err =>
         InventoryProcessingLogger.error(s"Error when trying to delete inventory file '${f.file.name}' (${f.why}): ${err.getMessage}")
       )
     }
@@ -424,20 +428,20 @@ class CheckExistingInventoryFilesImpl(
     import scala.jdk.CollectionConverters._
     (for {
       // if that fails, just exit
-      ageLimit <- IOResult.effect(DateTime.now().minusMillis(d.toMillis.toInt))
+      ageLimit <- IOResult.attempt(DateTime.now().minusMillis(d.toMillis.toInt))
       filter   =  (f: File) => if (f.exists && InventoryProcessingUtils.hasValidInventoryExtension(f) && (f.isRegularFile && ageLimit.isAfter(f.lastModifiedTime.toEpochMilli))) Some(f) else None
       // if the listing fails, just exit
-      children <- ZIO.foreach(directories)(d => IOResult.effect(FileUtils.listFilesAndDirs(d.toJava, TrueFileFilter.TRUE, TrueFileFilter.TRUE).asScala))
+      children <- ZIO.foreach(directories)(d => IOResult.attempt(FileUtils.listFilesAndDirs(d.toJava, TrueFileFilter.TRUE, TrueFileFilter.TRUE).asScala))
       // filter file by file. In case of error, just skip it. Specifically ignore FileNotFound (davfs temp files disapear)
       filtered <- ZIO.foreach(children.flatten) { file =>
-                    IO.effect(filter(File(file.toPath))).catchAll {
+                    IO.attempt(filter(File(file.toPath))).catchAll {
                       case _: FileNotFoundException => // just ignore
                         InventoryProcessingLogger.trace(s"Ignoring file '${file.toString}' when processing old inventories: " +
                                                         s"FileNotFoundException (likely it disappeared between directory listing and filtering)"
-                        ) *> UIO.effectTotal(None)
+                        ) *> UIO.succeed(None)
                       case ex: Throwable            => // log and switch to the next
                         InventoryProcessingLogger.warn(s"Error when processing file in old inventories: '${file.toString}': ${ex.getMessage}") *>
-                        UIO.effectTotal(None)
+                        UIO.succeed(None)
                     }
                   }
       } yield (filtered.flatten)).catchAll(err =>
@@ -461,14 +465,14 @@ class CheckExistingInventoryFilesImpl(
 class SchedulerMissedNotify(
     checker: CheckExistingInventoryFiles
   , period : Duration
-  , zclock : Clock
 ){
   val schedule = {
     def loop(d: Duration) = for {
       _ <- checker.checkFilesOlderThan(d)
-      _ <- UIO.unit.delay(period)
+      _ <- ZIO.clockWith(_.sleep(period))
     } yield ()
-    (loop(Duration.Zero) *> loop(period).forever).forkDaemon.provide(zclock)
+
+    (loop(Duration.Zero) *> loop(period).forever).forkDaemon
   }
 }
 
@@ -522,7 +526,7 @@ class ProcessFile(
    * The task is configured to be processed after some delay.
    * We only modify that map as a result of a dequeue event.
    */
-  val toBeProcessed = ZioRuntime.unsafeRun(zio.RefM.make(Map.empty[File, Fiber[RudderError, Unit]]))
+  val toBeProcessed = ZioRuntime.unsafeRun(zio.Ref.Synchronized.make(Map.empty[File, Fiber[RudderError, Unit]]))
 
   /*
    * We need a queue of add file / file written even to delimit when a file should be
@@ -536,14 +540,14 @@ class ProcessFile(
   def processMessage(): UIO[Unit] = {
     watchEventQueue.take.flatMap {
       case WatchEvent.End(file) => // simple case: remove file from map
-        toBeProcessed.update[Any, Nothing](s =>
-          (s - file).succeed
+        toBeProcessed.update(s =>
+          (s - file)
         ).unit
 
       case WatchEvent.Mod(file) =>
         // look if the file is already here. If so, interrupt. In all case, create a new task.
 
-        (toBeProcessed.update { s =>
+        (toBeProcessed.updateZIO { s =>
           val newMap = {
             // the new task must :
             // - wait for 500 ms for interruption
@@ -551,7 +555,7 @@ class ProcessFile(
             // - if the map wasn't interrupted in the first 500 ms, it is not interruptible anymore
 
             val effect = ZioRuntime.blocking(
-              UIO.unit.delay(fileWrittenThreshold).provide(ZioRuntime.environment)
+                 UIO.unit.delay(fileWrittenThreshold)
               *> (watchEventQueue.offer(WatchEvent.End(file))
                  *> processFile(file).catchAll(err =>
                       InventoryProcessingLogger.error(s"Error when adding new inventory file '${file.path}' to processing: ${err.fullMsg}")
@@ -596,7 +600,7 @@ class ProcessFile(
    * When queue is full, we prefer to drop old `SaveInventory` to new ones. In the worst case, they will be caught up
    * by the SchedulerMissedNotify and put again in the WatchEvent queue.
    */
-  protected val saveInventoryBuffer = ZQueue.sliding[InventoryPair](1024).runNow
+  protected val saveInventoryBuffer = Queue.sliding[InventoryPair](1024).runNow
 
   /*
    * The logic is:
@@ -617,7 +621,7 @@ class ProcessFile(
       _ <- if(file.name.endsWith(".gz")) {
              val dest = File(file.parent, file.nameWithoutExtension(includeAll = false))
              InventoryProcessingLogger.debug(s"Dealing with zip file '${file.name}'") *>
-             IOResult.effect {
+             IOResult.attempt {
                file.unGzipTo(dest)
                file.delete()
              }.unit
@@ -658,7 +662,7 @@ class ProcessFile(
       fst <- saveInventoryBuffer.take
       // deduplicate and prioritize file in 'incoming', which are new inventories. TakeAll is not blocking
       all <- saveInventoryBuffer.takeAll
-      inv =  (fst::all).find { _.inventory.parent == prioIncomingDir }.getOrElse(fst)
+      inv =  all.prepended(fst).find { _.inventory.parent == prioIncomingDir }.getOrElse(fst)
       // process
       _ <- InventoryProcessingLogger.info(s"Received new inventory file '${inv.inventory.name}' with signature available: process.")
       _ <- inventoryProcessor.saveInventoryBlocking(inv)

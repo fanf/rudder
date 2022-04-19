@@ -81,7 +81,7 @@ case object SecurityToken {
 
   def parseCertificate(cert: Certificate): IO[InventoryError, (java.security.PublicKey, List[(String, String)])] = {
     cert.cert.flatMap { ch =>
-      IO.effect {
+      IO.attempt {
         val c = new JcaX509CertificateConverter().getCertificate( ch )
         val dn = ch.getSubject.getRDNs.flatMap(_.getTypesAndValues.flatMap(tv => (tv.getType.toString, tv.getValue.toString) :: Nil)).toList
         (c.getPublicKey, dn)
@@ -137,7 +137,7 @@ final case class PublicKey(value : String) extends SecurityToken {
     }
   }
   def publicKey : IOResult[java.security.PublicKey] = {
-    IO.effect {
+    IO.attempt {
       (new PEMParser(new StringReader(key))).readObject()
     }.mapError { ex =>
       InventoryError.CryptoEx(s"Key '${key}' cannot be parsed as a public key", ex)
@@ -165,12 +165,12 @@ final case class Certificate(value : String) extends SecurityToken {
   }
   def cert : IO[InventoryError, X509CertificateHolder] = {
     for {
-      reader <- IO.effect {
+      reader <- IO.attempt {
                   new PEMParser(new StringReader(key))
                 } mapError { e =>
                   InventoryError.CryptoEx(s"Key '${key}' cannot be parsed as a valid certificate", e)
                 }
-      obj    <- IO.effect(reader.readObject()).mapError { e =>
+      obj    <- IO.attempt(reader.readObject()).mapError { e =>
                   InventoryError.CryptoEx(s"Key '${key}' cannot be parsed as a valid certificate", e)
                 }
       res    <- obj match {

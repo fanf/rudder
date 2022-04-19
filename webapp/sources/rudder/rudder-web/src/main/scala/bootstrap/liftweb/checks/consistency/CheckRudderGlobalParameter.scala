@@ -77,7 +77,7 @@ class CheckRudderGlobalParameter(
   def toParams(value: JValue): IOResult[List[GlobalParameter]] = {
     implicit val formats = DefaultFormats
     value match {
-      case JArray(list) => ZIO.foreach(list)(v => IOResult.effect(v.extract[JsonParam].toGlobalParam))
+      case JArray(list) => ZIO.foreach(list)(v => IOResult.attempt(v.extract[JsonParam].toGlobalParam))
       case x            => Inconsistency(s"Resources `${resource}` must contain an array of json object with keys name, description, value`").fail
     }
   }
@@ -105,12 +105,12 @@ class CheckRudderGlobalParameter(
     // get defaults global parameters. It should be an array of JValues
     val managedResource = IOManaged.make(parse(Resource.getAsString(resource)))( _ =>() )
 
-    val check = managedResource.use(json =>
+    val check = ZIO.scoped[Any](managedResource.flatMap(json =>
       for {
         params <- toParams(json)
-        cheked <- ZIO.foreach(params)(p => updateOne(modId, p))
+        _      <- ZIO.foreach(params)(p => updateOne(modId, p))
       } yield ()
-    )
+    ))
 
     ZioRuntime.runNow(check.catchAll(err => BootstrapLogger.error(s"Error when checking for default global system parameter: ${err.fullMsg}")))
   }

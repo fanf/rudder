@@ -84,7 +84,6 @@ import net.liftweb.common.Full
 import net.liftweb.json.JsonAST.JField
 import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JString
-import zio.json.JsonCodec.apply
 
 import scala.collection.SortedMap
 
@@ -324,7 +323,7 @@ class TechniqueApi (
       val workspaceDir = File(s"/var/rudder/configuration-repository/${workspacePath}")
       val finalDir = File(s"/var/rudder/configuration-repository/${finalPath}")
 
-      IOResult.effect("Error when moving resource file from workspace to final destination") (
+      IOResult.attempt("Error when moving resource file from workspace to final destination") (
         if (workspaceDir.exists) {
           finalDir.createDirectoryIfNotExists(true)
           workspaceDir.moveTo(finalDir)(File.CopyOptions.apply(true))

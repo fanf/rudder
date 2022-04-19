@@ -473,7 +473,7 @@ class GenericConfigService(
                     case Some(p) => p.succeed
                   }
       value    =  converter(param)
-      _        <- ZIO.whenM(needSave.get) {
+      _        <- ZIO.whenZIO(needSave.get) {
                     save(name, param)
                   }
     } yield {
@@ -602,7 +602,7 @@ class GenericConfigService(
   def set_rudder_workflow_enabled(value: Boolean): IOResult[Unit] = {
     if(workflowLevel.workflowLevelAllowsEnable) {
       save("rudder_workflow_enabled", value) <*
-      IOResult.effect(workflowUpdate ! WorkflowUpdate)
+      IOResult.attempt(workflowUpdate ! WorkflowUpdate)
     } else {
       Inconsistency("You can't change the change validation workflow type. Perhaps are you missing the 'changes validation' plugin?").fail
     }

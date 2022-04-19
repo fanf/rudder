@@ -246,7 +246,7 @@ object RudderProperties {
   /**
    * Where to go to look for properties
    */
-  val (configResource, overrideDir) = System.getProperty(JVM_CONFIG_FILE_KEY) match {
+  val (configResource, overrideDir) = java.lang.System.getProperty(JVM_CONFIG_FILE_KEY) match {
       case null | "" => //use default location in classpath
         ApplicationLogger.info(s"JVM property -D${JVM_CONFIG_FILE_KEY} is not defined, use configuration file in classpath")
         (ClassPathResource(DEFAULT_CONFIG_FILE_NAME), None)
@@ -362,7 +362,7 @@ object RudderConfig extends Loggable {
   private case class InitError(msg: String) extends Throwable(msg, null, false, false)
 
   // set the file location that contains mime info
-  System.setProperty("content.types.user.table", this.getClass.getClassLoader.getResource("content-types.properties").getPath)
+  java.lang.System.setProperty("content.types.user.table", this.getClass.getClassLoader.getResource("content-types.properties").getPath)
 
   //
   // Public properties
@@ -1542,7 +1542,7 @@ object RudderConfig extends Loggable {
    */
   def init() : IO[SystemError, Unit] = {
 
-    IOResult.effect {
+    IOResult.attempt {
       import scala.jdk.CollectionConverters._
       val config = RudderProperties.config
       if(ApplicationLogger.isInfoEnabled) {
@@ -1815,7 +1815,6 @@ object RudderConfig extends Loggable {
       , authDn = LDAP_AUTHDN
       , authPw = LDAP_AUTHPW
       , poolSize = LDAP_MAX_POOL_SIZE
-      , blockingModule = ZioRuntime.environment
     )
   lazy val rwLdap =
     new RWPooledSimpleAuthConnectionProvider(
@@ -1824,7 +1823,6 @@ object RudderConfig extends Loggable {
       , authDn = LDAP_AUTHDN
       , authPw = LDAP_AUTHPW
       , poolSize = LDAP_MAX_POOL_SIZE
-      , blockingModule = ZioRuntime.environment
     )
 
   //query processor for accepted nodes
@@ -2697,11 +2695,10 @@ object RudderConfig extends Loggable {
                       new FetchDataServiceImpl(RudderConfig.nodeInfoService, RudderConfig.reportingService)
                     , writer
                     , gitLogger
-                    , ZioRuntime.environment
                     , DateTimeZone.UTC // never change log line
                   )
     cron       <- Scheduler.make(METRICS_NODES_MIN_PERIOD, METRICS_NODES_MAX_PERIOD, s => service.scheduledLog(s)
-                    , "Automatic recording of active nodes".succeed, ZioRuntime.environment
+                    , "Automatic recording of active nodes".succeed
                   )
     _          <- ScheduledJobLoggerPure.metrics.info(
                     s"Starting node count historization batch (min:${METRICS_NODES_MIN_PERIOD.render}; max:${METRICS_NODES_MAX_PERIOD.render})"

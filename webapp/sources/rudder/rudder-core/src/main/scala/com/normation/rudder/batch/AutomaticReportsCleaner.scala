@@ -365,7 +365,7 @@ class AutomaticReportsCleaning(
             r
         }
       }
-      val interval = AutomaticReportsCleaning.getMaxRunMinutes(ldap).foldM(
+      val interval = AutomaticReportsCleaning.getMaxRunMinutes(ldap).foldZIO(
         failure =>
           ScheduledJobLoggerPure.warn(s"Error when trying to get maximun run interval, defaulting to  5 minutes. Error was: ${failure.fullMsg}") *>
           5.succeed
@@ -384,7 +384,6 @@ class AutomaticReportsCleaning(
       }
     }
   }
-  import zio.duration._
 
   (for {
     ttl   <- deleteLogttl
@@ -394,7 +393,7 @@ class AutomaticReportsCleaning(
                UIO.unit
              } else {
                ScheduledJobLoggerPure.debug(s"***** starting Automatic 'Delete Log Reports'; delete log older than ${ttl} minutes (with same batch period) *****") *>
-               IOResult.effect(dbManager.deleteLogReports(dur.asScala) match {
+               IOResult.attempt(dbManager.deleteLogReports(dur.asScala) match {
                    case Full(n)      => logger.debug(s"Deleted ${n} log reports from report table.")
                    case eb: EmptyBox =>
                      val msg = (eb ?~! s"Error when trying to clean log reports from report table.").messageChain
@@ -404,7 +403,7 @@ class AutomaticReportsCleaning(
                  ReportLoggerPure.error(s"Error when trying to clean log reports from report table: ${error.fullMsg}")
                ).delay(dur).repeat(Schedule.spaced(dur).forever).forkDaemon
               }
-  } yield ()).provide(ZioRuntime.environment).runNow
+  } yield ()).runNow
 
   ////////////////////////////////////////////////////////////////
   //////////////////// implementation details ////////////////////

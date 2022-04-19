@@ -87,7 +87,7 @@ class JGitRepositoryTest extends Specification with Loggable with AfterAll {
    * -Dtests.clean.tmp=false
    */
   override def afterAll() = {
-    if(System.getProperty("tests.clean.tmp") != "false") {
+    if(java.lang.System.getProperty("tests.clean.tmp") != "false") {
       logger.info("Deleting directory " + gitRoot.pathAsString)
       FileUtils.deleteDirectory(gitRoot.toJava)
     }
@@ -117,21 +117,21 @@ class JGitRepositoryTest extends Specification with Loggable with AfterAll {
     val ref = repository.findRef(commit)
 
     // a RevWalk allows to walk over commits based on some filtering that is defined
-    val walkM = ZManaged.make(IOResult.effect(new RevWalk(repository)))(x => effectUioUnit(x.close()))
-    val treeWalkM = ZManaged.make(IOResult.effect(new TreeWalk(repository)))(x => effectUioUnit(x.close()))
+    val walkM = ZIO.acquireRelease(IOResult.attempt(new RevWalk(repository)))(x => effectUioUnit(x.close()))
+    val treeWalkM = ZIO.acquireRelease(IOResult.attempt(new TreeWalk(repository)))(x => effectUioUnit(x.close()))
 
-    walkM.use(walk =>
+    ZIO.scoped[Any](walkM.flatMap(walk =>
       for {
-        commit <- IOResult.effect(walk.parseCommit(ref.getObjectId))
-        tree   <- IOResult.effect(commit.getTree)
-        res    <- treeWalkM.use{treeWalk =>
+        commit <- IOResult.attempt(walk.parseCommit(ref.getObjectId))
+        tree   <- IOResult.attempt(commit.getTree)
+        res    <- ZIO.scoped(treeWalkM.flatMap {treeWalk =>
                     treeWalk.setRecursive(true) // ok, can't throw exception
 
-                    IOResult.effect(treeWalk.addTree(tree)) *>
-                    ZIO.loop(treeWalk)(_.next, identity)(x => IOResult.effect(x.getPathString))
-                  }
+                    IOResult.attempt(treeWalk.addTree(tree)) *>
+                    ZIO.loop(treeWalk)(_.next, identity)(x => IOResult.attempt(x.getPathString))
+                  })
       } yield res
-    )
+    ))
   }
 
   "The test lib" should {
@@ -147,18 +147,18 @@ class JGitRepositoryTest extends Specification with Loggable with AfterAll {
       def getName(length: Int) = {
         if(length < 1) Inconsistency("Length must be positive").fail
         else {
-          IOResult.effect("")(Random.alphanumeric.take(length).toList.mkString(""))
+          IOResult.attempt("")(Random.alphanumeric.take(length).toList.mkString(""))
         }
       }
       def add(i: Int) = (for {
         name <- getName(8).map(s => i.toString + "_" + s)
         file =  gitRoot / name
-        f    <- IOResult.effect(file.write("something in " + name))
+        f    <- IOResult.attempt(file.write("something in " + name))
         _    <- archive.commitAddFileWithModId(ModificationId(name), actor, name, "add " + name)
       } yield (name))
 
       logger.debug(s"Commiting files in: " + gitRoot.pathAsString)
-      val files = ZIO.foreachParN(16)(1 to 50) { i => add(i) }.runNow
+      val files = ZIO.foreachPar(1 to 50) { i => add(i) }.withParallelism(16).runNow
 
       val created = readElementsAt(repo.db, "refs/heads/master").runNow
       created must containTheSameElementsAs(files)

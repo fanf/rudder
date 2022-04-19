@@ -51,8 +51,7 @@ import com.zaxxer.nuprocess.NuProcessBuilder
 import com.zaxxer.nuprocess.codec.NuAbstractCharsetHandler
 import com.zaxxer.nuprocess.internal.BasePosixProcess
 import zio._
-import zio.duration.Duration.Infinity
-import zio.duration._
+import zio.Duration.Infinity
 import zio.syntax._
 
 
@@ -129,7 +128,7 @@ object RunNuCommand {
     }
 
     override def onExit(exitCode: Int): Unit = {
-      ZioRuntime.internal.unsafeRun(promise.succeed(CmdResult(exitCode, stdout.toString, stderr.toString)).untraced)
+      ZioRuntime.internal.unsafeRun(promise.succeed(CmdResult(exitCode, stdout.toString, stderr.toString)))
     }
 
     def run = promise
@@ -201,14 +200,14 @@ object RunNuCommand {
                         } else {
                           // that class#method does not accept interactive mode
                           // this part can block, waiting for things to complete
-                          IOResult.effect(errorMsg) {
+                          IOResult.attempt(errorMsg) {
                             process.closeStdin(true)
                             process.waitFor(limit.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
                           }.forkDaemon
                         }
     } yield {
       promise
-    }).untraced
+    })
   }
 
 }

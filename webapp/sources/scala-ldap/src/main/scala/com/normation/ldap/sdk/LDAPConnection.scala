@@ -40,7 +40,6 @@ import com.unboundid.ldap.sdk.ReadOnlyLDAPRequest
 import com.unboundid.ldap.sdk.ResultCode
 import com.unboundid.ldap.sdk.SearchRequest
 import com.unboundid.ldif.LDIFChangeRecord
-import zio.blocking.Blocking
 import zio._
 import zio.syntax._
 
@@ -301,14 +300,13 @@ sealed class RoLDAPConnection(
     override val backed   : UnboundidLDAPConnection
   , val ldifFileLogger    : LDIFFileLogger
   , val onlyReportOnSearch: ResultCode => Boolean = RoLDAPConnection.onlyReportOnSearch
-  , val blockingModule    : Blocking
 ) extends
   UnboundidBackendLDAPConnection with
   ReadOnlyEntryLDAPConnection with
   ReadOnlyTreeLDAPConnection
 {
 
-  def blocking[A](effect: => A): Task[A] = ZIO.accessM[Blocking](_.get.blocking( IO.effect(effect) )).provide(blockingModule)
+  def blocking[A](effect: => A): Task[A] = ZIO.attempt(effect)
 
   /*
    * //////////////////////////////////////////////////////////////////
@@ -439,14 +437,13 @@ object RwLDAPConnection {
 class RwLDAPConnection(
     override val backed              : UnboundidLDAPConnection
   , override val ldifFileLogger      : LDIFFileLogger
-  , override val blockingModule      : Blocking
   ,              onlyReportOnAdd     : ResultCode => Boolean = RwLDAPConnection.onlyReportOnAdd
   ,              onlyReportOnModify  : ResultCode => Boolean = RwLDAPConnection.onlyReportOnModify
   ,              onlyReportOnModifyDN: ResultCode => Boolean = RwLDAPConnection.onlyReportOnModifyDN
   ,              onlyReportOnDelete  : ResultCode => Boolean = RwLDAPConnection.onlyReportOnDelete
   , override val onlyReportOnSearch  : ResultCode => Boolean = RoLDAPConnection.onlyReportOnSearch
 ) extends
-  RoLDAPConnection(backed, ldifFileLogger, onlyReportOnSearch, blockingModule) with
+  RoLDAPConnection(backed, ldifFileLogger, onlyReportOnSearch) with
   WriteOnlyEntryLDAPConnection with
   WriteOnlyTreeLDAPConnection
 {
@@ -490,7 +487,7 @@ class RwLDAPConnection(
   private def applyMods[MOD <: ReadOnlyLDAPRequest](modName: String, toLDIFChangeRecord:MOD => LDIFChangeRecord, backendAction: MOD => LDAPResult, onlyReportThat: ResultCode => Boolean)(reqs: List[MOD]) : LDAPIOResult[Seq[LDIFChangeRecord]] = {
     if(reqs.isEmpty) IO.succeed(Seq())
     else {
-      UIO.effectTotal(ldifFileLogger.records(reqs map (toLDIFChangeRecord (_)))) *>
+      UIO.succeed(ldifFileLogger.records(reqs map (toLDIFChangeRecord (_)))) *>
       IO.foreach(reqs) { req =>
         applyMod(modName, toLDIFChangeRecord, backendAction, onlyReportThat)(req)
       }

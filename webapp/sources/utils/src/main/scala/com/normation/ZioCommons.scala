@@ -40,7 +40,6 @@ import org.slf4j.Logger
 
 import _root_.zio._
 import _root_.zio.syntax._
-import _root_.zio.internal.Platform
 import com.normation.errors.PureResult
 import com.normation.errors.effectUioUnit
 
@@ -62,9 +61,9 @@ object errors {
    */
   def effectUioUnit[A](effect: => A): UIO[Unit] = {
     def printError(t: Throwable): UIO[Unit] = {
-      val print = (s:String) => IO.effect(System.err.println(s))
-      //here, we must run.unit, because if it fails we can't do much more (and the app is certainly totally broken)
-      (print(s"${t.getClass.getName}:${t.getMessage}") *> IO.foreach(t.getStackTrace.toList)(st => print(st.toString))).run.unit
+      val print = (s:String) => IO.attempt(java.lang.System.err.println(s))
+      //here, we must unit.orDie, because if it fails we can't do much more (and the app is certainly totally broken)
+      (print(s"${t.getClass.getName}:${t.getMessage}") *> IO.foreach(t.getStackTrace.toList)(st => print(st.toString))).unit.orDie
     }
     effectUioUnit(printError(_))(effect)
   }
@@ -89,23 +88,23 @@ object errors {
    * effects, and need to be run on an according thread-pool.
    * If you want to import non blocking effects (but really, in
    * that case, you should just use `PureResult`), you can
-   * use `IOResult.effectTotal`).
+   * use `IOResult.succeed`).
    */
   object IOResult {
     def effectNonBlocking[A](error: String)(effect: => A): IO[SystemError, A] = {
-      IO.effect(effect).mapError(ex => SystemError(error, ex))
+      IO.attempt(effect).mapError(ex => SystemError(error, ex))
     }
     def effectNonBlocking[A](effect: => A): IO[SystemError, A] = {
       this.effectNonBlocking("An error occurred")(effect)
     }
-    def effect[A](error: String)(effect: => A): IO[SystemError, A] = {
+    def attempt[A](error: String)(effect: => A): IO[SystemError, A] = {
       ZioRuntime.effectBlocking(effect).mapError(ex => SystemError(error, ex))
     }
-    def effect[A](effect: => A): IO[SystemError, A] = {
-      this.effect("An error occurred")(effect)
+    def attempt[A](effect: => A): IO[SystemError, A] = {
+      this.attempt("An error occurred")(effect)
     }
     def effectM[A](error: String)(ioeffect: => IOResult[A]): IOResult[A] = {
-      IO.effect(ioeffect).foldM(
+      IO.attempt(ioeffect).foldZIO(
         ex  => SystemError(error, ex).fail
       , res => res
       )
@@ -116,7 +115,7 @@ object errors {
   }
 
   object PureResult {
-    def effect[A](error: String)(effect: => A): Either[SystemError, A] = {
+    def attempt[A](error: String)(effect: => A): Either[SystemError, A] = {
       try {
         Right(effect)
       } catch {
@@ -124,11 +123,11 @@ object errors {
           Left(SystemError(error, ex))
       }
     }
-    def effect[A](effect: => A): Either[SystemError, A] = {
-      this.effect("An error occurred")(effect)
+    def attempt[A](effect: => A): Either[SystemError, A] = {
+      this.attempt("An error occurred")(effect)
     }
     def effectM[A](error: String)(effect: => PureResult[A]): PureResult[A] = {
-      PureResult.effect(error)(effect) match {
+      PureResult.attempt(error)(effect) match {
         case Left(err)  => Left(err)
         case Right(res) => res
       }
@@ -384,7 +383,7 @@ object errors {
 
   implicit class BoxToIO[E <: RudderError, A](res: => Box[A]) {
     import _root_.zio.interop.catz._
-    def toIO: IOResult[A] = IOResult.effect(res).flatMap(x => BoxUtil.fold[E, A, IOResult](
+    def toIO: IOResult[A] = IOResult.attempt(res).flatMap(x => BoxUtil.fold[E, A, IOResult](
       err => err.fail
     , suc => suc.succeed
     )(x))
@@ -393,8 +392,10 @@ object errors {
 
 object zio {
 
-  val currentTimeMillis = ZIO.accessM[_root_.zio.clock.Clock](_.get.currentTime(TimeUnit.MILLISECONDS)).provide(ZioRuntime.environment)
-  val currentTimeNanos  = ZIO.accessM[_root_.zio.clock.Clock](_.get.nanoTime).provide(ZioRuntime.environment)
+  val currentTimeMillis = ZIO.clockWith(_.currentTime(TimeUnit.MILLISECONDS))
+//    ZIO.access[_root_.zio.clock.Clock](_.get.currentTime(TimeUnit.MILLISECONDS))
+  val currentTimeNanos  = ZIO.clockWith(_.nanoTime)
+//  ZIO.accessM[_root_.zio.clock.Clock](_.get.nanoTime)
 
     /*
    * Default ZIO Runtime used everywhere.
@@ -407,20 +408,23 @@ object zio {
      * a hierarchy of calls.
      */
     val internal = Runtime.default
-
-    def platform: Platform = internal.platform
-    def layers: ZLayer[Any, Nothing, ZEnv] = ZLayer.succeedMany(internal.environment)
-    def environment: ZEnv = internal.environment
+    def platform: RuntimeConfig = internal.runtimeConfig
+    def layers: ZLayer[Any, Nothing, Any] = ZLayer.fromZIOEnvironment(internal.environment.succeed)
+    def environment: ZEnvironment[Any] = internal.environment
 
     /*
      * use the blocking thread pool provided by that runtime.
+     * In ZIO 2 blocking is automagically managed - https://github.com/zio/zio/issues/1275
      */
     def blocking[E,A](io: ZIO[Any,E,A]): ZIO[Any,E,A] = {
-      ZIO.accessM[_root_.zio.blocking.Blocking](_.get.blocking(io)).provide(environment)
+      io
     }
 
+    /*
+     * In ZIO 2 blocking is automagically managed - https://github.com/zio/zio/issues/1275
+     */
     def effectBlocking[A](effect: => A): ZIO[Any, Throwable, A] = {
-      ZIO.accessM[_root_.zio.blocking.Blocking](_.get.effectBlocking(effect)).provide(environment)
+      Task.attempt(effect)
     }
 
     def runNow[A](io: IOResult[A]): A = {
@@ -440,7 +444,7 @@ object zio {
      * An unsafe run that is always started on a growing threadpool and its
      * effect marked as blocking.
      */
-    def unsafeRun[E, A](zio: => ZIO[Any, E, A]): A = internal.unsafeRun(blocking(zio))
+    def unsafeRun[E, A](zio: => ZIO[Any, E, A]): A = internal.unsafeRun(zio)
 
   }
 
@@ -502,13 +506,13 @@ object box {
   /**
    * A utility alias type / methods to create ZIO `Managed[RudderError, A]`
    */
-  type IOManaged[A] = Managed[RudderError, A]
+  type IOManaged[A] = ZIO[Any with Scope, RudderError, A]
   object IOManaged {
-    def make[A](acquire: => A)(release: A => Unit): ZManaged[Any, RudderError, A] =
-      Managed.make(IOResult.effect(acquire))(a => effectUioUnit(release(a)))
+    def make[A](acquire: => A)(release: A => Unit): IOManaged[A] =
+      ZIO.acquireRelease(IOResult.attempt(acquire))(a => effectUioUnit(release(a)))
 
-    def makeM[A](acquire: IOResult[A])(release: A => Unit): ZManaged[Any, RudderError, A] =
-      Managed.make(acquire)(a => effectUioUnit(release(a)))
+    def makeM[A](acquire: IOResult[A])(release: A => Unit): IOManaged[A] =
+      ZIO.acquireRelease(acquire)(a => effectUioUnit(release(a)))
   }
 }
 
@@ -531,23 +535,23 @@ trait ZioLogger {
     com.normation.errors.effectUioUnit(log(logEffect))
   }
 
-  final def trace(msg: => String): UIO[Unit] = ZIO.when(logEffect.isTraceEnabled())(logAndForgetResult(_.trace(msg)))
-  final def debug(msg: => String): UIO[Unit] = ZIO.when(logEffect.isDebugEnabled())(logAndForgetResult(_.debug(msg)))
-  final def info (msg: => String): UIO[Unit] = ZIO.when(logEffect.isInfoEnabled ())(logAndForgetResult(_.info (msg)))
-  final def error(msg: => String): UIO[Unit] = ZIO.when(logEffect.isErrorEnabled())(logAndForgetResult(_.error(msg)))
-  final def warn (msg: => String): UIO[Unit] = ZIO.when(logEffect.isWarnEnabled ())(logAndForgetResult(_.warn (msg)))
+  final def trace(msg: => String): UIO[Unit] = ZIO.when(logEffect.isTraceEnabled())(logAndForgetResult(_.trace(msg))).unit
+  final def debug(msg: => String): UIO[Unit] = ZIO.when(logEffect.isDebugEnabled())(logAndForgetResult(_.debug(msg))).unit
+  final def info (msg: => String): UIO[Unit] = ZIO.when(logEffect.isInfoEnabled ())(logAndForgetResult(_.info (msg))).unit
+  final def error(msg: => String): UIO[Unit] = ZIO.when(logEffect.isErrorEnabled())(logAndForgetResult(_.error(msg))).unit
+  final def warn (msg: => String): UIO[Unit] = ZIO.when(logEffect.isWarnEnabled ())(logAndForgetResult(_.warn (msg))).unit
 
-  final def trace(msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isTraceEnabled())(logAndForgetResult(_.trace(msg, t)))
-  final def debug(msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isDebugEnabled())(logAndForgetResult(_.debug(msg, t)))
-  final def info (msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isInfoEnabled ())(logAndForgetResult(_.info (msg, t)))
-  final def warn (msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isErrorEnabled())(logAndForgetResult(_.warn (msg, t)))
-  final def error(msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isWarnEnabled ())(logAndForgetResult(_.error(msg, t)))
+  final def trace(msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isTraceEnabled())(logAndForgetResult(_.trace(msg, t))).unit
+  final def debug(msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isDebugEnabled())(logAndForgetResult(_.debug(msg, t))).unit
+  final def info (msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isInfoEnabled ())(logAndForgetResult(_.info (msg, t))).unit
+  final def warn (msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isErrorEnabled())(logAndForgetResult(_.warn (msg, t))).unit
+  final def error(msg: => String, t: Throwable): UIO[Unit] = ZIO.when(logEffect.isWarnEnabled ())(logAndForgetResult(_.error(msg, t))).unit
 
-  final def ifTraceEnabled[T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isTraceEnabled())( action )
-  final def ifDebugEnabled[T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isDebugEnabled())( action )
-  final def ifInfoEnabled [T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isInfoEnabled ())( action )
-  final def ifWarnEnabled [T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isErrorEnabled())( action )
-  final def ifErrorEnabled[T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isWarnEnabled ())( action )
+  final def ifTraceEnabled[T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isTraceEnabled())( action ).unit
+  final def ifDebugEnabled[T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isDebugEnabled())( action ).unit
+  final def ifInfoEnabled [T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isInfoEnabled ())( action ).unit
+  final def ifWarnEnabled [T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isErrorEnabled())( action ).unit
+  final def ifErrorEnabled[T](action: UIO[T]): UIO[Unit] = ZIO.when(logEffect.isWarnEnabled ())( action ).unit
 }
 
 // a default implementation that accepts a name for the logger.

@@ -196,7 +196,7 @@ object FillTemplateThreadUnsafe {
        * content in case of success.
        */
       // return (variable name, variable value, error message)
-      template  <- IOResult.effectNonBlocking(sourceTemplate.getInstanceOf()).untraced
+      template  <- IOResult.effectNonBlocking(sourceTemplate.getInstanceOf())
       t0        <- currentTimeNanos
       vars      <- variables.accumulate { variable =>
                     // Only System Variables have nullable entries
@@ -217,9 +217,9 @@ object FillTemplateThreadUnsafe {
                         // avoid the cost of translation.
                         val value = if (variable.values.size == 1) {variable.values.head} else { variable.values.unsafeArray }
                         template.setAttribute(variable.name, value)
-                      }.untraced
+                      }
                     }
-                  }.untraced
+                  }
       // set the ST Variable for RudderUniqueID
       _         = replaceId match {
                        case None => // nothing
@@ -245,7 +245,7 @@ object FillTemplateThreadUnsafe {
       _         <- timer.stringify.update(_ + delta)
     } yield {
       result
-    }).chainError(s"Error with template '${templateName}'").untraced.uninterruptible
+    }).chainError(s"Error with template '${templateName}'").uninterruptible
   }
 }
 
@@ -279,7 +279,7 @@ class FillTemplatesService {
                            for {
                              p <- Promise.make[RudderError, SynchronizedFileTemplate]
                              _ <- p.complete(for {
-                                    parsed  <- IOResult.effect(s"Error when trying to parse template '${templateName}'") {
+                                    parsed  <- IOResult.attempt(s"Error when trying to parse template '${templateName}'") {
                                                 new StringTemplate(content, classOf[NormationAmpersandTemplateLexer])
                                               }.either
                                     template = new SynchronizedFileTemplate(templateName, parsed)

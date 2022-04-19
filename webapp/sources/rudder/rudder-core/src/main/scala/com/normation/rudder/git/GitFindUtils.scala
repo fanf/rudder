@@ -83,7 +83,7 @@ object GitFindUtils extends NamedZioLogger {
    * //// BE CAREFUL: GIT DOES NOT LIST DIRECTORIES
    */
   def listFiles(db:Repository, revTreeId:ObjectId, rootDirectories:List[String], endPaths: List[String]) : IOResult[Set[String]] = {
-    IOResult.effect {
+    IOResult.attempt {
       //a first walk to find categories
       val tw = new TreeWalk(db)
       tw.setFilter(new FileTreeFilter(rootDirectories, endPaths))
@@ -132,7 +132,7 @@ object GitFindUtils extends NamedZioLogger {
           case Nil =>
             Inconsistency(s"No file were found at path '${filePath}}'").fail
           case h :: Nil =>
-            IOResult.effect(db.open(h).openStream())
+            ZIO.acquireReleaseWith(IOResult.attempt(db.open(h).openStream()))(s => effectUioUnit(s.close()))(useIt)
           case _ =>
             Inconsistency(s"More than exactly one matching file were found in the git tree for path '${filePath}', I can not know which one to choose. IDs: ${ids}}").fail
       }
@@ -214,7 +214,10 @@ object GitFindUtils extends NamedZioLogger {
       }
 
       //start by listing all directories, then all content
-      directories.toSeq.map(p => (p, None)) ++ entries
+      val all = directories.map(p => Zippable(p, None)).toSeq ++ zipEntries
+      val out = new ByteArrayOutputStream()
+
+      ZipUtils.zip(out, all) *> IOResult.attempt(out.toByteArray())
     }
   }
 
@@ -228,7 +231,7 @@ object GitFindUtils extends NamedZioLogger {
   def getStatus(git: Git, onlyUnderPaths: List[String]): IOResult[Status] = {
     val s = git.status()
     onlyUnderPaths.foreach(p => s.addPath(p))
-    IOResult.effect(s.call())
+    IOResult.attempt(s.call())
   }
 }
 

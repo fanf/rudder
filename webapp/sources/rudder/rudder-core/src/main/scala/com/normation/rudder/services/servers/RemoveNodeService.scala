@@ -95,7 +95,7 @@ import com.unboundid.ldap.sdk.ModificationType
 import com.unboundid.ldif.LDIFChangeRecord
 import net.liftweb.common.Box
 
-import zio._
+import zio.{System => _, _}
 import zio.syntax._
 import zio.stream._
 import com.normation.zio._
@@ -254,7 +254,7 @@ class RemoveNodeServiceImpl(
           _       <- NodeLoggerPure.Delete.debug(s"-> execute clean-up actions for node '${nodeId.value}'")
           actions <- postNodeDeleteActions.get
           optInfo <- info.get
-          _       <- ZIO.foreach_(actions)(_.run(nodeId, mode, optInfo, status))
+          _       <- ZIO.foreachDiscard(actions)(_.run(nodeId, mode, optInfo, status))
           _       <- NodeLoggerPure.Delete.info(s"Node '${nodeId.value}' ${optInfo.map(_.hostname).getOrElse("")} was successfully deleted")
           _       <- effectUioUnit(nodeInfoService.clearCache())
         } yield {
@@ -397,7 +397,7 @@ class RemoveNodeServiceImpl(
     }
 
     for {
-      optNodePaths <- getNodePath(nodeInfo).foldM(
+      optNodePaths <- getNodePath(nodeInfo).foldZIO(
                         err => {
                           val msg = s"Error when trying to calculate node '${nodeInfo.id.value}' policy path: ${err.fullMsg}"
                           NodeLoggerPure.Delete.warn(msg) *>
@@ -588,7 +588,7 @@ class CleanUpCFKeys extends PostNodeDeleteAction {
         UIO.unit
       case key =>
         //key name looks like: root-MD5=8d3270d42486e8d6436d06ed5cc5034f.pub
-        IOResult.effect(Files.find(Paths.get("/var/rudder/cfengine-community/ppkeys"), 1, new BiPredicate[Path, BasicFileAttributes] {
+        IOResult.attempt(Files.find(Paths.get("/var/rudder/cfengine-community/ppkeys"), 1, new BiPredicate[Path, BasicFileAttributes] {
           override def test(keyName: Path, u: BasicFileAttributes): Boolean = keyName.toString().endsWith(key + ".pub")
         }).forEach(new Consumer[Path] {
           override def accept(p: Path): Unit = {
@@ -649,8 +649,8 @@ class CleanUpNodePolicyFiles(varRudderShare: String) extends PostNodeDeleteActio
    *   "several time per minute" range.
    */
   def cleanPoliciesRec(nodeId: NodeId, file: File): ZStream[Any, RudderError, File] = {
-    ZStream.fromEffect(
-      IOResult.effect(file.exists).catchAll(err =>
+    ZStream.fromZIO(
+      IOResult.attempt(file.exists).catchAll(err =>
         NodeLoggerPure.Delete.error(err.fullMsg) *> false.succeed
       )
     ).flatMap(cond =>
@@ -660,7 +660,7 @@ class CleanUpNodePolicyFiles(varRudderShare: String) extends PostNodeDeleteActio
       else {
         ZStream.fromIterator(file.children).mapError(SystemError(s"Error when listing children of file '${file.pathAsString}' when cleaning node '${nodeId.value}'", _)).tap(_ =>
             NodeLoggerPure.Delete.ifTraceEnabled {
-              (ZIO.effect {
+              (ZIO.attempt {
                 (root / "proc" / "self").children.size
               } catchAll { _ => (-1).succeed }).flatMap(openfd =>
                 NodeLoggerPure.Delete.trace(s"Currently ${openfd} open files by Rudder Server process")
@@ -668,7 +668,7 @@ class CleanUpNodePolicyFiles(varRudderShare: String) extends PostNodeDeleteActio
             }
         ).flatMap { nodeFolder =>
           if(nodeId == NodeId(nodeFolder.name)) {
-            ZStream.fromEffect(IOResult.effect(nodeFolder.delete()) *> nodeFolder.succeed)
+            ZStream.fromZIO(IOResult.attempt(nodeFolder.delete()) *> nodeFolder.succeed)
           } else {
             cleanPoliciesRec(nodeId, nodeFolder / "share")
           }

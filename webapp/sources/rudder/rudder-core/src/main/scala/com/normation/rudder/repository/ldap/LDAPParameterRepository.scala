@@ -276,7 +276,7 @@ class WoLDAPParameterRepository(
                          }).catchAll(
                            e => //ok, so there, we have a problem
                              ApplicationLoggerPure.error(s"Error when importing params, trying to restore old Parameters. Error was: ${e.msg}") *>
-                             restore(con, existingParams).foldM(
+                             restore(con, existingParams).foldZIO(
                                err   => Chained(s"Error when rollbacking corrupted import for parameters, expect other errors. Archive ID: ${id.value}", e).fail
                              , value => ApplicationLoggerPure.info("Rollback parameters: ok") *>
                                         Chained("Rollbacked imported parameters to previous state", e).fail

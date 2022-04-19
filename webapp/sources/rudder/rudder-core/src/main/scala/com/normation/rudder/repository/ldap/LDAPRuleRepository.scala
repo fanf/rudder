@@ -361,7 +361,7 @@ class WoLDAPRuleRepository(
                        }).catchAll { eb =>
                            val e = Chained("Error when importing CRs, trying to restore old CR", eb)
                            logPure.error(e.msg) *>
-                           restore(con, existingCrs).foldM(_ =>
+                           restore(con, existingCrs).foldZIO(_ =>
                                Chained("Error when rollbacking corrupted import for rules, expect other errors. Archive ID: '%s'".format(id.value), e).fail
                             ,  _ => {
                                  logPure.info("Rollback rules") *>

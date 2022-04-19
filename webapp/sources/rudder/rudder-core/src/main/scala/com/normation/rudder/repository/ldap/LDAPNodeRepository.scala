@@ -186,7 +186,7 @@ class WoLDAPNodeRepository(
       List(rootIsEnabled(node), rootIsPolicyServer(node), rootIsSystem(node)).sequence.map( _ => ())
     }
 
-    ZIO.when(newNode.id == Constants.ROOT_POLICY_SERVER_ID) { validateRoot(newNode) }
+    ZIO.when(newNode.id == Constants.ROOT_POLICY_SERVER_ID) { validateRoot(newNode) }.unit
   }
 
   override def createNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = {

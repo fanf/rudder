@@ -46,7 +46,6 @@ import net.liftweb.common.Logger
 import org.slf4j.LoggerFactory
 import zio._
 import zio.syntax._
-import zio.duration._
 import com.normation.errors._
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
@@ -260,14 +259,14 @@ object RunHooks {
             _ <- PureHooksLogger.debug(s"Run hook: ${cmdInfo}")
             _ <- PureHooksLogger.trace(s"System environment variables: ${envVariables.debugString}")
             f <- PureHooksLogger.LongExecLogger.warn(s"Hook is taking more than ${warnTimeout.render} to finish: ${cmdInfo}").delay(warnTimeout).fork
-            p <- RunNuCommand.run(Cmd(path, Nil, env.toMap)).untraced
+            p <- RunNuCommand.run(Cmd(path, Nil, env.toMap))
             r <- p.await.timeout(killTimeout).flatMap {
                    case Some(ok) =>
                      ok.succeed
                    case None =>
                      val msg = s"Hook ${cmdInfo} timed out after ${killTimeout.asJava.toString}"
                      PureHooksLogger.LongExecLogger.error(msg) *> Unexpected(msg).fail
-                 }.untraced
+                 }
             _ <- f.interrupt
             c =  translateReturnCode(path, r)
             _ <- logReturnCode(c)
@@ -275,7 +274,7 @@ object RunHooks {
             c
           }
       }
-    }.provide(ZioRuntime.environment).untraced
+    }
 
     val cmdInfo = s"'${hooks.basePath}' with environment parameters: [${hookParameters.debugString}]"
     (for {
@@ -294,7 +293,7 @@ object RunHooks {
       _        <- PureHooksLogger.debug(s"Done in ${duration/1000} us: ${cmdInfo}") // keep that one in all cases if people want to do stats
     } yield {
       (res, duration)
-    }).provide(ZioRuntime.environment).chainError(s"Error when executing hooks in directory '${hooks.basePath}'.")
+    }).chainError(s"Error when executing hooks in directory '${hooks.basePath}'.")
   }
 
   /*
@@ -366,7 +365,7 @@ object RunHooks {
   }
 
   def getHooksPure(basePath: String, ignoreSuffixes: List[String]): IOResult[Hooks] = {
-    IOResult.effect {
+    IOResult.attempt {
       val dir = new File(basePath)
       // Check that dir exists before looking in it
       if (dir.exists) {

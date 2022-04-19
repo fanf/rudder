@@ -56,7 +56,7 @@ object LDAPIOResult{
 
 
   def effect[A](effect: => A): IO[LDAPRudderError.BackendException, A] = {
-    IOResult.effect(effect).mapError(err =>
+    IOResult.attempt(effect).mapError(err =>
       LDAPRudderError.BackendException(err.msg, err.cause)
     )
   }
@@ -68,7 +68,10 @@ object LDAPIOResult{
 
   // transform an Option[T] into an error
   implicit class StrictOption[T](opt: LDAPIOResult[Option[T]]) {
-    def notOptional(msg: String) = IO.require[LDAPRudderError, T](LDAPRudderError.Consistancy(msg))(opt)
+    def notOptional(msg: String) = opt.flatMap(_ match {
+      case Some(x) => x.succeed
+      case None    => LDAPRudderError.Consistancy(msg).fail
+    })
   }
 
   // same than above for a Rudder error from a string

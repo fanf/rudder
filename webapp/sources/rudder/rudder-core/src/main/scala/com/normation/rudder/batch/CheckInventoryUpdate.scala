@@ -44,7 +44,6 @@ import com.normation.rudder.services.nodes.NodeInfoServiceCachedImpl
 import com.normation.utils.StringUuidGenerator
 import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
 import zio._
-import zio.duration._
 import com.normation.zio._
 import org.joda.time.DateTime
 
@@ -90,6 +89,6 @@ class CheckInventoryUpdate(
     } yield ()).catchAll(err => logger.error(s"Error when trying to update node inventories information. Error is: ${err.fullMsg}"))
   }
 
-  ZioRuntime.unsafeRun(prog.repeat(Schedule.fixed(updateInterval)).delay(30.seconds).provide(ZioRuntime.environment).forkDaemon)
+  ZioRuntime.unsafeRun(prog.repeat(Schedule.fixed(updateInterval)).delay(30.seconds).forkDaemon)
 }
 

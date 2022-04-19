@@ -147,7 +147,7 @@ import scala.collection.immutable
 import scala.util.control.NonFatal
 import scala.xml.Elem
 import zio.syntax._
-import zio.{Tag as _, _}
+import zio.{Tag => _, System =>, _}
 import com.normation.box._
 import com.normation.errors.IOResult
 import com.normation.errors._
@@ -197,7 +197,7 @@ object TestActor {
 object revisionRepo {
   import com.normation.GitVersion._
 
-  val revisionsMap = RefM.make(Map[Revision, RevisionInfo]()).runNow
+  val revisionsMap = Ref.Synchronized.make(Map[Revision, RevisionInfo]()).runNow
 
   def getOpt(revision: Revision): IOResult[Option[RevisionInfo]] =
     revisionsMap.get.map(_.get(revision))
@@ -207,7 +207,7 @@ object revisionRepo {
   }
 
   def add(revisionInfo: RevisionInfo): IOResult[Unit] = {
-    revisionsMap.update(m => (m + (revisionInfo.rev -> revisionInfo)).succeed)
+    revisionsMap.updateZIO(m => (m + (revisionInfo.rev -> revisionInfo)).succeed)
   }
 }
 
@@ -598,7 +598,7 @@ class MockDirectives(mockTechniques: MockTechniques) {
     def unsafeGet(id: TechniqueId) = repo.get(id).getOrElse(throw new RuntimeException(s"Bad init for test: technique '${id.debugString}' not found"))
   }
 
-  val rootActiveTechniqueCategory = RefM.make(FullActiveTechniqueCategory(
+  val rootActiveTechniqueCategory = Ref.Synchronized.make(FullActiveTechniqueCategory(
       id = ActiveTechniqueCategoryId("Active Techniques")
     , name = "Active Techniques"
     , description = "This is the root category for active techniques. It contains subcategories, actives techniques and directives"
@@ -738,7 +738,7 @@ class MockDirectives(mockTechniques: MockTechniques) {
       }
     }
     def saveGen(inActiveTechniqueId: ActiveTechniqueId, directive: Directive) = {
-      rootActiveTechniqueCategory.modify(r =>
+      rootActiveTechniqueCategory.modifyZIO(r =>
         r.saveDirective(inActiveTechniqueId, directive).toIO.map(c =>
           // TODO: this is false, we should get root section spec for each directive/technique version
           (r.allDirectives.get(DirectiveId(directive.id.uid, GitVersion.DEFAULT_REV)).map(p => (p._1.techniques.head._2.rootSection,  p._1.techniqueName,  p._2)), c)
@@ -757,7 +757,7 @@ class MockDirectives(mockTechniques: MockTechniques) {
 
     def deleteGen(id: DirectiveUid) = {
       // TODO: we should check if directive is system
-      rootActiveTechniqueCategory.modify(r =>
+      rootActiveTechniqueCategory.modifyZIO(r =>
         (r.allDirectives.get(DirectiveId(id, GitVersion.DEFAULT_REV)), r.deleteDirective(id)).succeed
       ).map(_.map(p => DeleteDirectiveDiff(p._1.techniqueName, p._2)))
     }
@@ -773,7 +773,7 @@ class MockDirectives(mockTechniques: MockTechniques) {
       val techs = techniqueRepos.getByName(techniqueName)
       for {
         all <- ZIO.foreach(versions)(v => techs.get(v).notOptional(s"Missing version '${v}' for technique '${techniqueName.value}'"))
-        res <- rootActiveTechniqueCategory.modify { r =>
+        res <- rootActiveTechniqueCategory.modifyZIO { r =>
                  val root = r.addActiveTechnique(categoryId, techniqueName, all)
                  root.allCategories.get(categoryId).flatMap(_.activeTechniques.find(_.id.value == techniqueName.value)).notOptional(s"bug: active tech should be here").map(at =>
                    (at, root)
@@ -793,7 +793,7 @@ class MockDirectives(mockTechniques: MockTechniques) {
     override def deleteActiveTechnique(id: ActiveTechniqueId, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[ActiveTechniqueId] = ???
 
     override def addActiveTechniqueCategory(that: ActiveTechniqueCategory, into: ActiveTechniqueCategoryId, modificationId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[ActiveTechniqueCategory] = {
-      rootActiveTechniqueCategory.updateAndGet { root =>
+      rootActiveTechniqueCategory.updateAndGetZIO { root =>
          val full = FullActiveTechniqueCategory(
             that.id
           , that.name
@@ -821,9 +821,9 @@ class MockDirectives(mockTechniques: MockTechniques) {
 
   {
     val modId = ModificationId(s"init directives in lib")
-    ZIO.foreach_(directives.all) { case (t, list) =>
+    ZIO.foreachDiscard(directives.all) { case (t, list) =>
       val at = ActiveTechniqueId(t.id.name.value)
-      ZIO.foreach_(list) { d =>
+      ZIO.foreachDiscard(list) { d =>
         if(d.isSystem) {
           directiveRepo.saveSystemDirective(at, d, modId, TestActor.get, None)
         } else {
@@ -881,7 +881,7 @@ class MockRules() {
       }
     }
 
-    val categories = RefM.make(rootRuleCategory).runNow
+    val categories = Ref.Synchronized.make(rootRuleCategory).runNow
 
     override def get(id: RuleCategoryId): IOResult[RuleCategory] = {
       categories.get.flatMap(c => recGet(c, id).map(_._2).notOptional(s"category with id '${id.value}' not found"))
@@ -889,7 +889,7 @@ class MockRules() {
     override def getRootCategory(): IOResult[RuleCategory] = categories.get
 
     override def create(that: RuleCategory, into: RuleCategoryId, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[RuleCategory] = {
-      categories.update(cats => recGet(cats, into) match {
+      categories.updateZIO(cats => recGet(cats, into) match {
         case None                    => Inconsistency(s"Error: missing parent category '${into.value}'").fail
         case Some((parents, parent)) => recGet(cats, that.id) match {
           case Some((pp, p)) => Inconsistency(s"Error: category already exists '${(p :: pp.reverse).map(_.id.value)}'").fail
@@ -900,7 +900,7 @@ class MockRules() {
     }
 
     override def updateAndMove(that: RuleCategory, into: RuleCategoryId, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[RuleCategory] = {
-      categories.update(cats =>
+      categories.updateZIO(cats =>
         recGet(cats, that.id) match {
           case None => Inconsistency(s"Category '${that.id.value}' not found, can't move it").fail
           case Some(_) => // ok, move it
@@ -916,7 +916,7 @@ class MockRules() {
     }
 
     override def delete(category: RuleCategoryId, modId: ModificationId, actor: EventActor, reason: Option[String], checkEmpty: Boolean): IOResult[RuleCategoryId] = {
-      categories.update(cats =>
+      categories.updateZIO(cats =>
         inDelete(cats, category).succeed
       ).map(_ => category)
     }
@@ -1054,7 +1054,7 @@ class MockRules() {
 
   object ruleRepo  extends RoRuleRepository with WoRuleRepository {
 
-    val rulesMap = RefM.make(rules.all.map(r => (r.id,r)).toMap).runNow
+    val rulesMap = Ref.Synchronized.make(rules.all.map(r => (r.id,r)).toMap).runNow
 
     val predicate = (includeSytem: Boolean) => (r: Rule) => if(includeSytem) true else r.isSystem == false
 
@@ -1070,7 +1070,7 @@ class MockRules() {
     }
 
     override def create(rule: Rule, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[AddRuleDiff] = {
-      rulesMap.update(rules => rules.get(rule.id) match {
+      rulesMap.updateZIO(rules => rules.get(rule.id) match {
         case Some(_) =>
           Inconsistency(s"rule already exists: ${rule.id.serialize}").fail
         case None    =>
@@ -1099,7 +1099,7 @@ class MockRules() {
     }
 
     override def update(rule: Rule, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Option[ModifyRuleDiff]] = {
-      rulesMap.modify(rules => rules.get(rule.id) match {
+      rulesMap.modifyZIO(rules => rules.get(rule.id) match {
         case Some(r) if(r.isSystem) =>
           Inconsistency(s"rule is system (can't be updated here): ${rule.id.serialize}").fail
         case Some(r)                =>
@@ -1111,7 +1111,7 @@ class MockRules() {
     }
 
     override def updateSystem(rule: Rule, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Option[ModifyRuleDiff]] = {
-      rulesMap.modify(rules => rules.get(rule.id) match {
+      rulesMap.modifyZIO(rules => rules.get(rule.id) match {
         case Some(r) if(r.isSystem) =>
           (r, (rules + (rule.id -> rule))).succeed
         case Some(r)                =>
@@ -1123,7 +1123,7 @@ class MockRules() {
     }
 
     override def delete(id: RuleId, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[DeleteRuleDiff] = {
-      rulesMap.modify(rules => rules.get(id) match {
+      rulesMap.modifyZIO(rules => rules.get(id) match {
         case Some(r) if(r.isSystem) =>
           Inconsistency(s"rule is system (can't be deleted here): ${id.serialize}").fail
         case Some(r)                =>
@@ -1136,7 +1136,7 @@ class MockRules() {
     }
 
     override def deleteSystemRule(id: RuleId, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[DeleteRuleDiff] =  {
-      rulesMap.modify(rules => rules.get(id) match {
+      rulesMap.modifyZIO(rules => rules.get(id) match {
         case Some(r) if(r.isSystem) =>
           val m = (rules - id)
           (r, m).succeed
@@ -1150,7 +1150,7 @@ class MockRules() {
 
     override def swapRules(newRules: Seq[Rule]): IOResult[RuleArchiveId] = {
       // we need to keep system rules in old map, and filter out them in new one
-      rulesMap.update { rules =>
+      rulesMap.updateZIO { rules =>
         val systems = rules.valuesIterator.filter(_.isSystem)
         val newRulesUpdated = newRules.filterNot(_.isSystem) ++ systems
         newRulesUpdated.map(r => (r.id, r)).toMap.succeed
@@ -1195,7 +1195,7 @@ class MockGlobalParam() {
 
   val paramsRepo = new RoParameterRepository with WoParameterRepository {
 
-    val paramsMap = RefM.make[Map[String, GlobalParameter]](all).runNow
+    val paramsMap = Ref.Synchronized.make[Map[String, GlobalParameter]](all).runNow
 
 
     override def getGlobalParameter(parameterName: String): IOResult[Option[GlobalParameter]] = {
@@ -1207,7 +1207,7 @@ class MockGlobalParam() {
     }
 
     override def saveParameter(parameter: GlobalParameter, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[AddGlobalParameterDiff] = {
-      paramsMap.update(params => params.get(parameter.name) match {
+      paramsMap.updateZIO(params => params.get(parameter.name) match {
         case Some(_) =>
           Inconsistency(s"parameter already exists: ${parameter.name}").fail
         case None    =>
@@ -1216,7 +1216,7 @@ class MockGlobalParam() {
     }
 
     override def updateParameter(parameter: GlobalParameter, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Option[ModifyGlobalParameterDiff]] = {
-      paramsMap.modify(params => params.get(parameter.name) match {
+      paramsMap.modifyZIO(params => params.get(parameter.name) match {
         case Some(old)              =>
           (old, (params + (parameter.name -> parameter))).succeed
         case None                   =>
@@ -1234,7 +1234,7 @@ class MockGlobalParam() {
     }
 
     override def delete(parameterName: String, provider: Option[PropertyProvider], modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Option[DeleteGlobalParameterDiff]] = {
-      paramsMap.modify(params => params.get(parameterName) match {
+      paramsMap.modifyZIO(params => params.get(parameterName) match {
         case Some(r)                =>
           val m = (params - parameterName)
           (Some(DeleteGlobalParameterDiff(r)), m).succeed
@@ -1527,7 +1527,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
   object nodeInfoService extends NodeInfoService with LDAPFullInventoryRepository with WoNodeRepository {
 
     // node status is in inventory.main.
-    val nodeBase = RefM.make(Map(
+    val nodeBase = Ref.Synchronized.make(Map(
         (rootId     , NodeDetails(root    , rootInventory , None))
       , (node1.id   , NodeDetails(node1   , nodeInventory1, None))
       , (node2.id   , NodeDetails(node2   , nodeInventory2, None))
@@ -1698,7 +1698,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
 
 
   object softwareDao extends ReadOnlySoftwareDAO {
-    val softRef = RefM.make(softwares.map(s => (s.id, s)).toMap).runNow
+    val softRef = Ref.Synchronized.make(softwares.map(s => (s.id, s)).toMap).runNow
 
     override def getSoftware(ids: Seq[SoftwareUuid]): IOResult[Seq[Software]] = {
       softRef.get.map(_.map(_._2).toList)
@@ -1874,7 +1874,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
 
     implicit val ordering = com.normation.rudder.repository.NodeGroupCategoryOrdering
 
-    val categories = RefM.make(FullNodeGroupCategory(
+    val categories = Ref.Synchronized.make(FullNodeGroupCategory(
       NodeGroupCategoryId("GroupRoot")
     , "GroupRoot"
     , "root of group categories"
@@ -2007,7 +2007,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
 
     // create group into Some(cat) (group must not exists) or update group (into=None, group must exists)
     def createOrUpdate(group: NodeGroup, into: Option[NodeGroupCategoryId]): IOResult[Option[NodeGroup]] = {
-      categories.modify(root =>
+      categories.modifyZIO(root =>
         for {
           catId <- into match {
                      case Some(catId) => root.allGroups.get(group.id) match {
@@ -2067,7 +2067,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
            , subCategories = current.subCategories.map(recDelete(id, _))
          )
        }
-      categories.modify(root =>
+      categories.modifyZIO(root =>
         root.allGroups.get(id) match {
           case None    => Inconsistency(s"Group already deleted").fail
           case Some(g) => (g, recDelete(id, root)).succeed
@@ -2078,7 +2078,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
        def recDelete(id: NodeGroupCategoryId, current: FullNodeGroupCategory): FullNodeGroupCategory = {
          current.copy(subCategories = current.subCategories.filterNot(_.id == id).map(c => recDelete(id, c)))
        }
-      categories.update(root =>
+      categories.updateZIO(root =>
         root.allCategories.get(id) match {
           case None      => root.succeed
           case Some(cat) => recDelete(id, root).succeed
@@ -2105,7 +2105,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
     }
 
     override def addGroupCategorytoCategory(that: NodeGroupCategory, into: NodeGroupCategoryId, modificationId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[NodeGroupCategory] = {
-      categories.update(root =>
+      categories.updateZIO(root =>
         for {
           cat <- root.allCategories.get(into).notOptional(s"Missing target parent category '${into.value}'")
         } yield {
@@ -2116,7 +2116,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
     }
 
     override def saveGroupCategory(category: NodeGroupCategory, modificationId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[NodeGroupCategory] = {
-      categories.update(root =>
+      categories.updateZIO(root =>
         for {
           cat <- root.parentCategories.get(category.id).notOptional(s"Missing target parent category of '${category.id.value}'")
         } yield {
@@ -2128,7 +2128,7 @@ class MockNodeGroups(nodesRepo: MockNodes) {
 
 
     override def saveGroupCategory(category: NodeGroupCategory, containerId: NodeGroupCategoryId, modificationId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[NodeGroupCategory] = {
-      categories.update(root =>
+      categories.updateZIO(root =>
         for {
           cat <- root.allCategories.get(containerId).notOptional(s"Missing target parent category '${containerId.value}'")
         } yield {
