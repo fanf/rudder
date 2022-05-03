@@ -2,7 +2,7 @@ package com.normation.utils
 
 import cron4s.Cron
 import cron4s.CronExpr
-import cron4s.lib.javatime._
+import cron4s.lib.javatime.*
 
 import java.time.OffsetDateTime
 

@@ -390,7 +390,7 @@ class AutomaticReportsCleaning(
     dur   =  ttl.toLong.minutes
     batch <- if(ttl < 1) {
                ScheduledJobLoggerPure.info(s"Disable automatic database deletion of log reports sinces property '${deleteLogReportPropertyName}' is 0 or negative") *>
-               UIO.unit
+               ZIO.unit
              } else {
                ScheduledJobLoggerPure.debug(s"***** starting Automatic 'Delete Log Reports'; delete log older than ${ttl} minutes (with same batch period) *****") *>
                IOResult.attempt(dbManager.deleteLogReports(dur.asScala) match {

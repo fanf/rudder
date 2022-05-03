@@ -544,7 +544,7 @@ class TechniqueAPIService6 (
               Inconsistency(s"Version '${version.serialize}' of Technique '${techniqueName.value}' does not exist").fail
             }
           }
-        case None => UIO.unit
+        case None => ZIO.unit
       }
     }
 
@@ -605,7 +605,7 @@ class TechniqueAPIService14 (
               Inconsistency(s"Version '${version.debugString}' of Technique '${techniqueName.value}' does not exist").fail
             }
           }
-        case None => UIO.unit
+        case None => ZIO.unit
       }
     }
 

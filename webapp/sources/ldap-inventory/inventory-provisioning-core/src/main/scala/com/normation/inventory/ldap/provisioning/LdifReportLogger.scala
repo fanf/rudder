@@ -106,10 +106,10 @@ class DefaultLDIFInventoryLogger(val LDIFLogDir:String = DefaultLDIFInventoryLog
   ) : Task[String] = {
     val LDIFFile = fileFromName(inventoryName,tag)
     ZIO.when(logger.logEffect.isTraceEnabled) {
-      ZIO.acquireReleaseWith(IO.attempt(new LDIFWriter(LDIFFile)))(writer => IO.attempt(writer.close).catchAll(ex =>
+      ZIO.acquireReleaseWith(ZIO.attempt(new LDIFWriter(LDIFFile)))(writer => ZIO.attempt(writer.close).catchAll(ex =>
         logger.debug("LDIF log for inventory processing: " + LDIFFile.getAbsolutePath)
       )) { writer =>
-        Task.attempt {
+        ZIO.attempt {
           val ldif = LDIFRecords //that's important, else we evaluate again and again LDIFRecords
 
           if(ldif.nonEmpty) { //don't check it if logger trace is not enabled
@@ -123,6 +123,6 @@ class DefaultLDIFInventoryLogger(val LDIFLogDir:String = DefaultLDIFInventoryLog
           }
         }
       }
-    } *> UIO.succeed(LDIFFile.getAbsolutePath)
+    } *> ZIO.succeed(LDIFFile.getAbsolutePath)
   }
 }

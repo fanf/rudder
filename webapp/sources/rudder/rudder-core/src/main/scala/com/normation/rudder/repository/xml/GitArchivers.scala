@@ -117,7 +117,7 @@ class GitRuleArchiverImpl(
       commit  <- doCommit match {
                    case Some((modId, commiter, reason)) =>
                      commitAddFileWithModId(modId, commiter, gitPath, s"Archive rule with ID '${rule.id.serialize}'${GET(reason)}")
-                   case None => UIO.unit
+                   case None => ZIO.unit
                  }
     } yield {
       GitPath(gitPath)
@@ -141,7 +141,7 @@ class GitRuleArchiverImpl(
         commited <- doCommit match {
                       case Some((modId, commiter, reason)) =>
                         commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of rule with ID '${ruleId.serialize}'${GET(reason)}")
-                      case None => UIO.unit
+                      case None => ZIO.unit
                     }
       } yield {
         GitPath(gitPath)
@@ -358,7 +358,7 @@ class GitActiveTechniqueCategoryArchiverImpl(
                            case None       =>
                              commitAddFileWithModId(modId, commiter, uptcGitPath, "Archive of technique library category with ID '%s'%s".format(uptc.id.value, GET(reason)))
                          }
-                       case None => UIO.unit
+                       case None => ZIO.unit
                     }
     } yield {
       GitPath(gitPath)
@@ -380,7 +380,7 @@ class GitActiveTechniqueCategoryArchiverImpl(
         commited <- gitCommit match {
                       case Some((modId, commiter, reason)) =>
                         commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of technique library category with ID '${uptcId.value}'${GET(reason)}")
-                      case None => UIO.unit
+                      case None => ZIO.unit
                     }
       } yield {
         GitPath(gitPath)
@@ -474,8 +474,8 @@ class UpdatePiOnActiveTechniqueEvent(
     }.map( _.flatten )
   }
 
-  override def onDelete(ptName:TechniqueName, getParents: List[ActiveTechniqueCategoryId], gitCommit:Option[(ModificationId, PersonIdent, Option[String])]) = UIO.unit
-  override def onMove(activeTechnique:ActiveTechnique, oldParents: List[ActiveTechniqueCategoryId], newParents: List[ActiveTechniqueCategoryId], gitCommit:Option[(ModificationId, PersonIdent, Option[String])]) = UIO.unit
+  override def onDelete(ptName:TechniqueName, getParents: List[ActiveTechniqueCategoryId], gitCommit:Option[(ModificationId, PersonIdent, Option[String])]) = ZIO.unit
+  override def onMove(activeTechnique:ActiveTechnique, oldParents: List[ActiveTechniqueCategoryId], newParents: List[ActiveTechniqueCategoryId], gitCommit:Option[(ModificationId, PersonIdent, Option[String])]) = ZIO.unit
 }
 
 /**
@@ -520,7 +520,7 @@ class GitActiveTechniqueArchiverImpl(
       callbacks <- ZIO.foreach(uptModificationCallback.toList) { _.onArchive(activeTechnique, parents, gitCommit) }
       _         <- gitCommit match {
                      case Some((modId, commiter, reason)) => commitAddFileWithModId(modId, commiter, gitPath, s"Archive of technique library template for technique name '${activeTechnique.techniqueName.value}'${GET(reason)}")
-                     case None => UIO.unit
+                     case None => ZIO.unit
                    }
     } yield {
       (GitPath(gitPath), callbacks.toSeq.flatten)
@@ -541,7 +541,7 @@ class GitActiveTechniqueArchiverImpl(
                     commited <- gitCommit match {
                                   case Some((modId, commiter, reason)) =>
                                     commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of technique library template for technique name '${ptName.value}'${GET(reason)}")
-                                  case None => UIO.unit
+                                  case None => ZIO.unit
                                 }
                   } yield {
                     GitPath(gitPath)
@@ -586,7 +586,7 @@ class GitActiveTechniqueArchiverImpl(
                                              , toGitPath(newActiveTechniqueDirectory)
                                              , "Move active technique for technique name '%s'%s".format(activeTechnique.techniqueName.value, GET(reason))
                                            )
-                                         case None => UIO.unit
+                                         case None => ZIO.unit
                                        }
       } yield {
         archived
@@ -642,7 +642,7 @@ class GitDirectiveArchiverImpl(
                  )
       commit  <- gitCommit match {
                    case Some((modId, commiter, reason)) => commitAddFileWithModId(modId, commiter, gitPath, "Archive directive with ID '%s'%s".format(directive.id.uid.value,GET(reason)))
-                   case None => UIO.unit
+                   case None => ZIO.unit
                  }
     } yield {
       GitPath(gitPath)
@@ -671,7 +671,7 @@ class GitDirectiveArchiverImpl(
                     commited <- gitCommit match {
                                   case Some((modId, commiter, reason)) =>
                                     commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of directive with ID '${directiveId.value}'${GET(reason)}")
-                                  case None => UIO.unit
+                                  case None => ZIO.unit
                                 }
                   } yield {
                     GitPath(gitPath)
@@ -737,7 +737,7 @@ class GitNodeGroupArchiverImpl(
       gitPath    =  toGitPath(ngcFile)
       commit     <- gitCommit match {
                       case Some((modId, commiter, reason)) => commitAddFileWithModId(modId, commiter, gitPath, "Archive of node group category with ID '%s'%s".format(ngc.id.value,GET(reason)))
-                      case None => UIO.unit
+                      case None => ZIO.unit
                     }
     } yield {
       GitPath(gitPath)
@@ -755,7 +755,7 @@ class GitNodeGroupArchiverImpl(
         commited <- gitCommit match {
                       case Some((modId, commiter, reason)) =>
                         commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of node group category with ID '${ngcId.value}'${GET(reason)}")
-                      case None => UIO.unit
+                      case None => ZIO.unit
                     }
       } yield {
         GitPath(gitPath)
@@ -805,7 +805,7 @@ class GitNodeGroupArchiverImpl(
                    }
         commit  <- gitCommit match {
                      case Some((modId, commiter, reason)) => commitMvDirectoryWithModId(modId, commiter, toGitPath(oldNgcDir), toGitPath(newNgcDir), "Move archive of node group category with ID '%s'%s".format(ngc.id.value,GET(reason)))
-                     case None => UIO.unit
+                     case None => ZIO.unit
                    }
       } yield {
         GitPath(toGitPath(archive))
@@ -844,7 +844,7 @@ class GitNodeGroupArchiverImpl(
                     )
       commit     <- gitCommit match {
                       case Some((modId, commiter, reason)) => commitAddFileWithModId(modId, commiter, toGitPath(ngFile), "Archive of node group with ID '%s'%s".format(ng.id.withDefaultRev.serialize,GET(reason)))
-                      case None => UIO.unit
+                      case None => ZIO.unit
                     }
     } yield {
       GitPath(toGitPath(archive))
@@ -864,7 +864,7 @@ class GitNodeGroupArchiverImpl(
                      commited <- gitCommit match {
                                    case Some((modId, commiter, reason)) =>
                                      commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of node group with ID '${ngId.withDefaultRev.serialize}'${GET(reason)}")
-                                   case None => UIO.unit
+                                   case None => ZIO.unit
                                  }
                    } yield {
                      GitPath(gitPath)
@@ -894,7 +894,7 @@ class GitNodeGroupArchiverImpl(
                          }
         commit       <- gitCommit match {
                           case Some((modId, commiter, reason)) => commitMvDirectoryWithModId(modId, commiter, toGitPath(oldNgXmlFile), toGitPath(newNgXmlFile), "Move archive of node group with ID '%s'%s".format(ng.id.withDefaultRev.serialize,GET(reason)))
-                          case None => UIO.unit
+                          case None => ZIO.unit
                         }
       } yield {
         GitPath(toGitPath(archive))
@@ -948,7 +948,7 @@ class GitParameterArchiverImpl(
                    case Some((modId, commiter, reason)) =>
                      val msg = "Archive parameter with name '%s'%s".format(parameter.name, GET(reason))
                      commitAddFileWithModId(modId, commiter, gitPath, msg)
-                   case None => UIO.unit
+                   case None => ZIO.unit
                  }
     } yield {
       GitPath(gitPath)
@@ -972,7 +972,7 @@ class GitParameterArchiverImpl(
         commited <- doCommit match {
                       case Some((modId, commiter, reason)) =>
                         commitRmFileWithModId(modId, commiter, gitPath, s"Delete archive of parameter with name '${parameterName}'${GET(reason)}")
-                      case None => UIO.unit
+                      case None => ZIO.unit
                     }
       } yield {
         GitPath(gitPath)

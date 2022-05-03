@@ -123,23 +123,23 @@ class WriteNodeCertificatesPemImpl(reloadScriptPath: Option[String]) extends Wri
     for {
       _      <- IOResult.effectM(s"Error when trying to create parent directory for node certificate file: ${parent.pathAsString}") {
                   parent.createDirectoryIfNotExists(true)
-                  UIO.unit
+                  ZIO.unit
                 }
       _      <- IOResult.effectM{
-                  if(parent.isDirectory) UIO.unit else Unexpected(s"Error: path '${parent.pathAsString}' must be a directory").fail
+                  if(parent.isDirectory) ZIO.unit else Unexpected(s"Error: path '${parent.pathAsString}' must be a directory").fail
                 }
       _      <- IOResult.effectM{
-                  if(parent.isWritable) UIO.unit else Unexpected(s"Error: path '${parent.pathAsString}' must be a writable directory").fail
+                  if(parent.isWritable) ZIO.unit else Unexpected(s"Error: path '${parent.pathAsString}' must be a writable directory").fail
                 }
     } yield ()
   }
 
   def execHook(path: Option[String]): IOResult[Unit] = {
     path match {
-      case None      => UIO.unit
+      case None      => ZIO.unit
       case Some(cmd) =>
         cmd.split("""\s""").toList match {
-          case Nil => UIO.unit
+          case Nil => ZIO.unit
           // for the cmd, first arg is "cmd path", other are "parameters", and they must be splits
           case cmdPath :: args =>
 

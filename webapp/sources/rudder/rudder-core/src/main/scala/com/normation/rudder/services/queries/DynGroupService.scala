@@ -188,7 +188,7 @@ class DynGroupServiceImpl(
       (for {
         con     <- ldap
         entries <- //here, I have to rely on low-level LDAP connection, because I need to proceed size-limit exceeded as OK
-                   (Task.attempt(con.backed.search(searchRequest).getSearchEntries) catchAll {
+                   (ZIO.attempt(con.backed.search(searchRequest).getSearchEntries) catchAll {
                      case e:LDAPSearchException if(e.getResultCode == ResultCode.SIZE_LIMIT_EXCEEDED) =>
                        e.getSearchEntries().succeed
                      case e:Throwable =>
@@ -201,7 +201,7 @@ class DynGroupServiceImpl(
                        (!seq.isEmpty).succeed
                      }
                    )
-        n1       <- UIO.succeed(System.currentTimeMillis)
+        n1       <- ZIO.succeed(System.currentTimeMillis)
         _        <- TimingDebugLoggerPure.debug(s"Check if dynamic groups may need update (${entries}): ${n1 - n0}ms")
       } yield {
         entries

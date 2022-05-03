@@ -485,10 +485,10 @@ class RwLDAPConnection(
    *   the list of modification to apply.
    */
   private def applyMods[MOD <: ReadOnlyLDAPRequest](modName: String, toLDIFChangeRecord:MOD => LDIFChangeRecord, backendAction: MOD => LDAPResult, onlyReportThat: ResultCode => Boolean)(reqs: List[MOD]) : LDAPIOResult[Seq[LDIFChangeRecord]] = {
-    if(reqs.isEmpty) IO.succeed(Seq())
+    if(reqs.isEmpty) ZIO.succeed(Seq())
     else {
-      UIO.succeed(ldifFileLogger.records(reqs map (toLDIFChangeRecord (_)))) *>
-      IO.foreach(reqs) { req =>
+      ZIO.succeed(ldifFileLogger.records(reqs map (toLDIFChangeRecord (_)))) *>
+      ZIO.foreach(reqs) { req =>
         applyMod(modName, toLDIFChangeRecord, backendAction, onlyReportThat)(req)
       }
     }
@@ -674,7 +674,7 @@ class RwLDAPConnection(
           case Delete(tree) =>
             if(deleteRemoved) delete(tree.root, true) //TODO : do we want to actually only try to delete these entry and not cut the full subtree ? likely to be error prone
             else Seq().succeed
-          case Replace((dn,mods)) => IO.foreach(mods) { mod => modify(dn, mod) }
+          case Replace((dn,mods)) => ZIO.foreach(mods) { mod => modify(dn, mod) }
         }
       }
       mods.foldLeft(Seq().succeed:LDAPIOResult[Seq[LDIFChangeRecord]]) { (records, mod) =>

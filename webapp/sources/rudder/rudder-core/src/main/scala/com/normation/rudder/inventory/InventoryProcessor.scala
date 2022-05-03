@@ -241,7 +241,7 @@ class InventoryProcessor(
       secPair      <- digestService.getKey(inventory).chainError(s"Error when trying to check inventory key for Node '${inventory.node.main.id.value}'")
       parsed       <- digestService.parseSecurityToken(secPair._1)
       _            <- parsed.subject match {
-                        case None       => UIO.unit
+                        case None       => ZIO.unit
                         case Some(list) => SecurityToken.checkCertificateSubject(inventory.node.main.id, list)
                       }
       afterParsing <- currentTimeMillis

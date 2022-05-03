@@ -13,7 +13,6 @@ import com.normation.rudder.services.healthcheck.HealthcheckResult.Critical
 import com.normation.rudder.services.healthcheck.HealthcheckResult.Ok
 import com.normation.rudder.services.healthcheck.HealthcheckResult.Warning
 import com.normation.rudder.services.nodes.NodeInfoService
-import zio.UIO
 import zio.ZIO
 import zio.syntax.ToZio
 
@@ -58,7 +57,7 @@ class HealthcheckService(checks: List[Check]) {
     } yield res
   }
 
-  private[this] def logHealthcheck(name: CheckName, check: HealthcheckResult): UIO[Unit] = {
+  private[this] def logHealthcheck(name: CheckName, check: HealthcheckResult): zio.UIO[Unit] = {
     val msg = s"${name.value}: ${check.msg}"
     check match {
       case _: Critical => logger.error(msg)

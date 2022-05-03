@@ -100,7 +100,7 @@ class FullInventoryRepositoryImpl(
    * find the first dn matching ID, starting with accepted, then pending, then deleted
    */
   private[this] def findDnForId[ID](con: RwLDAPConnection, id:ID, fdn:(ID, InventoryStatus) => DN): LDAPIOResult[Option[(DN, InventoryStatus)]] = {
-    IO.foldLeft(Seq(AcceptedInventory, PendingInventory, RemovedInventory))(Option.empty[(DN, InventoryStatus)]) { (current, inventory) =>
+    ZIO.foldLeft(Seq(AcceptedInventory, PendingInventory, RemovedInventory))(Option.empty[(DN, InventoryStatus)]) { (current, inventory) =>
       current match {
         case None     =>
           val testdn = fdn(id, inventory)
@@ -157,7 +157,7 @@ class FullInventoryRepositoryImpl(
 
     //only add keys for non empty node list
     for {
-      res <- IO.foreach(List(PendingInventory, AcceptedInventory, RemovedInventory)){ status =>
+      res <- ZIO.foreach(List(PendingInventory, AcceptedInventory, RemovedInventory)){ status =>
                machineForNodeStatus(con, status).map(r => (status, r))
              }
     } yield {

@@ -1305,7 +1305,7 @@ class NodeApiService8 (
       keyChanged     =  keyInfo._1.isDefined || keyInfo._2.isDefined
       keys           <- if(keyChanged) {
                            nodeRepository.updateNodeKeyInfo(node.id, keyInfo._1, keyInfo._2, modId, actor, reason)
-                        } else UIO.unit
+                        } else ZIO.unit
     } yield {
       if(node != updated || keyChanged) {
         asyncRegenerate ! AutomaticStartDeployment(ModificationId(uuidGen.newUuid), userService.getCurrentUser.actor)

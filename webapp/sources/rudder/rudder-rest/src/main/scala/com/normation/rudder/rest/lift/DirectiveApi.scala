@@ -623,7 +623,7 @@ class DirectiveApiService14 (
       for {
         // Check if a directive exists with the current id
         _     <- readDirective.getDirective(newDirective.id.uid).flatMap {
-                   case None => UIO.unit
+                   case None => ZIO.unit
                    case Some(_) => Inconsistency(s"Cannot create a new Directive with id '${newDirective.id.uid.value}' already exists").fail
                  }
          // Check parameters of the new Directive

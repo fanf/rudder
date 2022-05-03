@@ -75,7 +75,7 @@ class SchedulerTest extends Specification {
           q <- Queue.unbounded[Long]
           r <- Ref.make(List.empty[Long])
           c =  ZIO.clockWith(_.currentTime(TimeUnit.MINUTES)).flatMap(t => q.offer(t)).unit
-          s <- Scheduler.make[Unit](10.minutes, 20.minutes, Unit => c, UIO.unit)
+          s <- Scheduler.make[Unit](10.minutes, 20.minutes, Unit => c, ZIO.unit)
           // start prog and trigger event
           f <- s.start
           _ <- s.triggerSchedule(())

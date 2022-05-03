@@ -66,7 +66,7 @@ import com.normation.errors._
 object ReportingServiceUtils {
 
   def log(msg: String) = ZIO.succeed(println(msg)) // you actual log lib
-  val effect = Task.attempt(throw new RuntimeException("I'm some impure code!")) // here, exception is caught and you get a ZIO[Any, Throwable, Something]
+  val effect = ZIO.attempt(throw new RuntimeException("I'm some impure code!")) // here, exception is caught and you get a ZIO[Any, Throwable, Something]
   val withLogError = effect.flatMapError(exception => log(exception.getMessage) *> ZIO.succeed(exception) )
 
   /*

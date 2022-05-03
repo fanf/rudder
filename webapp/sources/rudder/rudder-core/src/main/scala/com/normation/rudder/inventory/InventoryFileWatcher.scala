@@ -434,14 +434,14 @@ class CheckExistingInventoryFilesImpl(
       children <- ZIO.foreach(directories)(d => IOResult.attempt(FileUtils.listFilesAndDirs(d.toJava, TrueFileFilter.TRUE, TrueFileFilter.TRUE).asScala))
       // filter file by file. In case of error, just skip it. Specifically ignore FileNotFound (davfs temp files disapear)
       filtered <- ZIO.foreach(children.flatten) { file =>
-                    IO.attempt(filter(File(file.toPath))).catchAll {
+                    ZIO.attempt(filter(File(file.toPath))).catchAll {
                       case _: FileNotFoundException => // just ignore
                         InventoryProcessingLogger.trace(s"Ignoring file '${file.toString}' when processing old inventories: " +
                                                         s"FileNotFoundException (likely it disappeared between directory listing and filtering)"
-                        ) *> UIO.succeed(None)
+                        ) *> ZIO.succeed(None)
                       case ex: Throwable            => // log and switch to the next
                         InventoryProcessingLogger.warn(s"Error when processing file in old inventories: '${file.toString}': ${ex.getMessage}") *>
-                        UIO.succeed(None)
+                        ZIO.succeed(None)
                     }
                   }
       } yield (filtered.flatten)).catchAll(err =>

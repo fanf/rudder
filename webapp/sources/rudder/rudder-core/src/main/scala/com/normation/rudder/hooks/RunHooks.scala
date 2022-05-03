@@ -332,7 +332,7 @@ object RunHooks {
 
   /*
    * Check for the existence of hook limit in the 1000 first chars of the file.
-   * This method is effectful, needs to be wrap in an IO.
+   * This method is effectful, needs to be wrap in an ZIO.
    */
   def effectfulGetHookTimeout(hook: File): HookTimeout = {
     def get(filename: String, lines: List[String], varName: String): Option[Duration] = {

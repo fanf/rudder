@@ -71,7 +71,7 @@ trait LDAPConnectionProvider[LDAP <: RoLDAPConnection] {
    * return type is Unit.
    */
   def foreach(f: LDAP => Unit) : IOResult[Unit] = {
-    withConLdap[Unit] { con => f(con) ; UIO.unit }
+    withConLdap[Unit] { con => f(con) ; ZIO.unit }
   }
 
   /**
@@ -195,7 +195,7 @@ trait OneConnectionProvider[LDAP <: RoLDAPConnection] extends LDAPConnectionProv
   override def close : UIO[Unit] = {
     semaphore.withPermit(for {
       c <- connection.get
-      _ <- c.fold(UIO.unit)(c => UIO.succeed(c.close()))
+      _ <- c.fold(ZIO.unit)(c => ZIO.succeed(c.close()))
       _ <- connection.set(None)
     } yield ())
   }
@@ -218,8 +218,8 @@ trait OneConnectionProvider[LDAP <: RoLDAPConnection] extends LDAPConnectionProv
       n
     })
   }
-  override protected def releaseInternalConnection(con: LDAP): UIO[Unit] = UIO.unit
-  override protected def releaseDefuncInternalConnection(con: LDAP): UIO[Unit] = UIO.unit
+  override protected def releaseInternalConnection(con: LDAP): UIO[Unit] = ZIO.unit
+  override protected def releaseDefuncInternalConnection(con: LDAP): UIO[Unit] = ZIO.unit
 }
 
 /**
@@ -246,13 +246,13 @@ trait PooledConnectionProvider[LDAP <: RoLDAPConnection] extends LDAPConnectionP
       throw new Error(msg)
   }
 
-  override def close : UIO[Unit] = UIO.succeed(pool.close)
+  override def close : UIO[Unit] = ZIO.succeed(pool.close)
   protected def getInternalConnection = newConnection
   protected def releaseInternalConnection(con:LDAP) : UIO[Unit] = {
-    UIO.succeed(pool.releaseConnection(con.backed))
+    ZIO.succeed(pool.releaseConnection(con.backed))
   }
   protected def releaseDefuncInternalConnection(con:LDAP) : UIO[Unit] = {
-    UIO.succeed(pool.releaseDefunctConnection(con.backed))
+    ZIO.succeed(pool.releaseDefunctConnection(con.backed))
   }
 
 }

@@ -158,7 +158,7 @@ class TechniqueWriterImpl (
         categories <- techniqueRepository.getTechniqueCategoriesBreadCrump(techniqueId)
         // Check if we have directives, and either, make an error, if we don't force deletion, or delete them all, creating a change request
         _          <- directives match {
-                        case Nil => UIO.unit
+                        case Nil => ZIO.unit
                         case _ =>
                           if (deleteDirective) {
                             val wf = workflowLevelService.getWorkflowService()

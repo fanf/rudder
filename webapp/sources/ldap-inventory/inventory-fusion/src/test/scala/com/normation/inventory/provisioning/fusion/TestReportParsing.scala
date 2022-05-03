@@ -65,7 +65,7 @@ class TestInventoryParsing extends Specification with Loggable {
       val url = this.getClass.getClassLoader.getResource(inventoryRelativePath)
       if(null == url) throw new NullPointerException(s"Resource with relative path '${inventoryRelativePath}' is null (missing resource? Spelling? Permissions?)")
 
-      ZIO.acquireReleaseWith(Task.attempt(url.openStream()).mapError(e => SystemError(s"error opening ${url.toString}", e)))(is => effectUioUnit(is.close)){ is =>
+      ZIO.acquireReleaseWith(ZIO.attempt(url.openStream()).mapError(e => SystemError(s"error opening ${url.toString}", e)))(is => effectUioUnit(is.close)){ is =>
         parser.fromXml(inventoryRelativePath, is).chainError(s"Parsing error with file ${inventoryRelativePath}")
       }
     }

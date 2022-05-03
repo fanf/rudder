@@ -565,11 +565,11 @@ class GitTechniqueReader(
           for {
             _       <- processTechnique(stream, path.path, techniqueInfosRef, parseDescriptor, revTreeId).foldZIO(
                            err => TechniqueReaderLoggerPure.error(s"Error with technique at path: '${path.path}', it will be ignored. Error: ${err.fullMsg}")
-                         , ok  => UIO.unit
+                         , ok  => ZIO.unit
                        )
             _       <- rec(tw)
           } yield ()
-        } else UIO.unit
+        } else ZIO.unit
       }
     }
 
@@ -725,7 +725,7 @@ class GitTechniqueReader(
       pack <- if(parseDescriptor) loadDescriptorFile(is, filePath).flatMap(d => ZIO.fromEither(techniqueParser.parseXml(d, techniqueId)))
               else dummyTechnique.succeed
       info <- techniquesInfo.get
-      res  <- Task.attempt {
+      res  <- ZIO.attempt {
                 //check that that package is not already know, else its an error (by id ?)
                 info.techniques.get(techniqueId.name) match {
                   case None => //so we don't have any version yet, and so no id
@@ -817,7 +817,7 @@ class GitTechniqueReader(
    */
   private[this] def loadDescriptorFile(managedStream: ZIO[Any with Scope, RudderError, InputStream], filePath : String ) : IOResult[Elem] = {
     ZIO.scoped(managedStream.flatMap(is =>
-      Task.attempt {
+      ZIO.attempt {
         XML.load(is)
       }.foldZIO(
         err => err match {

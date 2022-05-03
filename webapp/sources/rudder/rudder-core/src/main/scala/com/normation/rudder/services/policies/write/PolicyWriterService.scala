@@ -373,7 +373,7 @@ class PolicyWriterServiceImpl(
         }
       , ok => ok match {
           case None    => Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'").fail
-          case Some(x) => UIO.unit
+          case Some(x) => ZIO.unit
         }
     )
   }
@@ -423,7 +423,7 @@ class PolicyWriterServiceImpl(
     val logNodeConfigurations = ZIO.when(logNodeConfig.isDebugEnabled) {
       IOResult.attempt(logNodeConfig.log(interestingNodeConfigs)).foldZIO(
           err => PolicyGenerationLoggerPure.error(s"Error when trying to write node configurations for debugging: ${err.fullMsg}")
-        , ok  => UIO.unit
+        , ok  => ZIO.unit
       )
     }
 
@@ -987,7 +987,7 @@ class PolicyWriterServiceImpl(
     val sortedFolder = folders.sortBy(x => x.baseFolder.count(_ =='/')).reverse
 
     if(sortedFolder.isEmpty) {
-      UIO.unit
+      ZIO.unit
     } else {
       for {
         mvOptions  <- getMoveOptions(sortedFolder.head)
@@ -1044,7 +1044,7 @@ class PolicyWriterServiceImpl(
     val atomically = StandardCopyOption.ATOMIC_MOVE :: StandardCopyOption.REPLACE_EXISTING :: Nil
 
     def testMove(file: File, destination: String): Task[File] = {
-      IO.attempt {
+      ZIO.attempt {
         val destDir = File(destination).parent
         if(file.parent.path == destDir.path) file // same directory is ok
         else {
@@ -1052,7 +1052,7 @@ class PolicyWriterServiceImpl(
           file.moveTo(destDir / file.name)(atomically)
         }
         File(destDir, file.name).delete(false)
-      }.catchAll(ex => IO.attempt(file.delete(true)) *> ex.fail)
+      }.catchAll(ex => ZIO.attempt(file.delete(true)) *> ex.fail)
     }
 
     def decideIfAtomic(src: File, destDir: String): IOResult[Option[File.CopyOptions]] = {
@@ -1196,7 +1196,7 @@ class PolicyWriterServiceImpl(
         // force deletion of invalid promises
         dest.delete(false, File.LinkOptions.noFollow)
         moveFile(src, dest, mvOptions, Some(perms), optGroupOwner)
-        UIO.unit
+        ZIO.unit
       } else {
         PolicyGenerationLoggerPure.error(s"Could not find freshly backup policies at '${backupFolder}'") *>
         Inconsistency(s"Backup policies could not be found at '${src.pathAsString}', and valid policies couldn't be restored.").fail

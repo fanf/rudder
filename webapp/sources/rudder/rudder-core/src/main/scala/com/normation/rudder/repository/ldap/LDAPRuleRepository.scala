@@ -266,7 +266,7 @@ class WoLDAPRuleRepository(
         systemCheck   <- (oldRule.isSystem, systemCall) match {
                          case (true, false) => s"System rule '${oldRule.name}' (${oldRule.id.serialize}) can not be modified".fail
                          case (false, true) => "You can't modify a non-system rule with updateSystem method".fail
-                         case _ => UIO.unit
+                         case _ => ZIO.unit
                        }
         exists          <- nodeRuleNameExists(con, rule.name, rule.id)
         nameIsAvailable <- ZIO.when(exists) {
@@ -276,7 +276,7 @@ class WoLDAPRuleRepository(
         result          <- con.save(crEntry, true).chainError(s"Error when saving rule entry in repository: ${crEntry}")
         optDiff         <- diffMapper.modChangeRecords2RuleDiff(existingEntry,result).toIO.chainError(s"Error when mapping rule '${rule.id.serialize}' update to an diff: ${result}")
         loggedAction    <- optDiff match {
-                             case None => UIO.unit
+                             case None => ZIO.unit
                              case Some(diff) => actionLogger.saveModifyRule(modId, principal = actor, modifyDiff = diff, reason = reason)
                            }
         autoArchive     <- ZIO.when(autoExportOnModify && optDiff.isDefined  && !rule.isSystem) {

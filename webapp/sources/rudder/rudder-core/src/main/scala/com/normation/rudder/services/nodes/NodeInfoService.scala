@@ -580,7 +580,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
    * Update cache, without doing anything with the data
    */
   def updateCache(): IOResult[Unit] = {
-    withUpToDateCache("update cache")(_ => UIO.unit)
+    withUpToDateCache("update cache")(_ => ZIO.unit)
   }
 
 
@@ -848,7 +848,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
 
   // return the cache last update time, or epoch if cache is not init
   def getCacheLastUpdate: UIO[DateTime] = {
-    semaphore.withPermit(UIO.succeed(this.nodeCache.map(_.lastModTime).getOrElse(new DateTime(0))))
+    semaphore.withPermit(ZIO.succeed(this.nodeCache.map(_.lastModTime).getOrElse(new DateTime(0))))
   }
 
   def getAll(): IOResult[Map[NodeId, NodeInfo]] = withUpToDateCache("all nodes info") { cache =>
@@ -994,7 +994,7 @@ class NodeInfoServiceCachedImpl(
    *   back ~10ms on a dev machine.
    */
   override def checkUpToDate(lastKnowModification: DateTime, lastModEntryCSN: Seq[String]): IOResult[Boolean] = {
-    UIO.succeed(System.currentTimeMillis).flatMap { n0 =>
+    ZIO.succeed(System.currentTimeMillis).flatMap { n0 =>
       //if last check is less than 100 ms ago, consider cache ok
       if(n0 - lastKnowModification.getMillis < minimumCacheValidityMillis) {
         true.succeed
@@ -1019,7 +1019,7 @@ class NodeInfoServiceCachedImpl(
         for {
           con     <- ldap
           entries <- //here, I have to rely on low-level LDAP connection, because I need to proceed size-limit exceeded as OK
-                     (Task.attempt(con.backed.search(searchRequest).getSearchEntries) catchAll {
+                     (ZIO.attempt(con.backed.search(searchRequest).getSearchEntries) catchAll {
                        case e:LDAPSearchException if(e.getResultCode == ResultCode.SIZE_LIMIT_EXCEEDED) =>
                          e.getSearchEntries().succeed
                        case e: Throwable =>
@@ -1033,7 +1033,7 @@ class NodeInfoServiceCachedImpl(
                          logPure.trace(s"Cache check for node info gave '${res}' (${seq.size} entry returned)") *> res.succeed
                        }
                      )
-          n1       <- UIO.succeed(System.currentTimeMillis)
+          n1       <- ZIO.succeed(System.currentTimeMillis)
           _        <- IOResult.attempt(TimingDebugLogger.debug(s"Cache for nodes info expire ?: ${n1-n0}ms"))
         } yield {
           entries

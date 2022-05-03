@@ -1060,7 +1060,7 @@ object BuildNodeConfiguration extends Loggable {
     // 1.3: build node config, binding ${rudder./node.properties} parameters
     // open a scope for the JsEngine, because its init is long.
 
-    val nanoTime = UIO.succeed(System.nanoTime())
+    val nanoTime = ZIO.succeed(System.nanoTime())
 
 
     val evalJsProg = JsEngineProvider.withNewEngine(scriptEngineEnabled, maxParallelism, jsTimeout) { jsEngine =>

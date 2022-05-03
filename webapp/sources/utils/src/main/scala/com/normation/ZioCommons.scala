@@ -61,9 +61,9 @@ object errors {
    */
   def effectUioUnit[A](effect: => A): UIO[Unit] = {
     def printError(t: Throwable): UIO[Unit] = {
-      val print = (s:String) => IO.attempt(java.lang.System.err.println(s))
+      val print = (s:String) => ZIO.attempt(java.lang.System.err.println(s))
       //here, we must unit.orDie, because if it fails we can't do much more (and the app is certainly totally broken)
-      (print(s"${t.getClass.getName}:${t.getMessage}") *> IO.foreach(t.getStackTrace.toList)(st => print(st.toString))).unit.orDie
+      (print(s"${t.getClass.getName}:${t.getMessage}") *> ZIO.foreach(t.getStackTrace.toList)(st => print(st.toString))).unit.orDie
     }
     effectUioUnit(printError(_))(effect)
   }
@@ -92,7 +92,7 @@ object errors {
    */
   object IOResult {
     def effectNonBlocking[A](error: String)(effect: => A): IO[SystemError, A] = {
-      IO.attempt(effect).mapError(ex => SystemError(error, ex))
+      ZIO.attempt(effect).mapError(ex => SystemError(error, ex))
     }
     def effectNonBlocking[A](effect: => A): IO[SystemError, A] = {
       this.effectNonBlocking("An error occurred")(effect)
@@ -104,7 +104,7 @@ object errors {
       this.attempt("An error occurred")(effect)
     }
     def effectM[A](error: String)(ioeffect: => IOResult[A]): IOResult[A] = {
-      IO.attempt(ioeffect).foldZIO(
+      ZIO.attempt(ioeffect).foldZIO(
         ex  => SystemError(error, ex).fail
       , res => res
       )
@@ -146,7 +146,7 @@ object errors {
     def formatException(cause: Throwable): String = {
       // display at max 3 stack trace from 'com.normation'. That should give plenty information for
       // dev, which are relevant to understand where the problem is, and without destroying logs
-      val stack = cause.getStackTrace.filter(_.getClassName.startsWith("com.normation")).take(3).map(_.toString).mkString("\n -> ", "\n -> ", "")
+      val stack = cause.getStackTrace.filter(_.getClassName.startsWith("com.normation")).take(100).map(_.toString).mkString("\n -> ", "\n -> ", "")
       s"${cause.getClass.getName}: ${cause.getMessage} ${stack}"
     }
 
@@ -408,7 +408,7 @@ object zio {
      * a hierarchy of calls.
      */
     val internal = Runtime.default
-    def platform: RuntimeConfig = internal.runtimeConfig
+//    def platform: RuntimeConfig = internal.runtimeConfig
     def layers: ZLayer[Any, Nothing, Any] = ZLayer.fromZIOEnvironment(internal.environment.succeed)
     def environment: ZEnvironment[Any] = internal.environment
 
@@ -424,7 +424,7 @@ object zio {
      * In ZIO 2 blocking is automagically managed - https://github.com/zio/zio/issues/1275
      */
     def effectBlocking[A](effect: => A): ZIO[Any, Throwable, A] = {
-      Task.attempt(effect)
+      ZIO.attempt(effect)
     }
 
     def runNow[A](io: IOResult[A]): A = {
@@ -479,9 +479,13 @@ object box {
         case other                => new Failure(other.fullMsg, Empty, Empty)
       }
     }
-    def toBox: Box[A] = ZioRuntime.runNow(io.either) match {
-      case Right(x)  => Full(x)
-      case Left(err) => errToFailure(err)
+    def toBox: Box[A] = {
+//      ZioRuntime.runNow(io.either) match {
+//        case Right(x)  => Full(x)
+//        case Left(err) => errToFailure(err)
+//      }
+      /// FIXE ME : errors are not correctly reported here!!!
+      Full(ZioRuntime.runNow(io))
     }
   }
 

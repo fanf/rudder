@@ -76,7 +76,7 @@ object LDAPIOResult{
 
   // same than above for a Rudder error from a string
   implicit class ToFailureMsg(e: String) {
-    def fail = IO.fail(LDAPRudderError.Consistancy(e))
+    def fail = ZIO.fail(LDAPRudderError.Consistancy(e))
   }
 
   implicit class ValidatedToLdapError[T](res: ZIO[Any, NonEmptyList[LDAPRudderError], List[T]]) {

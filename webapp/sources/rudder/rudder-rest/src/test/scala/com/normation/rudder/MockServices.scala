@@ -248,7 +248,7 @@ class MockGitConfigRepo(prefixTestResources: String = "") {
 
     override def setCurrentRevTreeId(id: ObjectId): IOResult[Unit] = {
       // nothing
-      UIO.unit
+      ZIO.unit
     }
   }
 }
@@ -1157,7 +1157,7 @@ class MockRules() {
       }.map(_ => RuleArchiveId(s"swap at ${DateTime.now().toString(ISODateTimeFormat.dateTime())}"))
     }
 
-    override def deleteSavedRuleArchiveId(saveId: RuleArchiveId): IOResult[Unit] = UIO.unit
+    override def deleteSavedRuleArchiveId(saveId: RuleArchiveId): IOResult[Unit] = ZIO.unit
 
     override def load(rule: Rule, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Unit] = ???
 
@@ -1249,7 +1249,7 @@ class MockGlobalParam() {
     }
 
     override def deleteSavedParametersArchiveId(saveId: ParameterArchiveId): IOResult[Unit] = {
-      UIO.unit
+      ZIO.unit
     }
 
   }

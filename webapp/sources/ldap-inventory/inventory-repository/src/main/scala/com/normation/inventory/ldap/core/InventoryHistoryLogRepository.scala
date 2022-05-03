@@ -60,8 +60,8 @@ class FullInventoryFileParser(
 
   def fromFile(in:File) : IOResult[FullInventory] = {
     import scala.collection.mutable.Buffer
-    IO.acquireReleaseWith(Task.attempt(new LDIFReader(in)).mapError(e => InventoryError.System(e.getMessage)))(r => effectUioUnit(r.close)) { reader =>
-      (Task.attempt {
+    ZIO.acquireReleaseWith(ZIO.attempt(new LDIFReader(in)).mapError(e => InventoryError.System(e.getMessage)))(r => effectUioUnit(r.close)) { reader =>
+      (ZIO.attempt {
         val buf = Buffer[Entry]()
         var e : Entry = null
         do {
@@ -80,8 +80,8 @@ class FullInventoryFileParser(
   }
 
   def toFile(out:File, data: FullInventory) : IOResult[FullInventory] = {
-    ZIO.acquireReleaseWith(Task.attempt(new LDIFWriter(out)).mapError(e => InventoryError.System(e.getMessage)))(is => effectUioUnit(is.close)) { printer =>
-      (Task.attempt {
+    ZIO.acquireReleaseWith(ZIO.attempt(new LDIFWriter(out)).mapError(e => InventoryError.System(e.getMessage)))(is => effectUioUnit(is.close)) { printer =>
+      (ZIO.attempt {
         mapper.treeFromNode(data.node).toLDIFRecords.foreach { r => printer.writeLDIFRecord(r) }
         data.machine.foreach { m =>
           mapper.treeFromMachine(m).toLDIFRecords.foreach { r => printer.writeLDIFRecord(r) }

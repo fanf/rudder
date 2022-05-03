@@ -197,7 +197,7 @@ class ReportingServiceTest extends DBCommon with BoxSpecMatcher {
 
   lazy val dummyComplianceRepos = new ComplianceRepository() {
     override def saveRunCompliance(reports: List[NodeStatusReport]): IOResult[Unit] = {
-      UIO.unit
+      ZIO.unit
     }
   }
 

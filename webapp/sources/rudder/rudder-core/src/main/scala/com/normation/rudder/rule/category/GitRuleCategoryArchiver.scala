@@ -167,7 +167,7 @@ class GitRuleCategoryArchiverImpl(
                      val commitMsg = s"Archive rule Category with ID '${category.id.value}' ${GET(reason)}"
                      commitAddFileWithModId(modId, commiter, gitPath, commitMsg)
                    case None =>
-                     UIO.unit
+                     ZIO.unit
                  }
     } yield {
       GitPath(gitPath)
@@ -198,7 +198,7 @@ class GitRuleCategoryArchiverImpl(
                         val commitMsg = s"Delete archive of rule with ID '${categoryId.value} ${GET(reason)}"
                         commitRmFileWithModId(modId, commiter, gitPath, commitMsg)
                       case None =>
-                        UIO.unit
+                        ZIO.unit
                     }
       } yield {
         GitPath(gitPath)
@@ -248,7 +248,7 @@ class GitRuleCategoryArchiverImpl(
                        val newPath = toGitPath(newCategoryDir)
                        commitMvDirectoryWithModId(modId, commiter, oldPath, newPath, commitMsg)
                      case None =>
-                       UIO.unit
+                       ZIO.unit
                    }
       } yield {
         GitPath(toGitPath(archive))

@@ -103,7 +103,7 @@ object GitRepositoryProviderImpl {
       } else if (!dir.isOwnerWritable) {
         Inconsistency(s"Directory '${dir.pathAsString}' exists but it not writable and so it can't be use as a git repository root " +
                       s"directory. Please check that it's really a directory and that rights are correct").fail
-      } else UIO.unit
+      } else ZIO.unit
     }
 
     /**

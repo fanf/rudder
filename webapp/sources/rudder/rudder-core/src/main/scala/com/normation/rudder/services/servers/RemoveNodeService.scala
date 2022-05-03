@@ -113,7 +113,7 @@ object DeletionResult {
       case Error(err) => err.fail
       case PreHookFailed(err) => Inconsistency(s"Pre hook error: ${err.msg}").fail
       case PostHookFailed(err) => Inconsistency(s"Post hook error: ${err.msg}").fail
-      case Success => UIO.unit
+      case Success => ZIO.unit
     })
   }
 
@@ -539,7 +539,7 @@ class DeletePolicyServerPolicies(policyServerManagement: PolicyServerManagementS
     // we can avoid to do LDAP requests if we are sure the node wasn't a policy server
     info.map(_.isPolicyServer) match {
       case Some(false) =>
-        UIO.unit
+        ZIO.unit
       case _           =>
         NodeLoggerPure.Delete.debug(s"  - delete relay related policies in LDAP'${nodeId.value}'") *>
         policyServerManagement.deleteRelaySystemObjects(nodeId).catchAll(err =>
@@ -560,7 +560,7 @@ class ResetKeyStatus(ldap: LDAPConnectionProvider[RwLDAPConnection], deletedDit:
       } yield () ).catchAll(err =>
         NodeLoggerPure.Delete.error(s"Error when removing the certification status of node key ${(nodeId, info).name}: ${err.fullMsg}")
       )
-    } else UIO.unit
+    } else ZIO.unit
   }
 }
 
@@ -573,8 +573,8 @@ class CleanUpCFKeys extends PostNodeDeleteAction {
         if(agentTypes.contains(AgentType.CfeCommunity)) {
           NodeLoggerPure.Delete.debug(s"  - delete CFEngine keys for '${nodeId.value}'") *>
           deleteCfengineKey(i)
-        } else UIO.unit
-      case _       => UIO.unit
+        } else ZIO.unit
+      case _       => ZIO.unit
     }
   }
 
@@ -585,7 +585,7 @@ class CleanUpCFKeys extends PostNodeDeleteAction {
   def deleteCfengineKey(nodeInfo: NodeInfo): UIO[Unit] = {
     nodeInfo.keyHashCfengine match {
       case null | "" => // no key or not a cfengine agent
-        UIO.unit
+        ZIO.unit
       case key =>
         //key name looks like: root-MD5=8d3270d42486e8d6436d06ed5cc5034f.pub
         IOResult.attempt(Files.find(Paths.get("/var/rudder/cfengine-community/ppkeys"), 1, new BiPredicate[Path, BasicFileAttributes] {

@@ -313,7 +313,7 @@ class MigrateTechniques6_x_7_0(
                    s"It is necessary to be able to migrate old system configurations to 7.0.").fail
       } else {
         MigrationLoggerPure.info(s"System technique v7.0 present: '${t}'") *>
-        UIO.unit
+        ZIO.unit
       }
     ).unit
 

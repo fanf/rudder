@@ -292,7 +292,7 @@ object NodeKeyHash {
                     // read the PEM b64 pubkey string
       pubkeyInfo <- IOResult.attempt( parser.readObject.asInstanceOf[SubjectPublicKeyInfo] )
                     // when bouncy castle doesn't successfuly load key, pubkeyinfo is null
-      _          <- if(pubkeyInfo == null) Inconsistency(s"Error when reading key (it is likely malformed)").fail else UIO.unit
+      _          <- if(pubkeyInfo == null) Inconsistency(s"Error when reading key (it is likely malformed)").fail else ZIO.unit
     } yield {
       pubkeyInfo
     }
@@ -395,7 +395,7 @@ object NodeKeyHash {
       res            <- SecurityToken.parseCertificate(cert)
       (pubkeyInfo,_) =  res
                         // when bouncy castle doesn't successfuly load key, pubkeyinfo is null
-      _              <- if(pubkeyInfo == null) Inconsistency(s"Error when reading key (it is likely malformed)").fail else UIO.unit
+      _              <- if(pubkeyInfo == null) Inconsistency(s"Error when reading key (it is likely malformed)").fail else ZIO.unit
       pubkey         <- IOResult.attempt(pubkeyInfo.getEncoded)
       digest         <- sha256Digest(pubkey)
     } yield {

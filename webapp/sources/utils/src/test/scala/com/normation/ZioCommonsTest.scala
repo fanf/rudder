@@ -80,8 +80,8 @@ ZioCommonsTest extends Specification {
 class internalRuntime {
 
   lazy val runtime = Runtime.default
-  runtime.unsafeRun(UIO.succeed(println("**** case 0: non blocking")))
-  unsafeRun(UIO.succeed(println("**** case 1: blocking")))
+  runtime.unsafeRun(ZIO.succeed(println("**** case 0: non blocking")))
+  unsafeRun(ZIO.succeed(println("**** case 1: blocking")))
 
   def blocking[E, A](e: ZIO[Any, E, A]): ZIO[Any, E, A] = e
   def unsafeRun[E, A](e: => ZIO[Any, E, A]): Unit = {
@@ -96,8 +96,8 @@ object someRoot { // this is the entry point for my runtime
 
 object Elsewhere { // somewhere else, a blocking unsafe run is called
 
-  someRoot.zioRuntime.runtime.unsafeRun(UIO.succeed(println("**** case 1000: non blocking")))
-  someRoot.zioRuntime.unsafeRun(UIO.succeed(println("**** case 2000: blocking")))
+  someRoot.zioRuntime.runtime.unsafeRun(ZIO.succeed(println("**** case 1000: non blocking")))
+  someRoot.zioRuntime.unsafeRun(ZIO.succeed(println("**** case 2000: blocking")))
 
   def print()= println("ok")
 }
@@ -105,8 +105,8 @@ object Elsewhere { // somewhere else, a blocking unsafe run is called
 object TestRuntime {
   def main(args: Array[String]): Unit = {
     // in internal, it blocks
-    someRoot.zioRuntime.runtime.unsafeRun(UIO.succeed(println("**** case 100: non blocking")))
-    someRoot.zioRuntime.unsafeRun(UIO.succeed(println("**** case 200: blocking")))
+    someRoot.zioRuntime.runtime.unsafeRun(ZIO.succeed(println("**** case 100: non blocking")))
+    someRoot.zioRuntime.unsafeRun(ZIO.succeed(println("**** case 200: blocking")))
 
     // it blocks here, when calling the blocking variant
     Elsewhere.print()
@@ -253,7 +253,7 @@ object TestLog {
 
     def oups: IO[String, Int] = "oups error".fail
 
-    val prog = oups.catchAll(e => log.error("I got an error!") *> e.fail) *> UIO.succeed(42)
+    val prog = oups.catchAll(e => log.error("I got an error!") *> e.fail) *> ZIO.succeed(42)
 
     ZioRuntime.unsafeRun(prog)
   }
@@ -325,7 +325,7 @@ object TestSemaphore {
  *
  */
 object TestJavaLockWithZio {
-  def log(s : String) = UIO.succeed(println(s))
+  def log(s : String) = ZIO.succeed(println(s))
 
   trait ScalaLock {
     def lock(): Unit
@@ -396,9 +396,9 @@ object TestZioSemantic {
   trait LOG {
     def apply(s: String): UIO[Unit]
   }
-  def makeLog = UIO.attempt(new LOG {
+  def makeLog = ZIO.attempt(new LOG {
     val zero = java.lang.System.currentTimeMillis()
-    def apply(s : String) = UIO.succeed(println(s"[${java.lang.System.currentTimeMillis()-zero}] $s"))
+    def apply(s : String) = ZIO.succeed(println(s"[${java.lang.System.currentTimeMillis()-zero}] $s"))
   })
 
   val semaphore = Semaphore.make(1)
@@ -406,12 +406,12 @@ object TestZioSemantic {
     sem <- semaphore
     log <- makeLog
     _   <- log("sem get 1")
-    a   <- sem.withPermit(IO.attempt(println("Hello world 1")))
+    a   <- sem.withPermit(ZIO.attempt(println("Hello world 1")))
     _   <- log("sem get 2")
-    b   <- sem.withPermit(IO.attempt({println("sleeping now"); Thread.sleep(2000); println("after sleep: second hello")}))
+    b   <- sem.withPermit(ZIO.attempt({println("sleeping now"); Thread.sleep(2000); println("after sleep: second hello")}))
     _   <- log("sem get 3")
            // at tham point, the semaphore is free because b is fully executed, so no timeout
-    c   <- sem.withPermit(IO.attempt(println("third hello"))).timeout(Duration(5, java.util.concurrent.TimeUnit.MILLISECONDS)).provideLayer(c)
+    c   <- sem.withPermit(ZIO.attempt(println("third hello"))).timeout(Duration(5, java.util.concurrent.TimeUnit.MILLISECONDS)).provideLayer(c)
     _   <- c match {
              case None => log("---- A timeout happened")
              case Some(y) => log("++++ No timeout")
@@ -421,11 +421,11 @@ object TestZioSemantic {
     sem <- semaphore
     log <- makeLog
     _   <- log("sem get 1")
-    a   <- sem.withPermit(IO.attempt(println("Hello world 1"))).fork
+    a   <- sem.withPermit(ZIO.attempt(println("Hello world 1"))).fork
     _   <- log("sem get 2")
-    b   <- sem.withPermit(IO.attempt({println("sleeping now"); Thread.sleep(2000); println("after sleep: second hello")})).fork
+    b   <- sem.withPermit(ZIO.attempt({println("sleeping now"); Thread.sleep(2000); println("after sleep: second hello")})).fork
     _   <- log("sem get 3")
-    c   <- sem.withPermit(IO.attempt(println("third hello"))).timeout(Duration(5, java.util.concurrent.TimeUnit.MILLISECONDS)).provideLayer(c).fork
+    c   <- sem.withPermit(ZIO.attempt(println("third hello"))).timeout(Duration(5, java.util.concurrent.TimeUnit.MILLISECONDS)).provideLayer(c).fork
     _   <- a.join
     _   <- b.join
     x   <- c.join
@@ -482,7 +482,7 @@ object TestAccumulate {
 
     def f(s: String) = if(s == "ok") 1.succeed else Unexpected(s).fail
 
-    val res = IO.foreach(l) { s => f(s).either }
+    val res = ZIO.foreach(l) { s => f(s).either }
 
     val res2 = for {
       ll <- res
@@ -505,14 +505,14 @@ object TestThrowError {
 
     case class BusinessError(msg: String)
 
-    val prog1 = Task.attempt {
+    val prog1 = ZIO.attempt {
       val a = "plop"
       val b = throw new RuntimeException("foo bar bar")
       val c = "replop"
       a + c
     } mapError(e => BusinessError(e.getMessage))
 
-    val prog2 = Task.attempt {
+    val prog2 = ZIO.attempt {
       val a = "plop"
       val b = throw new Error("I'm an java.lang.Error!")
       val c = "replop"

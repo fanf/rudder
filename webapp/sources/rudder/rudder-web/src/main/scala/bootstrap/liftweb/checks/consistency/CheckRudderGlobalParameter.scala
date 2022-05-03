@@ -94,7 +94,7 @@ class CheckRudderGlobalParameter(
                   val provider = p.provider.getOrElse(PropertyProvider.systemPropertyProvider).value
                   BootstrapLogger.info(s"Reseting global parameter '${p.name}' from ${provider} provider to value: ${p.valueAsString}") *>
                   woParamRepo.updateParameter(p, modId, RudderEventActor, Some(s"Reseting global system parameter '${p.name}' to its default value"))
-                case _ => UIO.unit
+                case _ => ZIO.unit
               }
     } yield ()
   }

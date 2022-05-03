@@ -109,7 +109,7 @@ class Scheduler[A](
   val loop = {
     def oneStep(d: Duration) = {
       for {
-        a <- queue.take.race(UIO.unit.delay(d) *> default)
+        a <- queue.take.race(ZIO.unit.delay(d) *> default)
         n <- ZIO.clockWith(_.currentTime(TimeUnit.MINUTES))
         _ <- action(a)
         _ <- ZIO.clockWith(_.sleep(min))

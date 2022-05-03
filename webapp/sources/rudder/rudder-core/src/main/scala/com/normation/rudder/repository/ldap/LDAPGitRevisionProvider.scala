@@ -116,7 +116,7 @@ class LDAPGitRevisionProvider(
       con <- ldap
       opt <- con.get(rudderDit.ACTIVE_TECHNIQUES_LIB.dn, A_OC)
       res <- opt match {
-               case None       => logPure.error("The root entry of the user template library was not found, the current revision won't be persisted") *> UIO.unit
+               case None       => logPure.error("The root entry of the user template library was not found, the current revision won't be persisted") *> ZIO.unit
                case Some(root) =>
                  root.addValues(A_OC, OC_ACTIVE_TECHNIQUE_LIB_VERSION)
                  root.resetValuesTo(A_TECHNIQUE_LIB_VERSION, id.getName)

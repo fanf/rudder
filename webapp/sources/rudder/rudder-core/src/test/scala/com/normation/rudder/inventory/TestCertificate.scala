@@ -125,7 +125,7 @@ class TestCertificate extends Specification with Loggable {
   , 2
   , fullInventoryRepo
   , new InventoryDigestServiceV1(fullInventoryRepo)
-  , () => UIO.unit
+  , () => ZIO.unit
   , new InventoryDit(new DN("cn=test"), new DN("cn=soft"),"Pending Servers")
   )
 

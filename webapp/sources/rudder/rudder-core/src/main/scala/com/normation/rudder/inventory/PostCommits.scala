@@ -131,7 +131,7 @@ class FactRepositoryPostCommit(
                   case None =>
                     InventoryProcessingLogger.info(s"Node information relative to new node '${inventory.node.main.id.value}' " +
                                                    s"are missing, it will not be persisted in fact-repository") *>
-                    UIO.unit // does nothing
+                    ZIO.unit // does nothing
 
                   case Some(nodeInfo) =>
                     nodeFactsRepository.persist(nodeInfo, FullInventory(inventory.node, Some(inventory.machine)), inventory.applications)

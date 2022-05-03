@@ -118,7 +118,7 @@ trait GitItemRepository {
        //for debugging
         _      <- if(!(status.getAdded.contains(gitPath) || status.getChanged.contains(gitPath))) {
                     GitArchiveLoggerPure.debug(s"Auto-archive gitRepo.git failure: not found in gitRepo.git added files: '${gitPath}'. You can safely ignore that warning if the file was already existing in gitRepo.git and was not modified by that archive.")
-                  } else UIO.unit
+                  } else ZIO.unit
         rev    <- IOResult.attempt(gitRepo.git.commit.setCommitter(commiter).setMessage(commitMessage).call)
         commit <- IOResult.attempt(GitCommitId(rev.getName))
         _      <- GitArchiveLoggerPure.debug(s"file '${gitPath}' was added in commit '${commit.value}'")
@@ -141,7 +141,7 @@ trait GitItemRepository {
         status <- IOResult.attempt(gitRepo.git.status.call)
         _      <- if(!status.getRemoved.contains(gitPath)) {
                     GitArchiveLoggerPure.debug(s"Auto-archive gitRepo.git failure: not found in gitRepo.git removed files: '${gitPath}'. You can safely ignore that warning if the file was already existing in gitRepo.git and was not modified by that archive.")
-                  } else UIO.unit
+                  } else ZIO.unit
         rev    <- IOResult.attempt(gitRepo.git.commit.setCommitter(commiter).setMessage(commitMessage).call)
         commit <- IOResult.attempt(GitCommitId(rev.getName))
         _      <- GitArchiveLoggerPure.debug(s"file '${gitPath}' was removed in commit '${commit.value}'")
@@ -170,7 +170,7 @@ trait GitItemRepository {
         status <- IOResult.attempt(gitRepo.git.status.call)
         _      <- if(!status.getAdded.asScala.exists( path => path.startsWith(newGitPath) ) ) {
                     GitArchiveLoggerPure.debug(s"Auto-archive gitRepo.git failure when moving directory (not found in added file): '${newGitPath}'. You can safely ignore that warning if the file was already existing in gitRepo.git and was not modified by that archive.")
-                  } else UIO.unit
+                  } else ZIO.unit
         rev    <- IOResult.attempt(gitRepo.git.commit.setCommitter(commiter).setMessage(commitMessage).call)
         commit <- IOResult.attempt(GitCommitId(rev.getName))
         _      <- GitArchiveLoggerPure.debug(s"file '${oldGitPath}' was moved to '${newGitPath}' in commit '${commit.value}'")

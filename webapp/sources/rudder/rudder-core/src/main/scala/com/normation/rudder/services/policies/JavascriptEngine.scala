@@ -393,7 +393,7 @@ final object JsEngineProvider {
               JsDirectiveParamLoggerPure.debug(s"Error when trying to use the JS script engine in a directive. Java version: '${P.javaVersion}'; JVM info: '${P.javaVmInfo}'; name: '${P.javaVmName}'; version: : '${P.javaVmVersion}'; vendor: '${P.javaVmVendor}';") *>
               // in the case of an exception and debug enable, print stack
               JsDirectiveParamLoggerPure.debug(err.fullMsg)
-            } else UIO.unit
+            } else ZIO.unit
             ) *> err.fail
           , res => res.succeed
         )
