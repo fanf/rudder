@@ -82,7 +82,7 @@ object errors {
   type IOResult[A] = ZIO[Any, RudderError, A]
 
   /*
-   * An object that provides utility methods to import effectful
+   * An object that provides utility methods to import effectfull
    * methods into rudder IOResult type.
    * By default, we consider that all imports have blocking
    * effects, and need to be run on an according thread-pool.
@@ -281,7 +281,7 @@ object errors {
         case ((h::t), _) => NonEmptyList.of(h,t:_*).fail
         case (Nil, res ) => res.succeed
       }
-    }
+  }
 
     /*
      * Execute sequentially and accumulate errors
@@ -299,7 +299,7 @@ object errors {
      * Execute in parallel, non ordered, and accumulate error, using at max N fibers
      */
     def accumulateParNELN[R, E, B](n: Int)(f: A => ZIO[R, E, B]): ZIO[R, NonEmptyList[E], List[B]] = {
-      ZIO.partitionParN(n)(in)(f).flatMap(toNEL)
+      ZIO.partitionPar(in)(f).flatMap(toNEL).withParallelism(n)
     }
   }
 
@@ -320,7 +320,6 @@ object errors {
         case Right(res) => Right(res)
       }
     }
-
 
     /*
      * Execute in parallel, non ordered, and accumulate error, using at max N fibers
@@ -403,7 +402,7 @@ object zio {
   object ZioRuntime {
     /*
      * Internal runtime. You should not access it within rudder.
-     * If you need to use it for "unsafeRun", you should alway pin the
+     * If you need to use it for "unsafeRun", you should always pin the
      * IO into an async thread pool to avoid deadlock in case of
      * a hierarchy of calls.
      */
@@ -428,7 +427,9 @@ object zio {
     }
 
     def runNow[A](io: IOResult[A]): A = {
-      internal.unsafeRunSync(blocking(io)).fold(cause => throw cause.squashWith(err => new RuntimeException(err.fullMsg)), a => a)
+      // unsafeRun will display a formatted fiber trace in case there is an error, which likely what we wants:
+      // here, error were not prevented before run, so it's a defect that should be corrected.
+      internal.unsafeRun(blocking(io))
     }
 
     /*
@@ -441,7 +442,7 @@ object zio {
     }
 
     /*
-     * An unsafe run that is always started on a growing threadpool and its
+     * An unsafe run that is always started on a growing thread-pool and its
      * effect marked as blocking.
      */
     def unsafeRun[E, A](zio: => ZIO[Any, E, A]): A = internal.unsafeRun(zio)
@@ -480,12 +481,10 @@ object box {
       }
     }
     def toBox: Box[A] = {
-//      ZioRuntime.runNow(io.either) match {
-//        case Right(x)  => Full(x)
-//        case Left(err) => errToFailure(err)
-//      }
-      /// FIXE ME : errors are not correctly reported here!!!
-      Full(ZioRuntime.runNow(io))
+      ZioRuntime.runNow(io.either) match {
+        case Right(x)  => Full(x)
+        case Left(err) => errToFailure(err)
+      }
     }
   }
 

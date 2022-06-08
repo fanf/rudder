@@ -7,8 +7,8 @@ import cron4s.lib.javatime.*
 import java.time.OffsetDateTime
 
 import zio.Schedule
+import zio.Trace
 import zio.ZIO
-import zio.ZTraceElement
 import com.normation.errors.PureResult
 import com.normation.errors.SystemError
 
@@ -45,7 +45,7 @@ object CronParser {
       new Schedule[Any, Any, Any] {
         type State = Unit
         def initial: Unit = ()
-        def step(now: OffsetDateTime, in: Any, state: Unit)(implicit trace: ZTraceElement): ZIO[Any, Nothing, (Unit, Any, Schedule.Decision)] = {
+        def step(now: OffsetDateTime, in: Any, state: Unit)(implicit trace: Trace): ZIO[Any, Nothing, (Unit, Any, Schedule.Decision)] = {
           ZIO.succeed((c.next(now))).map {
             case Some(next) => (initial, in, Schedule.Decision.Continue(Schedule.Interval.after(next)))
             case None       => (initial, in, Schedule.Decision.Done)

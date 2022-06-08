@@ -40,8 +40,8 @@ init flags =
     initUi         = UI initFilters NoModal False True initDatePicker False
     initModel      = Model flags.contextPath initUi [] False Nothing
     initActions    =
-      [ ZIO.perform Tick Time.now
-      , ZIO.perform AdjustTimeZone Time.here
+      [ Task.perform Tick Time.now
+      , Task.perform AdjustTimeZone Time.here
       ]
   in
     ( initModel , Cmd.batch initActions )

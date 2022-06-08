@@ -555,7 +555,7 @@ class ProcessFile(
             // - if the map wasn't interrupted in the first 500 ms, it is not interruptible anymore
 
             val effect = ZioRuntime.blocking(
-                 UIO.unit.delay(fileWrittenThreshold)
+                 ZIO.unit.delay(fileWrittenThreshold)
               *> (watchEventQueue.offer(WatchEvent.End(file))
                  *> processFile(file).catchAll(err =>
                       InventoryProcessingLogger.error(s"Error when adding new inventory file '${file.path}' to processing: ${err.fullMsg}")

@@ -97,7 +97,7 @@ class ExpectedReportTest extends Specification {
                   ExpectedValueMatch("/bin/echo \"restore\"","/bin/echo \"restore\"")
                ))
 
-    (jsonMin.fromJson[JsonValueExpectedReport7_1]) must beEqualTo(Full(expected))
+    (jsonMin.fromJson[JsonValueExpectedReport7_1].map(_.transform)) must beEqualTo(Right(expected))
   }
 
 

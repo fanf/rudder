@@ -53,7 +53,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.templates.STVariable
 
 import java.nio.charset.Charset
-import net.liftweb.common._
+import net.liftweb.common.*
 import net.liftweb.json.JsonAST
 import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
@@ -72,22 +72,24 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.attribute.PosixFilePermission
 import java.util.concurrent.TimeUnit
 import com.normation.rudder.hooks.HookReturnCode
-import zio._
-import zio.syntax._
-import com.normation.errors._
-import com.normation.box._
-import com.normation.zio._
+
+import zio.*
+import zio.syntax.*
+import com.normation.errors.*
+import com.normation.box.*
+import com.normation.zio.*
 import zio.Duration
-import cats.data._
-import cats.implicits._
 import com.normation.rudder.domain.logger.NodeConfigurationLogger
-import better.files._
+
+import better.files.*
 import com.normation.rudder.domain.logger.PolicyGenerationLogger
 import com.normation.rudder.domain.logger.PolicyGenerationLoggerPure
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.services.policies.BundleOrder
 import com.normation.templates.FillTemplateThreadUnsafe
 import com.normation.templates.FillTemplateTimer
+
+import cats.data.NonEmptyList
 import org.apache.commons.io.FileUtils
 
 import java.nio.file.Files
@@ -184,7 +186,7 @@ object PolicyOrdering {
     val sorted = policies.sortWith(compareBundleOrder)
 
     //some debug info to understand what order was used for each node:
-    // it's *extremelly* versbose, perhaps it should have it's own logger.
+    // it's *extremely* verbose, perhaps it should have it's own logger.
     if(PolicyGenerationLogger.isTraceEnabled) {
       val logSorted = sorted.map(p => s"${p.technique.id.serialize}: [${p.ruleOrder.value} | ${p.directiveOrder.value}]").mkString("[","][", "]")
       PolicyGenerationLogger.trace(s"Sorted Technique (and their Rules and Directives used to sort): ${logSorted}")
@@ -308,10 +310,10 @@ class PolicyWriterServiceImpl(
 
   /*
    * For all the writing part, we want to limit the number of concurrent workers on two aspects:
-   * - we want an I/O threadpool, which knows what to do when a thread is blocked for a long time,
-   *   and risks thread exaustion
+   * - we want an I/O thread-pool, which knows what to do when a thread is blocked for a long time,
+   *   and risks thread exhaustion
    *   (it can happens, since we have a number of files to write, some maybe big)
-   * - we want to limit the total number of concurrent execution to avoid blowming up the number
+   * - we want to limit the total number of concurrent execution to avoid blowing up the number
    *   of open files, concurrent hooks, etc. This is not directly linked to the number of CPU,
    *   but clearly there is no point having a pool of 4 threads for 1000 nodes which will
    *   fork 1000 times for hooks - even if there is 4 threads used for that.
@@ -320,22 +322,14 @@ class PolicyWriterServiceImpl(
    * - a common thread pool, i/o oriented
    * - a common max numbers of concurrent tasks.
    *   I believe it should be common to all steps because it's mostly on the same machine - but
-   *   for now, that doesn't really matter, since each step is bloking (ie wait before next).
+   *   for now, that doesn't really matter, since each step is blocking (ie wait before next).
    *   A parallelism around the thread pool sizing (by default, number of CPU) seems ok.
    *
-   * here, f must not throws execption.
+   * here, f must not throws execution.
    *
    */
-  def parrallelSequence[U,T](seq: Seq[U])(f:U => IOResult[T])(implicit timeout: Duration, maxParallelism: Int): IOResult[Seq[T]] = {
-    seq.accumulateParN(maxParallelism)(a => f(a)).timeout(timeout).foldZIO(
-      err => err.fail
-    , suc => suc match {
-        case None      => //timeout
-          Accumulated(NonEmptyList.one(Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'"))).fail
-        case Some(seq) =>
-          seq.succeed
-      }
-    )
+  def parallelSequence[U,T](seq: Seq[U])(f:U => IOResult[T])(implicit timeout: Duration, maxParallelism: Int): IOResult[Seq[T]] = {
+    seq.accumulateParN(maxParallelism)(a => f(a)).timeoutFail(Accumulated(NonEmptyList.one(Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'"))))(timeout)
   }
 
   // a version for Hook with a nicer message accumulation
@@ -348,7 +342,7 @@ class PolicyWriterServiceImpl(
         if(s.size <= max) s else s.substring(0, max-3) + "..."
       }
       val msg = errorCode match {
-          // we need to limit sdtout/sdterr lenght
+          // we need to limit sdtout/sdterr length
           case HookReturnCode.ScriptError(code, stdout, stderr, msg) => s"${msg} [stdout:${limitOut(stdout)}][stderr:${limitOut(stderr)}]"
           case x                                                     => x.msg
       }
@@ -479,7 +473,7 @@ class PolicyWriterServiceImpl(
           // nothing agent specific before that
           //////////
           prepareTimer          <- PrepareTemplateTimer.make()
-          preparedTemplates     <- parrallelSequence(configAndPaths) { case agentNodeConfig =>
+          preparedTemplates     <- parallelSequence(configAndPaths) { case agentNodeConfig =>
                                      val nodeConfigId = versions(agentNodeConfig.config.nodeInfo.id)
                                      prepareTemplate.prepareTemplateForAgentNodeConfiguration(agentNodeConfig, nodeConfigId, rootNodeId, templates, allNodeConfigs, Policy.TAG_OF_RUDDER_ID, globalPolicyMode, generationTime, prepareTimer).chainError(
                                        s"Error when calculating configuration for node '${agentNodeConfig.config.nodeInfo.hostname}' (${agentNodeConfig.config.nodeInfo.id.value})"
@@ -528,7 +522,7 @@ class PolicyWriterServiceImpl(
       // nothing agent specific after that
       //////////
       beforePropertiesTime <- currentTimeMillis
-      propertiesWritten    <- parrallelSequence(configAndPaths) { case agentNodeConfig =>
+      propertiesWritten    <- parallelSequence(configAndPaths) { case agentNodeConfig =>
                                 writeNodePropertiesFile(agentNodeConfig).chainError(
                                   s"An error occurred while writing property file for Node ${agentNodeConfig.config.nodeInfo.hostname} (id: ${agentNodeConfig.config.nodeInfo.id.value}"
                                 )
@@ -537,7 +531,7 @@ class PolicyWriterServiceImpl(
       propertiesWrittenTime<- currentTimeMillis
       _                    <- timingLogger.debug(s"Properties written in ${propertiesWrittenTime - beforePropertiesTime} ms")
 
-      parametersWritten    <- parrallelSequence(configAndPaths) { case agentNodeConfig =>
+      parametersWritten    <- parallelSequence(configAndPaths) { case agentNodeConfig =>
                                 writeRudderParameterFile(agentNodeConfig).chainError(
                                   s"An error occurred while writing parameter file for Node ${agentNodeConfig.config.nodeInfo.hostname} (id: ${agentNodeConfig.config.nodeInfo.id.value}"
                                 )
@@ -666,7 +660,7 @@ class PolicyWriterServiceImpl(
     import com.normation.stringtemplate.language.NormationAmpersandTemplateLexer
 
     // now process by template, which are not thread safe but here, accessed sequentially
-    parrallelSequence(byTemplate.toSeq) { case (content, seqInfos) =>
+    parallelSequence(byTemplate.toSeq) { case (content, seqInfos) =>
       for {
         t0      <- currentTimeNanos
         parsed  <- IOResult.attempt(s"Error when trying to parse template '${seqInfos.head.destination}'") { // head ok because of groupBy
@@ -702,7 +696,7 @@ class PolicyWriterServiceImpl(
 
 
   private[this] def writeOtherResources(preparedTemplates: Seq[AgentNodeWritableConfiguration], writeTimer: WriteTimer, globalPolicyMode: GlobalPolicyMode, resources: Map[(TechniqueResourceId, AgentType), TechniqueResourceCopyInfo])(implicit timeout: Duration, maxParallelism: Int): IOResult[Unit] = {
-    parrallelSequence(preparedTemplates) { prepared =>
+    parallelSequence(preparedTemplates) { prepared =>
       val isRootServer = prepared.agentNodeProps.nodeId == Constants.ROOT_POLICY_SERVER_ID
       val writeResources = ZIO.foreachDiscard(prepared.preparedTechniques) { preparedTechnique => ZIO.foreachDiscard(preparedTechnique.filesToCopy) { file =>
          for {
@@ -804,7 +798,7 @@ class PolicyWriterServiceImpl(
      */
     for {
       t0  <- currentTimeMillis
-      res <- (parrallelSequence(templatesToRead) { case ToRead(templateId, agentType, templateOutPath) =>
+      res <- (parallelSequence(templatesToRead) { case ToRead(templateId, agentType, templateOutPath) =>
                for {
                  copyInfo <- techniqueRepository.getTemplateContent(templateId) { optInputStream =>
                                optInputStream match {
@@ -841,7 +835,7 @@ class PolicyWriterServiceImpl(
 
     for {
       t0  <- currentTimeMillis
-      res <- (parrallelSequence(staticResourceToRead) { case ToRead(templateId, agentType, templateOutPath) =>
+      res <- (parallelSequence(staticResourceToRead) { case ToRead(templateId, agentType, templateOutPath) =>
                for {
                  copyInfo <- techniqueRepository.getFileContent(templateId) { optInputStream =>
                                optInputStream match {

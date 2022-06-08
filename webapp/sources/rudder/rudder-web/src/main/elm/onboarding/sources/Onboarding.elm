@@ -58,7 +58,7 @@ update msg model =
     UpdateSection index newSection ->
       let
         (newModel, cmd) = case (index, model.animation) of
-          (2, False) -> ({model | sections = List.Extra.setAt index newSection model.sections, animation = True}, Process.sleep 500 |> ZIO.perform (always (ChangeActiveSection 3)))
+          (2, False) -> ({model | sections = List.Extra.setAt index newSection model.sections, animation = True}, Process.sleep 500 |> Task.perform (always (ChangeActiveSection 3)))
           (2, True ) -> ( model, Cmd.none )
           _          -> ({model | sections = List.Extra.setAt index newSection model.sections}, Cmd.none)
       in
@@ -111,7 +111,7 @@ update msg model =
 -}
 
     SetupDone _ ->
-        ( model, Cmd.batch [ actionsAfterSaving model, ZIO.perform (always Redirect) (Process.sleep 3000) ])
+        ( model, Cmd.batch [ actionsAfterSaving model, Task.perform (always Redirect) (Process.sleep 3000) ])
 
     Redirect ->
         ( model, Browser.Navigation.load (model.contextPath ++ "/secure/index.html"))

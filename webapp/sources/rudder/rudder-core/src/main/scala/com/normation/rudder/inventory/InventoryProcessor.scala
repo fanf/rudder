@@ -356,7 +356,7 @@ class InventoryMover(
   // we don't manage race condition very well, so we have cases where
   // we can have two things trying to move
   def safeMove[T](file: File, chunk: =>T): UIO[Unit] = {
-    Task.attempt { chunk ; () }.catchAll {
+    ZIO.attempt { chunk ; () }.catchAll {
       case ex: NoSuchFileException => // ignore
         InventoryProcessingLogger.debug(s"Ignored exception '${ex.getClass.getSimpleName} ${ex.getMessage}'. The file '${file.pathAsString}' was correctly handled.")
       case ex                      =>
