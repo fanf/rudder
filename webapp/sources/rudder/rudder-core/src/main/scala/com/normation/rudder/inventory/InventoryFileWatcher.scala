@@ -554,7 +554,7 @@ class ProcessFile(
             // - then execute on different IO scheduler
             // - if the map wasn't interrupted in the first 500 ms, it is not interruptible anymore
 
-            val effect = ZioRuntime.blocking(
+            val effect = (
                  ZIO.unit.delay(fileWrittenThreshold)
               *> (watchEventQueue.offer(WatchEvent.End(file))
                  *> processFile(file).catchAll(err =>

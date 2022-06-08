@@ -59,7 +59,7 @@ class InMemoryDsConnectionProvider[CON <: RoLDAPConnection](
   override def newUnboundidConnection: UnboundidLDAPConnection = server.getConnection
 
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RwLDAPConnection(newUnboundidConnection,ldifFileLogger).asInstanceOf[CON])
+    LDAPIOResult.attempt(new RwLDAPConnection(newUnboundidConnection,ldifFileLogger).asInstanceOf[CON])
   }
 }
 

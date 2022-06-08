@@ -48,7 +48,6 @@ import zio._
 import zio.syntax._
 import com.normation.errors._
 import com.normation.zio._
-import com.normation.zio.ZioRuntime
 import com.normation.box._
 
 import java.nio.charset.StandardCharsets
@@ -283,7 +282,7 @@ object RunHooks {
       _        <- PureHooksLogger.trace(s"Hook environment variables: ${envVariables.debugString}")
       time_0   <- currentTimeNanos
       f        <- PureHooksLogger.LongExecLogger.warn(s"Executing all hooks in directory ${cmdInfo} is taking more time than configured expected max duration of '${globalWarnAfter.render}'").delay(globalWarnAfter).fork
-      res      <- ZioRuntime.blocking(runAllSeq)
+      res      <- runAllSeq
       time_1   <- currentTimeNanos
       _        <- f.interrupt // noop if timeout is already reached
       duration =  time_1 - time_0

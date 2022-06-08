@@ -378,7 +378,7 @@ trait CachedFindRuleNodeStatusReports extends ReportingService with CachedReposi
                          case x: UpdateCompliance => (x.nodeId, x.nodeCompliance).succeed
                          case x                   => Inconsistency(s"Error: found an action of incorrect type in an 'update' for cache: ${x}").fail
                        }}
-            _       <-  IOResult.effectNonBlocking { cache = cache ++ updates }
+            _       <-  IOResult.attempt { cache = cache ++ updates }
           } yield ())
 
         case ExpectedReportAction((RemoveNodeInCache(_))) =>
@@ -387,7 +387,7 @@ trait CachedFindRuleNodeStatusReports extends ReportingService with CachedReposi
                          case ExpectedReportAction((RemoveNodeInCache(nodeId))) => nodeId.succeed
                          case x                                                 => Inconsistency(s"Error: found an action of incorrect type in a 'delete' for cache: ${x}").fail
                        }}
-            _       <-  IOResult.effectNonBlocking { cache = cache.removedAll(deletes) }
+            _       <-  IOResult.attempt { cache = cache.removedAll(deletes) }
           } yield ()
 
         // need to compute compliance
@@ -397,7 +397,7 @@ trait CachedFindRuleNodeStatusReports extends ReportingService with CachedReposi
               x <- ZIO.foreach(impactedNodeIds.grouped(batchSize).to(Seq)) { updatedNodes =>
                   for {
                   updated <- defaultFindRuleNodeStatusReports.findRuleNodeStatusReports(updatedNodes.toSet, Set()).toIO
-                  _       <- IOResult.effectNonBlocking {
+                  _       <- IOResult.attempt {
                                   cache = cache ++ updated
                              }
                 _         <- ReportLoggerPure.Cache.debug(s"Compliance cache recomputed for nodes: ${updated.keys.map(_.value).mkString(", ")}")

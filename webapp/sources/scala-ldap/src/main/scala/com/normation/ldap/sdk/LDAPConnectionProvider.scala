@@ -272,7 +272,7 @@ class ROAnonymousConnectionProvider(
   override val connection = ZioRuntime.unsafeRun(Ref.make(Option.empty[RoLDAPConnection]))
 
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RoLDAPConnection(newUnboundidConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RoLDAPConnection(newUnboundidConnection,ldifFileLogger))
   }
 }
 
@@ -290,7 +290,7 @@ class RWAnonymousConnectionProvider(
   override val connection = ZioRuntime.unsafeRun(Ref.make(Option.empty[RwLDAPConnection]))
 
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RwLDAPConnection(newUnboundidConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RwLDAPConnection(newUnboundidConnection,ldifFileLogger))
   }
 }
 
@@ -308,7 +308,7 @@ class ROPooledAnonymousConnectionProvider(
 ) extends AnonymousConnection with PooledConnectionProvider[RoLDAPConnection] {
   override def poolname: String = s"rudder-anonymous-ro"
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RoLDAPConnection(pool.getConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RoLDAPConnection(pool.getConnection,ldifFileLogger))
   }
 }
 
@@ -325,7 +325,7 @@ class RWPooledAnonymousConnectionProvider(
 ) extends AnonymousConnection with PooledConnectionProvider[RwLDAPConnection] {
   override def poolname: String = s"rudder-anonymous-rw"
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RwLDAPConnection(pool.getConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RwLDAPConnection(pool.getConnection,ldifFileLogger))
   }
 }
 
@@ -346,7 +346,7 @@ class ROSimpleAuthConnectionProvider(
   override val connection = ZioRuntime.unsafeRun(Ref.make(Option.empty[RoLDAPConnection]))
 
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RoLDAPConnection(newUnboundidConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RoLDAPConnection(newUnboundidConnection,ldifFileLogger))
   }
 }
 
@@ -367,7 +367,7 @@ class RWSimpleAuthConnectionProvider(
   override val connection = ZioRuntime.unsafeRun(Ref.make(Option.empty[RwLDAPConnection]))
 
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RwLDAPConnection(newUnboundidConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RwLDAPConnection(newUnboundidConnection,ldifFileLogger))
   }
 }
 
@@ -386,7 +386,7 @@ class ROPooledSimpleAuthConnectionProvider(
 ) extends SimpleAuthConnection with PooledConnectionProvider[RoLDAPConnection] {
   override def poolname: String = s"rudder-authenticated-ro"
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RoLDAPConnection(pool.getConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RoLDAPConnection(pool.getConnection,ldifFileLogger))
   }
 }
 
@@ -407,6 +407,6 @@ class RWPooledSimpleAuthConnectionProvider(
   override def poolname: String = s"rudder-authenticated-rw"
 
   def newConnection = {
-    LDAPIOResult.effectNonBlocking(new RwLDAPConnection(pool.getConnection,ldifFileLogger))
+    LDAPIOResult.attempt(new RwLDAPConnection(pool.getConnection,ldifFileLogger))
   }
 }

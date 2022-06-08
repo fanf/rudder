@@ -60,8 +60,8 @@ object LDAPIOResult{
       LDAPRudderError.BackendException(err.msg, err.cause)
     )
   }
-  def effectNonBlocking[A](effect: => A): IO[LDAPRudderError.BackendException, A] = {
-    IOResult.effectNonBlocking(effect).mapError(err =>
+  def attempt[A](effect: => A): IO[LDAPRudderError.BackendException, A] = {
+    IOResult.attempt(effect).mapError(err =>
       LDAPRudderError.BackendException(err.msg, err.cause)
     )
   }

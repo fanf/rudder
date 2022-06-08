@@ -182,7 +182,7 @@ object RunNuCommand {
       promise        <- Promise.make[Nothing, CmdResult]
       handler        =  new CmdProcessHandler(promise)
       processBuilder =  new NuProcessBuilder((cmd.cmdPath::cmd.parameters).asJava, cmd.environment.asJava)
-      _              <- IOResult.effectNonBlocking(errorMsg)(processBuilder.setProcessListener(handler))
+      _              <- IOResult.attempt(errorMsg)(processBuilder.setProcessListener(handler))
 
       /*
        * The start process is nasty:
@@ -194,7 +194,7 @@ object RunNuCommand {
        *
        * It is non blocking though, as the blocking part is done in the spwaned thread.
        */
-      process        <- IOResult.effectNonBlocking(errorMsg)(processBuilder.start())
+      process        <- IOResult.attempt(errorMsg)(processBuilder.start())
       _              <- if(process == null) {
                           Unexpected(s"Error: unable to start native command ${cmd.display}").fail
                         } else {

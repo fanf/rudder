@@ -82,7 +82,7 @@ class CheckInventoryUpdate(
       lastSeen  <- lastUpdate.getAndUpdate(_ => cacheTime)
       _         <- if(lastSeen.isBefore(cacheTime)) {
                      logger.info("Update in node inventories main information detected: triggering a policy generation") *>
-                     IOResult.effectNonBlocking(asyncDeploymentAgent ! AutomaticStartDeployment(ModificationId(uuidGen.newUuid), RudderEventActor))
+                     IOResult.attempt(asyncDeploymentAgent ! AutomaticStartDeployment(ModificationId(uuidGen.newUuid), RudderEventActor))
                    } else {
                      logger.trace("No update in node inventories main information detected")
                    }

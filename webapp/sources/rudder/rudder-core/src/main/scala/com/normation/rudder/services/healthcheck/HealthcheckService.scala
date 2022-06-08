@@ -149,7 +149,7 @@ final class CheckFileDescriptorLimit(val nodeInfoService: NodeInfoService) exten
                         s"An error occurred while getting file descriptor soft limit with command '${cmd.display}':\n code: ${res.code}\n stderr: ${res.stderr}\n stdout: ${res.stdout}"
                       ).fail
                     }
-      limit      <- IOResult.effectNonBlocking(res.stdout.trim.toLong)
+      limit      <- IOResult.attempt(res.stdout.trim.toLong)
     } yield {
       val numNode = nodeInfoService.getNumberOfManagedNodes
       val minimalLimit = 100 * numNode

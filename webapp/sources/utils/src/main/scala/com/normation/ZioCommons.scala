@@ -35,7 +35,6 @@ import com.normation.errors.Chained
 import com.normation.errors.IOResult
 import com.normation.errors.RudderError
 import com.normation.errors.SystemError
-import com.normation.zio.ZioRuntime
 import org.slf4j.Logger
 
 import _root_.zio._
@@ -68,7 +67,7 @@ object errors {
     effectUioUnit(printError(_))(effect)
   }
   def effectUioUnit[A](error: Throwable => UIO[Unit])(effect: => A): UIO[Unit] = {
-    ZioRuntime.effectBlocking(effect).unit.catchAll(error)
+    ZIO.attempt(effect).unit.catchAll(error)
   }
 
   /*
@@ -91,14 +90,9 @@ object errors {
    * use `IOResult.succeed`).
    */
   object IOResult {
-    def effectNonBlocking[A](error: String)(effect: => A): IO[SystemError, A] = {
-      ZIO.attempt(effect).mapError(ex => SystemError(error, ex))
-    }
-    def effectNonBlocking[A](effect: => A): IO[SystemError, A] = {
-      this.effectNonBlocking("An error occurred")(effect)
-    }
     def attempt[A](error: String)(effect: => A): IO[SystemError, A] = {
-      ZioRuntime.effectBlocking(effect).mapError(ex => SystemError(error, ex))
+      // In ZIO 2 blocking is automagically managed - https://github.com/zio/zio/issues/1275
+      ZIO.attempt(effect).mapError(ex => SystemError(error, ex))
     }
     def attempt[A](effect: => A): IO[SystemError, A] = {
       this.attempt("An error occurred")(effect)
@@ -205,13 +199,6 @@ object errors {
 
   implicit class PureChainError[R, E <: RudderError, A](val res: Either[E, A]) extends AnyVal {
     def chainError(hint: => String): Either[RudderError, A] = res.leftMap(err => Chained(hint, err))
-  }
-
-  /*
-   * tag an effect as blocking (ie should run on the blocking thread pool)
-   */
-  implicit class ToBlocking[E<: RudderError, A](val effect: ZIO[Any, E, A]) extends AnyVal {
-    def blocking: ZIO[Any, E, A] = ZioRuntime.blocking(effect)
   }
 
   /*
@@ -411,25 +398,10 @@ object zio {
     def layers: ZLayer[Any, Nothing, Any] = ZLayer.fromZIOEnvironment(internal.environment.succeed)
     def environment: ZEnvironment[Any] = internal.environment
 
-    /*
-     * use the blocking thread pool provided by that runtime.
-     * In ZIO 2 blocking is automagically managed - https://github.com/zio/zio/issues/1275
-     */
-    def blocking[E,A](io: ZIO[Any,E,A]): ZIO[Any,E,A] = {
-      io
-    }
-
-    /*
-     * In ZIO 2 blocking is automagically managed - https://github.com/zio/zio/issues/1275
-     */
-    def effectBlocking[A](effect: => A): ZIO[Any, Throwable, A] = {
-      ZIO.attempt(effect)
-    }
-
     def runNow[A](io: IOResult[A]): A = {
       // unsafeRun will display a formatted fiber trace in case there is an error, which likely what we wants:
       // here, error were not prevented before run, so it's a defect that should be corrected.
-      internal.unsafeRun(blocking(io))
+      internal.unsafeRun(io)
     }
 
     /*
