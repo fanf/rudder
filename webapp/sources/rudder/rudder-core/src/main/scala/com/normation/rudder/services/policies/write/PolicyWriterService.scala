@@ -89,6 +89,7 @@ import com.normation.rudder.services.policies.BundleOrder
 import com.normation.templates.FillTemplateThreadUnsafe
 import com.normation.templates.FillTemplateTimer
 
+import cats.data.NonEmptyList
 import org.apache.commons.io.FileUtils
 
 import java.nio.file.Files
@@ -329,7 +330,8 @@ class PolicyWriterServiceImpl(
    */
   def parallelSequence[U,T](seq: Seq[U])(f:U => IOResult[T])(implicit timeout: Duration, maxParallelism: Int): IOResult[Seq[T]] = {
     println(s"***** timeout: ${timeout}")
-    seq.accumulateParN(maxParallelism)(a => f(a)) //.timeoutFail(Accumulated(NonEmptyList.one(Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'"))))(timeout)
+    Fiber.dumpAll.mapError(SystemError("oups", _)) *>
+    (seq.accumulateParN(maxParallelism)(f)).timeoutFail(Accumulated(NonEmptyList.one(Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'"))))(timeout)
   }
 
   // a version for Hook with a nicer message accumulation
@@ -387,7 +389,13 @@ class PolicyWriterServiceImpl(
     , generationTime  : DateTime
     , parallelism     : Int
   ) : Box[Seq[NodeId]] = {
-    writeTemplatePure(rootNodeId, nodesToWrite, allNodeConfigs, allNodeInfos, versions, globalPolicyMode, generationTime, parallelism).toBox
+    writeTemplatePure(rootNodeId, nodesToWrite, allNodeConfigs, allNodeInfos, versions, globalPolicyMode, generationTime, parallelism).toBox match {
+      case Full(x) => Full(x)
+      case err =>
+        println(s"**** There's an error: ${err}")
+        ZioRuntime.runNow(Fiber.dumpAll.mapError(SystemError("oups", _)))
+        err
+    }
   }
 
   def writeTemplatePure(
