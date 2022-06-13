@@ -1330,6 +1330,7 @@ object RudderConfig extends Loggable {
     ApiVersion(12 , true) :: // rudder 6.0, 6.1
     ApiVersion(13 , true) :: // rudder 6.2
     ApiVersion(14 , false) :: // rudder 7.0
+    ApiVersion(15 , false) :: // rudder 7.1
     Nil
 
   val jsonPluginDefinition = new ReadPluginPackageInfo("/var/rudder/packages/index.json")
@@ -1356,6 +1357,7 @@ object RudderConfig extends Loggable {
       , new PluginApi(restExtractorService, pluginSettingsService)
       , new RecentChangesAPI(recentChangesService, restExtractorService)
       , new RulesInternalApi(restExtractorService, ruleInternalApiService)
+      , new ArchiveApi(configService)
       // info api must be resolved latter, because else it misses plugin apis !
     )
 
