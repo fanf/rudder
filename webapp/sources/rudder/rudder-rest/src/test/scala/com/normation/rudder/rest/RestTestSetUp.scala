@@ -616,6 +616,11 @@ class RestTestSetUp {
   val resourceFileService : ResourceFileService = null
   val settingsService = new MockSettings(workflowLevelService, new AsyncWorkflowInfo())
 
+  object archiveAPIModule {
+    val featureSwitchState = Ref.make[FeatureSwitch](FeatureSwitch.Disabled).runNow
+    val api = new ArchiveApi(featureSwitchState.get)
+  }
+
   val apiModules = List(
       systemApi
     , new ParameterApi(restExtractorService, zioJsonExtractor, parameterApiService2, parameterApiService14)
@@ -625,9 +630,10 @@ class RestTestSetUp {
     , new NodeApi(restExtractorService, restDataSerializer, nodeApiService2, nodeApiService4, nodeApiService6, nodeApiService8, nodeApiService12,  nodeApiService13, null, DeleteMode.Erase)
     , new GroupsApi(mockNodeGroups.groupsRepo, restExtractorService, zioJsonExtractor, uuidGen, groupService2, groupService6, groupService14, groupApiInheritedProperties)
     , new SettingsApi(restExtractorService, settingsService.configService, asyncDeploymentAgent, uuidGen, settingsService.policyServerManagementService, nodeInfo)
+    , archiveAPIModule.api
   )
 
-  val apiVersions = ApiVersion(13 , true) :: ApiVersion(14 , false) :: Nil
+  val apiVersions = ApiVersion(13 , true) :: ApiVersion(14 , false) :: ApiVersion(15 , false) :: Nil
   val (rudderApi, liftRules) = TraitTestApiFromYamlFiles.buildLiftRules(apiModules, apiVersions, Some(userService))
 
   liftRules.statelessDispatch.append(RestStatus)
@@ -732,6 +738,27 @@ class RestTest(liftRules: LiftRules) {
   def jsonPOST(path: String, json : JValue) = {
     mockJsonRequest(path,"POST", json)
   }
+
+  // high level methods. Directly manipulate response
+  def testGETResponse[T](path: String)(tests: Box[LiftResponse] => MatchResult[T]) = {
+    execRequestResponse(GET(path))(tests)
+  }
+  def testDELETEResponse[T](path: String)(tests: Box[LiftResponse] => MatchResult[T]) = {
+    execRequestResponse(DELETE(path))(tests)
+  }
+
+  def testPUTResponse[T](path: String, json : JValue)(tests: Box[LiftResponse] => MatchResult[T]) = {
+    execRequestResponse(jsonPUT(path, json))(tests)
+  }
+  def testPOSTResponse[T](path: String, json : JValue)(tests: Box[LiftResponse] => MatchResult[T]) = {
+    execRequestResponse(jsonPOST(path, json))(tests)
+  }
+  def testEmptyPostResponse[T](path: String)(tests: Box[LiftResponse] => MatchResult[T]): MatchResult[T] = {
+    execRequestResponse(POST(path))(tests)
+  }
+
+
+  // Low level methods. You can build the answer by hand from there
 
   def testGET[T](path: String)(tests: Req => MatchResult[T]) = {
     doReq(GET(path))(tests)

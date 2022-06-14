@@ -1357,7 +1357,7 @@ object RudderConfig extends Loggable {
       , new PluginApi(restExtractorService, pluginSettingsService)
       , new RecentChangesAPI(recentChangesService, restExtractorService)
       , new RulesInternalApi(restExtractorService, ruleInternalApiService)
-      , new ArchiveApi(configService)
+      , new ArchiveApi(configService.rudder_featureSwitch_archiveApi())
       // info api must be resolved latter, because else it misses plugin apis !
     )
 

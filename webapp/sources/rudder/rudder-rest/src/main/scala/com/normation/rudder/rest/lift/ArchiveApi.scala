@@ -37,8 +37,6 @@
 
 package com.normation.rudder.rest.lift
 
-import com.normation.appconfig.ReadConfigService
-import com.normation.appconfig.UpdateConfigService
 import com.normation.rudder.api.ApiVersion
 import com.normation.rudder.domain.appconfig.FeatureSwitch
 import com.normation.rudder.domain.logger.ApplicationLogger
@@ -70,10 +68,10 @@ import com.normation.zio._
  * Machinery to enable/disable the API given the value of the feature switch in config service.
  * If disabled, always return an error with the info about how to enable it.
  */
-final case class FeatureSwitch0[A <: LiftApiModule0](enable: A, disable: A)(configService: ReadConfigService) extends LiftApiModule0 {
+final case class FeatureSwitch0[A <: LiftApiModule0](enable: A, disable: A)(featureSwitchState: IOResult[FeatureSwitch]) extends LiftApiModule0 {
   override val schema = enable.schema
   override def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
-    configService.rudder_featureSwitch_archiveApi().either.runNow match {
+    featureSwitchState.either.runNow match {
       case Left(err) =>
         ApplicationLogger.error(err.fullMsg)
         RudderJsonResponse.internalError(ResponseSchema.fromSchema(schema), err.fullMsg)(params.prettify).toResponse
@@ -86,15 +84,15 @@ final case class FeatureSwitch0[A <: LiftApiModule0](enable: A, disable: A)(conf
 }
 
 class ArchiveApi(
-  configService: ReadConfigService with UpdateConfigService
+  featureSwitchState: IOResult[FeatureSwitch]
 ) extends LiftApiModuleProvider[API] {
 
   def schemas = API
 
   def getLiftEndpoints(): List[LiftApiModule] = {
     API.endpoints.map(e => e match {
-      case API.Import       => FeatureSwitch0(Import, ImportDisabled)(configService)
-      case API.ExportSimple => FeatureSwitch0(ExportSimple, ExportSimpleDisabled)(configService)
+      case API.Import       => FeatureSwitch0(Import, ImportDisabled)(featureSwitchState)
+      case API.ExportSimple => FeatureSwitch0(ExportSimple, ExportSimpleDisabled)(featureSwitchState)
     })
   }
 
@@ -105,7 +103,8 @@ class ArchiveApi(
     override def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       RudderJsonResponse.internalError(
           ResponseSchema.fromSchema(schema)
-        , "This API is disabled. You enable it with the setting `rudder.featureSwitch.archiveApi` in setting API set to `enabled`"
+        , """This API is disabled. It is in beta version and no compatibility is ensured. You can enable it with """ +
+          """the setting `rudder_featureSwitch_archiveApi` in settings API set to `{"value":"enabled"}`"""
       )(params.prettify).toResponse
     }
   }
