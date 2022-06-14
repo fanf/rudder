@@ -1326,6 +1326,17 @@ object RudderConfig extends Loggable {
     )
   }
 
+  val archiveApi = {
+    val archiveBuilderService = new ZipArchiveBuilderService(new FileArchiveNameService(), configurationRepository, gitParseTechniqueLibrary)
+    // fixe archive name to make it simple to test
+    val rootDirName = "archive".succeed
+    new com.normation.rudder.rest.lift.ArchiveApi(
+        archiveBuilderService
+      , configService.rudder_featureSwitch_archiveApi()
+      , rootDirName
+    )
+  }
+
   val ApiVersions =
     ApiVersion(12 , true) :: // rudder 6.0, 6.1
     ApiVersion(13 , true) :: // rudder 6.2
@@ -1357,7 +1368,7 @@ object RudderConfig extends Loggable {
       , new PluginApi(restExtractorService, pluginSettingsService)
       , new RecentChangesAPI(recentChangesService, restExtractorService)
       , new RulesInternalApi(restExtractorService, ruleInternalApiService)
-      , new ArchiveApi(configService.rudder_featureSwitch_archiveApi())
+      , archiveApi
       // info api must be resolved latter, because else it misses plugin apis !
     )
 

@@ -118,6 +118,11 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
 
   "correctly build an archive of one rule" >> {
 
+    // rule with ID rule1 defined in com/normation/rudder/MockServices.scala has name:
+    // 10. Global configuration for all nodes
+    // so: 10__Global_configuration_for_all_nodes
+    val fileName = "10__Global_configuration_for_all_nodes.json"
+
     restTest.testGETResponse("/api/archive/export?rules=rule1") {
       case Full(OutputStreamResponse(out, _, _, _, 200)) =>
         val zipFile = testDir/"archive.zip"
@@ -127,8 +132,25 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
         // unzip
         ZipUtils.unzip(new ZipFile(zipFile.toJava), zipFile.parent.toJava).runNow
 
-        (zipFile/"archive").children.toList.map(_.name) must containTheSameElementsAs(List("rule1.json"))
-        case err        => ko(s"I got an error in test: ${err}")
+        (testDir/"archive/rules").children.toList.map(_.name) must containTheSameElementsAs(List(fileName))
+      case err => ko(s"I got an error in test: ${err}")
+    }
+  }
+
+
+  "correctly build an archive of one technique" >> {
+
+    restTest.testGETResponse("/api/archive/export?techniques=Create_file/1.0") {
+      case Full(OutputStreamResponse(out, _, _, _, 200)) =>
+        val zipFile = testDir/"archive.zip"
+        val zipOut = new FileOutputStream(zipFile.toJava)
+        out(zipOut)
+        zipOut.close()
+        // unzip
+        ZipUtils.unzip(new ZipFile(zipFile.toJava), zipFile.parent.toJava).runNow
+
+        (testDir/"archive/techniques").children.toList.map(_.name) must containTheSameElementsAs(List("Create_file"))
+      case err => ko(s"I got an error in test: ${err}")
     }
   }
 

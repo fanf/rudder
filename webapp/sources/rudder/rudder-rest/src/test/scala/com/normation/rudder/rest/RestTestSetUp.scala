@@ -617,7 +617,7 @@ class RestTestSetUp {
   val settingsService = new MockSettings(workflowLevelService, new AsyncWorkflowInfo())
 
   object archiveAPIModule {
-    val archiveBuilderService = new ZipArchiveBuilderService(new FileArchiveNameService(), mockConfigRepo.configurationRepository)
+    val archiveBuilderService = new ZipArchiveBuilderService(new FileArchiveNameService(), mockConfigRepo.configurationRepository, mockTechniques.techniqueRevisionRepo)
     val featureSwitchState = Ref.make[FeatureSwitch](FeatureSwitch.Disabled).runNow
     // fixe archive name to make it simple to test
     val rootDirName = "archive".succeed
@@ -723,6 +723,7 @@ class RestTest(liftRules: LiftRules) {
 
     val (p, queryString) = {
       path.split('?').toList match {
+        case Nil       => (path, "") // should not happen since we have at least path
         case h :: Nil  => (h, "")
         case h :: tail => (h, tail.mkString("&"))
       }
