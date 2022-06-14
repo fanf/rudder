@@ -38,8 +38,13 @@
 package com.normation.rudder.rest.lift
 
 import com.normation.rudder.api.ApiVersion
+import com.normation.rudder.apidata.JsonResponseObjects.JRRule
+import com.normation.rudder.apidata.implicits._
+import com.normation.rudder.configuration.ConfigurationRepository
 import com.normation.rudder.domain.appconfig.FeatureSwitch
 import com.normation.rudder.domain.logger.ApplicationLogger
+import com.normation.rudder.domain.logger.ApplicationLoggerPure
+import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.git.ZipUtils
 import com.normation.rudder.git.ZipUtils.Zippable
 import com.normation.rudder.rest.ApiPath
@@ -58,8 +63,10 @@ import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets
+import java.text.Normalizer
 
 import zio._
+import zio.json._
 import zio.syntax._
 import com.normation.errors._
 import com.normation.zio._
@@ -84,8 +91,12 @@ final case class FeatureSwitch0[A <: LiftApiModule0](enable: A, disable: A)(feat
 }
 
 class ArchiveApi(
-  featureSwitchState: IOResult[FeatureSwitch]
+    archiveBuilderService: ZipArchiveBuilderService
+  , featureSwitchState   : IOResult[FeatureSwitch]
+  , getArchiveName       : IOResult[String]
 ) extends LiftApiModuleProvider[API] {
+
+
 
   def schemas = API
 
@@ -117,20 +128,21 @@ class ArchiveApi(
   object ExportSimple extends LiftApiModule0 {
     val schema = API.ExportSimple
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
-      def getContent(use: InputStream => IOResult[Any]): IOResult[Any] = {
-         ZIO.bracket(IOResult.effect(new ByteArrayInputStream("Hello world!".getBytes(StandardCharsets.UTF_8))))(is => effectUioUnit(is.close)) { is =>
-            use(is)
-         }
-      }
-      val name = "archive"
-      val archive = Chunk(
-          Zippable(name, None)
-        , Zippable(s"${name}/placeholder", Some(getContent _))
-        , Zippable(s"${name}/placeholder2", Some(getContent _))
-      )
+
+
+      // lift is not well suited for ZIO...
+      val rootDirName = getArchiveName.runNow
+
+      println(s"******* processing request with params = " + req.params)
 
       //do zip
-      val send = (os: OutputStream) => ZipUtils.zip(os, archive).runNow
+      val zippables = for {
+        _           <- ApplicationLoggerPure.Archive.debug(s"Building archive")
+        ruleIds     <- ZIO.foreach(req.params.getOrElse("rules", Nil))(RuleId.parse(_).toIO)
+        zippables   <- archiveBuilderService.buildArchive(rootDirName, ruleIds)
+      } yield {
+        zippables
+      }
 
       val headers = List(
           ("Pragma", "public")
@@ -139,12 +151,15 @@ class ArchiveApi(
         , ("Cache-Control", "public")
         , ("Content-Description", "File Transfer")
         , ("Content-type", "application/octet-stream")
-        , ("Content-Disposition", s"""attachment; filename="${name}.zip"""")
+        , ("Content-Disposition", s"""attachment; filename="${rootDirName}.zip"""")
         , ("Content-Transfer-Encoding", "binary")
       )
-
+      val send =  (os: OutputStream) => zippables.flatMap { z =>
+        ZipUtils.zip(os, z).catchAll(err =>
+          ApplicationLoggerPure.Archive.error(s"Error when building zip archive: ${err.fullMsg}")
+        )
+      }.runNow
       new OutputStreamResponse(send, -1, headers, Nil, 200)
-
     }
   }
 
@@ -169,5 +184,80 @@ object DummyImportAnswer {
   case class JRArchiveImported(success: Boolean)
 
   implicit lazy val encodeJRArchiveImported: JsonEncoder[JRArchiveImported] = DeriveJsonEncoder.gen
+
+}
+
+
+/**
+ * A service that is able to build a human readable file name from a string
+ */
+class FileArchiveNameService(
+  // zip has no max length, but winzip limit to 250 because of windows - https://kb.corel.com/en/125869
+  // So 240 for extension etc
+  maxSize: Int = 240
+) {
+  def toFileName(name: String): String = {
+    Normalizer.normalize(name, Normalizer.Form.NFKD)
+      .replaceAll("[^\\p{ASCII}]", "_").take(maxSize)
+  }
+
+}
+
+
+/**
+ * That class is in charge of building a archive of a set of rudder objects.
+ * It knows how to get objects from their ID, serialise them to the expected
+ * string representation, and check that file name are not overriding each others,
+ * but it does not know about how to get what objects need to be retrieved.
+ *
+ * For now, I don't see any way to not load rules/etc in memory (for ex for the case
+ * where they would already be in json somewhere) since we need name.
+ * That may be changed in the future, if config repo and archive converge toward
+ * and unique file format and convention, but it's not for now.
+ */
+class ZipArchiveBuilderService(
+    fileArchiveNameService: FileArchiveNameService
+  , configRepo            : ConfigurationRepository
+) {
+
+
+  val RULES_DIR = "rules"
+
+  /*
+   * get the content of the JSON string in the format expected by Zippable
+   */
+  def getJsonZippableContent(json: String): (InputStream => IOResult[Any]) => IOResult[Any] = {
+    (use: InputStream => IOResult[Any]) =>
+    IOResult.effect(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))).bracket(is => effectUioUnit(is.close)) { is =>
+      use(is)
+    }
+  }
+
+  /*
+   * Prepare the archive.
+   * `rootDirName` is supposed to be normalized, no change will be done with it.
+   * Any missing object will lead to an error.
+   * For each element, an human readable name derived from the object name is used when possible.
+   */
+  def buildArchive(rootDirName: String, ruleIds: Seq[RuleId]): IOResult[Chunk[Zippable]] = {
+    // normalize to no slash at end
+    val root = rootDirName.strip().replaceAll("""/$""", "")
+
+    for {
+      _           <- ApplicationLoggerPure.Archive.debug(s"Building archive for rules: ${ruleIds.map(_.serialize).mkString(", ")}")
+      rootZip     <- Zippable(rootDirName, None).succeed
+      rulesDir    =  root + "/" + RULES_DIR
+      rulesDirZip =  Zippable(rulesDir, None)
+      rulesZip    <- ZIO.foreach(ruleIds) { ruleId =>
+                       for {
+                         rule <- configRepo.getRule(ruleId).notOptional(s"Rule with id ${ruleId.serialize} was not found in Rudder")
+                         json = JRRule.fromRule(rule, None, None, None).toJsonPretty
+                         name = fileArchiveNameService.toFileName(rule.name)+".json"
+                       } yield Zippable(name, Some(getJsonZippableContent(json)))
+                     }
+    } yield {
+      Chunk(rootZip, rulesDirZip) ++ rulesZip
+    }
+  }
 
 }

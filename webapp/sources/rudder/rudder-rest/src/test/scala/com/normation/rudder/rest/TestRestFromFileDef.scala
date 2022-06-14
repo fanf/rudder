@@ -60,7 +60,7 @@ class TestRestFromFileDef extends TraitTestApiFromYamlFiles with AfterAll {
   val tmpApiTemplate = restTestSetUp.baseTempDirectory / "apiTemplates"
   tmpApiTemplate.createDirectories()
 
-  // nodeXX appears at seleral places
+  // nodeXX appears at several places
 
 
   override def yamlSourceDirectory: String = "api"

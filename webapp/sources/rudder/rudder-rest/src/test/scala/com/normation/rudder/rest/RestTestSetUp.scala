@@ -617,8 +617,11 @@ class RestTestSetUp {
   val settingsService = new MockSettings(workflowLevelService, new AsyncWorkflowInfo())
 
   object archiveAPIModule {
+    val archiveBuilderService = new ZipArchiveBuilderService(new FileArchiveNameService(), mockConfigRepo.configurationRepository)
     val featureSwitchState = Ref.make[FeatureSwitch](FeatureSwitch.Disabled).runNow
-    val api = new ArchiveApi(featureSwitchState.get)
+    // fixe archive name to make it simple to test
+    val rootDirName = "archive".succeed
+    val api = new ArchiveApi(archiveBuilderService, featureSwitchState.get, rootDirName)
   }
 
   val apiModules = List(
@@ -717,8 +720,20 @@ class RestTest(liftRules: LiftRules) {
 
   private[this] def mockRequest (path : String, method : String) = {
     val mockReq = new MockHttpServletRequest("http://localhost:8080")
+
+    val (p, queryString) = {
+      path.split('?').toList match {
+        case h :: Nil  => (h, "")
+        case h :: tail => (h, tail.mkString("&"))
+      }
+    }
+
     mockReq.method = method
-    mockReq.path = path
+    // parse
+    mockReq.path = p
+    if(method == "GET") {
+      mockReq.queryString = queryString
+    }
     mockReq
   }
   def GET(path: String) = mockRequest(path,"GET")

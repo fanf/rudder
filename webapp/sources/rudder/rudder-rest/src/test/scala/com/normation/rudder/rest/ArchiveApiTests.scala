@@ -38,18 +38,23 @@
 package com.normation.rudder.rest
 
 import com.normation.rudder.domain.appconfig.FeatureSwitch
+import com.normation.rudder.git.ZipUtils
 
 import better.files.File
 import net.liftweb.common.Full
 import net.liftweb.common.Loggable
 import net.liftweb.http.InMemoryResponse
+import net.liftweb.http.OutputStreamResponse
 import org.apache.commons.io.FileUtils
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 import org.specs2.specification.AfterAll
 
+import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
+import java.util.zip.ZipFile
+
 import com.normation.zio._
 
 @RunWith(classOf[JUnitRunner])
@@ -70,6 +75,8 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
     }
   }
 
+  org.slf4j.LoggerFactory.getLogger("application.archive").asInstanceOf[ch.qos.logback.classic.Logger].setLevel(ch.qos.logback.classic.Level.TRACE)
+
   sequential
 
   "when the feature switch is disabled, request" should {
@@ -88,9 +95,9 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
     }
   }
 
+  // FROM THERE, FEATURE IS ENABLED
+
   "when the feature switch is enabled, request" should {
-
-
     "error in GET /archive/export" in {
       // feature switch change needs to be at that level and not under "should" directly,
       // else it contaminated all tests, even with the sequential annotation
@@ -109,4 +116,21 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
     }
   }
 
+  "correctly build an archive of one rule" >> {
+
+    restTest.testGETResponse("/api/archive/export?rules=rule1") {
+      case Full(OutputStreamResponse(out, _, _, _, 200)) =>
+        val zipFile = testDir/"archive.zip"
+        val zipOut = new FileOutputStream(zipFile.toJava)
+        out(zipOut)
+        zipOut.close()
+        // unzip
+        ZipUtils.unzip(new ZipFile(zipFile.toJava), zipFile.parent.toJava).runNow
+
+        (zipFile/"archive").children.toList.map(_.name) must containTheSameElementsAs(List("rule1.json"))
+        case err        => ko(s"I got an error in test: ${err}")
+    }
+  }
+
 }
+
