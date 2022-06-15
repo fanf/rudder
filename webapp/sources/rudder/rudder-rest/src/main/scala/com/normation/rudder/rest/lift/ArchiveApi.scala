@@ -40,6 +40,7 @@ package com.normation.rudder.rest.lift
 import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.rudder.api.ApiVersion
+import com.normation.rudder.apidata.JsonResponseObjects.JRDirective
 import com.normation.rudder.apidata.JsonResponseObjects.JRRule
 import com.normation.rudder.apidata.implicits._
 import com.normation.rudder.configuration.ConfigurationRepository
@@ -155,7 +156,7 @@ class ArchiveApi(
         ruleIds       <- parseRuleIds(req)
         directiveIds  <- parseDirectiveIds(req)
         techniquesIds <- parseTechniqueIds(req)
-        zippables     <- archiveBuilderService.buildArchive(rootDirName, techniquesIds, ruleIds)
+        zippables     <- archiveBuilderService.buildArchive(rootDirName, techniquesIds, directiveIds, ruleIds)
       } yield {
         zippables
       }
@@ -313,7 +314,7 @@ class ZipArchiveBuilderService(
    * Any missing object will lead to an error.
    * For each element, an human readable name derived from the object name is used when possible.
    */
-  def buildArchive(rootDirName: String, techniqueIds: Seq[TechniqueId], ruleIds: Seq[RuleId]): IOResult[Chunk[Zippable]] = {
+  def buildArchive(rootDirName: String, techniqueIds: Seq[TechniqueId], directiveIds: Seq[DirectiveId], ruleIds: Seq[RuleId]): IOResult[Chunk[Zippable]] = {
     // normalize to no slash at end
     val root = rootDirName.strip().replaceAll("""/$""", "")
 
@@ -334,22 +335,30 @@ class ZipArchiveBuilderService(
                               name <- findName(rule.name, ".json", usedNames, RULES_DIR)
                             } yield Zippable(rulesDir + "/" + name, Some(getJsonZippableContent(json)))
                           }
-
-      // techniques are a bit complicated: we can have some that will go in the archive, and other
-      // that we need to retrieve because a directive needs it. So we keep a local cache of retrieved
-      // techniques.
-      // Techniques don't need name normalization, their name is already normalized
+      // directives need access to technique, but we don't want to look up several time the same one
       techniques       <- RefM.make(Map.empty[TechniqueId, Technique])
+
+      directivesDir    =  root + "/" + DIRECTIVES_DIR
+      _                <- usedNames.update( _ + ((DIRECTIVES_DIR, Set.empty[String])))
+      directivesDirZip =  Zippable(directivesDir, None)
+      directivesZip    <- ZIO.foreach(directiveIds) { directiveId =>
+                            for {
+                              ad   <- configRepo.getDirective(directiveId).notOptional(s"Rule with id ${directiveId.serialize} was not found in Rudder")
+                              tech <- getTechnique(TechniqueId(ad.activeTechnique.techniqueName, ad.directive.techniqueVersion), techniques)
+                              json =  JRDirective.fromDirective(tech, ad.directive, None).toJsonPretty
+                              name <- findName(ad.directive.name, ".json", usedNames, DIRECTIVES_DIR)
+                            } yield Zippable(directivesDir + "/" + name, Some(getJsonZippableContent(json)))
+                          }
+      // Techniques don't need name normalization, their name is already normalized
       techniquesDir    =  root + "/" + TECHNIQUES_DIR
       techniquesDirZip =  Zippable(techniquesDir, None)
       techniquesZip    <- ZIO.foreach(techniqueIds) { techniqueId =>
                             for {
-                              technique <- getTechnique(techniqueId, techniques)
                               techZips  <- getTechniqueZippable(techniquesDir, techniqueId)
                             } yield techZips
                           }
     } yield {
-      Chunk(rootZip, rulesDirZip) ++ rulesZip ++ techniquesZip.flatten
+      Chunk(rootZip, rulesDirZip) ++ rulesZip ++ techniquesZip.flatten ++ directivesZip
     }
   }
 

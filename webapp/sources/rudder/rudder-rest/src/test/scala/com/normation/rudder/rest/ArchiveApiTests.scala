@@ -44,6 +44,7 @@ import com.normation.rudder.domain.appconfig.FeatureSwitch
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.RuleUid
 import com.normation.rudder.git.ZipUtils
+import com.normation.utils.DateFormaterService
 
 import better.files.File
 import net.liftweb.common.Full
@@ -52,6 +53,7 @@ import net.liftweb.http.InMemoryResponse
 import net.liftweb.http.OutputStreamResponse
 import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.revwalk.RevWalk
+import org.joda.time.DateTime
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -69,7 +71,7 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
   val restTestSetUp = RestTestSetUp.newEnv
   val restTest = new RestTest(restTestSetUp.liftRules)
 
-  val testDir = File("/tmp/test-rudder-response-content")
+  val testDir = File(s"/tmp/test-rudder-response-content-${DateFormaterService.serialize(DateTime.now())}")
   testDir.createDirectoryIfNotExists(true)
 
   override def afterAll(): Unit = {
@@ -147,6 +149,30 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
     }
   }
 
+  "correctly build an archive of one directive" >> {
+
+    // rule with ID rule1 defined in com/normation/rudder/MockServices.scala has name:
+    // 10. Global configuration for all nodes
+    // so: 10__Global_configuration_for_all_nodes
+    val fileName = "10__Clock_Configuration.json"
+
+    val archiveName = "archive-directive"
+    restTestSetUp.archiveAPIModule.rootDirName.set(archiveName).runNow
+
+    restTest.testGETResponse("/api/archive/export?directives=directive1") {
+      case Full(OutputStreamResponse(out, _, _, _, 200)) =>
+        val zipFile = testDir/s"${archiveName}.zip"
+        val zipOut = new FileOutputStream(zipFile.toJava)
+        out(zipOut)
+        zipOut.close()
+        // unzip
+        ZipUtils.unzip(new ZipFile(zipFile.toJava), zipFile.parent.toJava).runNow
+
+        (testDir/s"${archiveName}/directives").children.toList.map(_.name) must containTheSameElementsAs(List(fileName))
+      case err => ko(s"I got an error in test: ${err}")
+    }
+  }
+
 
   "correctly build an archive of one technique" >> {
     val archiveName = "archive-technique"
@@ -174,7 +200,6 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
 
     val initRev = {
       val head = restTestSetUp.mockGitRepo.gitRepo.db.exactRef("refs/heads/master")
-      import org.eclipse.jgit.revwalk.RevCommit
       val walk = new RevWalk(restTestSetUp.mockGitRepo.gitRepo.db)
       val commit = walk.parseCommit(head.getObjectId)
       walk.dispose()
@@ -233,8 +258,7 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
           // unzip
           ZipUtils.unzip(new ZipFile(zipFile.toJava), zipFile.parent.toJava).runNow
 
-          val r = (testDir / s"${archiveName}/rules/${ruleFileName}").contentAsString.fromJson[JQRule].getOrElse(throw new IllegalArgumentException(s"error in rule deserialization"))
-
+          //val r = (testDir / s"${archiveName}/rules/${ruleFileName}").contentAsString.fromJson[JQRule].getOrElse(throw new IllegalArgumentException(s"error in rule deserialization"))
           //(r.shortDescription.getOrElse("") must beMatching("global config for all nodes")) and
           ((testDir/s"${archiveName}/techniques/${techniqueId}").children.toList.map(_.name) must containTheSameElementsAs(baseFiles))
 
