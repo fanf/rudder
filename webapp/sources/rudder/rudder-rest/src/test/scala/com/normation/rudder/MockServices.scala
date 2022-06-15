@@ -201,7 +201,7 @@ class MockGitConfigRepo(prefixTestResources: String = "") {
 
   val gitRepo = GitRepositoryProviderImpl.make(configurationRepositoryRoot.pathAsString).runNow
 
-  // alway return HEAD on master
+  // always return HEAD on master
   val revisionProvider = new GitRevisionProvider() {
     val refPath = "refs/heads/master"
 

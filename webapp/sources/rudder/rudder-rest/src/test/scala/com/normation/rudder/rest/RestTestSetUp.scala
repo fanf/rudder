@@ -620,8 +620,8 @@ class RestTestSetUp {
     val archiveBuilderService = new ZipArchiveBuilderService(new FileArchiveNameService(), mockConfigRepo.configurationRepository, mockTechniques.techniqueRevisionRepo)
     val featureSwitchState = Ref.make[FeatureSwitch](FeatureSwitch.Disabled).runNow
     // fixe archive name to make it simple to test
-    val rootDirName = "archive".succeed
-    val api = new ArchiveApi(archiveBuilderService, featureSwitchState.get, rootDirName)
+    val rootDirName = Ref.make("archive").runNow
+    val api = new ArchiveApi(archiveBuilderService, featureSwitchState.get, rootDirName.get)
   }
 
   val apiModules = List(

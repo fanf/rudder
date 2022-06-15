@@ -485,13 +485,11 @@ class GitParseTechniqueLibrary(
      * find the path of the technique version
      */
     def getFilePath(db: Repository, revTreeId: ObjectId, techniqueId: TechniqueId) = {
-       println(s"***** root: '${root}'; id! ${techniqueId.withDefaultRev.serialize}; treeod: ${revTreeId.toString}")
       IOResult.effect {
         //a first walk to find categories
         val tw = new TreeWalk(db)
         // there is no directory in git, only files
         val filter = new FileTreeFilter(List(root + "/"), List(techniqueId.withDefaultRev.serialize + "/" + techniqueMetadata))
-        println(s"**** filter: " + filter)
         tw.setFilter(filter)
         tw.setRecursive(true)
         tw.reset(revTreeId)
@@ -501,7 +499,7 @@ class GitParseTechniqueLibrary(
           path = Some(tw.getPathString)
           tw.close()
         }
-        path.map(_.replaceAll(techniqueMetadata, ""))
+        path.map(_.replaceAll("/" + techniqueMetadata, ""))
       }
     }
 
@@ -510,22 +508,25 @@ class GitParseTechniqueLibrary(
       treeId  <- GitFindUtils.findRevTreeFromRevision(repo.db, id.version.rev, revisionProvider.currentRevTreeId)
       _       <- ConfigurationLoggerPure.revision.trace(s"Git tree corresponding to revision: ${id.version.rev.value}: ${treeId.toString}")
       optPath <- getFilePath(repo.db, treeId, id)
+      _       <- ConfigurationLoggerPure.revision.trace(s"Found path for technique ${id.serialize}: ${optPath}")
       all     <- optPath match {
                    case None       => None.succeed
                    case Some(path) =>
                      for {
-                       _       <- ConfigurationLoggerPure.revision.trace(s"Found candidate path for technique ${id.serialize}: ${path}")
-                       all     <- GitFindUtils.getStreamForFiles(repo.db, treeId, List(path))
-                     } yield {
+                       all <- GitFindUtils.getStreamForFiles(repo.db, treeId, List(path))
                        // we need to correct paths to be relative to path
-                       val res = all.flatMap { case (p, opt) =>
-                         val newPath = p.replaceAll("^"+path, "")
-                         newPath.strip() match {
-                           case "" | "/" => None
-                           case x =>
-                             Some((if(x.startsWith("/")) x.tail else x, opt))
-                         }
-                       }
+                       res <- (ZIO.foreach(all) { case (p, opt) =>
+                                val newPath = p.replaceAll("^"+path, "")
+                                newPath.strip() match {
+                                  case "" | "/" =>
+                                    None.succeed
+                                  case x =>
+                                    val relativePath = if(x.startsWith("/")) x.tail else x
+                                    ConfigurationLoggerPure.revision.trace(s"Add technique ${opt.fold("sub-directory")(_ =>"file")}: '${relativePath}'") *>
+                                    Some((relativePath, opt)).succeed
+                                }
+                              }).map(_.flatten)
+                     } yield {
                        Some(res)
                      }
                  }

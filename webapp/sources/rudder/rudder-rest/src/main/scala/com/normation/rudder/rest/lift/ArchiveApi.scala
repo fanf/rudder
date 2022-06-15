@@ -301,8 +301,9 @@ class ZipArchiveBuilderService(
     for {
       contents <- techniqueRevisionRepo.getTechniqueFileContents(techniqueId).notOptional(s"Technique with ID '${techniqueId.serialize}' was not found in repository. Please check name and revision.")
     } yield {
-      // we need to change root of zippable
-      contents.map { case (p, opt) => Zippable(techniquesDir+"/"+p, opt.map(_.use))}
+      // we need to change root of zippable, we want techniques/myTechnique/1.0/[HERE]
+      val basePath = techniquesDir+"/" + techniqueId.withDefaultRev.serialize + "/"
+      contents.map { case (p, opt) => Zippable(basePath + p, opt.map(_.use))}
     }
   }
 
