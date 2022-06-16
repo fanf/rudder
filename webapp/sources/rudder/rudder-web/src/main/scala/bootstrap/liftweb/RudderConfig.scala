@@ -90,6 +90,7 @@ import com.normation.rudder.api._
 import com.normation.rudder.apidata.ZioJsonExtractor
 import com.normation.rudder.batch._
 import com.normation.rudder.configuration.ConfigurationRepositoryImpl
+import com.normation.rudder.configuration.GroupRevisionRepository
 import com.normation.rudder.configuration.RuleRevisionRepository
 import com.normation.rudder.db.Doobie
 import com.normation.rudder.domain._
@@ -1451,9 +1452,11 @@ object RudderConfig extends Loggable {
       roLdapDirectiveRepository
     , techniqueRepository
     , roLdapRuleRepository
+    , roNodeGroupRepository
     , parseActiveTechniqueLibrary
     , gitParseTechniqueLibrary
     , parseRules
+    , parseGroupLibrary
   )
 
   private[this] lazy val roLDAPApiAccountRepository = new RoLDAPApiAccountRepository(
@@ -2230,7 +2233,7 @@ object RudderConfig extends Loggable {
    , ldapEntityMapper
    , uptLibReadWriteMutex
   )
-  private[this] lazy val parseGroupLibrary : ParseGroupLibrary = new GitParseGroupLibrary(
+  private[this] lazy val parseGroupLibrary : ParseGroupLibrary with GroupRevisionRepository = new GitParseGroupLibrary(
       nodeGroupCategoryUnserialisation
     , nodeGroupUnserialisation
     , gitConfigRepo

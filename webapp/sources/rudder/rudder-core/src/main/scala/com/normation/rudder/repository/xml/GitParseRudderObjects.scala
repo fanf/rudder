@@ -46,8 +46,12 @@ import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.TechniqueVersion
 import com.normation.cfclerk.xmlparsers.TechniqueParser
 import com.normation.rudder.configuration.DirectiveRevisionRepository
+import com.normation.rudder.configuration.GroupAndCat
+import com.normation.rudder.configuration.GroupRevisionRepository
 import com.normation.rudder.configuration.RuleRevisionRepository
 import com.normation.rudder.domain.logger.ConfigurationLoggerPure
+import com.normation.rudder.domain.nodes.NodeGroupCategoryId
+import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.policies.ActiveTechnique
 import com.normation.rudder.domain.policies.Directive
 import com.normation.rudder.domain.policies.DirectiveId
@@ -291,7 +295,9 @@ class GitParseGroupLibrary(
   , xmlMigration        : XmlEntityMigration
   , libRootDirectory    : String //relative name to git root file
   , categoryFileName    : String = "category.xml"
-) extends ParseGroupLibrary with GitParseCommon[NodeGroupCategoryContent] {
+) extends ParseGroupLibrary with GitParseCommon[NodeGroupCategoryContent] with GroupRevisionRepository {
+
+  val groupsDirectory: GitRootCategory = getGitDirectoryPath(libRootDirectory)
 
   def getArchiveForRevTreeId(revTreeId:ObjectId): IOResult[NodeGroupCategoryContent] = {
 
@@ -369,6 +375,38 @@ class GitParseGroupLibrary(
       //// BE CAREFUL: GIT DOES NOT LIST DIRECTORIES
       paths <- GitFindUtils.listFiles(repo.db, revTreeId, List(root.root), Nil)
       res   <- recParseDirectory(paths, root.directoryPath)
+    } yield {
+      res
+    }
+  }
+
+  override def getGroupRevision(uid: NodeGroupUid, rev: Revision): IOResult[Option[GroupAndCat]] = {
+    for {
+      treeId  <- GitFindUtils.findRevTreeFromRevString(repo.db, rev.value)
+      // nodegroups are any where in the subtree with parent directory name == uuid of the group category.
+      // So we need to find the group by name, and split path to get its category. Be careful, the name of root
+      // category is not "groups" but "GroupRoot"
+      groups <- GitFindUtils.listFiles(repo.db, treeId, List(groupsDirectory.directoryPath), uid.value + ".xml" :: Nil)
+      res    <- groups.toList match {
+        case Nil => None.succeed
+        case h :: Nil => for {
+                          xml      <- GitFindUtils.getFileContent(repo.db, treeId, h) { is =>
+                                         ParseXml(is, Some(h))
+                                       }
+                          groupXml <- xmlMigration.getUpToDateXml(xml).toIO
+                          group    <- groupUnserialiser.unserialise(groupXml).toIO
+                          // h is path relative to config-repo, so may contains only one "/" (rules/ruleId.xml)
+                          catId    = h.split('/').toList.reverse match {
+                            case Nil | _ :: Nil => // assume root category even if Nil
+                              NodeGroupCategoryId("GroupRoot")
+                            case group :: catId :: _ =>
+                              NodeGroupCategoryId(catId)
+                          }
+                          // we need to correct ID revision to the one we just looked-up.
+                          // (it's normal to not have it serialized, since it's given by git, it's not intrinsic)
+                        } yield Some(GroupAndCat(group.modify(_.id.rev).setTo(rev), catId))
+        case _ => Unexpected(s"Several groups with id '${uid.value}' found under '${groupsDirectory.directoryPath}' directory for revision '${rev.value}'").fail
+      }
     } yield {
       res
     }

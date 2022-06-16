@@ -41,14 +41,17 @@ import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.rudder.api.ApiVersion
 import com.normation.rudder.apidata.JsonResponseObjects.JRDirective
+import com.normation.rudder.apidata.JsonResponseObjects.JRGroup
 import com.normation.rudder.apidata.JsonResponseObjects.JRRule
 import com.normation.rudder.apidata.implicits._
 import com.normation.rudder.configuration.ConfigurationRepository
 import com.normation.rudder.domain.appconfig.FeatureSwitch
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.logger.ApplicationLoggerPure
+import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
+import com.normation.rudder.domain.policies.RuleTarget
 import com.normation.rudder.git.ZipUtils
 import com.normation.rudder.git.ZipUtils.Zippable
 import com.normation.rudder.repository.xml.TechniqueRevisionRepository
@@ -143,9 +146,9 @@ class ArchiveApi(
       def parseTechniqueIds(req: Req): IOResult[List[TechniqueId]] = {
         ZIO.foreach(req.params.getOrElse("techniques", Nil))(TechniqueId.parse(_).toIO)
       }
-//      def parseGroupIds(req: Req): IOResult[List[NodeGroupId]] = {
-//        ZIO.foreach(req.params.getOrElse("groups", Nil))(NodeGroupId.parse(_).toIO)
-//      }
+      def parseGroupIds(req: Req): IOResult[List[NodeGroupId]] = {
+        ZIO.foreach(req.params.getOrElse("groups", Nil))(NodeGroupId.parse(_).toIO)
+      }
 
       // lift is not well suited for ZIO...
       val rootDirName = getArchiveName.runNow
@@ -154,9 +157,10 @@ class ArchiveApi(
       val zippables = for {
         _             <- ApplicationLoggerPure.Archive.debug(s"Building archive")
         ruleIds       <- parseRuleIds(req)
+        groupIds      <- parseGroupIds(req)
         directiveIds  <- parseDirectiveIds(req)
         techniquesIds <- parseTechniqueIds(req)
-        zippables     <- archiveBuilderService.buildArchive(rootDirName, techniquesIds, directiveIds, ruleIds)
+        zippables     <- archiveBuilderService.buildArchive(rootDirName, techniquesIds, directiveIds, groupIds, ruleIds, true, true, true)
       } yield {
         zippables
       }
@@ -172,10 +176,10 @@ class ArchiveApi(
         , ("Content-Transfer-Encoding", "binary")
       )
       val send =  (os: OutputStream) => zippables.flatMap { z =>
-        ZipUtils.zip(os, z).catchAll(err =>
-          ApplicationLoggerPure.Archive.error(s"Error when building zip archive: ${err.fullMsg}")
-        )
-      }.runNow
+        ZipUtils.zip(os, z)
+      }.catchAll(err =>
+        ApplicationLoggerPure.Archive.error(s"Error when building zip archive: ${err.fullMsg}")
+      ).runNow
       new OutputStreamResponse(send, -1, headers, Nil, 200)
     }
   }
@@ -241,6 +245,7 @@ class ZipArchiveBuilderService(
 
   // names of directories under the root directory of the archive
   val RULES_DIR = "rules"
+  val GROUPS_DIR = "groups"
   val DIRECTIVES_DIR = "directives"
   val TECHNIQUES_DIR = "techniques"
 
@@ -295,7 +300,7 @@ class ZipArchiveBuilderService(
   /*
    * Getting technique zippable is more complex than other items because we can have a lot of
    * files. The strategy used is to always copy ALL files for the given technique
-   * TechniquesDir is the path where technqiues are stored, ie for technique "user/1.0", we have:
+   * TechniquesDir is the path where techniques are stored, ie for technique "user/1.0", we have:
    * techniquesDir / user/1.0/ other techniques file
    */
   def getTechniqueZippable(techniquesDir: String, techniqueId: TechniqueId): IOResult[Seq[Zippable]] = {
@@ -314,7 +319,16 @@ class ZipArchiveBuilderService(
    * Any missing object will lead to an error.
    * For each element, an human readable name derived from the object name is used when possible.
    */
-  def buildArchive(rootDirName: String, techniqueIds: Seq[TechniqueId], directiveIds: Seq[DirectiveId], ruleIds: Seq[RuleId]): IOResult[Chunk[Zippable]] = {
+  def buildArchive(
+      rootDirName: String
+    , techniqueIds: Seq[TechniqueId]
+    , directiveIds: Seq[DirectiveId]
+    , groupIds: Seq[NodeGroupId]
+    , ruleIds: Seq[RuleId]
+    , includeDepDirectives: Boolean
+    , includeDepTechniques: Boolean
+    , includeDepGroups: Boolean
+  ): IOResult[Chunk[Zippable]] = {
     // normalize to no slash at end
     val root = rootDirName.strip().replaceAll("""/$""", "")
 
@@ -323,6 +337,9 @@ class ZipArchiveBuilderService(
     for {
       // for each kind, we need to keep trace of existing names to avoid overwriting
       usedNames        <- Ref.make(Map.empty[String, Set[String]])
+      // dependency id to add at lower level
+      depDirectiveIds  <- Ref.make(List.empty[DirectiveId])
+      depGroupIds      <- Ref.make(List.empty[NodeGroupId])
       _                <- ApplicationLoggerPure.Archive.debug(s"Building archive for rules: ${ruleIds.map(_.serialize).mkString(", ")}")
       rootZip          <- Zippable(rootDirName, None).succeed
       rulesDir         =  root + "/" + RULES_DIR
@@ -331,9 +348,22 @@ class ZipArchiveBuilderService(
       rulesZip         <- ZIO.foreach(ruleIds) { ruleId =>
                             for {
                               rule <- configRepo.getRule(ruleId).notOptional(s"Rule with id ${ruleId.serialize} was not found in Rudder")
+                              _    <- depDirectiveIds.update(x => x ++ rule.directiveIds)
+                              _    <- depGroupIds.update(x => x ++ RuleTarget.getNodeGroupIds(rule.targets))
                               json =  JRRule.fromRule(rule, None, None, None).toJsonPretty
                               name <- findName(rule.name, ".json", usedNames, RULES_DIR)
                             } yield Zippable(rulesDir + "/" + name, Some(getJsonZippableContent(json)))
+                          }
+      groupsDir        =  root + "/" + GROUPS_DIR
+      _                <- usedNames.update( _ + ((GROUPS_DIR, Set.empty[String])))
+      groupsDirZip     =  Zippable(groupsDir, None)
+      depGroups        <- if(includeDepGroups) depGroupIds.get else Nil.succeed
+      groupsZip        <- ZIO.foreach(groupIds ++ depGroups) { groupId =>
+                            for {
+                              gc   <- configRepo.getGroup(groupId).notOptional(s"Group with id ${groupId.serialize} was not found in Rudder")
+                              json =  JRGroup.fromGroup(gc.group, gc.categoryId, None).toJsonPretty
+                              name <- findName(gc.group.name, ".json", usedNames, GROUPS_DIR)
+                            } yield Zippable(groupsDir + "/" + name, Some(getJsonZippableContent(json)))
                           }
       // directives need access to technique, but we don't want to look up several time the same one
       techniques       <- RefM.make(Map.empty[TechniqueId, Technique])
@@ -341,9 +371,10 @@ class ZipArchiveBuilderService(
       directivesDir    =  root + "/" + DIRECTIVES_DIR
       _                <- usedNames.update( _ + ((DIRECTIVES_DIR, Set.empty[String])))
       directivesDirZip =  Zippable(directivesDir, None)
-      directivesZip    <- ZIO.foreach(directiveIds) { directiveId =>
+      depDirectives    <- if(includeDepDirectives) depDirectiveIds.get else Nil.succeed
+      directivesZip    <- ZIO.foreach(directiveIds ++ depDirectives) { directiveId =>
                             for {
-                              ad   <- configRepo.getDirective(directiveId).notOptional(s"Rule with id ${directiveId.serialize} was not found in Rudder")
+                              ad   <- configRepo.getDirective(directiveId).notOptional(s"Directive with id ${directiveId.serialize} was not found in Rudder")
                               tech <- getTechnique(TechniqueId(ad.activeTechnique.techniqueName, ad.directive.techniqueVersion), techniques)
                               json =  JRDirective.fromDirective(tech, ad.directive, None).toJsonPretty
                               name <- findName(ad.directive.name, ".json", usedNames, DIRECTIVES_DIR)
@@ -352,13 +383,14 @@ class ZipArchiveBuilderService(
       // Techniques don't need name normalization, their name is already normalized
       techniquesDir    =  root + "/" + TECHNIQUES_DIR
       techniquesDirZip =  Zippable(techniquesDir, None)
-      techniquesZip    <- ZIO.foreach(techniqueIds) { techniqueId =>
+      depTechniques    <- if(includeDepTechniques) techniques.get.map(_.keys) else Nil.succeed
+      techniquesZip    <- ZIO.foreach(techniqueIds ++ depTechniques) { techniqueId =>
                             for {
                               techZips  <- getTechniqueZippable(techniquesDir, techniqueId)
                             } yield techZips
                           }
     } yield {
-      Chunk(rootZip, rulesDirZip) ++ rulesZip ++ techniquesZip.flatten ++ directivesZip
+      Chunk(rootZip, rulesDirZip, groupsDirZip, directivesDirZip, techniquesDirZip) ++ rulesZip ++ techniquesZip.flatten ++ directivesZip ++ groupsZip
     }
   }
 

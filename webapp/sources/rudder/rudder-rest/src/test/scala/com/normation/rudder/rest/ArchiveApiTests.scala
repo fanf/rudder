@@ -173,6 +173,29 @@ class ArchiveApiTests extends Specification with AfterAll with Loggable {
     }
   }
 
+  "correctly build an archive of one group" >> {
+
+    // group with ID 0000f5d3-8c61-4d20-88a7-bb947705ba8a defined in com/normation/rudder/MockServices.scala has name:
+    // Real nodes
+    // so: Real_nodes
+    val fileName = "Real_nodes.json"
+
+    val archiveName = "archive-group"
+    restTestSetUp.archiveAPIModule.rootDirName.set(archiveName).runNow
+
+    restTest.testGETResponse("/api/archive/export?groups=0000f5d3-8c61-4d20-88a7-bb947705ba8a") {
+      case Full(OutputStreamResponse(out, _, _, _, 200)) =>
+        val zipFile = testDir/s"${archiveName}.zip"
+        val zipOut = new FileOutputStream(zipFile.toJava)
+        out(zipOut)
+        zipOut.close()
+        // unzip
+        ZipUtils.unzip(new ZipFile(zipFile.toJava), zipFile.parent.toJava).runNow
+
+        (testDir/s"${archiveName}/groups").children.toList.map(_.name) must containTheSameElementsAs(List(fileName))
+      case err => ko(s"I got an error in test: ${err}")
+    }
+  }
 
   "correctly build an archive of one technique" >> {
     val archiveName = "archive-technique"
