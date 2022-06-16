@@ -57,7 +57,6 @@ import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.RuleTargetInfo
 import com.normation.rudder.domain.policies.RuleUid
 import com.normation.rudder.domain.properties.GlobalParameter
-import com.normation.rudder.git.ExactFileTreeFilter
 import com.normation.rudder.git.FileTreeFilter
 import com.normation.rudder.git.GitCommitId
 import com.normation.rudder.git.GitFindUtils
