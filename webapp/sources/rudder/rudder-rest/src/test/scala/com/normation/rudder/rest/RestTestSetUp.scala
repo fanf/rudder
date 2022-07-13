@@ -56,6 +56,7 @@ import com.normation.rudder.apidata.RestDataSerializerImpl
 import com.normation.rudder.apidata.ZioJsonExtractor
 import com.normation.rudder.batch.PolicyGenerationTrigger.AllGeneration
 import com.normation.rudder.batch._
+import com.normation.rudder.campaigns.CampaignSerializer
 import com.normation.rudder.domain.appconfig.FeatureSwitch
 import com.normation.rudder.domain.nodes.NodeGroup
 import com.normation.rudder.domain.nodes.NodeGroupId
@@ -647,6 +648,15 @@ class RestTestSetUp {
     val api = new ArchiveApi(archiveBuilderService, featureSwitchState.get, rootDirName.get, zipArchiveReader, archiveSaver, archiveChecker)
   }
 
+  val mockCampaign = new MockCampaign()
+  object campaignApiModule {
+
+    val translator = new CampaignSerializer()
+    translator.addJsonTranslater(mockCampaign.dumbCampaignTranslator)
+    import mockCampaign._
+    val api = new CampaignApi(repo, translator, dumbCampaignEventRepository, mainCampaignService, restExtractorService)
+  }
+
   val apiModules = List(
       systemApi
     , new ParameterApi(restExtractorService, zioJsonExtractor, parameterApiService2, parameterApiService14)
@@ -657,6 +667,7 @@ class RestTestSetUp {
     , new GroupsApi(mockNodeGroups.groupsRepo, restExtractorService, zioJsonExtractor, uuidGen, groupService2, groupService6, groupService14, groupApiInheritedProperties)
     , new SettingsApi(restExtractorService, settingsService.configService, asyncDeploymentAgent, uuidGen, settingsService.policyServerManagementService, nodeInfo)
     , archiveAPIModule.api
+    , campaignApiModule.api
   )
 
   val apiVersions = ApiVersion(13 , true) :: ApiVersion(14 , false) :: ApiVersion(15 , false) :: Nil

@@ -2503,14 +2503,8 @@ object RudderConfig extends Loggable {
   lazy val campaignRepo = new CampaignRepositoryImpl(campaignSerializer, campaignPath)
 
 
-  val mainCampaignService  = MainCampaignService (campaignEventRepo, campaignRepo, uuidGen)
-  ( for {
-      campaignQueue <- Queue.unbounded[CampaignEvent]
-      _ <- mainCampaignService.start(campaignQueue).forkDaemon
-    } yield {
-      ()
-    }
-  ).forkDaemon.runNow
+  val mainCampaignService  = new MainCampaignService(campaignEventRepo, campaignRepo, uuidGen)
+  MainCampaignService.start(mainCampaignService).runNow
 
   lazy val jsonReportsAnalyzer = JSONReportsAnalyser(reportsRepository, propertyRepository)
   jsonReportsAnalyzer.start().forkDaemon

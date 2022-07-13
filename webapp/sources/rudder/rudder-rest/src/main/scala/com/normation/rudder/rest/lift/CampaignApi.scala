@@ -48,6 +48,7 @@ class CampaignApi (
     val schema = API.GetCampaigns
 
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      println(s"****** get campaigns")
       val res = (for {
         campaigns <- campaignRepository.getAll()
         serialized <- ZIO.foreach(campaigns)(campaignSerializer.getJson)
@@ -78,7 +79,7 @@ class CampaignApi (
 
 
   object ScheduleCampaign extends LiftApiModule {
-    val schema = API.GetCampaignDetails
+    val schema = API.ScheduleCampaign
 
     def process(version: ApiVersion, path: ApiPath, resources: String, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       val res =
@@ -95,7 +96,7 @@ class CampaignApi (
   }
 
   object SaveCampaignEvent extends LiftApiModule0 {
-    val schema = API.SaveCampaign
+    val schema = API.SaveCampaignEvent
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
 
       (for {

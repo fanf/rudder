@@ -55,7 +55,16 @@ trait CampaignHandler{
   def handle(mainCampaignService: MainCampaignService, event :CampaignEvent): PartialFunction[Campaign, IOResult[CampaignEvent]]
 }
 
-case class MainCampaignService(repo : CampaignEventRepository, campaignRepo: CampaignRepository, uuidGen: StringUuidGenerator) {
+object MainCampaignService {
+  def start(mainCampaignService: MainCampaignService) = {
+    for {
+      campaignQueue <- Queue.unbounded[CampaignEvent]
+      _ <- mainCampaignService.start(campaignQueue).forkDaemon
+    } yield ()
+  }
+}
+
+class MainCampaignService(repo: CampaignEventRepository, campaignRepo: CampaignRepository, uuidGen: StringUuidGenerator) {
 
   private[this] var services : List[CampaignHandler] = Nil
   def registerService(s : CampaignHandler) = {

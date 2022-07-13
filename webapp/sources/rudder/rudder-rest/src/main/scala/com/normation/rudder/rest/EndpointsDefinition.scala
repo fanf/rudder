@@ -66,7 +66,7 @@ sealed trait CampaignApi extends EndpointSchema with InternalApi with SortIndex
 object CampaignApi extends ApiModuleProvider[CampaignApi] {
   final case object GetCampaigns extends CampaignApi with ZeroParam with StartsAtVersion16 with SortIndex { val z = implicitly[Line].value
     val description = "Get all campaigns model"
-    val (action, path)  = GET / "campaigns" / "model"
+    val (action, path)  = GET / "campaigns" / "models"
     val dataContainer = Some("campaigns")
   }
   final case object GetCampaignEvents extends CampaignApi with ZeroParam with StartsAtVersion16 with SortIndex { val z = implicitly[Line].value
