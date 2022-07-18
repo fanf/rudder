@@ -263,7 +263,21 @@ class MainCampaignService(repo: CampaignEventRepository, campaignRepo: CampaignR
   def start(initQueue: Queue[CampaignEvent]) = {
     val s = CampaignScheduler(this, initQueue, ZioRuntime.environment)
     inner = Some(s)
-    s.start()
+
+
+    for {
+      _ <- s.start()
+      alreadyScheduled <- repo.getAllActiveCampaignEvents()
+      _ <- ZIO.foreach(alreadyScheduled) { ev => s.queueCampaign(ev) }
+      campaigns <- campaignRepo.getAll()
+      newEvents <- ZIO.foreach(campaigns.filterNot(c => alreadyScheduled.exists(_.campaignId == c.info.id ))) {
+        c =>
+          scheduleCampaignEvent(c)
+      }
+      _ <- ZIO.foreach(newEvents) { ev => s.queueCampaign(ev) }
+    } yield {
+      ()
+    }
   }
 
 }
