@@ -53,7 +53,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.templates.STVariable
 
 import java.nio.charset.Charset
-import net.liftweb.common.*
+import net.liftweb.common._
 import net.liftweb.json.JsonAST
 import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
@@ -73,15 +73,15 @@ import java.nio.file.attribute.PosixFilePermission
 import java.util.concurrent.TimeUnit
 import com.normation.rudder.hooks.HookReturnCode
 
-import zio.*
-import zio.syntax.*
-import com.normation.errors.*
-import com.normation.box.*
-import com.normation.zio.*
+import zio._
+import zio.syntax._
+import com.normation.errors._
+import com.normation.box._
+import com.normation.zio._
 import zio.Duration
 import com.normation.rudder.domain.logger.NodeConfigurationLogger
 
-import better.files.*
+import better.files._
 import com.normation.rudder.domain.logger.PolicyGenerationLogger
 import com.normation.rudder.domain.logger.PolicyGenerationLoggerPure
 import com.normation.rudder.domain.properties.NodeProperty
@@ -325,13 +325,17 @@ class PolicyWriterServiceImpl(
    *   for now, that doesn't really matter, since each step is blocking (ie wait before next).
    *   A parallelism around the thread pool sizing (by default, number of CPU) seems ok.
    *
-   * here, f must not throws execution.
+   * here, f must not throws exception.
    *
    */
   def parallelSequence[U,T](seq: Seq[U])(f:U => IOResult[T])(implicit timeout: Duration, maxParallelism: Int): IOResult[Seq[T]] = {
-    println(s"***** timeout: ${timeout}")
-    Fiber.dumpAll.mapError(SystemError("oups", _)) *>
-    (seq.accumulateParN(maxParallelism)(f)).timeoutFail(Accumulated(NonEmptyList.one(Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'"))))(timeout)
+    try {
+      println(s"***** timeout: ${timeout}")
+      Fiber.dumpAll.mapError(SystemError("oups", _)) *>
+      (seq.accumulateParN(maxParallelism)(f)).timeoutFail(Accumulated(NonEmptyList.one(Unexpected(s"Execution of computation timed out after '${timeout.asJava.toString}'"))))(1.milliseconds)
+    } catch {
+      case ex: InterruptedException => println(s"I was interrupted on timeout: ${timeout.asJava.toString}") ; throw ex
+    }
   }
 
   // a version for Hook with a nicer message accumulation
@@ -389,13 +393,7 @@ class PolicyWriterServiceImpl(
     , generationTime  : DateTime
     , parallelism     : Int
   ) : Box[Seq[NodeId]] = {
-    writeTemplatePure(rootNodeId, nodesToWrite, allNodeConfigs, allNodeInfos, versions, globalPolicyMode, generationTime, parallelism).toBox match {
-      case Full(x) => Full(x)
-      case err =>
-        println(s"**** There's an error: ${err}")
-        ZioRuntime.runNow(Fiber.dumpAll.mapError(SystemError("oups", _)))
-        err
-    }
+    writeTemplatePure(rootNodeId, nodesToWrite, allNodeConfigs, allNodeInfos, versions, globalPolicyMode, generationTime, parallelism).toBox
   }
 
   def writeTemplatePure(
