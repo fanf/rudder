@@ -39,12 +39,7 @@ package com.normation.rudder.inventory
 
 import com.normation.inventory.domain.InventoryProcessingLogger
 
-import com.normation.zio.ZioRuntime
-import scala.concurrent.ExecutionContext
-
-import zio._
-import zio.syntax._
-import com.normation.zio._
+import better.files._
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.TrueFileFilter
 import org.joda.time.DateTime
@@ -58,8 +53,6 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 
 import zio._
-import zio.clock.Clock
-import zio.duration._
 import zio.syntax._
 import com.normation.box.IOManaged
 import com.normation.errors.IOResult
@@ -224,14 +217,14 @@ object Watchers {
         private var stopRequired = false
 
         // a one element queue to tempo overflow events
-        val tempoOverflow = ZioRuntime.unsafeRun(ZQueue.dropping[Unit](1))
+        val tempoOverflow = ZioRuntime.unsafeRun(Queue.dropping[Unit](1))
 
         // process overflow
         val overflowFiber = ZioRuntime.unsafeRun((for {
           _ <- tempoOverflow.take
           // if we are overflowing, we got at least a couple hundred inventories. Wait one minute before continuing
           _ <- InventoryProcessingLogger.info("Inotify watcher event overflow: waiting a minute before checking what inventories need to be processed")
-          _ <- UIO.unit.delay(1.minutes)
+          _ <- ZIO.unit.delay(1.minutes)
           // clean-up other overflow that happened during that time
           _ <- tempoOverflow.takeAll
           _ <- checkOld.checkFilesOlderThan(0.milli)

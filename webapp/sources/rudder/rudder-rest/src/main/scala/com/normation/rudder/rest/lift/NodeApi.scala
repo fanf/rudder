@@ -145,8 +145,7 @@ import java.net.ConnectException
 import java.nio.charset.StandardCharsets
 import java.util.Arrays
 
-import zio._
-import zio.duration._
+import zio.{System => _, _}
 import zio.syntax._
 import com.normation.box._
 import com.normation.errors._
@@ -660,7 +659,7 @@ class NodeApiService15(
         }
       }.flatMap {
         case None => // ok, it doesn't exists
-          UIO.unit
+          ZIO.unit
         case Some(s) => // oups, already present
           Inconsistency(s"A node with id '${nodeId.value}' already exists with status '${s.name}'").fail
       }

@@ -66,7 +66,7 @@ import com.normation.errors._
 import com.normation.zio._
 import zio._
 import zio.syntax._
-import GitTechniqueReader._
+import com.normation.cfclerk.services.impl.GitTechniqueReader._
 import com.normation.GitVersion
 import com.normation.rudder.domain.logger.TechniqueReaderLoggerPure
 import com.normation.rudder.git.ExactFileTreeFilter
@@ -338,7 +338,7 @@ class GitTechniqueReader(
                        case GitVersion.DEFAULT_REV => revisionProvider.currentRevTreeId
                        case r                      => GitFindUtils.findRevTreeFromRevString(repo.db, r.value)
                      }
-        optStream <- IOResult.effect {
+        optStream <- IOResult.attempt {
                        try {
                          val tw = new TreeWalk(repo.db)
                          tw.setFilter(new ExactFileTreeFilter(canonizedRelativePath, path))

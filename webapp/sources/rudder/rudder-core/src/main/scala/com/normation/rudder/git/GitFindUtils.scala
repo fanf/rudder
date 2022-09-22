@@ -106,7 +106,7 @@ object GitFindUtils extends NamedZioLogger {
    * relative to git root)
    */
   def getFileContent[T](db:Repository, revTreeId:ObjectId, path:String)(useIt : InputStream => IOResult[T]) : IOResult[T] = {
-    getManagedFileContent(db, revTreeId, path).use(useIt)
+    ZIO.scoped(getManagedFileContent(db, revTreeId, path).flatMap(useIt))
   }
 
   def getManagedFileContent(db:Repository, revTreeId:ObjectId, path:String): IOManaged[ObjectStream] = {
@@ -116,7 +116,7 @@ object GitFindUtils extends NamedZioLogger {
       p
     }
 
-    IOManaged.makeM(IOResult.effectM(s"Exception caught when trying to acces file '${filePath}'") {
+    IOManaged.makeM(IOResult.effectM(s"Exception caught when trying to access file '${filePath}'") {
         //now, the treeWalk
         val tw = new TreeWalk(db)
 
@@ -132,7 +132,7 @@ object GitFindUtils extends NamedZioLogger {
           case Nil =>
             Inconsistency(s"No file were found at path '${filePath}}'").fail
           case h :: Nil =>
-            ZIO.acquireReleaseWith(IOResult.attempt(db.open(h).openStream()))(s => effectUioUnit(s.close()))(useIt)
+            IOResult.attempt(db.open(h).openStream())
           case _ =>
             Inconsistency(s"More than exactly one matching file were found in the git tree for path '${filePath}', I can not know which one to choose. IDs: ${ids}}").fail
       }
@@ -190,15 +190,15 @@ object GitFindUtils extends NamedZioLogger {
   def getZip(db:Repository, revTreeId:ObjectId, onlyUnderPaths: List[String] = Nil) : IOResult[Array[Byte]] = {
     for {
       all      <- getStreamForFiles(db, revTreeId, onlyUnderPaths)
-      zippable =  all.map { case (p, opt) => Zippable(p, opt.map(_.use)) }
-      zip      <- IOResult.effect(new ByteArrayOutputStream()).bracket(os => effectUioUnit(os.close())) { os =>
-                    ZipUtils.zip(os, zippable) *> IOResult.effect(os.toByteArray)
+      zippable =  all.map { case (p, opt) => Zippable.make(p, opt) }
+      zip      <- ZIO.acquireReleaseWith(IOResult.attempt(new ByteArrayOutputStream()))(os => effectUioUnit(os.close())) { os =>
+                    ZipUtils.zip(os, zippable) *> IOResult.attempt(os.toByteArray)
                   }
     } yield zip
   }
 
   def getStreamForFiles(db:Repository, revTreeId:ObjectId, onlyUnderPaths: List[String] = Nil): IOResult[Seq[(String, Option[IOManaged[InputStream]])]] = {
-    IOResult.effect(s"Error when creating the list of files under ${onlyUnderPaths.mkString(", ")} in commit with id: '${revTreeId}'") {
+    IOResult.attempt(s"Error when creating the list of files under ${onlyUnderPaths.mkString(", ")} in commit with id: '${revTreeId}'") {
       val directories = scala.collection.mutable.Set[String]()
       val entries = scala.collection.mutable.Buffer.empty[(String, Option[IOManaged[InputStream]])]
       val tw = new TreeWalk(db)
@@ -214,10 +214,7 @@ object GitFindUtils extends NamedZioLogger {
       }
 
       //start by listing all directories, then all content
-      val all = directories.map(p => Zippable(p, None)).toSeq ++ zipEntries
-      val out = new ByteArrayOutputStream()
-
-      ZipUtils.zip(out, all) *> IOResult.attempt(out.toByteArray())
+      directories.toSeq.map(p => (p, None)) ++ entries
     }
   }
 

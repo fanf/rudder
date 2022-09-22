@@ -57,11 +57,21 @@ import scala.jdk.CollectionConverters._
 import zio.Chunk
 import zio.ZIO
 import zio.syntax._
+import com.normation.box.IOManaged
 
 object ZipUtils {
 
   final case class Zippable(path: String, useContent: Option[(InputStream => IOResult[Any]) => IOResult[Any]])
 
+  object Zippable {
+    def make(path: String, content: Option[IOManaged[InputStream]]): Zippable = {
+      def getUseContent(x: IOManaged[InputStream]): (InputStream => IOResult[Any]) => IOResult[Any] = {
+        (use: InputStream => IOResult[Any]) => ZIO.scoped(x.flatMap(use))
+      }
+      Zippable(path, content.map(x => getUseContent(x)))
+    }
+  }
+  
   // unzip from a file to another file/directory
   def unzip(zip: ZipFile, intoDir: File): IOResult[Unit] = {
     if (intoDir.exists && intoDir.isDirectory && intoDir.canWrite) {
@@ -99,7 +109,7 @@ object ZipUtils {
       }
     }
 
-    IOResult.effect(s"Error while unzipping file '${name}'") {
+    IOResult.attempt(s"Error while unzipping file '${name}'") {
       val zipis = new ZipInputStream(zip)
       var entry: ZipEntry = zipis.getNextEntry
       var entries = Chunk[(ZipEntry, Option[Array[Byte]])]()

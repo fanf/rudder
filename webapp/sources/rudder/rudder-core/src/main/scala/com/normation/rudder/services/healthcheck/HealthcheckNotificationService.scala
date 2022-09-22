@@ -37,9 +37,9 @@
 package com.normation.rudder.services.healthcheck
 import com.github.ghik.silencer.silent
 
-import com.normation.zio.*
+import com.normation.zio._
 import zio.Ref
-import zio.*
+import zio._
 
 
 class HealthcheckNotificationService(

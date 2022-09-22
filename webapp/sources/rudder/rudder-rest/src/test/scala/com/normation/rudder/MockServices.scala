@@ -147,7 +147,7 @@ import scala.collection.immutable
 import scala.util.control.NonFatal
 import scala.xml.Elem
 import zio.syntax._
-import zio.{Tag => _, System =>, _}
+import zio.{Tag => _, System =>_, _}
 import com.normation.box._
 import com.normation.errors.IOResult
 import com.normation.errors._
@@ -1599,7 +1599,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
       }
       val id = serverAndMachine.node.main.id
 
-      nodeBase.update(nodes => (nodes.get(id) match {
+      nodeBase.updateZIO(nodes => (nodes.get(id) match {
         case None => // new node
           nodes + ((id, NodeDetails(mainFromInventory(serverAndMachine), serverAndMachine.node, serverAndMachine.machine)))
         case Some(NodeDetails(m, nInv, mInv)) => // only update inventory
@@ -1615,7 +1615,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Seq[LDIFChangeRecord]] = ???
 
     override def updateNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = {
-      nodeBase.modify { nodes =>
+      nodeBase.modifyZIO { nodes =>
         nodes.get(node.id) match {
           case None    => Inconsistency(s"Node ${node.id.value} does not exists").fail
           case Some(n) =>
@@ -1844,7 +1844,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     } .toBox
 
     override def accept(id: NodeId, modId: ModificationId, actor: EventActor): Box[FullInventory] = {
-      (nodeInfoService.nodeBase.modify { nodes =>
+      (nodeInfoService.nodeBase.modifyZIO { nodes =>
         nodes.get(id) match {
           case None    => Inconsistency(s"node is missing").fail
           case Some(x) =>

@@ -222,9 +222,9 @@ class TechniqueArchiverImpl (
       ident   <- personIdentservice.getPersonIdentOrDefault(committer.name)
       // construct the path to the technique. Root category is "/", so we filter out all / to be sure
       categoryPath <- categories.filter(_ != "/").mkString("/").succeed
-      rm      <- IOResult.effect(gitRepo.git.rm.addFilepattern(s"${relativePath}/${categoryPath}/${techniqueId.serialize}").call())
+      rm      <- IOResult.attempt(gitRepo.git.rm.addFilepattern(s"${relativePath}/${categoryPath}/${techniqueId.serialize}").call())
 
-      commit  <- IOResult.effect(gitRepo.git.commit.setCommitter(ident).setMessage(msg).call())
+      commit  <- IOResult.attempt(gitRepo.git.commit.setCommitter(ident).setMessage(msg).call())
     } yield {
       s"${relativePath}/${categoryPath}/${techniqueId.serialize}"
     }).chainError(s"error when deleting and committing Technique '${techniqueId.serialize}").unit
@@ -277,17 +277,17 @@ class TechniqueArchiverImpl (
     val techniqueGitPath = s"${relativePath}/${categoryPath}/${techniqueId.serialize}"
 
     (for {
-      metadata <- IOResult.effect(XML.load(Source.fromFile((gitRepo.rootDirectory / techniqueGitPath / "metadata.xml").toJava)))
+      metadata <- IOResult.attempt(XML.load(Source.fromFile((gitRepo.rootDirectory / techniqueGitPath / "metadata.xml").toJava)))
       tech     <- techniqueParser.parseXml(metadata, techniqueId).toIO
       files    =  getFilesToCommit(tech, techniqueGitPath, resourcesStatus)
       ident    <- personIdentservice.getPersonIdentOrDefault(committer.name)
       added    <- ZIO.foreach(files.add) { f =>
-                    IOResult.effect(gitRepo.git.add.addFilepattern(f).call())
+                    IOResult.attempt(gitRepo.git.add.addFilepattern(f).call())
                   }
       removed <- ZIO.foreach(files.delete) { f =>
-                   IOResult.effect(gitRepo.git.rm.addFilepattern(f).call())
+                   IOResult.attempt(gitRepo.git.rm.addFilepattern(f).call())
                  }
-      commit  <- IOResult.effect(gitRepo.git.commit.setCommitter(ident).setMessage(msg).call())
+      commit  <- IOResult.attempt(gitRepo.git.commit.setCommitter(ident).setMessage(msg).call())
     } yield ()).chainError(s"error when committing Technique '${techniqueId.serialize}'").unit
   }
 
