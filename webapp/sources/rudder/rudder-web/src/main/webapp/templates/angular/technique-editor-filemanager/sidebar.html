@@ -1,3 +1,7 @@
+<ul class="nav nav-sidebar file-tree-root">
+    <li ng-repeat="item in fileNavigator.history" ng-include="'folder-branch-item'" ng-class="{'active': item.name == fileNavigator.currentPath.join('/')}"></li>
+</ul>
+
 <script type="text/ng-template" id="folder-branch-item">
     <a href="" ng-click="fileNavigator.folderClick(item.item)" class="animated fast fadeInDown">
 
@@ -14,6 +18,3 @@
         <li ng-repeat="item in item.nodes" ng-include="'folder-branch-item'" ng-class="{'active': item.name == fileNavigator.currentPath.join('/')}"></li>
     </ul>
 </script>
-<ul class="nav nav-sidebar file-tree-root">
-    <li ng-repeat="item in fileNavigator.history" ng-include="'folder-branch-item'" ng-class="{'active': item.name == fileNavigator.currentPath.join('/')}"></li>
-</ul>

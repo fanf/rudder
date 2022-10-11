@@ -31,12 +31,6 @@
             </a>
         </li>
 
-        <li ng-show="config.allowedActions.preview && singleSelection().isEditable() && singleSelection()">
-            <a href="" tabindex="-1" ng-click="smartClick(singleSelection())">
-                <i class="glyphicon glyphicon-eye-open"></i> View item
-            </a>
-        </li>
-
         <li ng-show="config.allowedActions.rename && singleSelection()">
             <a href="" tabindex="-1" ng-click="modal('rename')">
                 <i class="glyphicon glyphicon-edit"></i> {{'rename' | translate}}
