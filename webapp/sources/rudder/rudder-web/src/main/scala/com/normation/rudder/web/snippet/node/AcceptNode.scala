@@ -75,7 +75,6 @@ class AcceptNode extends Loggable {
   val serverGrid           = RudderConfig.nodeGrid
   val serverSummaryService = RudderConfig.nodeSummaryService
 
-  val diffRepos        = RudderConfig.inventoryHistoryLogRepository
   val logRepository    = RudderConfig.eventLogRepository
   val acceptedNodesDit = RudderConfig.acceptedNodesDit
   val pendingNodeDit   = RudderConfig.pendingNodesDit

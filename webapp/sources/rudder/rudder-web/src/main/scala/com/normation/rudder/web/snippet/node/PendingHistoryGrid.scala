@@ -59,7 +59,6 @@ import scala.xml._
 
 object PendingHistoryGrid extends Loggable {
 
-  val history           = RudderConfig.inventoryHistoryLogRepository
   val logService        = RudderConfig.inventoryEventLogService
   val logDetailsService = RudderConfig.eventLogDetailsService
 

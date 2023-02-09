@@ -627,8 +627,6 @@ object RudderConfig extends Loggable {
 
   val RUDDER_REPORTS_EXECUTION_INTERVAL = config.getInt("rudder.batch.storeAgentRunTimes.updateInterval").seconds.asScala
 
-  val HISTORY_INVENTORIES_ROOTDIR = config.getString("history.inventories.rootdir")
-
   val RUDDER_DEBUG_NODE_CONFIGURATION_PATH = config.getString("rudder.debug.nodeconfiguration.path")
 
   val RUDDER_BATCH_PURGE_DELETED_INVENTORIES = {
@@ -965,7 +963,6 @@ object RudderConfig extends Loggable {
   val debugScript:                   DebugInfoService              = scriptLauncher
   val stringUuidGenerator:           StringUuidGenerator           = uuidGen
   val cmdbQueryParser:               CmdbQueryParser               = queryParser
-  val inventoryHistoryLogRepository: InventoryHistoryLogRepository = diffRepos
   val inventoryEventLogService:      InventoryEventLogService      = inventoryLogEventServiceImpl
   val ruleApplicationStatus:         RuleApplicationStatusService  = ruleApplicationStatusImpl
   val propertyEngineService:         PropertyEngineService         = propertyEngineServiceImpl
@@ -2195,14 +2192,6 @@ object RudderConfig extends Loggable {
     configService.node_accept_duplicated_hostname()
   )
 
-  private[this] lazy val historizeNodeStateOnChoice: UnitAcceptInventory with UnitRefuseInventory = {
-    new HistorizeNodeStateOnChoice(
-      "accept_or_refuse_new_node:historize_inventory",
-      ldapFullInventoryRepository,
-      diffRepos,
-      PendingInventory
-    )
-  }
   private[this] lazy val updateFactRepoOnChoice:     UnitAcceptInventory with UnitRefuseInventory = new UpdateFactRepoOnChoice(
     "accept_or_refuse_new_node:update_fact_repo",
     PendingInventory,
@@ -2234,12 +2223,6 @@ object RudderConfig extends Loggable {
     new SoftwareServiceImpl(softwareInventoryDAO, softwareInventoryRWDAO, acceptedNodesDit)
 
   private[this] lazy val nodeSummaryServiceImpl = new NodeSummaryServiceImpl(inventoryDitService, inventoryMapper, roLdap)
-  private[this] lazy val diffRepos: InventoryHistoryLogRepository = {
-    new InventoryHistoryLogRepository(
-      HISTORY_INVENTORIES_ROOTDIR,
-      new FullInventoryFileParser(fullInventoryFromLdapEntries, inventoryMapper)
-    )
-  }
 
   private[this] lazy val personIdentServiceImpl = new TrivialPersonIdentService
 
@@ -2642,7 +2625,6 @@ object RudderConfig extends Loggable {
       ldapFullInventoryRepository,
       unitAcceptors,
       unitRefusors,
-      inventoryHistoryLogRepository,
       eventLogRepository,
       dyngroupUpdaterBatch,
       List(nodeInfoServiceImpl),

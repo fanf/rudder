@@ -38,17 +38,21 @@
 package com.normation.rudder.facts.nodes
 
 import better.files.File
+
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
 import com.normation.rudder.apidata.FullDetailLevel
 import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.git.GitCommitId
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
+
 import com.softwaremill.quicklens._
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json.prettyRender
 import org.eclipse.jgit.lib.PersonIdent
+
 import zio._
 import zio.syntax._
 
@@ -100,15 +104,20 @@ import zio.syntax._
  */
 trait NodeFactRepository {
 
-  def persist(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[Unit]
+  def persist(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[GitCommitId]
 
   /*
    * Change the status of the node with given id to given status.
-   * - if the node is not found, an error is raised appart if target status is "delete"
+   * - if the node is not found, an error is raised apart if target status is "delete"
    * - if the target status is the current one, this function does nothing
    * - if target status is "removed", persisted inventory is deleted
    */
   def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]
+
+  /*
+   * Get the given node at revision. Status will be inferred.
+   */
+  def getNode(nodeId: NodeId, revision: GitCommitId): IOResult[Option[(NodeInfo, FullInventory)]]
 
 }
 
@@ -212,7 +221,9 @@ class GitNodeFactRepository(
     IOResult.attempt(prettyRender(json))
   }
 
-  override def persist(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[Unit] = {
+  def fromJson(json: String): IOResult[]
+
+  override def persist(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[GitCommitId] = {
     for {
       json   <- toJson((nodeInfo, inventory, software))
       file    = getFile(nodeInfo.id, inventory.node.main.status)
@@ -224,11 +235,11 @@ class GitNodeFactRepository(
                   gitPath,
                   s"Save inventory facts for ${inventory.node.main.status.name} node '${nodeInfo.hostname}' (${nodeInfo.id.value})"
                 )
-    } yield ()
+    } yield saved
   }
 
   override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
-    // pending and accepted are symetric, utility function for the two cases
+    // pending and accepted are symmetric, utility function for the two cases
     def move(from: InventoryStatus) = {
       val to = if (from == AcceptedInventory) PendingInventory else AcceptedInventory
 
@@ -237,7 +248,7 @@ class GitNodeFactRepository(
       // check if fact already where it should
       ZIO.ifZIO(IOResult.attempt(fromFile.exists))(
         // however toFile exists, move, because if present it may be because a deletion didn't work and
-        // we need to overwritte
+        // we need to overwrite
         IOResult.attempt(fromFile.moveTo(toFile)(File.CopyOptions(overwrite = true))) *>
         commitMvDirectory(
           commiter,
@@ -295,6 +306,10 @@ class GitNodeFactRepository(
              }
       } yield ()
     }.unit
+  }
+
+  override def getNode(nodeId: NodeId, revision: GitCommitId): IOResult[Option[(NodeInfo, FullInventory)]] = {
+
   }
 }
 

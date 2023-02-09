@@ -48,7 +48,6 @@ import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.PendingInventory
 import com.normation.inventory.domain.RemovedInventory
 import com.normation.inventory.ldap.core.InventoryDit
-import com.normation.inventory.ldap.core.InventoryHistoryLogRepository
 import com.normation.inventory.ldap.core.LDAPConstants._
 import com.normation.inventory.ldap.core.LDAPFullInventoryRepository
 import com.normation.inventory.services.core.ReadOnlyFullInventoryRepository
@@ -214,7 +213,6 @@ class NewNodeManagerImpl(
     override val smRepo:                         LDAPFullInventoryRepository,
     override val unitAcceptors:                  Seq[UnitAcceptInventory],
     override val unitRefusors:                   Seq[UnitRefuseInventory],
-    val historyLogRepository:                    InventoryHistoryLogRepository,
     val eventLogRepository:                      EventLogRepository,
     override val updateDynamicGroups:            UpdateDynamicGroups,
     val cacheToClear:                            List[CachedRepository],
@@ -335,7 +333,6 @@ trait ComposedNewNodeManager extends NewNodeManager with NewNodeManagerHooks {
   def unitAcceptors:        Seq[UnitAcceptInventory]
   def unitRefusors:         Seq[UnitRefuseInventory]
 
-  def historyLogRepository: InventoryHistoryLogRepository
   def eventLogRepository:   EventLogRepository
 
   def updateDynamicGroups: UpdateDynamicGroups
