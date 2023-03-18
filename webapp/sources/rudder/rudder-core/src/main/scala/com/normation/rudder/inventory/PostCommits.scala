@@ -134,7 +134,7 @@ class FactRepositoryPostCommit(
                      ZIO.unit // does nothing
 
                    case Some(nodeInfo) =>
-                     nodeFactsRepository.persist(
+                     nodeFactsRepository.persistCompat(
                        nodeInfo,
                        FullInventory(inventory.node, Some(inventory.machine)),
                        inventory.applications

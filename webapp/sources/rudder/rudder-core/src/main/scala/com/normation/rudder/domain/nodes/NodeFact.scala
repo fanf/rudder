@@ -46,14 +46,19 @@ import com.normation.rudder.domain.properties.InheritMode
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.properties.PropertyProvider
 import com.normation.rudder.reports._
-import com.normation.rudder.repository.jdbc.ReportAndNodeMapping
 import com.normation.utils.ParseVersion
 import com.normation.utils.Version
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
+import java.net.InetAddress
+import net.liftweb.json.JsonAST
+import net.liftweb.json.JsonAST._
+import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
 import zio.Chunk
 import zio.json._
+import zio.json.ast.Json
+import zio.json.ast.Json._
 import zio.json.internal.Write
 
 /**
@@ -131,14 +136,107 @@ final case class VolumeGroup(
 final case class SoftwareFact(
     name:           String,
     version:        Version,
-    arch:           String,
-    size:           Long,
-    from:           String,
-    publisher:      String,
-    sourceName:     String,
-    sourceVersion:  Version,
-    systemCategory: String
+    arch:           Option[String],
+    size:           Option[Long],
+    from:           Option[String],
+    publisher:      Option[String],
+    sourceName:     Option[String],
+    sourceVersion:  Option[Version],
+    systemCategory: Option[String]
 )
+
+object NodeFact {
+  implicit class IterableToChunk[A](it: Iterable[A]) {
+    def toChunk: Chunk[A] = Chunk.fromIterable(it)
+  }
+
+  // to be able to: inventory.machine.get(_.bios) and get a Chunk
+  implicit class MachineEltToChunk[A](opt: Option[MachineInventory]) {
+    def chunk(iterable: MachineInventory => Iterable[A]): Chunk[A] = {
+      opt match {
+        case None    => Chunk()
+        case Some(m) => Chunk.fromIterable(iterable(m))
+      }
+    }
+  }
+  implicit class SoftwareToFact(s: Software)                         {
+    def toFact: Option[SoftwareFact] = for {
+      n  <- s.name
+      v  <- s.version
+      vv <- ParseVersion.parse(v.value).toOption
+    } yield SoftwareFact(
+      n,
+      vv,
+      None,
+      None,
+      None,
+      s.editor.map(_.name),
+      s.sourceName,
+      s.sourceVersion.flatMap(v => ParseVersion.parse(v.value).toOption),
+      None
+    )
+  }
+
+  def fromCompat(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): NodeFact = {
+    NodeFact(
+      nodeInfo.id,
+      nodeInfo.description.strip() match {
+        case "" => None
+        case x  => Some(nodeInfo.description)
+      },
+      nodeInfo.hostname,
+      nodeInfo.osDetails,
+      RudderSettings(
+        nodeInfo.keyStatus,
+        nodeInfo.nodeReportingConfiguration,
+        nodeInfo.nodeKind,
+        inventory.node.main.status,
+        nodeInfo.state,
+        nodeInfo.policyMode,
+        nodeInfo.policyServerId
+      ),
+      RudderAgent(
+        nodeInfo.agentsName(0).agentType,
+        nodeInfo.localAdministratorAccountName,
+        nodeInfo.agentsName(0).version.getOrElse(AgentVersion("0.0.0")),
+        nodeInfo.agentsName(0).securityToken,
+        nodeInfo.agentsName(0).capabilities.toChunk
+      ),
+      nodeInfo.properties.toChunk,
+      nodeInfo.inventoryDate,
+      nodeInfo.inventoryDate, // TODO: this is broken
+      nodeInfo.ips.map(IpAddress(_)).toChunk,
+      nodeInfo.timezone,
+      nodeInfo.machine.map(mi => Machine(mi.id, mi.machineType, mi.systemSerial, mi.manufacturer)),
+      nodeInfo.ram,
+      inventory.node.swap,
+      nodeInfo.archDescription,
+      inventory.node.accounts.toChunk,
+      inventory.machine.chunk(_.bios),
+      inventory.machine.chunk(_.controllers),
+      inventory.node.customProperties.toChunk,
+      inventory.node.environmentVariables.map(ev => (ev.name, ev.value.getOrElse(""))).toChunk,
+      inventory.node.fileSystems.toChunk,
+      Chunk(),                // TODO: missing input devices in inventory
+      Chunk(),                // TODO: missing local groups in inventory
+      Chunk(),                // TODO: missing local users in inventory
+      Chunk(),                // TODO: missing logical volumes in inventory
+      inventory.machine.chunk(_.memories),
+      inventory.node.networks.toChunk,
+      Chunk(),                // TODO: missing physical volumes in inventory
+      inventory.machine.chunk(_.ports),
+      inventory.node.processes.toChunk,
+      inventory.machine.chunk(_.processors),
+      inventory.machine.chunk(_.slots),
+      software.flatMap(_.toFact).toChunk,
+      inventory.node.softwareUpdates.toChunk,
+      inventory.machine.chunk(_.sounds),
+      inventory.machine.chunk(_.storages),
+      inventory.machine.chunk(_.videos),
+      inventory.node.vms.toChunk
+    )
+  }
+}
 
 final case class NodeFact(
     id:             NodeId,
@@ -182,7 +280,7 @@ final case class NodeFact(
     ports:                Chunk[Port],
     processes:            Chunk[Process],
     processors:           Chunk[Processor],
-    slots:                Chunk[MemorySlot],
+    slots:                Chunk[Slot],
     software:             Chunk[SoftwareFact],
     softwareUpdate:       Chunk[SoftwareUpdate],
     sounds:               Chunk[Sound],
@@ -350,7 +448,7 @@ object NodeFactSerialisation {
         out.write(a.render(ConfigRenderOptions.defaults().setJson(true).setComments(false).setFormatted(indent.getOrElse(0) > 0)))
       }
     },
-    JsonDecoder[ast.Json].map(json => GenericProperty.fromZioJson(json))
+    JsonDecoder[Json].map(json => GenericProperty.fromZioJson(json))
   )
 
   implicit val codecJNodeProperty: JsonCodec[JNodeProperty] = DeriveJsonCodec.gen
@@ -372,7 +470,7 @@ object NodeFactSerialisation {
   )
 
   implicit val codecRudderAgent:  JsonCodec[RudderAgent]  = DeriveJsonCodec.gen
-  implicit val codecIpAddress:    JsonCodec[IpAddress]    = DeriveJsonCodec.gen
+  implicit val codecIpAddress:    JsonCodec[IpAddress]    = JsonCodec.string.transform(IpAddress(_), _.inet)
   implicit val codecNodeTimezone: JsonCodec[NodeTimezone] = DeriveJsonCodec.gen
   implicit val codecMachineUuid  = JsonCodec.string.transform[MachineUuid](MachineUuid(_), _.value)
   implicit val codecMachineType  = JsonCodec.string.transform[MachineType](
@@ -383,8 +481,70 @@ object NodeFactSerialisation {
     _.kind
   )
   implicit val codecManufacturer = JsonCodec.string.transform[Manufacturer](Manufacturer(_), _.name)
-  implicit val codecMachine:    JsonCodec[Machine]    = DeriveJsonCodec.gen
-  implicit val codecMemorySize: JsonCodec[MemorySize] = JsonCodec.long.transform[MemorySize](MemorySize(_), _.size)
+  implicit val codecMachine:        JsonCodec[Machine]        = DeriveJsonCodec.gen
+  implicit val codecMemorySize:     JsonCodec[MemorySize]     = JsonCodec.long.transform[MemorySize](MemorySize(_), _.size)
+  implicit val codecSVersion:       JsonCodec[SVersion]       = JsonCodec.string.transform[SVersion](new SVersion(_), _.value)
+  implicit val codecSoftwareEditor: JsonCodec[SoftwareEditor] =
+    JsonCodec.string.transform[SoftwareEditor](SoftwareEditor(_), _.name)
+  implicit val codecBios:           JsonCodec[Bios]           = DeriveJsonCodec.gen
+
+  implicit val codecController: JsonCodec[Controller] = DeriveJsonCodec.gen
+
+  def recJsonToJValue(json: Json):     JValue       = {
+    json match {
+      case Obj(fields)   => JObject(fields.toList.map { case (k, v) => JField(k, recJsonToJValue(v)) })
+      case Arr(elements) => JArray(elements.toList.map(recJsonToJValue))
+      case Bool(value)   => JBool(value)
+      case Str(value)    => JString(value)
+      case Num(value)    => JDouble(value.doubleValue()) // this what is done in json-lift
+      case Json.Null     => JNull
+    }
+  }
+  def recJValueToJson(jvalue: JValue): Option[Json] = {
+    jvalue match {
+      case JsonAST.JNothing => None
+      case JsonAST.JNull    => Some(Null)
+      case JString(s)       => Some(Str(s))
+      case JDouble(num)     => Some(Num(num))
+      case JInt(num)        => Some(Num(num.longValue))
+      case JBool(value)     => Some(Bool(value))
+      case JObject(obj)     => Some(Obj(Chunk.fromIterable(obj).flatMap { case JField(k, v) => recJValueToJson(v).map(x => (k, x)) }))
+      case JArray(arr)      => Some(Arr(Chunk.fromIterable(arr.flatMap(recJValueToJson(_)))))
+    }
+  }
+
+  implicit val decoderJValue:       JsonDecoder[JValue]       = JsonDecoder[Option[Json]].map {
+    case None    => JNothing
+    case Some(v) => recJsonToJValue(v)
+  }
+  implicit val encoderJValue:       JsonEncoder[JValue]       = JsonEncoder[Option[Json]].contramap(recJValueToJson(_))
+  implicit val codecCustomProperty: JsonCodec[CustomProperty] = DeriveJsonCodec.gen
+
+  implicit val codecFileSystem:     JsonCodec[FileSystem]     = DeriveJsonCodec.gen
+  implicit val codecInputDevice:    JsonCodec[InputDevice]    = DeriveJsonCodec.gen
+  implicit val codecLocalGroup:     JsonCodec[LocalGroup]     = DeriveJsonCodec.gen
+  implicit val codecLocalUser:      JsonCodec[LocalUser]      = DeriveJsonCodec.gen
+  implicit val codecLogicalVolume:  JsonCodec[LogicalVolume]  = DeriveJsonCodec.gen
+  implicit val codecMemorySlot:     JsonCodec[MemorySlot]     = DeriveJsonCodec.gen
+  implicit val codecInetAddress:    JsonCodec[InetAddress]    = JsonCodec.string.transformOrFail(
+    ip =>
+      com.comcast.ip4s.IpAddress.fromString(ip) match {
+        case None    => Left(s"Value '${ip}' can not be parsed as an IP address")
+        case Some(x) => Right(x.toInetAddress)
+      },
+    _.toString
+  )
+  implicit val codecNetwork:        JsonCodec[Network]        = DeriveJsonCodec.gen
+  implicit val codecPhysicalVolume: JsonCodec[PhysicalVolume] = DeriveJsonCodec.gen
+  implicit val codecPort:           JsonCodec[Port]           = DeriveJsonCodec.gen
+  implicit val codecProcess:        JsonCodec[Process]        = DeriveJsonCodec.gen
+  implicit val codecProcessor:      JsonCodec[Processor]      = DeriveJsonCodec.gen
+  implicit val codecSlot:           JsonCodec[Slot]           = DeriveJsonCodec.gen
+  implicit val codecSoftwareFact:   JsonCodec[SoftwareFact]   = DeriveJsonCodec.gen
+  implicit val codecSound:          JsonCodec[Sound]          = DeriveJsonCodec.gen
+  implicit val codecStorage:        JsonCodec[Storage]        = DeriveJsonCodec.gen
+  implicit val codecVideo:          JsonCodec[Video]          = DeriveJsonCodec.gen
+  implicit val codecVirtualMachine: JsonCodec[VirtualMachine] = DeriveJsonCodec.gen
 
   implicit val codecNodeFact: JsonCodec[NodeFact] = DeriveJsonCodec.gen
 

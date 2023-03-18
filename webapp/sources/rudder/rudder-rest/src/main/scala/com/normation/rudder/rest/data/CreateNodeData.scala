@@ -44,6 +44,7 @@ import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.AgentType.CfeCommunity
 import com.normation.inventory.domain.AgentType.Dsc
+import com.normation.inventory.domain.VmType._
 import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.domain.properties.GenericProperty

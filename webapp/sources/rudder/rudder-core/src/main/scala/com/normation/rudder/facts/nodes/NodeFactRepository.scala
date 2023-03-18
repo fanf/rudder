@@ -41,15 +41,15 @@ import better.files.File
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
-import com.normation.rudder.apidata.FullDetailLevel
+import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.nodes.NodeFactSerialisation._
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
 import com.softwaremill.quicklens._
-import net.liftweb.json.JsonDSL._
-import net.liftweb.json.prettyRender
 import org.eclipse.jgit.lib.PersonIdent
 import zio._
+import zio.json._
 import zio.syntax._
 
 /*
@@ -100,7 +100,10 @@ import zio.syntax._
  */
 trait NodeFactRepository {
 
-  def persist(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[Unit]
+  def persistCompat(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[Unit] = {
+    persist(NodeFact.fromCompat(nodeInfo, inventory, software))
+  }
+  def persist(nodeFact: NodeFact): IOResult[Unit]
 
   /*
    * Change the status of the node with given id to given status.
@@ -109,12 +112,11 @@ trait NodeFactRepository {
    * - if target status is "removed", persisted inventory is deleted
    */
   def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]
-
 }
 
 /*
  * Serialize a fact type (to/from JSON), for example nodes.
- * The format is versionned so that we are able to unserialize old files into newer domain representation.
+ * The format is versioned so that we are able to unserialize old files into newer domain representation.
  *
  * We store a fileFormat and the serialized object type.
  * To let more space for evolution, file format will be a string even if it should be parsed as an int.
@@ -144,16 +146,26 @@ trait SerializeFacts[A, B] {
  * etc
  */
 
+object GitNodeFactRepository {
+
+  final case class NodeFactArchive(
+      entity:     String,
+      fileFormat: String,
+      node:       NodeFact
+  )
+
+  implicit val codecNodeFactArchive: JsonCodec[NodeFactArchive] = DeriveJsonCodec.gen
+}
+
 class GitNodeFactRepository(
     override val gitRepo: GitRepositoryProvider,
     groupOwner:           String
-) extends NodeFactRepository with GitItemRepository
-    with SerializeFacts[(NodeId, InventoryStatus), (NodeInfo, FullInventory, Seq[Software])] {
+) extends NodeFactRepository with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
 
   override val relativePath = "nodes"
   override val entity:     String = "node"
   override val fileFormat: String = "1"
-  val commiter = new PersonIdent("rudder-fact", "email not set")
+  val committer = new PersonIdent("rudder-fact", "email not set")
 
   override def getEntityPath(id: (NodeId, InventoryStatus)): String = {
     s"${id._2.name}/${id._1.value}.json"
@@ -167,62 +179,55 @@ class GitNodeFactRepository(
    * serialize the inventory into a normalized JSON string.
    * As we want it to be human readable and searchable, we will use an indented format.
    */
-  def toJson(data: (NodeInfo, FullInventory, Seq[Software])): IOResult[String] = {
-    val (nodeInfo, inventory, software) = data
-    // we want to store objects alphabetically
-    val inv                             = inventory
-      .modify(_.node.accounts)
+  def toJson(nodeFact: NodeFact): IOResult[String] = {
+    import GitNodeFactRepository._
+    val node = nodeFact
+      .modify(_.accounts)
       .using(_.sorted)
-      .modify(_.node.customProperties)
+      .modify(_.customProperties)
       .using(_.sortBy(_.name))
-      .modify(_.node.environmentVariables)
+      .modify(_.environmentVariables)
+      .using(_.sortBy(_._1))
+      .modify(_.fileSystems)
       .using(_.sortBy(_.name))
-      .modify(_.node.fileSystems)
+      .modify(_.networks)
       .using(_.sortBy(_.name))
-      .modify(_.node.networks)
-      .using(_.sortBy(_.name))
-      .modify(_.node.processes)
+      .modify(_.processes)
       .using(_.sortBy(_.commandName))
-      .modify(_.machine.each.bios)
+      .modify(_.bios)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.controllers)
+      .modify(_.controllers)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.memories)
+      .modify(_.memories)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.ports)
+      .modify(_.ports)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.processors)
+      .modify(_.processors)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.slots)
+      .modify(_.slots)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.sounds)
+      .modify(_.sounds)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.storages)
+      .modify(_.storages)
       .using(_.sortBy(_.name))
-      .modify(_.machine.each.videos)
+      .modify(_.videos)
       .using(_.sortBy(_.name))
 
-    val json =
-      FullDetailLevel.toJson(nodeInfo, inventory.node.main.status, None, Some(inv), software.sortBy(_.name.getOrElse("")))
-    // add entity type and file format at the begining
-    ("entity" -> entity) ~ ("fileFormat" -> fileFormat) ~ json
-
-    // save in human readable format (ie with indentation and git diff compatible)
-    // prettyRender throws exception when it encounters "JNothing"
-    IOResult.attempt(prettyRender(json))
+    NodeFactArchive(entity, fileFormat, node).toJsonPretty.succeed
   }
 
-  override def persist(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[Unit] = {
+  override def persist(nodeFact: NodeFact): IOResult[Unit] = {
     for {
-      json   <- toJson((nodeInfo, inventory, software))
-      file    = getFile(nodeInfo.id, inventory.node.main.status)
+      json   <- toJson(nodeFact)
+      file    = getFile(nodeFact.id, nodeFact.rudderSettings.status)
       _      <- IOResult.attempt(file.write(json))
       _      <- IOResult.attempt(file.setGroup(groupOwner))
       gitPath = toGitPath(file.toJava)
+      _ <- effectUioUnit(println(s"***** almost! Saving in: ${file.pathAsString}"))
       saved  <- commitAddFile(
-                  commiter,
+                  committer,
                   gitPath,
-                  s"Save inventory facts for ${inventory.node.main.status.name} node '${nodeInfo.hostname}' (${nodeInfo.id.value})"
+                  s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
                 )
     } yield ()
   }
@@ -237,10 +242,10 @@ class GitNodeFactRepository(
       // check if fact already where it should
       ZIO.ifZIO(IOResult.attempt(fromFile.exists))(
         // however toFile exists, move, because if present it may be because a deletion didn't work and
-        // we need to overwritte
+        // we need to overwrite
         IOResult.attempt(fromFile.moveTo(toFile)(File.CopyOptions(overwrite = true))) *>
         commitMvDirectory(
-          commiter,
+          committer,
           toGitPath(fromFile.toJava),
           toGitPath(toFile.toJava),
           s"Updating facts for node '${nodeId.value}': accepted"
@@ -261,7 +266,7 @@ class GitNodeFactRepository(
       ZIO.foreach(List(PendingInventory, AcceptedInventory)) { s =>
         val file = getFile(nodeId, s)
         ZIO.whenZIO(IOResult.attempt(file.exists)) {
-          commitRmFile(commiter, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
+          commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
         }
       } *> checkInit()
     }
