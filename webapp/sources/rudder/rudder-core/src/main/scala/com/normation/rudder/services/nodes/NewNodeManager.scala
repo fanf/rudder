@@ -75,8 +75,8 @@ import com.normation.rudder.domain.queries.Or
 import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.queries.ResultTransformation
 import com.normation.rudder.domain.servers.Srv
-import com.normation.rudder.facts.nodes.NodeFact
-import com.normation.rudder.facts.nodes.NodeFactStorage
+import com.normation.rudder.facts.nodes.ChangeContext
+import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.HooksLogger
 import com.normation.rudder.hooks.RunHooks
@@ -104,7 +104,9 @@ import net.liftweb.common.EmptyBox
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
 import org.joda.time.DateTime
+
 import zio.{System => _, _}
+import zio.stream.ZSink
 import zio.syntax._
 
 /**
@@ -269,6 +271,12 @@ class NewNodeManagerImpl[A](
 
 trait ListNewNode {
   def listNewNodes: Box[Seq[Srv]]
+}
+
+class FactListNewNodes(backend: NodeFactRepository) extends ListNewNode {
+  override def listNewNodes: Box[Seq[Srv]] = {
+    backend.getAllPending().map(_.toSrv).run(ZSink.collectAll).toBox
+  }
 }
 
 class LdapListNewNode(
@@ -1078,8 +1086,8 @@ class UpdateFactRepoOnChoice(
    */
   def acceptOne(sm: FullInventory, modId: ModificationId, actor: EventActor): Box[FullInventory] = {
     // in 7.0, we don't fail on historization problem, only log
-    nodeFactStorage
-      .changeStatus(sm.node.main.id, AcceptedInventory)
+    factRepo
+      .changeStatus(sm.node.main.id, PendingInventory)(ChangeContext(modId, actor, None))
       .catchAll(err => {
         NodeLoggerPure.info(
           s"Error when trying to update facts historization when accepting node '${sm.node.main.hostname}' (${sm.node.main.id.value})"
@@ -1098,8 +1106,8 @@ class UpdateFactRepoOnChoice(
   //////////// refuse ////////////
   override def refuseOne(srv: Srv, modId: ModificationId, actor: EventActor): Box[Srv] = {
     // in 7.0, we don't fail on historization problem, only log
-    nodeFactStorage
-      .changeStatus(srv.id, RemovedInventory)
+    factRepo
+      .changeStatus(srv.id, RemovedInventory)(ChangeContext(modId, actor, None))
       .catchAll(err => {
         NodeLoggerPure.info(
           s"Error when trying to update facts historization when accepting node '${srv.hostname}' (${srv.id.value})"

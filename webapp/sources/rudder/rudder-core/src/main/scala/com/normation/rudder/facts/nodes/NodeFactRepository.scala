@@ -42,15 +42,407 @@ import better.files.File
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
-import com.normation.rudder.domain.logger.NodeLogger
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
-import java.nio.charset.StandardCharsets
+import com.normation.zio._
+import com.softwaremill.quicklens._
 import org.eclipse.jgit.lib.PersonIdent
 import zio._
+import zio.concurrent.ReentrantLock
 import zio.json._
 import zio.stream.ZStream
 import zio.syntax._
+
+/*
+ * This file contains the base to persist facts into a git repository. There is a lot of question
+ * remaning, so don't take current traits/classes as an API, it *WILL* change. The basic questions to answer are:
+ * - do we want one bit "FactRepo" that knows about all kind of facts and is able to persis any of them ? In that case,
+ *   we will need some kind of parametrization of `persist` with a type class to teach that repo how to serialize and
+ *   persist each case
+ * - do we prefer lots of small repos, one by entity, which knows how to persist only that entity ?
+ * - plus, we want to have some lattitude on the serialization part, and be able to use both liftjson and zio-json
+ *   (because the complete migration toward zio-json won't be finish immediately)
+ *
+ * The "one big" repo feels more like it is what we need, since it's really just one big git repo with subcases,
+ * with shared tools and specialisation by entity. But I'm not sure how to build the capacities with type class
+ * until I have several examples.
+ * The small repos (one by entity) is what we used to do, so we are in known territory (see archive of configuration
+ * entities), even if it is not a very satisfying one. Its advantage is that it's very simple, but it leads to a lot
+ * of code duplication and maintenance is complicated (and adding a new entity is basically "copy that 100 lines of
+ * code, and sed things", while we would like it to be "implement just that interface")
+ *
+ * Finally, we some coupling between serialization and repos as they are written for now: the path can't be known
+ * without some part of the entity, but we don't know which part exactly (for node, it's its uuid and status, but
+ * perhaps it's an exception, and for all other it's just an ID).
+ *
+ * With all these unknowns, I prefer to let parametrisation as simple as possible:
+ * - no abstraction for repo, we just have a "node repo" with all the concret types. It's likely to become a:
+ *   ```
+ *     trait FactRepo { def persist[E](e: E)(implicit Serialize[E]): IOResult[Unit])
+ *   ```
+ *   Or something alike, but we just don't know.
+ *
+ * - some abstraction for serialisation, but just to put in plain sight the fact that there a caracteristic of
+ *   the entity that is not the whole entity, and more then its ID, that is needed to build where the entity
+ *   will be saved.
+ *
+ * - a simple implementation for nodes, that will need to be refactored depending of the chosen final arch.
+ *
+ * And finally, to complexify a bit more the picture, we see that there is events (observations?) linked to facts
+ * that can update the previous fact partially. For nodes, it's "change the status" (which is, perhaps by luck,
+ * the same subpart of the entity than the one used in the more-than-just-an-id parameter of serialization).
+ * I don't know for now if it's a general truth, or if it's just an happenstance, and if there is a general
+ * capability (like "partialUpdate[SomeSubParOfE => E]") to define (in a pure eventstore, we would save that
+ * event as if, but well we want to have readable text files for users in our git repos)
+ */
+
+/*
+ * write node facts.
+ */
+trait NodeFactRepository {
+
+  /*
+   * Add a call back that will be called when a change occurs.
+   * The callbacks are not ordered and not blocking and will have a short time-out
+   * on them, the caller will need to manage that constraint.
+   */
+  def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit]
+
+  /*
+   * Get the status of the node, or RemovedStatus if it is
+   * not found.
+   */
+  def getStatus(id: NodeId): IOResult[InventoryStatus]
+
+  /*
+   * Get node on given status
+   */
+  def getOn(nodeId: NodeId, status: InventoryStatus): IOResult[Option[NodeFact]]
+
+  /*
+   * Get an accepted node
+   */
+  def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]]
+
+  /*
+   * Get a pending node
+   */
+  def getPending(nodeId: NodeId): IOResult[Option[NodeFact]]
+
+  /*
+   * Lookup node with that ID in either pending or accepted nodes
+   */
+  def lookup(nodeId: NodeId): IOResult[Option[NodeFact]]
+
+  /*
+   * get all node facts
+   */
+  def getAllAccepted(): IOStream[NodeFact]
+
+  def getAllPending(): IOStream[NodeFact]
+
+  def getAllOn(status: InventoryStatus): IOStream[NodeFact]
+  ///// changes /////
+
+  /*
+   * Save (create or override) a node fact.
+   * That method will force status to be `accepted`.
+   * Use "updateInventory` if you want to save in pending.
+   */
+  def save(nodeFact: NodeFact)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+
+  /*
+   * A method that will create in new node fact in pending, or
+   * update inventory part of the node with that nodeId in
+   * pending or in accepted.
+   */
+  def updateInventory(inventory: Inventory)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+
+  /*
+   * Change the status of the node with given id to given status.
+   * - if the node is not found, an error is raised appart if target status is "delete"
+   * - if the target status is the current one, this function does nothing
+   * - if target status is "removed", persisted inventory is deleted
+   */
+  def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+
+  /*
+   * Delete any reference to that node id.
+   */
+  def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+}
+
+/*
+ * Internal CRUD event that need to be translated into node change if needed
+ */
+sealed private trait InternalChangeEvent
+
+private object InternalChangeEvent {
+  final case class Create(node: NodeFact) extends InternalChangeEvent
+  final case class Update(node: NodeFact) extends InternalChangeEvent
+  final case class Delete(node: NodeFact) extends InternalChangeEvent
+  final case class Noop(nodeId: NodeId)   extends InternalChangeEvent
+}
+
+/*
+ * An In memory implementation of the NodeFactRepository that persist (for cold storage)
+ * it's information in given backend.
+ * The following operation are persisted and will be blocking:
+ * - create a new node fact
+ * - update an existing one
+ * - change status of a node
+ * - delete a node.
+ *
+ * once initialized, that repository IS the truth. No change done by
+ * an other mean in the cold storage will be visible from Rudder.
+ *
+ * For change, that repos try to ensure that the backend does commit the
+ * change before having it done in memory. That arch does not scale to
+ * many backend, since once there is more than one, compensation strategy
+ * must be put into action to compensate for errors (see zio-workflow for
+ * that kind of things).
+ *
+ */
+object CoreNodeFactRepository {
+  def make(storage: NodeFactStorage, pending: Map[NodeId, NodeFact], accepted: Map[NodeId, NodeFact], callbacks: Chunk[NodeFactChangeEventCallback]) = for {
+    p <- Ref.make(pending)
+    a <- Ref.make(accepted)
+    lock <- ReentrantLock.make()
+    cbs <- Ref.make(callbacks)
+  } yield {
+    new CoreNodeFactRepository(storage, p, a, cbs, lock)
+  }
+}
+class CoreNodeFactRepository(
+    storage:       NodeFactStorage,
+    pendingNodes:  Ref[Map[NodeId, NodeFact]],
+    acceptedNodes: Ref[Map[NodeId, NodeFact]],
+    callbacks:     Ref[Chunk[NodeFactChangeEventCallback]],
+    lock:          ReentrantLock,
+    cbTimeout:     zio.Duration = 5.seconds
+) extends NodeFactRepository {
+  import NodeFactChangeEvent._
+
+  (for {
+    p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
+    a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
+    _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
+  } yield ()).runNow
+
+  override def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit] = {
+    callbacks.update(_.appended(callback))
+  }
+
+  override def getStatus(id: NodeId): IOResult[InventoryStatus] = {
+    pendingNodes.get.flatMap { p =>
+      if (p.keySet.contains(id)) PendingInventory.succeed
+      else {
+        acceptedNodes.get.flatMap(a => {
+          if (a.keySet.contains(id)) AcceptedInventory.succeed
+          else RemovedInventory.succeed
+        })
+      }
+    }
+  }
+
+  override def getOn(nodeId: NodeId, status: InventoryStatus): IOResult[Option[NodeFact]] = {
+    status match {
+      case AcceptedInventory => getAccepted(nodeId)
+      case PendingInventory  => getPending(nodeId)
+      case RemovedInventory  => None.succeed
+    }
+  }
+
+  /*
+   * This method will need some thoughts:
+   * - do we want to fork and timeout each callbacks ? likely so
+   * - do we want to parallel exec them ? likely so, the user can build his own callback sequencer callback if he wants
+   */
+  private[nodes] def runCallbacks(e: NodeFactChangeEventCC): IOResult[Unit] = {
+    for {
+      cs <- callbacks.get
+      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout) // .forkDaemon
+    } yield ()
+  }
+
+  private[nodes] def getOnRef(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
+    ref.get.map(_.get(nodeId))
+  }
+
+  private[nodes] def getAllOnRef(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
+    ZStream.fromZIO(ref.get.map(m => m.values)).flatMap(x => ZStream.fromIterable(x))
+  }
+
+  /*
+   *
+   */
+  private def saveOn(ref: Ref[Map[NodeId, NodeFact]], nodeFact: NodeFact): IOResult[InternalChangeEvent] = {
+    ref
+      .getAndUpdate(_ + ((nodeFact.id, nodeFact)))
+      .map { old =>
+        old.get(nodeFact.id) match {
+          case Some(n) =>
+            if (NodeFact.same(n, nodeFact)) InternalChangeEvent.Noop(nodeFact.id)
+            else InternalChangeEvent.Update(nodeFact)
+          case None    => InternalChangeEvent.Create(nodeFact)
+        }
+      }
+  }
+
+  private def deleteOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId): IOResult[InternalChangeEvent] = {
+    ref
+      .getAndUpdate(_.removed(nodeId))
+      .map(old => {
+        old.get(nodeId) match {
+          case None    => InternalChangeEvent.Noop(nodeId)
+          case Some(n) => InternalChangeEvent.Delete(n)
+        }
+      })
+  }
+
+  override def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    getOnRef(acceptedNodes, nodeId)
+  }
+
+  override def getPending(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    getOnRef(pendingNodes, nodeId)
+  }
+
+  override def lookup(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    getAccepted(nodeId).flatMap(opt => opt.fold(getPending(nodeId))(Some(_).succeed))
+  }
+
+  override def getAllOn(status: InventoryStatus): IOStream[NodeFact] = {
+    status match {
+      case AcceptedInventory => getAllAccepted()
+      case PendingInventory  => getAllPending()
+      case RemovedInventory  => ZStream.empty
+    }
+  }
+
+  override def getAllAccepted(): IOStream[NodeFact] = getAllOnRef(acceptedNodes)
+
+  override def getAllPending(): IOStream[NodeFact] = getAllOnRef(pendingNodes)
+
+  override def save(nodeFact: NodeFact)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
+    ZIO.scoped(
+      for {
+        _ <- lock.withLock
+        _ <- storage.save(nodeFact)
+        e <- nodeFact.rudderSettings.status match {
+               case RemovedInventory  => // this case is ignored, we don't delete node based on status value
+                 NodeFactChangeEventCC(Noop(nodeFact.id), cc).succeed
+               case PendingInventory  =>
+                 saveOn(pendingNodes, nodeFact).map { e =>
+                   e match {
+                     case InternalChangeEvent.Create(node) => NodeFactChangeEventCC(NewPending(node), cc)
+                     case InternalChangeEvent.Update(node) => NodeFactChangeEventCC(UpdatedPending(node), cc)
+                     case InternalChangeEvent.Delete(node) => NodeFactChangeEventCC(Deleted(node), cc)
+                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEventCC(Noop(nodeId), cc)
+                   }
+                 }
+               case AcceptedInventory =>
+                 saveOn(acceptedNodes, nodeFact).map { e =>
+                   e match {
+                     case InternalChangeEvent.Create(node) => NodeFactChangeEventCC(Accepted(node), cc)
+                     case InternalChangeEvent.Update(node) => NodeFactChangeEventCC(Updated(node), cc)
+                     case InternalChangeEvent.Delete(node) => NodeFactChangeEventCC(Deleted(node), cc)
+                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEventCC(Noop(nodeId), cc)
+                   }
+                 }
+             }
+        _ <- runCallbacks(e)
+      } yield e
+    )
+  }
+
+  override def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit
+      cc:                           ChangeContext
+  ): IOResult[NodeFactChangeEventCC] = {
+    ZIO.scoped(
+      for {
+        _ <- lock.withLock
+        _ <- storage.changeStatus(nodeId, into)
+        e <-
+          for {
+            pending  <- getOnRef(pendingNodes, nodeId)
+            accepted <- getOnRef(acceptedNodes, nodeId)
+            e        <- (into, pending, accepted) match {
+                          case (RemovedInventory, Some(x), None)     =>
+                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEventCC(Refused(x), cc).succeed
+                          case (RemovedInventory, None, Some(x))     =>
+                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEventCC(Deleted(x), cc).succeed
+                          case (RemovedInventory, Some(_), Some(x))  =>
+                            deleteOn(pendingNodes, nodeId) *>
+                            deleteOn(acceptedNodes, nodeId) *>
+                            NodeFactChangeEventCC(Deleted(x), cc).succeed
+                          case (RemovedInventory, None, None) =>
+                            NodeFactChangeEventCC(Noop(nodeId), cc).succeed
+                          case (_, None, None)                       =>
+                            Inconsistency(
+                              s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes"
+                            ).fail
+                          case (AcceptedInventory, None, Some(_))    =>
+                            NodeFactChangeEventCC(Noop(nodeId), cc).succeed
+                          case (AcceptedInventory, Some(x), None)    =>
+                            deleteOn(pendingNodes, nodeId) *> saveOn(
+                              acceptedNodes,
+                              x.modify(_.rudderSettings.status).setTo(AcceptedInventory)
+                            ) *> NodeFactChangeEventCC(Accepted(x), cc).succeed
+                          case (AcceptedInventory, Some(_), Some(_)) =>
+                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEventCC(Noop(nodeId), cc).succeed
+                          case (PendingInventory, None, Some(x))     =>
+                            deleteOn(acceptedNodes, nodeId) *> saveOn(
+                              pendingNodes,
+                              x.modify(_.rudderSettings.status).setTo(PendingInventory)
+                            ) *> NodeFactChangeEventCC(Deleted(x), cc).succeed // not sure about the semantic here
+                          case (PendingInventory, Some(_), None)     =>
+                            NodeFactChangeEventCC(Noop(nodeId), cc).succeed
+                          case (PendingInventory, Some(_), Some(x))  =>
+                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEventCC(Deleted(x), cc).succeed
+                        }
+          } yield e
+        _ <- runCallbacks(e)
+      } yield e
+    )
+  }
+
+  override def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
+    ZIO.scoped(
+      for {
+        _ <- lock.withLock
+        _ <- storage.delete(nodeId)
+        p <- deleteOn(pendingNodes, nodeId)
+        a <- deleteOn(acceptedNodes, nodeId)
+        e  = ((p, a) match {
+               case (_, InternalChangeEvent.Delete(n)) => NodeFactChangeEventCC(Deleted(n), cc)
+               case (InternalChangeEvent.Delete(n), _) => NodeFactChangeEventCC(Refused(n), cc)
+               case _                                  => NodeFactChangeEventCC(Noop(nodeId), cc)
+             })
+        _ <- runCallbacks(e)
+      } yield e
+    )
+  }
+
+  override def updateInventory(inventory: Inventory)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
+    val nodeId = inventory.node.main.id
+    ZIO.scoped(
+      for {
+        _          <- lock.withLock
+        optPending <- getOnRef(pendingNodes, nodeId)
+        optFact    <- optPending match {
+                        case Some(f) => Some(f).succeed
+                        case None    => getOnRef(acceptedNodes, nodeId)
+                      }
+        fact        = optFact match {
+                        case Some(f) => NodeFact.updateInventory(f, inventory)
+                        case None    => NodeFact.newFromInventory(inventory)
+                      }
+        e          <- save(fact) // save already runs callbacks
+      } yield e
+    )
+  }
+}
 
 /*
  * Serialize a fact type (to/from JSON), for example nodes.
@@ -96,21 +488,6 @@ trait NodeFactStorage {
    * any reference to that node.
    */
   def delete(nodeId: NodeId): IOResult[Unit]
-
-  def getAllPending():  IOStream[NodeFact]
-  def getAllAccepted(): IOStream[NodeFact]
-}
-
-/*
- * Implementaton that store nothing and that can be used in tests or when a pure
- * in-memory version of the nodeFactRepos is needed.
- */
-object NoopFactStorage extends NodeFactStorage {
-  override def save(nodeFact: NodeFact):                              IOResult[Unit]     = ZIO.unit
-  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]     = ZIO.unit
-  override def delete(nodeId: NodeId):                                IOResult[Unit]     = ZIO.unit
-  override def getAllPending():                                       IOStream[NodeFact] = ZStream.empty
-  override def getAllAccepted():                                      IOStream[NodeFact] = ZStream.empty
 }
 
 /*
@@ -133,38 +510,15 @@ object GitNodeFactRepositoryImpl {
   implicit val codecNodeFactArchive: JsonCodec[NodeFactArchive] = DeriveJsonCodec.gen
 }
 
-/*
- * Nodes are stored in the git facts repo under the relative path "nodes".
- * They are then stored:
- * - under nodes/pending or nodes/accepted given their status (which means that changing status of a node is
- *   a special operation)
- */
 class GitNodeFactRepositoryImpl(
     override val gitRepo: GitRepositoryProvider,
-    groupOwner:           String,
-    actuallyCommit:       Boolean
+    groupOwner:           String
 ) extends NodeFactStorage with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
 
   override val relativePath = "nodes"
   override val entity:     String = "node"
-  override val fileFormat: String = "10"
+  override val fileFormat: String = "1"
   val committer = new PersonIdent("rudder-fact", "email not set")
-
-  if (actuallyCommit) {
-    NodeLogger.info(s"Nodes changes will be historized in Git in ${gitRepo.rootDirectory.pathAsString}/nodes")
-  } else {
-    NodeLogger.info(
-      s"Nodes changes won't be historized in Git, only last state is stored in ${gitRepo.rootDirectory.pathAsString}/nodes"
-    )
-  }
-
-  if (actuallyCommit) {
-    NodeLogger.info(s"Nodes changes will be historized in Git in ${gitRepo.rootDirectory.pathAsString}/nodes")
-  } else {
-    NodeLogger.info(
-      s"Nodes changes won't be historized in Git, only last state is stored in ${gitRepo.rootDirectory.pathAsString}/nodes"
-    )
-  }
 
   override def getEntityPath(id: (NodeId, InventoryStatus)): String = {
     s"${id._2.name}/${id._1.value}.json"
@@ -180,40 +534,57 @@ class GitNodeFactRepositoryImpl(
    */
   def toJson(nodeFact: NodeFact): IOResult[String] = {
     import GitNodeFactRepositoryImpl._
-    NodeFactArchive(entity, fileFormat, nodeFact).toJsonPretty.succeed
-  }
+    val node = nodeFact
+      .modify(_.accounts)
+      .using(_.sorted)
+      .modify(_.properties)
+      .using(_.sortBy(_.name))
+      .modify(_.environmentVariables)
+      .using(_.sortBy(_._1))
+      .modify(_.fileSystems)
+      .using(_.sortBy(_.name))
+      .modify(_.networks)
+      .using(_.sortBy(_.name))
+      .modify(_.processes)
+      .using(_.sortBy(_.commandName))
+      .modify(_.bios)
+      .using(_.sortBy(_.name))
+      .modify(_.controllers)
+      .using(_.sortBy(_.name))
+      .modify(_.memories)
+      .using(_.sortBy(_.name))
+      .modify(_.ports)
+      .using(_.sortBy(_.name))
+      .modify(_.processors)
+      .using(_.sortBy(_.name))
+      .modify(_.slots)
+      .using(_.sortBy(_.name))
+      .modify(_.sounds)
+      .using(_.sortBy(_.name))
+      .modify(_.storages)
+      .using(_.sortBy(_.name))
+      .modify(_.videos)
+      .using(_.sortBy(_.name))
 
-  private[nodes] def getAll(base: File): IOStream[NodeFact] = {
-    // TODO should be from git head, not from file directory
-    val stream = ZStream.fromIterator(base.collectChildren(_.extension(includeDot = true, includeAll = true) == Some(".json")))
-    stream
-      .mapError(ex => SystemError("Error when reading node fact persisted file", ex))
-      .mapZIO(f =>
-        f.contentAsString(StandardCharsets.UTF_8).fromJson[NodeFact].toIO.chainError(s"Error when decoding ${f.pathAsString}")
-      )
+    NodeFactArchive(entity, fileFormat, node).toJsonPretty.succeed
   }
-
-  override def getAllPending():  IOStream[NodeFact] = getAll(gitRepo.rootDirectory / relativePath / PendingInventory.name)
-  override def getAllAccepted(): IOStream[NodeFact] = getAll(gitRepo.rootDirectory / relativePath / AcceptedInventory.name)
 
   override def save(nodeFact: NodeFact): IOResult[Unit] = {
     if (nodeFact.rudderSettings.status == RemovedInventory) {
-      InventoryDataLogger.info(
-        s"Not persisting deleted node '${nodeFact.fqdn}' [${nodeFact.id.value}]: it has removed inventory status"
-      ) *>
       ZIO.unit
     } else {
       for {
-        json <- toJson(nodeFact)
-        file  = getFile(nodeFact.id, nodeFact.rudderSettings.status)
-        _    <- IOResult.attempt(file.write(json))
-        _    <- IOResult.attempt(file.setGroup(groupOwner))
-        _    <- ZIO.when(actuallyCommit) {
-                  commitAddFile(
-                    committer,
-                    toGitPath(file.toJava),
-                    s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
-                  )
+        json   <- toJson(nodeFact)
+        file    = getFile(nodeFact.id, nodeFact.rudderSettings.status)
+        _      <- IOResult.attempt(file.write(json))
+        _      <- IOResult.attempt(file.setGroup(groupOwner))
+        gitPath = toGitPath(file.toJava)
+        saved  <-
+          commitAddFile(
+            committer,
+            gitPath,
+            s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
+          )
                 }
       } yield ()
     }
@@ -222,15 +593,11 @@ class GitNodeFactRepositoryImpl(
   // when we delete, we check for all path to also remove possible left-over
   // we may need to recreate pending/accepted directory, because git delete
   // empty directories.
-  override def delete(nodeId: NodeId) = {
+  override def delete(nodeId: NodeId): IOResult[Unit] = {
     ZIO.foreach(List(PendingInventory, AcceptedInventory)) { s =>
       val file = getFile(nodeId, s)
       ZIO.whenZIO(IOResult.attempt(file.exists)) {
-        if (actuallyCommit) {
-          commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
-        } else {
-          IOResult.attempt(file.delete())
-        }
+        commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
       }
     } *> checkInit()
   }
@@ -249,12 +616,11 @@ class GitNodeFactRepositoryImpl(
         IOResult.attempt(fromFile.moveTo(toFile)(File.CopyOptions(overwrite = true))) *>
         ZIO.when(actuallyCommit) {
           commitMvDirectory(
-            committer,
+          committer,
             toGitPath(fromFile.toJava),
             toGitPath(toFile.toJava),
-            s"Updating facts for node '${nodeId.value}' to status: ${to.name}"
-          )
-        }, // if source file does not exist, check if dest is present. If present, assume it's ok, else error
+          s"Updating facts for node '${nodeId.value}' to status: ${to.name}"
+        ), // if source file does not exist, check if dest is present. If present, assume it's ok, else error
 
         ZIO.whenZIO(IOResult.attempt(!toFile.exists)) {
           Inconsistency(

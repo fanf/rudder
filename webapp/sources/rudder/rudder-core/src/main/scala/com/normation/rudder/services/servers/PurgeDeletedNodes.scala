@@ -1,6 +1,6 @@
 /*
  *************************************************************************************
- * Copyright 2011 Normation SAS
+ * Copyright 2023 Normation SAS
  *************************************************************************************
  *
  * This file is part of Rudder.
@@ -34,44 +34,49 @@
  *
  *************************************************************************************
  */
-
-package com.normation.inventory.services.core
+package com.normation.rudder.services.servers
 
 import com.normation.errors._
-import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.NodeId
-import com.normation.inventory.domain.Software
-import com.normation.inventory.domain.SoftwareUuid
+import com.normation.inventory.domain.RemovedInventory
+import com.normation.inventory.ldap.core.InventoryDit
+import com.normation.inventory.ldap.core.LDAPConstants._
+import com.normation.inventory.ldap.core.LDAPFullInventoryRepository
+import com.normation.ldap.sdk._
+import com.normation.ldap.sdk.BuildFilter._
+import com.normation.rudder.domain.logger.NodeLoggerPure
+import com.normation.rudder.services.nodes.NodeInfoService.A_MOD_TIMESTAMP
+import org.joda.time.DateTime
+import zio.{System => _, _}
 
-trait ReadOnlySoftwareNameDAO {
+trait PurgeDeletedNodes {
 
   /**
-   * Return softwares for the node id, as efficiently
-   * as possible
-   */
-  def getSoftwareByNode(nodeIds: Set[NodeId], status: InventoryStatus): IOResult[Map[NodeId, Seq[Software]]]
-
-  def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]]
+    * Purge from the removed inventories ldap tree all nodes modified before date
+    */
+  def purgeDeletedNodesPreviousDate(date: DateTime): IOResult[Seq[NodeId]]
 }
 
-trait ReadOnlySoftwareDAO extends ReadOnlySoftwareNameDAO {
+class PurgeDeletedNodesImpl(
+    ldap:         LDAPConnectionProvider[RwLDAPConnection],
+    deletedDit:   InventoryDit,
+    fullNodeRepo: LDAPFullInventoryRepository
+) extends PurgeDeletedNodes {
+  override def purgeDeletedNodesPreviousDate(date: DateTime): IOResult[Seq[NodeId]] = {
+    for {
+      con            <- ldap
+      deletedEntries <- con.search(
+                          deletedDit.NODES.dn,
+                          One,
+                          AND(IS(OC_NODE), LTEQ(A_MOD_TIMESTAMP, GeneralizedTime(date).toString))
+                        )
+      _              <- NodeLoggerPure.Delete.trace(s"Found ${deletedEntries.length} older than ${date}")
 
-  def getSoftware(ids: Seq[SoftwareUuid]): IOResult[Seq[Software]]
-  /**
-    * Returns all software ids in ou=Software,ou=Inventories
-    */
-  def getAllSoftwareIds(): IOResult[Set[SoftwareUuid]]
+      ids <- ZIO.foreach(deletedEntries)(e => deletedDit.NODES.NODE.idFromDN(e.dn).toIO)
 
-  /**
-    * Returns all software ids pointed by at least a node (in any of the 3 DIT)
-    */
-  def getSoftwaresForAllNodes(): IOResult[Set[SoftwareUuid]]
-}
-
-trait WriteOnlySoftwareDAO {
-
-  /**
-    * Delete softwares in ou=Software,ou=Inventories
-    */
-  def deleteSoftwares(softwares: Seq[SoftwareUuid], batchSize: Int = 1000): IOResult[Unit]
+      _ <- ZIO.foreach(ids)(id => fullNodeRepo.delete(id, RemovedInventory))
+    } yield {
+      ids
+    }
+  }
 }

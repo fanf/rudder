@@ -39,11 +39,14 @@ package com.normation.rudder.services.queries
 
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.domain.queries.ResultTransformation._
+
 import net.liftweb.common._
 import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
+
+import zio.Chunk
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
 class TestStringQueryParser {
@@ -54,9 +57,9 @@ class TestStringQueryParser {
    *
    *
    */
-  val c1 = Criterion("name", BareComparator(Exists, Greater))
-  val c2 = Criterion("id", BareComparator(Equals))
-  val c3 = Criterion("name", BareComparator(Exists, Greater))
+  val c1 = Criterion("name", BareComparator(Exists, Greater), NodeCriterionMatcherString(_ => Chunk("something")))
+  val c2 = Criterion("id", BareComparator(Equals), NodeCriterionMatcherString(_ => Chunk("something")))
+  val c3 = Criterion("name", BareComparator(Exists, Greater), NodeCriterionMatcherString(_ => Chunk("something")))
 
   val oc1 = ObjectCriterion("node", List(c1, c2))
   val oc2 = ObjectCriterion("machine", List(c3))

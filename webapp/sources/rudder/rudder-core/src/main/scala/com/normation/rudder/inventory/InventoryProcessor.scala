@@ -66,6 +66,12 @@ import org.joda.time.format.PeriodFormat
 import scala.annotation.nowarn
 import zio._
 import zio.syntax._
+import com.normation.box.IOManaged
+import com.normation.errors._
+import com.normation.errors.Chained
+import com.normation.errors.IOResult
+import com.normation.zio._
+import com.normation.zio.ZioRuntime
 
 /*
  * The interface between whatever event and the actual saving process.
@@ -155,10 +161,10 @@ object StatusLog {
 
 class InventoryProcessor(
     unmarshaller:    InventoryParser,
-    inventorySaver:  InventorySaver[_],
+    inventorySaver:   InventorySaver[_],
     val maxParallel: Long,
     digestService:   InventoryDigestServiceV1,
-    checkAliveLdap:  () => IOResult[Unit]
+    checkAliveLdap:   () => IOResult[Unit]
 ) {
   def logDirPerm(dir: File, name: String) = {
     if (dir.isDirectory && dir.isWritable) {

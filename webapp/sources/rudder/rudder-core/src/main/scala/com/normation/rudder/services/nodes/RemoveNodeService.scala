@@ -61,7 +61,8 @@ import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeState
-import com.normation.rudder.facts.nodes.NodeFactStorage
+import com.normation.rudder.facts.nodes.ChangeContext
+import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.HookReturnCode
 import com.normation.rudder.hooks.RunHooks
@@ -86,6 +87,7 @@ import com.normation.zio._
 import com.unboundid.ldap.sdk.Modification
 import com.unboundid.ldap.sdk.ModificationType
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -94,6 +96,7 @@ import java.util.function.BiPredicate
 import java.util.function.Consumer
 import net.liftweb.common.Box
 import org.joda.time.DateTime
+
 import zio.{System => _, _}
 import zio.stream._
 import zio.syntax._
@@ -177,6 +180,20 @@ trait RemoveNodeBackend {
   // the abstract method that actually commit in backend repo the deletion from accepted nodes
   def commitPurgeRemoved(nodeId: NodeId, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit]
 
+}
+
+class FactRemoveNodeBackend(backend: NodeFactRepository) extends RemoveNodeBackend {
+  override def findNodeStatuses(nodeId: NodeId): IOResult[Set[InventoryStatus]] = {
+    backend.getStatus(nodeId).map(x => Set(x))
+  }
+
+  override def commitDeleteAccepted(nodeInfo: NodeInfo, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit] = {
+    backend.delete(nodeInfo.id)(ChangeContext(modId, actor, None)).unit
+  }
+
+  override def commitPurgeRemoved(nodeId: NodeId, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit] = {
+    backend.delete(nodeId)(ChangeContext(modId, actor, None)).unit
+  }
 }
 
 class RemoveNodeServiceImpl(
@@ -515,14 +532,14 @@ class RemoveNodeFromGroups(
     uuidGen:               StringUuidGenerator
 ) extends PostNodeDeleteAction {
   override def run(
-      nodeId: NodeId,
-      mode:   DeleteMode,
-      info:   Option[NodeInfo],
-      status: Set[InventoryStatus],
-      actor:  EventActor
+    nodeId: NodeId,
+    mode  : DeleteMode,
+    info  : Option[NodeInfo],
+    status: Set[InventoryStatus],
+    actor : EventActor
   ): UIO[Unit] = {
     (for {
-      _            <- NodeLoggerPure.Delete.debug(s"  - remove node ${nodeId.value} from its groups")
+      _            <- NodeLoggerPure.Delete.debug(s"  - remove node ${nodeId.value} from his groups")
       nodeGroupIds <- roNodeGroupRepository.findGroupWithAnyMember(Seq(nodeId))
       _            <- ZIO.foreach(nodeGroupIds) { nodeGroupId =>
                         val msg = Some("Automatic update of group due to deletion of node " + nodeId.value)
@@ -820,8 +837,8 @@ class DeleteNodeFact(nodeFactStorage: NodeFactStorage) extends PostNodeDeleteAct
       actor:  EventActor
   ): UIO[Unit] = {
     NodeLoggerPure.Delete.debug(s"  - delete fact about node '${nodeId.value}'") *>
-    nodeFactStorage
-      .changeStatus(nodeId, RemovedInventory)
+    nodeFactRepo
+      .changeStatus(nodeId, RemovedInventory)(ChangeContext.newForRudder())
       .catchAll(err =>
         NodeLoggerPure.info(s"Error when trying to update fact when deleting node '${nodeId.value}': ${err.fullMsg}")
       )

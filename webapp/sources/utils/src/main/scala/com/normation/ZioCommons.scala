@@ -30,6 +30,7 @@ import _root_.zio.syntax._
 import cats.data._
 import cats.implicits._
 import cats.kernel.Order
+
 import com.normation.errors.Chained
 import com.normation.errors.IOResult
 import com.normation.errors.PureResult

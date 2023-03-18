@@ -157,6 +157,10 @@ object VmType {
   def parse(s: String) = all.find(_.name == s.toLowerCase).getOrElse(UnknownVmType)
 }
 
+  def all              = ca.mrvisser.sealerate.values[VmType]
+  def parse(s: String) = all.find(_.name == s.toLowerCase).getOrElse(UnknownVmType)
+}
+
 /**
  * The different machine type. For now, we know
  * two of them:
@@ -166,7 +170,7 @@ object VmType {
 sealed trait MachineType { def kind: String }
 
 final case class VirtualMachineType(vm: VmType) extends MachineType {
-  override val kind       = vm.name
+  override val kind = vm.name
   override def toString() = kind
 }
 case object PhysicalMachineType                 extends MachineType {

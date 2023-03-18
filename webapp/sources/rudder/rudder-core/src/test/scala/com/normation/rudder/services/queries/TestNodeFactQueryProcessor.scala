@@ -37,26 +37,59 @@
 
 package com.normation.rudder.services.queries
 
+import com.github.ghik.silencer.silent
+import com.normation.NamedZioLogger
 import com.normation.errors._
+import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.AgentType.CfeCommunity
+import com.normation.inventory.domain.AgentType.CfeEnterprise
+import com.normation.inventory.domain.AgentType.Dsc
+import com.normation.inventory.domain.AgentVersion
+import com.normation.inventory.domain.Bios
+import com.normation.inventory.domain.Certificate
+import com.normation.inventory.domain.CertifiedKey
+import com.normation.inventory.domain.FileSystem
+import com.normation.inventory.domain.InventoryStatus
+import com.normation.inventory.domain.Linux
+import com.normation.inventory.domain.MachineUuid
+import com.normation.inventory.domain.MemorySize
+import com.normation.inventory.domain.Network
 import com.normation.inventory.domain.NodeId
-import com.normation.inventory.ldap.core._
-import com.normation.ldap.ldif._
-import com.normation.ldap.listener.InMemoryDsConnectionProvider
-import com.normation.ldap.sdk._
-import com.normation.rudder.domain._
+import com.normation.inventory.domain.PhysicalMachineType
+import com.normation.inventory.domain.Process
+import com.normation.inventory.domain.PublicKey
+import com.normation.inventory.domain.SoftwareEditor
+import com.normation.inventory.domain.Ubuntu
+import com.normation.inventory.domain.Version
+import com.normation.inventory.domain.VirtualMachine
+import com.normation.inventory.domain.VirtualMachineType
+import com.normation.inventory.domain.VmType.VirtualBox
+import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.NodeGroupId
+import com.normation.rudder.domain.nodes.NodeGroupUid
+import com.normation.rudder.domain.nodes.NodeKind
+import com.normation.rudder.domain.nodes.NodeState
+import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries._
-import com.normation.rudder.repository.ldap.LDAPEntityMapper
-import com.normation.rudder.services.nodes.NaiveNodeInfoServiceCachedImpl
+import com.normation.rudder.facts.nodes.CoreNodeFactRepository
+import com.normation.rudder.facts.nodes.IpAddress
+import com.normation.rudder.facts.nodes.LocalUser
+import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactStorage
+import com.normation.rudder.facts.nodes.RudderAgent
+import com.normation.rudder.facts.nodes.SoftwareFact
+import com.normation.rudder.reports.ReportingConfiguration
+import com.normation.utils.DateFormaterService
 import com.normation.zio._
 import com.softwaremill.quicklens._
-import com.unboundid.ldap.sdk.DN
 import net.liftweb.common._
+import org.joda.time.format.DateTimeFormat
 import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
-import zio.Chunk
+import scala.util.Try
+import zio._
 import zio.syntax._
 
 /*
@@ -67,84 +100,419 @@ import zio.syntax._
  */
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
-class TestQueryProcessor extends Loggable {
+class TestNodeFactQueryProcessor {
+  implicit def StringToNodeId(s: String)  = NodeId(s)
+  implicit def StringToGroupId(s: String) = NodeGroupId(NodeGroupUid(s))
 
-  val ldifLogger = new DefaultLDIFFileLogger("TestQueryProcessor", "/tmp/normation/rudder/ldif")
+  val logger = NamedZioLogger(this.getClass.getPackageName + "." + this.getClass.getSimpleName)
 
-  // init of in memory LDAP directory
-  val schemaLDIFs    = (
-    "00-core" ::
-      "01-pwpolicy" ::
-      "04-rfc2307bis" ::
-      "05-rfc4876" ::
-      "099-0-inventory" ::
-      "099-1-rudder" ::
-      Nil
-  ) map { name =>
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    this.getClass.getClassLoader.getResource("ldap-data/schema/" + name + ".ldif").toURI.getPath
+  object subGroupComparatorRepo extends SubGroupComparatorRepository {
+    val groups = Map(
+      (SubGroupChoice("test-group-node1", "Only contains node1"), Chunk[NodeId]("node1")),
+      (SubGroupChoice("test-group-node2", "Only contains node2"), Chunk[NodeId]("node2")),
+      (SubGroupChoice("test-group-node12", "Only contains node1 and node2"), Chunk[NodeId]("node1", "node2")),
+      (SubGroupChoice("test-group-node23", "Only contains node2 and node3"), Chunk[NodeId]("node2", "node3")),
+      (SubGroupChoice("AIXSystems", "AIXSystems"), Chunk[NodeId]())
+    )
+
+    override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]] = {
+      (groups.find(_._1.id == groupId) match {
+        case Some(kv) => kv._2
+        case None     => Chunk.empty
+      }).succeed
+    }
+
+    override def getGroups: IOResult[Chunk[SubGroupChoice]] = Chunk.fromIterable(groups.keys).succeed
   }
-  val bootstrapLDIFs = ("ldap/bootstrap.ldif" :: "ldap-data/inventory-sample-data.ldif" :: Nil) map { name =>
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    this.getClass.getClassLoader.getResource(name).toURI.getPath
+  val queryData = new NodeQueryCriteriaData(() => subGroupComparatorRepo)
+
+  // load all nodes that in resources: node-facts/*.json
+//  java.lang.Runtime.getRuntime.gc()
+//  println(s"free memory before: " + java.lang.Runtime.getRuntime.freeMemory())
+//  val nodes = File(Resource.getUrl("node-facts").getPath).children.toList.flatMap { f =>
+//    if (f.extension != Some(".json")) None
+//    else {
+//      f.contentAsString(StandardCharsets.UTF_8).fromJson[NodeFact] match {
+//        case Left(err) => throw new IllegalArgumentException(s"Unable to read node from file '${f.pathAsString}': ${err}")
+//        case Right(n)  => Some(n)
+//      }
+//    }
+//  }
+
+  val nodeRepository = {
+
+    implicit def StringToNodeProp(s: String): NodeProperty = {
+      NodeProperty.unserializeLdapNodeProperty(s) match {
+        case Left(err)    => throw new IllegalArgumentException(s"Error in test init node property: ${err}")
+        case Right(value) => value
+      }
+    }
+
+    implicit def StringToVersion(s: String) = new Version(s)
+
+    implicit def StringToIp(s: String) = IpAddress(s)
+
+    implicit def LongToMemory(l: Long) = MemorySize(l)
+
+    implicit def StringToSoftwareEditor(s: String) = SoftwareEditor(s)
+
+    implicit def StringToInetAddress(s: String) = {
+      com.comcast.ip4s.IpAddress.fromString(s) match {
+        case Some(value) => value.toInetAddress
+        case None        => throw new IllegalArgumentException(s"Error in test init ip address: ${s}")
+      }
+    }
+
+    @silent("a type was inferred to be `Object`")
+    implicit def StringToDate(s: String) = {
+      // we have 3 potentials date format: the common one, '20130515 123456.948Z', and "2015-01-21 17:2"
+      val p1 = DateTimeFormat.forPattern("YYYYMMddHHmmss.SSSZ")
+      val p2 = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")
+      DateFormaterService.parseDate(s).orElse(Try(p1.parseDateTime(s)).toEither).orElse(Try(p2.parseDateTime(s)).toEither) match {
+        case Left(err)    => throw new IllegalArgumentException(s"Error in test init date: ${s}")
+        case Right(value) => value
+      }
+    }
+
+    val emptyReportConf    = ReportingConfiguration(None, None, None)
+    val cfe                = RudderAgent(CfeCommunity, "root", AgentVersion("4.1.8"), PublicKey("test"), Chunk.empty)
+    val nova               = cfe.copy(agentType = CfeEnterprise)
+    val dsc                = RudderAgent(
+      Dsc,
+      "root",
+      AgentVersion("4.2-1.0"),
+      Certificate(
+        "-----BEGIN CERTIFICATE-----\nMIIFTTCCAzWgAwIBAgIJAL4vbx1mfhs5MA0GCSqGSIb3DQEBCwUAMEcxDzANBgNV\nBAMMBkFHRU5UMjE0MDIGCgmSJomT8ixkAQEMJDM1NWVhY2QxLWU4YjAtNDg4OC1i\nZTFkLTUxMDQ3MTdkZTZjZjAeFw0xNzEwMDQxNjUyMTJaFw0yNzEwMDIxNjUyMTJa\nMEcxDzANBgNVBAMMBkFHRU5UMjE0MDIGCgmSJomT8ixkAQEMJDM1NWVhY2QxLWU4\nYjAtNDg4OC1iZTFkLTUxMDQ3MTdkZTZjZjCCAiIwDQYJKoZIhvcNAQEBBQADggIP\nADCCAgoCggIBALv6AoYF59+F/jGPQq074gf8HZwowysuT4uxFbFpkYBc6FvLuRrZ\nnz0lJZKZOSjWbhndKLFkKgsHBi35ESfblBf4lqBguyCPWKRyGApSJP0cElSNKJsi\nzd0qXorTKV0aEQod2TUjz35Vbl2rYPbt+vIGX0zK0cBhTiSJ8ONLMoCUxeqVXmqL\nSisD6LfR9NH+0+LZ4g0ueQzC+DJncb0wbH66vbg6soykQ2c1XljRgdJHrEgPy43x\nL6WvL6Sb4hlPs7yBHwWTGXsAKjs8kMBON9ijPnS30gQm5flqd8lFd/s1/7yYrXBl\n+e8cOVTorgL1biQb250MRaPp4PL3NvbpLtMaSK8aAdxQSFhMxvCHq+41VbjAkIPG\n9yekMqsbs22BZn4XoTbn5F71FGh39j6cI/BJYOI6sDmnVfWuMTwdGnzh43fNDpch\n7FeuDUTomFkJXFNMZuvuEhLtf39OIknzhszxXrsSG8VSHAS4GdRXSFu9bbtuLm2Q\ngiiVLkE69NUgM+XHM9XKiNY2oDNtVpVrRte4hdH7NgG2LgBs+bYNPI44po4AfGnc\n2ICzC1UXEnNpH0WGVZ4OtBKZlmHLC7RhCXOkTBOX29yBag4jIfDaIYNthDmSX3By\nVoh1/hLrXcTnIzMn31Ku3CKVbYeMBEzmZGLtDSQvoedAgv0VCgf8fRhZAgMBAAGj\nPDA6MAwGA1UdEwQFMAMBAf8wCwYDVR0PBAQDAgK0MB0GA1UdDgQWBBSaV2KqEPqU\n2xWF2ajE/h0a5fB7LzANBgkqhkiG9w0BAQsFAAOCAgEAV7/A+nlL/bWOd906t3QR\nt57hQfgBkNralQyNvsspFaDJM19G+Xi2yhW/Vq9tZNJ0FzbMwp2OwcADmDtnFG/Y\nBa83jU8Cxa/wvQO86KCNK4NlzGjcWNtwGM4135r7M8t3dvx+uXu+AYa96QrVLTUX\n4XsRJWTdf4Qe6zgKuaDfsEr0eDAo6UNe+ZQyPNJoqPERKTTcv8BDimAGCdO0ZAUy\nMd6Cu6WTpMrWvhr/YzvwQm9tJ7GvQoVd3HAyO/+6dZOqFoJmoI6NXB2thSEMJMQ7\nAiniqRO04opf56Z1K0RO8/ECsr81OL4R0j7Bx+SNVGQP+FDDUdiJPZp1SeQgrgSb\nihCQr8zWZtmXZE0UKIAHXsfCFCNr/t4yPgOsAlD1Cs0QRglXr/M15jmpmWlD7IiB\nbx0aOdwH99a2HK7d41v1yoZn4bKdgtbEaPHXViAPnFdcJPQ1+1hm8G2vbhYJgv1d\no+ZgEyZNfamAPCKKyy79JVPeas4alSnBw+RRRKxH4ZAr7E+Urml7JFmoiab0jjGY\nOjgEzRQUOiTdSNvpzJUz71KrQPgR0gIlsjnyu3QOoFXdVtg+MzLyOb4bCmo3mFL2\nsAhdducYbLhNS/IOunspkZJzfgRodgzOj1ZRlTJztP+sdd5M2rJy6awpWL4AwUMP\nyDa4p7g4y2ju9vIh+t4C8qk=\n-----END CERTIFICATE-----"
+      ),
+      Chunk.empty
+    )
+    val defaultNodeSetting = com.normation.rudder.facts.nodes.RudderSettings(
+      CertifiedKey,
+      emptyReportConf,
+      NodeKind.Node,
+      AcceptedInventory,
+      NodeState.Enabled,
+      None,
+      "root-policy-server"
+    )
+    val software           = Chunk(SoftwareFact("Software 0", "1.0.0"), SoftwareFact("Software 1", "2.0-rc"))
+
+    def machine(nodeId: String) = MachineInfo(NodeFact.toMachineId(nodeId), VirtualMachineType(VirtualBox), None, None)
+
+    val allAcceptedNodes: Map[NodeId, NodeFact] = {
+      Chunk(
+        NodeFact(
+          "root",
+          None,
+          "root.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("root"),
+          com.normation.rudder.facts.nodes.RudderSettings(
+            CertifiedKey,
+            emptyReportConf,
+            NodeKind.Root,
+            AcceptedInventory,
+            NodeState.Enabled,
+            None,
+            "root"
+          ),
+          cfe,
+          Chunk.empty,
+          "20130515123456.948Z",
+          "20120515123456.948Z",
+          Some("20120515123456.948Z"),
+          software = Chunk(software(0)),
+          fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L)))
+        ),
+        NodeFact(
+          "node0",
+          Some("matchOnMe"),
+          "node0.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("node0"),
+          defaultNodeSetting,
+          nova,
+          Chunk.empty,
+          "20130515123456.948Z",
+          "20130515123456.948Z",
+          Some("20130515123456.948Z"),
+          ipAddresses = Chunk("192.168.56.100"),
+          software = Chunk()
+        ),
+        NodeFact(
+          "node1",
+          Some("#54-Ubuntu SMP Thu Dec 10 17:23:29 UTC 2009"),
+          "hasAttributes.normation.com",
+          Linux(Ubuntu, "", "Ubuntu 9.10", None, "2.6.18-17-generic"),
+          machine("node1"),
+          defaultNodeSetting,
+          cfe,
+          Chunk(
+            """{"name":"foo","value":"bar"}""",
+            """{"name":"datacenter","value":"Paris", "provider":"inventory"}""",
+            """{"name":"from_inv","value":{ "key1":"custom prop value", "key2":"some more json"}, "provider":"inventory"}"""
+          ),
+          "20130515123456.948Z",
+          "20140515123456.948Z",
+          Some("20140515123456.948Z"),
+          swap = Some(2878000000L),
+          ram = Some(100000000L),
+          ipAddresses = Chunk("192.168.56.101", "127.0.0.1"),
+          localUsers = Chunk(
+            LocalUser(0, "root", "root", "/", "/bin/sh"),
+            LocalUser(1000, "francois.armand", "francois.armand", "/home/far", "/bin/zsh"),
+            LocalUser(1001, "nicolas.charles", "nicolas.charles", "/home/nch", "/bin/bash"),
+            LocalUser(1002, "jonathan.clarke", "jonathan.clarke", "/home/jcl", "/bin/bash")
+          ),
+          software = Chunk(),
+          environmentVariables = Chunk(("SHELL", "/bin/sh")),
+          processes = Chunk(
+            Process(
+              1,
+              Some("init [2]"),
+              Some(0f),
+              Some(0.2f),
+              Some("2015-01-21 17:24"),
+              Some("?"),
+              Some("root"),
+              Some(0),
+              None
+            ),
+            Process(
+              10,
+              Some("[kdevtmpfs]"),
+              Some(0f),
+              Some(0f),
+              Some("2015-01-21 17:24"),
+              Some("?"),
+              Some("root"),
+              Some(0),
+              None
+            )
+          ),
+          networks = Chunk(
+            Network(
+              "eth0",
+              ifAddresses = Seq("192.168.1.1"),
+              ifGateway = Seq("192.168.1.254"),
+              macAddress = Some("08:00:27:42:37:be"),
+              status = Some("Up")
+            )
+          )
+        ),
+        NodeFact(
+          "node2",
+          None,
+          "node2.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("node2"),
+          defaultNodeSetting,
+          nova,
+          Chunk(
+            """{"name":"datacenter","value":{"country":"France","id":1234,"replicated":true},"provider":"datasources"}"""
+          ),
+          "20130515123456.948Z",
+          "20150515123456.948Z",
+          Some("20150515123456.948Z"),
+          Chunk("192.168.56.102", "127.0.0.1"),
+          ram = Some(1L),
+          localUsers = Chunk(),
+          software = Chunk(software(0), software(1)),
+          environmentVariables = Chunk(("PWD", "/var/rudder"), ("SUDO_GID", "1000")),
+          networks = Chunk(
+            Network(
+              "eth0",
+              ifAddresses = Seq("192.168.1.2"),
+              ifGateway = Seq("192.168.1.254"),
+              macAddress = Some("08:00:27:42:37:be"),
+              status = Some("Up")
+            )
+          ),
+          vms = Chunk(VirtualMachine(uuid = MachineUuid("vm1"), vmtype = Some("vmware"), memory = Some("10000")))
+        ),
+        NodeFact(
+          "node3",
+          None,
+          "node3.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("node3"),
+          defaultNodeSetting,
+          cfe,
+          Chunk(
+            """{"name":"datacenter","value":{"country":"Germany","id":12345,"replicated":true,"provider":"user value"}}""",
+            """{"name":"number","value":42}"""
+          ),
+          "20130515123456.948Z",
+          "20160515123456.948Z",
+          Some("20160515123456.948Z"),
+          Chunk("192.168.56.103", "127.0.0.1"),
+          localUsers = Chunk(),
+          environmentVariables = Chunk(
+            (
+              "PATH",
+              """/usr/local/sbin:/usr/local/bin:
+                | /usr/sbin:/usr/bin:/sbin:/bin:/var/rudder/cfengine-community/bin"""".stripMargin
+            )
+          ),
+          fileSystems = Chunk(
+            FileSystem(
+              "/",
+              Some("ext3"),
+              Some("matchOnMe"),
+              None,
+              Some(6718226432L),
+              Some(8038383616L)
+            )
+          ),
+          networks = Chunk(
+            Network(
+              "eth0",
+              ifAddresses = Seq("192.168.1.3")
+            )
+          ),
+          vms = Chunk(VirtualMachine(uuid = MachineUuid("vm2"), vmtype = Some("vmware"), memory = Some("10000000")))
+        ),
+        NodeFact(
+          "node4",
+          None,
+          "node4.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(MachineUuid("machine0"), PhysicalMachineType),
+          defaultNodeSetting,
+          cfe,
+          Chunk(
+            """{"name":"foo","value":""}""",
+            """{"name":"liar","value":{"k":"v","name":"datacenter","value":"I'm not a datacenter!"}}""",
+            """{"name":"number","value":42,"provider":"datasources"}""",
+            """{"name":"user","value": {
+                  "id": "xxxxxx",
+                  "accepted": true
+                }
+               }"""
+          ),
+          "20130515123456.948Z",
+          "20170515123456.948Z",
+          Some("20170515123456.948Z"),
+          ipAddresses = Chunk("127.0.0.1"),
+          environmentVariables = Chunk(("SHELL", "/bin/sh"))
+        ),
+        NodeFact(
+          "node5",
+          None,
+          "node5.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(
+            MachineUuid("machine1"),
+            PhysicalMachineType,
+            systemSerial = Some("f47ac10b-58cc-4372-a567-0e02b2c3d479")
+          ),
+          defaultNodeSetting,
+          dsc,
+          Chunk(
+            """{"name":"user","value": {
+              |    "id": "xxxxxx",
+              |    "accepted": true,
+              |    "personal": {
+              |      "name": "Smith Jones",
+              |        "address": {
+              |            "streetaddress": "7 24th Street",
+              |            "city": "New York",
+              |            "state": "NY",
+              |            "postalcode": 10038
+              |        },
+              |        "phones": [
+              |          {"type":"home","number":"(541) 754-3010"},
+              |          {"type":"mobile","number":"(541) 754-9999"}
+              |        ]
+              |    }
+              |  }
+              | }""".stripMargin
+          ),
+          "20130515123456.948Z",
+          "20180515123456.948Z",
+          Some("20180515123456.948Z"),
+          ipAddresses = Chunk()
+        ),
+        NodeFact(
+          "node6",
+          None,
+          "node6.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(
+            MachineUuid("machine2"),
+            PhysicalMachineType
+          ),
+          defaultNodeSetting,
+          cfe,
+          Chunk(
+            """{"name":"user","value": {
+              |    "id": "yyyyy",
+              |    "accepted": false,
+              |    "personal": {
+              |      "name": "Alice All",
+              |        "address": {
+              |            "streetaddress": "10th on the big Street",
+              |            "city": "Los Angeles",
+              |            "state": "CA",
+              |            "postalcode": 90003
+              |        },
+              |        "phones": [
+              |          {"type":"home","number":"(111) 123-3010"},
+              |          {"type":"mobile","number":"(111) 256-9999"}
+              |        ]
+              |    }
+              |  }
+              | }""".stripMargin
+          ),
+          "20130515123456.948Z",
+          "20190515123456.948Z",
+          Some("20190515123456.948Z"),
+          ipAddresses = Chunk(),
+          bios = Chunk(Bios("bios1", version = Some("6.00"), editor = Some("Phoenix Technologies LTD")))
+        ),
+        NodeFact(
+          "node7",
+          None,
+          "node7.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(
+            MachineUuid("machine2"),
+            PhysicalMachineType
+          ),
+          defaultNodeSetting.copy(state = NodeState.Initializing),
+          cfe,
+          Chunk(),
+          "20130515123456.948Z",
+          "20200515123456.948Z",
+          Some("20200515123456.948Z"),
+          ipAddresses = Chunk(),
+          fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L))),
+          software = Chunk(software(0)),
+          bios = Chunk(Bios("bios1", version = Some("6.00"), editor = Some("Phoenix Technologies LTD")))
+        )
+      ).map(n => (n.id, n)).toMap
+    }
+    object NoopStorage extends NodeFactStorage {
+      override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
+      override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
+      override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
+    }
+    CoreNodeFactRepository.make(NoopStorage, Map(), allAcceptedNodes, Chunk.empty).runNow
   }
-  val ldap           = InMemoryDsConnectionProvider[RoLDAPConnection](
-    baseDNs = "cn=rudder-configuration" :: Nil,
-    schemaLDIFPaths = schemaLDIFs,
-    bootstrapLDIFPaths = bootstrapLDIFs,
-    ldifLogger
-  )
-  // end inMemory ds
 
-  val DIT = new InventoryDit(
-    new DN("ou=Accepted Inventories,ou=Inventories,cn=rudder-configuration"),
-    new DN("ou=Inventories,cn=rudder-configuration"),
-    "test"
-  )
-
-  val removedDIT = new InventoryDit(
-    new DN("ou=Removed Inventories,ou=Inventories,cn=rudder-configuration"),
-    new DN("ou=Inventories,cn=rudder-configuration"),
-    "test"
-  )
-  val pendingDIT = new InventoryDit(
-    new DN("ou=Pending Inventories,ou=Inventories,cn=rudder-configuration"),
-    new DN("ou=Inventories,cn=rudder-configuration"),
-    "test"
-  )
-  val ditService = new InventoryDitServiceImpl(pendingDIT, DIT, removedDIT)
-  val nodeDit    = new NodeDit(new DN("cn=rudder-configuration"))
-  val rudderDit  = new RudderDit(new DN("ou=Rudder, cn=rudder-configuration"))
-
-  object mockSubGroupComparatorRepo extends SubGroupComparatorRepository {
-    override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]]         = Inconsistency("For test, no subgroup").fail
-    override def getGroups:                        IOResult[Chunk[SubGroupChoice]] = Inconsistency("For test, no subgroup").fail
-  }
-  val ditQueryData = new DitQueryData(DIT, nodeDit, rudderDit, new NodeQueryCriteriaData(() => mockSubGroupComparatorRepo))
-
-  val inventoryMapper            = new InventoryMapper(ditService, pendingDIT, DIT, removedDIT)
-  val ldapMapper                 = new LDAPEntityMapper(rudderDit, nodeDit, DIT, null, inventoryMapper)
-  val internalLDAPQueryProcessor = new InternalLDAPQueryProcessor(ldap, DIT, nodeDit, ditQueryData, ldapMapper)
-
-  val nodeInfoService =
-    new NaiveNodeInfoServiceCachedImpl(ldap, nodeDit, DIT, removedDIT, pendingDIT, ldapMapper, inventoryMapper)
-
-  val queryProcessor = new AcceptedNodesLDAPQueryProcessor(
-    nodeDit,
-    DIT,
-    internalLDAPQueryProcessor,
-    nodeInfoService
-  )
+  val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo)
 
   val parser = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
-    override val criterionObjects = ditQueryData.criteriaMap.toMap
+    override val criterionObjects = queryData.criteriaMap.toMap
   }
 
   case class TestQuery(name: String, query: Query, awaited: Seq[NodeId])
 
   // when one need to debug search, you can just uncomment that to set log-level to trace
-  // val l: ch.qos.logback.classic.Logger = org.slf4j.LoggerFactory.getLogger("com.normation.rudder.services.queries").asInstanceOf[ch.qos.logback.classic.Logger]
-  // l.setLevel(ch.qos.logback.classic.Level.TRACE)
+  org.slf4j.LoggerFactory
+    .getLogger("query.node-fact")
+    .asInstanceOf[ch.qos.logback.classic.Logger]
+    .setLevel(ch.qos.logback.classic.Level.TRACE)
 
   val s = Seq(
     new NodeId("node0"),
@@ -159,22 +527,6 @@ class TestQueryProcessor extends Loggable {
 
   val root = NodeId("root")
   val sr   = root +: s
-
-  @Test def ensureNodeLoaded(): Unit = {
-    // just check that we correctly loaded demo data in serve
-    val s = (for {
-      con <- ldap
-      res <- con.search(new DN("cn=rudder-configuration"), Sub, BuildFilter.ALL)
-    } yield {
-      res.size
-    }).runNow
-
-    val expected = 43 + 40 // bootstrap + inventory-sample
-    assert(
-      expected == s,
-      s"Not found the expected number of entries in test LDAP directory [expected: ${expected}, found: ${s}], perhaps the demo entries where not correctly loaded"
-    )
-  }
 
   @Test def basicQueriesOnId(): Unit = {
 
@@ -267,18 +619,7 @@ class TestQueryProcessor extends Loggable {
       q2_2.awaited
     )
 
-    // group of group, with or/and composition
-    val q3 = TestQuery(
-      "q3",
-      parser("""
-      {  "select":"node", "where":[
-        { "objectType":"group", "attribute":"nodeGroupId", "comparator":"eq", "value":"test-group-node1" }
-      ] }
-      """).openOrThrowException("For tests"),
-      s(1) :: Nil
-    )
-
-    testQueries(q2_0 :: q2_0_ :: q2_1 :: q2_1_ :: q2_2 :: q2_2_ :: q3 :: Nil, true)
+    testQueries(q2_0 :: q2_0_ :: q2_1 :: q2_1_ :: q2_2 :: q2_2_ :: Nil, true)
   }
 
   // group of group, with or/and composition
@@ -785,7 +1126,7 @@ class TestQueryProcessor extends Loggable {
       query = q2.query.copy(composition = Or),
       (s(2) :: s(7) ::                // software
       s(4) :: s(5) :: s(6) :: s(7) :: // machine
-      s(2) :: root ::                 // free space
+      s(7) :: root ::                 // free space
       s(2) ::                         // bios
       Nil).distinct
     )
@@ -934,32 +1275,32 @@ class TestQueryProcessor extends Loggable {
     def q(name: String, comp: String, day: Int, expects: Seq[NodeId]) = TestQuery(
       name,
       parser("""
-          {  "select":"node", "where":[
+          {  "select":"nodeAndPolicyServer", "where":[
             { "objectType":"node", "attribute":"inventoryDate", "comparator":"%s"   , "value":"%s/05/2013" }
           ] }
           """.format(comp, day)).openOrThrowException("For tests"),
       expects
     )
 
-    def query(name: String, comp: String, day: Int, valid: Boolean) = q(name, comp, day, if (valid) s(0) :: Nil else Nil)
+    // nodes are going year by year [root=2012-05-15, s0=2013-05-15 <- select date, s1=2014-05-15 etc]
+    def query(name: String, comp: String, day: Int, nodes: Seq[NodeId]) = q(name, comp, day, nodes)
 
-    val q12 = q("q12", "notEq", 15, s.filterNot(_ == s(0)))
-    val q13 = q("q13", "notEq", 14, s)
-    val q14 = q("q14", "notEq", 16, s)
-
+    // root is not part of 's", no need to filter it out
     testQueries(
-      query("q1", "eq", 15, valid = true)
-      :: query("q2", "eq", 14, valid = false)
-      :: query("q3", "eq", 16, valid = false)
-      :: query("q4", "gteq", 15, valid = true)
-      :: query("q5", "gteq", 16, valid = false)
-      :: query("q6", "lteq", 15, valid = true)
-      :: query("q7", "lteq", 14, valid = false)
-      :: query("q8", "lt", 15, valid = false)
-      :: query("q9", "lt", 16, valid = true)
-      :: query("q10", "gt", 15, valid = false)
-      :: query("q11", "gt", 14, valid = true)
-      :: q12 :: q13 :: q14
+      query("q1", "eq", 15, s(0) :: Nil)
+      :: query("q2", "eq", 14, Nil)
+      :: query("q3", "eq", 16, Nil)
+      :: query("q4", "gteq", 15, s)
+      :: query("q5", "gteq", 16, s.filterNot(x => x == s(0)))
+      :: query("q6", "lteq", 15, root :: s(0) :: Nil)
+      :: query("q7", "lteq", 14, root :: Nil)
+      :: query("q8", "lt", 15, root :: Nil)
+      :: query("q9", "lt", 16, root :: s(0) :: Nil)
+      :: query("q10", "gt", 15, s.filterNot(x => x == s(0)))
+      :: query("q11", "gt", 14, s)
+      :: q("q12", "notEq", 15, root +: s.filterNot(_ == s(0)))
+      :: q("q13", "notEq", 14, root +: s)
+      :: q("q14", "notEq", 16, root +: s)
       :: Nil,
       true
     )
@@ -1356,7 +1697,7 @@ class TestQueryProcessor extends Loggable {
 
   private def testQueries(queries: Seq[TestQuery], doInternalQueryTest: Boolean): Unit = {
     queries foreach { q =>
-      logger.debug("Processing: " + q.name)
+      logger.logEffect.debug("Processing: " + q.name)
       testQueryResultProcessor(q.name, q.query, q.awaited, doInternalQueryTest)
     }
 
@@ -1365,7 +1706,7 @@ class TestQueryProcessor extends Loggable {
   private def testQueryResultProcessor(name: String, query: Query, nodes: Seq[NodeId], doInternalQueryTest: Boolean) = {
     val ids   = nodes.sortBy(_.value)
     val found = queryProcessor.process(query).openOrThrowException("For tests").sortBy(_.value)
-    // also test with requiring only the expected node to check consistancy
+    // also test with requiring only the expected node to check consistency
     // (that should not change anything)
 
     assertEquals(
@@ -1383,31 +1724,7 @@ class TestQueryProcessor extends Loggable {
       found.forall(f => ids.exists(f == _))
     )
 
-    if (doInternalQueryTest) {
-      logger.debug(
-        "Testing with expected entries, This test should be ignored when we are looking for Nodes with NodeInfo and inventory (ie when we are looking for property and environement variable"
-      )
-      val foundWithLimit = {
-        (internalLDAPQueryProcessor
-          .internalQueryProcessor(
-            query,
-            limitToNodeIds = Some(ids),
-            lambdaAllNodeInfos = (() => nodeInfoService.getAllNodeInfos())
-          )
-          .runNow)
-          .distinct
-          .sortBy(_.value)
-      }
-
-      assertEquals(
-        s"[${name}] Size differs between expected and found entries (InternalQueryProcessor, only inventory fields)\n Found: ${foundWithLimit}\n Expected: ${ids}",
-        ids.size.toLong,
-        foundWithLimit.size.toLong
-      )
-    }
   }
 
-  @After def after(): Unit = {
-    ldap.server.shutDown(true)
-  }
+  @After def after(): Unit = {}
 }

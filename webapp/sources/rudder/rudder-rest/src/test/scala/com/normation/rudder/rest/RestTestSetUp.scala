@@ -742,40 +742,32 @@ class RestTestSetUp {
     def getUnprocessedRuns(): IOResult[Seq[AgentRunWithoutCompliance]] = ???
   }
 
-  val nodeApiService2  = new NodeApiService2(null, nodeInfo, null, uuidGen, restExtractorService, restDataSerializer)
-  val nodeApiService4  = new NodeApiService4(
+  val nodeApiService  = new NodeApiService(
+    null,
+    null, //nodeInfo,
+    null, //softDao,
+    null,
+    null,
+    roReportsExecutionRepository,
     nodeInfo,
-    nodeInfo,
-    softDao,
+    null,
     uuidGen,
+    null,
+    null,
+    null,
+    nodeInfo,
+    mockNodes.newNodeManager,
+    null,
     restExtractorService,
     restDataSerializer,
-    roReportsExecutionRepository
-  )
-  val nodeApiService6  = new NodeApiService6(
-    nodeInfo,
-    nodeInfo,
-    softDao,
-    restExtractorService,
-    restDataSerializer,
+    null,
     mockNodes.queryProcessor,
     null,
-    roReportsExecutionRepository
-  )
-  val nodeApiService8  = new NodeApiService8(nodeInfo, nodeInfo, uuidGen, asyncDeploymentAgent, "relay", userService)
-  val nodeApiService12 = new NodeApiService12(null, uuidGen, restDataSerializer)
-  val nodeApiService13 = new NodeApiService13(
-    nodeInfo,
-    roReportsExecutionRepository,
-    softDao,
-    restExtractorService,
+    asyncDeploymentAgent,
+    userService,
     () => Full(GlobalPolicyMode(Audit, PolicyModeOverrides.Always)),
-    null,
-    null,
-    null
-  )
-  // override ldap methods to use mock nodes
-  val nodeApiService16 = new NodeApiService15(nodeInfo, null, null, mockNodes.newNodeManager, uuidGen, null, null, null) {
+    "relay"
+) {
 
     override def checkUuid(nodeId: NodeId): IO[Creation.CreationError, Unit] = {
       mockNodes.nodeInfoService
@@ -920,13 +912,7 @@ class RestTestSetUp {
     new NodeApi(
       restExtractorService,
       restDataSerializer,
-      nodeApiService2,
-      nodeApiService4,
-      nodeApiService6,
-      nodeApiService8,
-      nodeApiService12,
-      nodeApiService13,
-      nodeApiService16,
+      nodeApiService,
       null,
       DeleteMode.Erase
     ),
