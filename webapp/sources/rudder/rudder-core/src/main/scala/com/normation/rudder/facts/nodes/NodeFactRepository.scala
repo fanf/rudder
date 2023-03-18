@@ -223,7 +223,6 @@ class GitNodeFactRepository(
       _      <- IOResult.attempt(file.write(json))
       _      <- IOResult.attempt(file.setGroup(groupOwner))
       gitPath = toGitPath(file.toJava)
-      _ <- effectUioUnit(println(s"***** almost! Saving in: ${file.pathAsString}"))
       saved  <- commitAddFile(
                   committer,
                   gitPath,

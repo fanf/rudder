@@ -123,9 +123,10 @@ trait PipelinedInventorySaver[R] extends InventorySaver[R] with Loggable {
 
       /*
        * now, post process inventory with third-party actions
+       * PostPreCommitInventory only contains new software for perf reason, but we want "everything" in post commit
        */
       postPostCommitInventory <- ZIO.foldLeft(postCommitPipeline)(commitedChange) { (currentChanges, postCommit) =>
-                                   postCommit(postPreCommitInventory, currentChanges).chainError(
+                                   postCommit(postPreCommitInventory.copy(applications = inventory.applications), currentChanges).chainError(
                                      s"Error in postCommit pipeline with processor '${postCommit.name}'. The commit was done, we may be in a inconsistent state."
                                    )
                                  }
