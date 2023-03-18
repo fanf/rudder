@@ -139,18 +139,23 @@ final case class Video(
  * for the VM type. They should be lower case only.
  */
 sealed abstract class VmType(val name: String)
-final case object UnknownVmType extends VmType("unknown")
-final case object SolarisZone   extends VmType("solariszone")
-final case object VirtualBox    extends VmType("vbox")
-final case object VMWare        extends VmType("vmware")
-final case object QEmu          extends VmType("qemu")
-final case object Xen           extends VmType("xen")
-final case object AixLPAR       extends VmType("aixlpar")
-final case object HyperV        extends VmType("hyperv")
-final case object BSDJail       extends VmType("bsdjail")
-final case object Virtuozzo     extends VmType("virtuozzo")
-final case object OpenVZ        extends VmType("openvz")
-final case object LXC           extends VmType("lxc")
+object VmType {
+  final case object UnknownVmType extends VmType("unknown")
+  final case object SolarisZone   extends VmType("solariszone")
+  final case object VirtualBox    extends VmType("vbox")
+  final case object VMWare        extends VmType("vmware")
+  final case object QEmu          extends VmType("qemu")
+  final case object Xen           extends VmType("xen")
+  final case object AixLPAR       extends VmType("aixlpar")
+  final case object HyperV        extends VmType("hyperv")
+  final case object BSDJail       extends VmType("bsdjail")
+  final case object Virtuozzo     extends VmType("virtuozzo")
+  final case object OpenVZ        extends VmType("openvz")
+  final case object LXC           extends VmType("lxc")
+
+  def all              = ca.mrvisser.sealerate.values[VmType]
+  def parse(s: String) = all.find(_.name == s.toLowerCase).getOrElse(UnknownVmType)
+}
 
 /**
  * The different machine type. For now, we know
@@ -158,13 +163,15 @@ final case object LXC           extends VmType("lxc")
  * - virtual machines ;
  * - physical machines.
  */
-sealed abstract class MachineType
+sealed trait MachineType { def kind: String }
 
 final case class VirtualMachineType(vm: VmType) extends MachineType {
-  override def toString() = vm.name
+  override val kind = vm.name
+  override def toString() = kind
 }
 final case object PhysicalMachineType           extends MachineType {
-  override def toString() = "physicalMachine"
+  override val kind = "physicalMachine"
+  override def toString() = kind
 }
 
 final case class MachineInventory(

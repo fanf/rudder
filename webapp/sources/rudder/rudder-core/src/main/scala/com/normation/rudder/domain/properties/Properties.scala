@@ -665,7 +665,7 @@ object GenericProperty {
 
 /**
  * A node property is a key/value pair + metadata.
- * For now, only metadata availables is:
+ * For now, only metadata available is:
  * - the provider of the property. By default Rudder.
  *
  * Only the provider of a property can modify it.

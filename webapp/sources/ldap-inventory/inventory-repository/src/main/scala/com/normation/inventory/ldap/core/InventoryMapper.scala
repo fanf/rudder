@@ -42,6 +42,7 @@ import com.normation.errors.RudderError
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.InetAddressUtils._
 import com.normation.inventory.domain.NodeTimezone
+import com.normation.inventory.domain.VmType._
 import com.normation.inventory.ldap.core.InventoryMappingResult._
 import com.normation.inventory.ldap.core.InventoryMappingRudderError._
 import com.normation.inventory.ldap.core.LDAPConstants._
