@@ -41,6 +41,7 @@ import ca.mrvisser.sealerate
 import cats.data.NonEmptyList
 import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.TechniqueVersion
+
 import com.normation.errors._
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.EventLogDetails
@@ -77,10 +78,12 @@ import com.normation.rudder.domain.queries.Equals
 import com.normation.rudder.domain.queries.NodeAndRootServerReturnType
 import com.normation.rudder.domain.queries.ObjectCriterion
 import com.normation.rudder.domain.queries.Query
+import com.normation.rudder.domain.queries.ResultTransformation
 import com.normation.rudder.domain.queries.StringComparator
 import com.normation.rudder.repository.EventLogRepository
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.rudder.services.servers.json._
+
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import com.unboundid.ldap.sdk.DN
@@ -88,6 +91,7 @@ import net.liftweb.common.Box
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
 import net.liftweb.common.Loggable
+
 import zio._
 import zio.json._
 import zio.syntax._
@@ -617,6 +621,7 @@ object PolicyServerConfigurationObjects {
         Query(
           NodeAndRootServerReturnType,
           And,
+          ResultTransformation.Identity,
           List(
             CriterionLine(objectType, Criterion("agentName", StringComparator), Equals, "cfengine"),
             CriterionLine(objectType, Criterion("policyServerId", StringComparator), Equals, nodeId.value)
