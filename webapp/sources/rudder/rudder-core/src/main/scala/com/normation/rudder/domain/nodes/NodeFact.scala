@@ -134,15 +134,21 @@ final case class VolumeGroup(
 )
 
 final case class SoftwareFact(
-    name:           String,
-    version:        Version,
-    arch:           Option[String],
-    size:           Option[Long],
-    from:           Option[String],
-    publisher:      Option[String],
-    sourceName:     Option[String],
-    sourceVersion:  Option[Version],
-    systemCategory: Option[String]
+    name:               String,
+    version:            Version,
+    arch:               Option[String],
+    size:               Option[Long],
+    from:               Option[String],
+    publisher:          Option[String],
+    sourceName:         Option[String],
+    sourceVersion:      Option[Version],
+    systemCategory:     Option[String],
+    licenseName:        Option[String],
+    licenseDescription: Option[String],
+    expirationDate:     Option[DateTime],
+    productId:          Option[String],
+    productKey:         Option[String],
+    oem:                Option[String]
 )
 
 object NodeFact {
@@ -173,7 +179,13 @@ object NodeFact {
       s.editor.map(_.name),
       s.sourceName,
       s.sourceVersion.flatMap(v => ParseVersion.parse(v.value).toOption),
-      None
+      None,
+      s.license.map(_.name),
+      s.license.flatMap(_.description),
+      s.license.flatMap(_.expirationDate),
+      s.license.flatMap(_.productId),
+      s.license.flatMap(_.productKey),
+      s.license.flatMap(_.oem),
     )
   }
 
