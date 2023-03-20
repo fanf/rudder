@@ -532,7 +532,7 @@ object NodeFactSerialisation {
         case None    => Left(s"Value '${ip}' can not be parsed as an IP address")
         case Some(x) => Right(x.toInetAddress)
       },
-    _.toString
+    com.comcast.ip4s.IpAddress.fromInetAddress(_).toString
   )
   implicit val codecNetwork:        JsonCodec[Network]        = DeriveJsonCodec.gen
   implicit val codecPhysicalVolume: JsonCodec[PhysicalVolume] = DeriveJsonCodec.gen

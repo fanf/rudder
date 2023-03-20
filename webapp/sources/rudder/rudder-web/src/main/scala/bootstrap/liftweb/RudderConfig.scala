@@ -1991,8 +1991,9 @@ object RudderConfig extends Loggable {
    * than the accepted ones.
    */
   private[this] lazy val getSubGroupChoices = () =>
-    roLdapNodeGroupRepository.getAll().map(seq => seq.map(g => SubGroupChoice(g.id, g.name)))
-  private[this] lazy val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, getSubGroupChoices)
+    roLdapNodeGroupRepository.getAll().map(seq => Chunk.fromIterable(seq).map(g => SubGroupChoice(g.id, g.name)))
+  private[this] lazy val nodeQueryData      = new NodeQueryCriteriaData(getSubGroupChoices)
+  private[this] lazy val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryData)
   private[this] lazy val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = Map[String, ObjectCriterion]() ++ ditQueryDataImpl.criteriaMap
   }
@@ -2167,9 +2168,9 @@ object RudderConfig extends Loggable {
     new InternalLDAPQueryProcessor(
       roLdap,
       pendingNodesDitImpl,
-      nodeDit, // here, we don't want to look for subgroups to show them in the form => always return an empty list
-
-      new DitQueryData(pendingNodesDitImpl, nodeDit, rudderDit, () => Nil.succeed),
+      nodeDit,
+      // here, we don't want to look for subgroups to show them in the form => always return an empty list
+      new DitQueryData(pendingNodesDitImpl, nodeDit, rudderDit, new NodeQueryCriteriaData(() => Chunk.empty.succeed)),
       ldapEntityMapper
     ),
     nodeInfoServiceImpl

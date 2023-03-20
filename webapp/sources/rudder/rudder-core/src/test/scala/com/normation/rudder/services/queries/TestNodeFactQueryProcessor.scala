@@ -37,24 +37,27 @@
 
 package com.normation.rudder.services.queries
 
+import better.files.File
+import better.files.Resource
+import com.normation.NamedZioLogger
+
 import com.normation.errors._
 import com.normation.inventory.domain.NodeId
-import com.normation.inventory.ldap.core._
-import com.normation.ldap.ldif._
-import com.normation.ldap.listener.InMemoryDsConnectionProvider
-import com.normation.ldap.sdk._
-import com.normation.rudder.domain._
+import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.nodes.NodeFactSerialisation._
 import com.normation.rudder.domain.queries._
-import com.normation.rudder.repository.ldap.LDAPEntityMapper
-import com.normation.rudder.services.nodes.NaiveNodeInfoServiceCachedImpl
-import com.normation.zio._
+
 import com.softwaremill.quicklens._
-import com.unboundid.ldap.sdk.DN
+
+import java.nio.charset.StandardCharsets
 import net.liftweb.common._
 import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
+
+import zio._
+import zio.json._
 import zio.syntax._
 
 /*
@@ -65,73 +68,51 @@ import zio.syntax._
  */
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
-class TestQueryProcessor extends Loggable {
+class TestNodeFactQueryProcessor {
 
-  val ldifLogger = new DefaultLDIFFileLogger("TestQueryProcessor", "/tmp/normation/rudder/ldif")
+  val logger = NamedZioLogger(this.getClass.getPackageName + "." + this.getClass.getSimpleName)
 
-  // init of in memory LDAP directory
-  val schemaLDIFs    = (
-    "00-core" ::
-      "01-pwpolicy" ::
-      "04-rfc2307bis" ::
-      "05-rfc4876" ::
-      "099-0-inventory" ::
-      "099-1-rudder" ::
-      Nil
-  ) map { name =>
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    this.getClass.getClassLoader.getResource("ldap-data/schema/" + name + ".ldif").toURI.getPath
+  val queryData = new NodeQueryCriteriaData(() => Inconsistency("For test, no subgroup").fail)
+
+  // load all nodes that in resources: node-facts/*.json
+  java.lang.Runtime.getRuntime.gc()
+  println(s"free memory before: " + java.lang.Runtime.getRuntime.freeMemory())
+  val nodes = File(Resource.getUrl("node-facts").getPath).children.toList.flatMap { f =>
+    if (f.extension != Some(".json")) None
+    else {
+      f.contentAsString(StandardCharsets.UTF_8).fromJson[NodeFact] match {
+        case Left(err) => throw new IllegalArgumentException(s"Unable to read node from file '${f.pathAsString}': ${err}")
+        case Right(n)  => Some(n)
+      }
+    }
   }
-  val bootstrapLDIFs = ("ldap/bootstrap.ldif" :: "ldap-data/inventory-sample-data.ldif" :: Nil) map { name =>
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    this.getClass.getClassLoader.getResource(name).toURI.getPath
-  }
-  val ldap           = InMemoryDsConnectionProvider[RoLDAPConnection](
-    baseDNs = "cn=rudder-configuration" :: Nil,
-    schemaLDIFPaths = schemaLDIFs,
-    bootstrapLDIFPaths = bootstrapLDIFs,
-    ldifLogger
-  )
-  // end inMemory ds
+  
+//  java.lang.Runtime.getRuntime.gc()
+//  println(s"free memory after: " + java.lang.Runtime.getRuntime.freeMemory())
+//  import com.sun.management.HotSpotDiagnosticMXBean
+//  import java.lang.management.ManagementFactory
+//  val server = ManagementFactory.getPlatformMBeanServer
+//  val mxBean = ManagementFactory.newPlatformMXBeanProxy(
+//    server,
+//    "com.sun.management:type=HotSpotDiagnostic",
+//    classOf[HotSpotDiagnosticMXBean]
+//  )
+//  mxBean.dumpHeap("/tmp/dump3.hprof", true)
 
-  val DIT = new InventoryDit(
-    new DN("ou=Accepted Inventories,ou=Inventories,cn=rudder-configuration"),
-    new DN("ou=Inventories,cn=rudder-configuration"),
-    "test"
-  )
+//  import org.openjdk.jol.info._
+//  nodes.foreach { n =>
+//    println(s"nombre de software: ${n.software.size} ; ")
+//    println(s"sizeof one node fact '${n.fqdn}': " + GraphLayout.parseInstance(n).totalSize())
+//  }
 
-  val removedDIT = new InventoryDit(
-    new DN("ou=Removed Inventories,ou=Inventories,cn=rudder-configuration"),
-    new DN("ou=Inventories,cn=rudder-configuration"),
-    "test"
-  )
-  val pendingDIT = new InventoryDit(
-    new DN("ou=Pending Inventories,ou=Inventories,cn=rudder-configuration"),
-    new DN("ou=Inventories,cn=rudder-configuration"),
-    "test"
-  )
-  val ditService = new InventoryDitServiceImpl(pendingDIT, DIT, removedDIT)
-  val nodeDit    = new NodeDit(new DN("cn=rudder-configuration"))
-  val rudderDit  = new RudderDit(new DN("ou=Rudder, cn=rudder-configuration"))
-
-  val ditQueryData = new DitQueryData(DIT, nodeDit, rudderDit, new NodeQueryCriteriaData(() => Inconsistency("For test, no subgroup").fail))
-
-  val inventoryMapper            = new InventoryMapper(ditService, pendingDIT, DIT, removedDIT)
-  val ldapMapper                 = new LDAPEntityMapper(rudderDit, nodeDit, DIT, null, inventoryMapper)
-  val internalLDAPQueryProcessor = new InternalLDAPQueryProcessor(ldap, DIT, nodeDit, ditQueryData, ldapMapper)
-
-  val nodeInfoService =
-    new NaiveNodeInfoServiceCachedImpl(ldap, nodeDit, DIT, removedDIT, pendingDIT, ldapMapper, inventoryMapper)
-
-  val queryProcessor = new AcceptedNodesLDAPQueryProcessor(
-    nodeDit,
-    DIT,
-    internalLDAPQueryProcessor,
-    nodeInfoService
-  )
+  val queryProcessor = new NodeFactQueryProcessor(new NodeFactRepository {
+    override def getAll: IOResult[Chunk[NodeFact]] = {
+      ???
+    }
+  })
 
   val parser = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
-    override val criterionObjects = ditQueryData.criteriaMap.toMap
+    override val criterionObjects = queryData.criteriaMap.toMap
   }
 
   case class TestQuery(name: String, query: Query, awaited: Seq[NodeId])
@@ -153,22 +134,6 @@ class TestQueryProcessor extends Loggable {
 
   val root = NodeId("root")
   val sr   = root +: s
-
-  @Test def ensureNodeLoaded(): Unit = {
-    // just check that we correctly loaded demo data in serve
-    val s = (for {
-      con <- ldap
-      res <- con.search(new DN("cn=rudder-configuration"), Sub, BuildFilter.ALL)
-    } yield {
-      res.size
-    }).runNow
-
-    val expected = 43 + 40 // bootstrap + inventory-sample
-    assert(
-      expected == s,
-      s"Not found the expected number of entries in test LDAP directory [expected: ${expected}, found: ${s}], perhaps the demo entries where not correctly loaded"
-    )
-  }
 
   @Test def basicQueriesOnId(): Unit = {
 
@@ -1350,7 +1315,7 @@ class TestQueryProcessor extends Loggable {
 
   private def testQueries(queries: Seq[TestQuery], doInternalQueryTest: Boolean): Unit = {
     queries foreach { q =>
-      logger.debug("Processing: " + q.name)
+      logger.logEffect.debug("Processing: " + q.name)
       testQueryResultProcessor(q.name, q.query, q.awaited, doInternalQueryTest)
     }
 
@@ -1359,7 +1324,7 @@ class TestQueryProcessor extends Loggable {
   private def testQueryResultProcessor(name: String, query: Query, nodes: Seq[NodeId], doInternalQueryTest: Boolean) = {
     val ids   = nodes.sortBy(_.value)
     val found = queryProcessor.process(query).openOrThrowException("For tests").sortBy(_.value)
-    // also test with requiring only the expected node to check consistancy
+    // also test with requiring only the expected node to check consistency
     // (that should not change anything)
 
     assertEquals(
@@ -1377,31 +1342,7 @@ class TestQueryProcessor extends Loggable {
       found.forall(f => ids.exists(f == _))
     )
 
-    if (doInternalQueryTest) {
-      logger.debug(
-        "Testing with expected entries, This test should be ignored when we are looking for Nodes with NodeInfo and inventory (ie when we are looking for property and environement variable"
-      )
-      val foundWithLimit = {
-        (internalLDAPQueryProcessor
-          .internalQueryProcessor(
-            query,
-            limitToNodeIds = Some(ids),
-            lambdaAllNodeInfos = (() => nodeInfoService.getAllNodeInfos())
-          )
-          .runNow)
-          .distinct
-          .sortBy(_.value)
-      }
-
-      assertEquals(
-        s"[${name}] Size differs between expected and found entries (InternalQueryProcessor, only inventory fields)\n Found: ${foundWithLimit}\n Expected: ${ids}",
-        ids.size.toLong,
-        foundWithLimit.size.toLong
-      )
-    }
   }
 
-  @After def after(): Unit = {
-    ldap.server.shutDown(true)
-  }
+  @After def after(): Unit = {}
 }

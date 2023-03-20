@@ -2898,8 +2898,10 @@ class MockLdapQueryParsing(mockGit: MockGitConfigRepo, mockNodeGroups: MockNodeG
   val nodeDit             = new NodeDit(LDAP_BASEDN)
   val inventoryDitService: InventoryDitService =
     new InventoryDitServiceImpl(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
-  val getSubGroupChoices = () => mockNodeGroups.groupsRepo.getAll().map(seq => seq.map(g => SubGroupChoice(g.id, g.name)))
-  val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, getSubGroupChoices)
+  val getSubGroupChoices = () =>
+    mockNodeGroups.groupsRepo.getAll().map(seq => Chunk.fromIterable(seq).map(g => SubGroupChoice(g.id, g.name)))
+  val nodeQueryData      = new NodeQueryCriteriaData(getSubGroupChoices)
+  val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryData)
   val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = Map[String, ObjectCriterion]() ++ ditQueryDataImpl.criteriaMap
   }
@@ -2910,7 +2912,7 @@ class MockLdapQueryParsing(mockGit: MockGitConfigRepo, mockNodeGroups: MockNodeG
   val groupRevisionRepo: GroupRevisionRepository = new GitParseGroupLibrary(
     new NodeGroupCategoryUnserialisationImpl(),
     new NodeGroupUnserialisationImpl(new CmdbQueryParser {
-      override def parse(query: StringQuery): Box[Query]  = ???
+      override def parse(query: StringQuery): Box[Query]       = ???
       override def lex(query: String):        Box[StringQuery] = ???
     }),
     mockGit.gitRepo,

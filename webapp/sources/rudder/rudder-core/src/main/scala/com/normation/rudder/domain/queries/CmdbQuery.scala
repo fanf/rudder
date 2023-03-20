@@ -39,19 +39,23 @@ package com.normation.rudder.domain.queries
 
 import cats.implicits._
 import com.jayway.jsonpath.JsonPath
+
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core.LDAPConstants._
 import com.normation.ldap.sdk._
 import com.normation.ldap.sdk.BuildFilter._
 import com.normation.rudder.domain.logger.ApplicationLogger
+import com.normation.rudder.domain.nodes.NodeFact
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.services.queries._
+
 import com.normation.zio._
 import com.unboundid.ldap.sdk._
+
 import java.util.Locale
 import java.util.regex.PatternSyntaxException
 import net.liftweb.common._
@@ -65,7 +69,10 @@ import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
+
 import scala.xml._
+
+import zio.Chunk
 
 sealed trait CriterionComparator {
   val id: String
@@ -945,24 +952,24 @@ class SubGroupComparator(getGroups: () => IOResult[Seq[SubGroupChoice]]) extends
  * on an inventory (or successlly on an inventory) property but on a RudderNode property.
  * In that case, give the predicat that the node must follows.
  */
-final case class Criterion(val name: String, val cType: CriterionType, overrideObjectType: Option[String] = None) {
+final case class Criterion[A](val name: String, val cType: CriterionType, extractor: NodeFact => Chunk[A], overrideObjectType: Option[String] = None) {
   require(name != null && name.nonEmpty, "Criterion name must be defined")
   require(cType != null, "Criterion Type must be defined")
 }
 
-case class ObjectCriterion(val objectType: String, val criteria: Seq[Criterion]) {
+case class ObjectCriterion(val objectType: String, val criteria: Seq[Criterion[_]]) {
   require(objectType.nonEmpty, "Unique identifier for line must be defined")
   require(criteria.nonEmpty, "You must at least have one criterion for the line")
 
-  // optionnaly retrieve the criterion from a "string" attribute
-  def criterionForName(name: String): (Option[Criterion]) = {
+  // optionaly retrieve the criterion from a "string" attribute
+  def criterionForName(name: String): (Option[Criterion[_]]) = {
     for (c <- criteria) {
       if (name.equalsIgnoreCase(c.name)) return Some(c)
     }
     None
   }
 
-  def criterionComparatorForName(name: String, comparator: String): (Option[Criterion], Option[CriterionComparator]) = {
+  def criterionComparatorForName(name: String, comparator: String): (Option[Criterion[_]], Option[CriterionComparator]) = {
     criterionForName(name) match {
       case ab @ Some(x) => (ab, x.cType.comparatorForString(comparator))
       case _            => (None, None)
@@ -970,9 +977,9 @@ case class ObjectCriterion(val objectType: String, val criteria: Seq[Criterion])
   }
 }
 
-final case class CriterionLine(
+final case class CriterionLine[A](
     objectType: ObjectCriterion,
-    attribute:  Criterion,
+    attribute:  Criterion[A],
     comparator: CriterionComparator,
     value:      String = ""
 )
@@ -1054,7 +1061,7 @@ final case class Query(
     returnType: QueryReturnType, // "node" or "node and policy servers"
     composition: CriterionComposition,
     transform:   ResultTransformation,
-    criteria:    List[CriterionLine] // list of all criteria to be matched by returned values
+    criteria:    List[CriterionLine[_]] // list of all criteria to be matched by returned values
 ) {
 
   override def toString() = {
