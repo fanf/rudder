@@ -107,7 +107,7 @@ object NodeGroup {
   /*
    * Check if one criteria is a "subgroup" one and id matches
    */
-  def isSubgroupByCriterion(subgroup: Seq[CriterionLine[_]], group: NodeGroupId): Boolean = {
+  def isSubgroupByCriterion(subgroup: Seq[CriterionLine], group: NodeGroupId): Boolean = {
     subgroup.exists(line => {
       line.attribute.cType.isInstanceOf[SubGroupComparator] &&
       line.value == group.serialize

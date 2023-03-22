@@ -110,6 +110,13 @@ object KeyValueComparator {
   def values = ca.mrvisser.sealerate.values[KeyValueComparator]
 }
 
+final case class NodeFactValueMatcher(debugString: String, matches: Chunk[String] => Boolean)
+
+object NodeFactValueMatcher {
+
+  val Eq = (values: Chunk[String]) => values.exists(_ == )
+}
+
 sealed trait ComparatorList {
 
   def comparators: Seq[CriterionComparator]
@@ -130,6 +137,8 @@ object OrderedComparators extends ComparatorList {
 }
 
 sealed trait CriterionType extends ComparatorList {
+    def matchesFact(comparator: CriterionComparator, value: String): NodeFactValueMatcher
+
   /*
    * validate the value and returns a normalized one
    * for the field.
@@ -216,6 +225,13 @@ final case object NodeStateComparator extends NodeCriterionType {
   }
 
   override def matches(comparator: CriterionComparator, value: String): NodeInfoMatcher = {
+    comparator match {
+      case Equals => NodeInfoMatcher(s"Prop equals '${value}'", (node: NodeInfo) => node.state.name == value)
+      case _      => NodeInfoMatcher(s"Prop not equals '${value}'", (node: NodeInfo) => node.state.name != value)
+    }
+  }
+
+  override def matchesFact(comparator: CriterionComparator, value: String): NodeFactValueMatcher = {
     comparator match {
       case Equals => NodeInfoMatcher(s"Prop equals '${value}'", (node: NodeInfo) => node.state.name == value)
       case _      => NodeInfoMatcher(s"Prop not equals '${value}'", (node: NodeInfo) => node.state.name != value)
@@ -952,24 +968,24 @@ class SubGroupComparator(getGroups: () => IOResult[Seq[SubGroupChoice]]) extends
  * on an inventory (or successlly on an inventory) property but on a RudderNode property.
  * In that case, give the predicat that the node must follows.
  */
-final case class Criterion[A](val name: String, val cType: CriterionType, extractor: NodeFact => Chunk[A], overrideObjectType: Option[String] = None) {
+final case class Criterion(val name: String, val cType: CriterionType, extractor: NodeFact => Chunk[String], overrideObjectType: Option[String] = None) {
   require(name != null && name.nonEmpty, "Criterion name must be defined")
   require(cType != null, "Criterion Type must be defined")
 }
 
-case class ObjectCriterion(val objectType: String, val criteria: Seq[Criterion[_]]) {
+case class ObjectCriterion(val objectType: String, val criteria: Seq[Criterion]) {
   require(objectType.nonEmpty, "Unique identifier for line must be defined")
   require(criteria.nonEmpty, "You must at least have one criterion for the line")
 
-  // optionaly retrieve the criterion from a "string" attribute
-  def criterionForName(name: String): (Option[Criterion[_]]) = {
+  // optionally retrieve the criterion from a "string" attribute
+  def criterionForName(name: String): (Option[Criterion]) = {
     for (c <- criteria) {
       if (name.equalsIgnoreCase(c.name)) return Some(c)
     }
     None
   }
 
-  def criterionComparatorForName(name: String, comparator: String): (Option[Criterion[_]], Option[CriterionComparator]) = {
+  def criterionComparatorForName(name: String, comparator: String): (Option[Criterion], Option[CriterionComparator]) = {
     criterionForName(name) match {
       case ab @ Some(x) => (ab, x.cType.comparatorForString(comparator))
       case _            => (None, None)
@@ -977,9 +993,9 @@ case class ObjectCriterion(val objectType: String, val criteria: Seq[Criterion[_
   }
 }
 
-final case class CriterionLine[A](
+final case class CriterionLine(
     objectType: ObjectCriterion,
-    attribute:  Criterion[A],
+    attribute:  Criterion,
     comparator: CriterionComparator,
     value:      String = ""
 )
@@ -1061,7 +1077,7 @@ final case class Query(
     returnType: QueryReturnType, // "node" or "node and policy servers"
     composition: CriterionComposition,
     transform:   ResultTransformation,
-    criteria:    List[CriterionLine[_]] // list of all criteria to be matched by returned values
+    criteria:    List[CriterionLine] // list of all criteria to be matched by returned values
 ) {
 
   override def toString() = {

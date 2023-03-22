@@ -745,7 +745,7 @@ object JsonResponseObjects {
   }
 
   object JRCriterium {
-    def fromCriterium(c: CriterionLine[_]) = {
+    def fromCriterium(c: CriterionLine) = {
       c.into[JRCriterium]
         .withFieldComputed(_.objectType, _.objectType.objectType)
         .withFieldComputed(_.attribute, _.attribute.name)

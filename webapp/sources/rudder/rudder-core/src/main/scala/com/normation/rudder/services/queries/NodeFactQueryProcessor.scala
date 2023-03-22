@@ -53,6 +53,7 @@ import com.normation.rudder.domain.queries.ResultTransformation
 import net.liftweb.common.Box
 
 import zio.Chunk
+import zio.ZIO
 
 trait NodeFactRepository {
   def getAll: IOResult[Chunk[NodeFact]]
@@ -96,7 +97,13 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
 
   def check(query: Query, nodeIds: Option[Seq[NodeId]]): IOResult[Set[NodeId]]     = { ??? }
   def processOnlyIdPure(query: Query):                   IOResult[Chunk[NodeFact]] = { ??? }
-  def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {}
+  def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {
+    val m = analyzeQuery(query)
+    nodeFactRepo.getAll.map(nodes =>
+      nodes.collect{ case node if(m.matches(node)) => node }
+    )
+
+  }
 
   /*
    * transform the query into a function to apply to a NodeFact and that say "yes" or "no"
@@ -114,7 +121,12 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
     res
   }
 
-  def analyseCriterion(c: CriterionLine): NodeFactMatcher = ???
+  def analyseCriterion(c: CriterionLine): NodeFactMatcher = {
+    val comparator = c.attribute.cType.matchesFact(c.comparator, c.value)
+    NodeFactMatcher(
+      (n:NodeFact) => comparator.matches(c.attribute.extractor(n))
+    )
+  }
 
   def processOne(matcher: NodeFactMatcher, n: NodeFact): Boolean = matcher.matches(n)
 
