@@ -40,22 +40,49 @@ package com.normation.rudder.services.queries
 import better.files.File
 import better.files.Resource
 import com.normation.NamedZioLogger
-
 import com.normation.errors._
+import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.AgentInfo
+import com.normation.inventory.domain.AgentType.CfeCommunity
+import com.normation.inventory.domain.AgentType.CfeEnterprise
+import com.normation.inventory.domain.AgentVersion
+import com.normation.inventory.domain.Bios
+import com.normation.inventory.domain.Certificate
+import com.normation.inventory.domain.CertifiedKey
+import com.normation.inventory.domain.CustomProperty
+import com.normation.inventory.domain.KeyStatus
+import com.normation.inventory.domain.Linux
+import com.normation.inventory.domain.MemorySize
 import com.normation.inventory.domain.NodeId
+import com.normation.inventory.domain.Process
+import com.normation.inventory.domain.Ubuntu
+import com.normation.inventory.domain.Version
+import com.normation.rudder.domain.nodes.IpAddress
+import com.normation.rudder.domain.nodes.LocalUser
 import com.normation.rudder.domain.nodes.NodeFact
 import com.normation.rudder.domain.nodes.NodeFactSerialisation._
+import com.normation.rudder.domain.nodes.NodeKind
+import com.normation.rudder.domain.nodes.NodeState
+import com.normation.rudder.domain.nodes.RudderAgent
+import com.normation.rudder.domain.nodes.RudderSettings
+import com.normation.rudder.domain.nodes.SoftwareFact
+import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries._
-
+import com.normation.rudder.reports.ReportingConfiguration
+import com.normation.rudder.services.policies.NodeConfigData.CERT
+import com.normation.utils.{Version => SVersion}
+import com.normation.utils.DateFormaterService
+import com.normation.utils.ParseVersion
 import com.softwaremill.quicklens._
-
 import java.nio.charset.StandardCharsets
 import net.liftweb.common._
+import net.liftweb.json.JsonAST.JField
+import net.liftweb.json.JsonAST.JObject
+import net.liftweb.json.JsonAST.JString
 import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
-
 import zio._
 import zio.json._
 import zio.syntax._
@@ -86,7 +113,7 @@ class TestNodeFactQueryProcessor {
       }
     }
   }
-  
+
 //  java.lang.Runtime.getRuntime.gc()
 //  println(s"free memory after: " + java.lang.Runtime.getRuntime.freeMemory())
 //  import com.sun.management.HotSpotDiagnosticMXBean
@@ -106,8 +133,114 @@ class TestNodeFactQueryProcessor {
 //  }
 
   val queryProcessor = new NodeFactQueryProcessor(new NodeFactRepository {
+    implicit def StringToNodeId(s: String) = NodeId(s)
+    implicit def StringToNodeProp(s: String): Chunk[NodeProperty] = ???
+    implicit def StringToVersion(s: String) = new Version(s)
+    implicit def StringToIp(s: String)      = IpAddress(s)
+    implicit def LongToMemomru(l: Long)     = MemorySize(l)
+
+    implicit def StringToDate(s: String) = DateFormaterService.parseDate(s) match {
+      case Left(err)    => throw new IllegalArgumentException(s"Error in test init date: ${err}")
+      case Right(value) => value
+    }
+
+    implicit def StringToSVersion(s: String) = {
+      ParseVersion.parse(s) match {
+        case Left(err)    => throw new IllegalArgumentException(s"Error in test init software version: ${err}")
+        case Right(value) => value
+      }
+    }
+
+    val emptyReportConf = ReportingConfiguration(None, None, None)
+    val cfe             = RudderAgent(CfeCommunity, "root", AgentVersion("4.1.8"), Certificate("test"), Set())
+    val nova            = cfe.copy(tpe = CfeEnterprise)
+
+    val software = Chunk(SoftwareFact("Software 0", "1.0.0"), SoftwareFact("Software 1", "2.0-rc"))
+
     override def getAll: IOResult[Chunk[NodeFact]] = {
-      ???
+      Chunk(
+        NodeFact(
+          "root",
+          None,
+          "root.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          RudderSettings(
+            CertifiedKey,
+            emptyReportConf,
+            NodeKind.Root,
+            AcceptedInventory,
+            NodeState.Enabled,
+            None,
+            "root"
+          ),
+          cfe,
+          "props todo",
+          "20130515123456.948Z",
+          "20130515123456.948Z",
+          software = Chunk(software(0))
+        ),
+        NodeFact(
+          "node0",
+          Some("matchOnMe"),
+          "node0.normation.com",
+          Linux(Ubuntu, "", "nothing", None, "nothing"),
+          RudderSettings(
+            CertifiedKey,
+            emptyReportConf,
+            NodeKind.Root,
+            AcceptedInventory,
+            NodeState.Enabled,
+            None,
+            "root"
+          ),
+          cfe,
+          "props todo",
+          "20130515123456.948Z",
+          "20130515123456.948Z",
+          ipAddresses = Chunk("192.168.56.100"),
+          software = Chunk(software(0))
+        ),
+        NodeFact(
+          "node1",
+          Some("#54-Ubuntu SMP Thu Dec 10 17:23:29 UTC 2009"),
+          "hasAttributes.normation.com",
+          Linux(Ubuntu, "", "Ubuntu 9.10", None, "2.6.18-17-generic"),
+          RudderSettings(
+            CertifiedKey,
+            emptyReportConf,
+            NodeKind.Root,
+            AcceptedInventory,
+            NodeState.Enabled,
+            None,
+            "root-policy-server"
+          ),
+          cfe,
+          "props todo",
+          "20130515123456.948Z",
+          "20130515123456.948Z",
+          swap = Some(2878000000L),
+          ram = Some(100000000L),
+          ipAddresses = Chunk("1192.168.56.101", "127.0.0.1"),
+          localUsers = Chunk(
+            LocalUser(0, "root", "root", "/", "/bin/sh"),
+            LocalUser(1000, "francois.armand", "francois.armand", "/home/far", "/bin/zsh"),
+            LocalUser(1001, "nicolas.charles", "nicolas.charles", "/home/nch", "/bin/bash"),
+            LocalUser(1002, "jonathan.clarke", "jonathan.clarke", "/home/jcl", "/bin/bash")
+          ),
+          software = Chunk(software(0)),
+          environmentVariables = Chunk(("SHELL", "/bin/sh")),
+          customProperties = Chunk(
+            CustomProperty("datacenter", JString("Paris")),
+            CustomProperty("from_inv"),
+            JObject(JField("key1", JString("custom prop value")), JField("key2", JString("some more json")))
+          ),
+          processes = Chunk(
+            Process(1, Some("init [2]"), Some(0f), Some(0.2f), Some("2015-01-21 17:24"), Some("?"), Some("root"), Some(0), None),
+            Process(10, Some("[kdevtmpfs]"), Some(0f), Some(0f), Some("2015-01-21 17:24"), Some("?"), Some("root"), Some(0), None)
+          ),
+          bios = Some(Bios("bios1", version = Some("6.00"), editor = Some("Phoenix Technologies LTD")))
+        )
+      ).succeed
     }
   })
 

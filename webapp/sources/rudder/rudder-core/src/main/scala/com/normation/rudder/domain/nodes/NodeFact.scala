@@ -136,19 +136,19 @@ final case class VolumeGroup(
 final case class SoftwareFact(
     name:               String,
     version:            Version,
-    arch:               Option[String],
-    size:               Option[Long],
-    from:               Option[String],
-    publisher:          Option[String],
-    sourceName:         Option[String],
-    sourceVersion:      Option[Version],
-    systemCategory:     Option[String],
-    licenseName:        Option[String],
-    licenseDescription: Option[String],
-    expirationDate:     Option[DateTime],
-    productId:          Option[String],
-    productKey:         Option[String],
-    oem:                Option[String]
+    arch:               Option[String] = None,
+    size:               Option[Long] = None,
+    from:               Option[String] = None,
+    publisher:          Option[String] = None,
+    sourceName:         Option[String] = None,
+    sourceVersion:      Option[Version] = None,
+    systemCategory:     Option[String] = None,
+    licenseName:        Option[String] = None,
+    licenseDescription: Option[String] = None,
+    expirationDate:     Option[DateTime] = None,
+    productId:          Option[String] = None,
+    productKey:         Option[String] = None,
+    oem:                Option[String] = None
 )
 
 object NodeFact {
@@ -185,7 +185,7 @@ object NodeFact {
       s.license.flatMap(_.expirationDate),
       s.license.flatMap(_.productId),
       s.license.flatMap(_.productKey),
-      s.license.flatMap(_.oem),
+      s.license.flatMap(_.oem)
     )
   }
 
@@ -265,40 +265,40 @@ final case class NodeFact(
 
     // inventory information part of minimal node info (node create api
 
-    lastInventoryDate:     DateTime,
-    inventoryReceivedDate: DateTime,
-    ipAddresses:           Chunk[IpAddress],
-    timezone:              Option[NodeTimezone],
-    machine:               Option[Machine],
+    lastInventoryDate:      DateTime,
+    inventoryProcessedDate: DateTime,
+    ipAddresses:            Chunk[IpAddress] = Chunk.empty,
+    timezone:               Option[NodeTimezone] = None,
+    machine:                Option[Machine] = None,
 
     // inventory details, optional
 
-    ram:                  Option[MemorySize],
-    swap:                 Option[MemorySize],
-    archDescription:      Option[String],
-    accounts:             Chunk[String],
-    bios:                 Chunk[Bios],
-    controllers:          Chunk[Controller],
-    customProperties:     Chunk[CustomProperty],
-    environmentVariables: Chunk[(String, String)],
-    fileSystems:          Chunk[FileSystem],
-    inputs:               Chunk[InputDevice],
-    localGroups:          Chunk[LocalGroup],
-    localUsers:           Chunk[LocalUser],
-    logicalVolumes:       Chunk[LogicalVolume],
-    memories:             Chunk[MemorySlot],
-    networks:             Chunk[Network],
-    physicalVolumes:      Chunk[PhysicalVolume],
-    ports:                Chunk[Port],
-    processes:            Chunk[Process],
-    processors:           Chunk[Processor],
-    slots:                Chunk[Slot],
-    software:             Chunk[SoftwareFact],
-    softwareUpdate:       Chunk[SoftwareUpdate],
-    sounds:               Chunk[Sound],
-    storages:             Chunk[Storage],
-    videos:               Chunk[Video],
-    vms:                  Chunk[VirtualMachine]
+    ram:                  Option[MemorySize] = None,
+    swap:                 Option[MemorySize] = None,
+    archDescription:      Option[String] = None,
+    accounts:             Chunk[String] = Chunk.empty,
+    bios:                 Chunk[Bios] = Chunk.empty,
+    controllers:          Chunk[Controller] = Chunk.empty,
+    customProperties:     Chunk[CustomProperty] = Chunk.empty,
+    environmentVariables: Chunk[(String, String)] = Chunk.empty,
+    fileSystems:          Chunk[FileSystem] = Chunk.empty,
+    inputs:               Chunk[InputDevice] = Chunk.empty,
+    localGroups:          Chunk[LocalGroup] = Chunk.empty,
+    localUsers:           Chunk[LocalUser] = Chunk.empty,
+    logicalVolumes:       Chunk[LogicalVolume] = Chunk.empty,
+    memories:             Chunk[MemorySlot] = Chunk.empty,
+    networks:             Chunk[Network] = Chunk.empty,
+    physicalVolumes:      Chunk[PhysicalVolume] = Chunk.empty,
+    ports:                Chunk[Port] = Chunk.empty,
+    processes:            Chunk[Process] = Chunk.empty,
+    processors:           Chunk[Processor] = Chunk.empty,
+    slots:                Chunk[Slot] = Chunk.empty,
+    software:             Chunk[SoftwareFact] = Chunk.empty,
+    softwareUpdate:       Chunk[SoftwareUpdate] = Chunk.empty,
+    sounds:               Chunk[Sound] = Chunk.empty,
+    storages:             Chunk[Storage] = Chunk.empty,
+    videos:               Chunk[Video] = Chunk.empty,
+    vms:                  Chunk[VirtualMachine] = Chunk.empty
 ) {
   // todo
   def isPolicyServer: Boolean = rudderSettings.kind != NodeKind.Node
