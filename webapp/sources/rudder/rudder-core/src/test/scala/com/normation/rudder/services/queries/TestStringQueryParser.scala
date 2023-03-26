@@ -57,9 +57,9 @@ class TestStringQueryParser {
    *
    *
    */
-  val c1 = Criterion("name", BareComparator(Exists, Greater), _ => Chunk("something"))
-  val c2 = Criterion("id", BareComparator(Equals), _ => Chunk("something"))
-  val c3 = Criterion("name", BareComparator(Exists, Greater), _ => Chunk("something"))
+  val c1 = Criterion("name", BareComparator(Exists, Greater), NodeCriterionMatcherString(_ => Chunk("something")))
+  val c2 = Criterion("id", BareComparator(Equals), NodeCriterionMatcherString(_ => Chunk("something")))
+  val c3 = Criterion("name", BareComparator(Exists, Greater), NodeCriterionMatcherString(_ => Chunk("something")))
 
   val oc1 = ObjectCriterion("node", List(c1, c2))
   val oc2 = ObjectCriterion("machine", List(c3))

@@ -43,17 +43,12 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.nodes.NodeFact
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries.And
-import com.normation.rudder.domain.queries.Criterion
 import com.normation.rudder.domain.queries.CriterionLine
 import com.normation.rudder.domain.queries.NodeAndRootServerReturnType
 import com.normation.rudder.domain.queries.Query
-import com.normation.rudder.domain.queries.QueryReturnType
 import com.normation.rudder.domain.queries.ResultTransformation
-
 import net.liftweb.common.Box
-
 import zio.Chunk
-import zio.ZIO
 
 trait NodeFactRepository {
   def getAll: IOResult[Chunk[NodeFact]]
@@ -71,10 +66,10 @@ trait NodeFactRepository {
 final case class NodeFactMatcher(matches: NodeFact => Boolean)
 
 object NodeFactMatcher {
-  val nodeAndRelayMatcher = NodeFactMatcher((n:NodeFact) => n.rudderSettings.kind != NodeKind.Root)
+  val nodeAndRelayMatcher = NodeFactMatcher((n: NodeFact) => n.rudderSettings.kind != NodeKind.Root)
 }
 
-trait Group     {
+trait Group {
   def compose(a: NodeFactMatcher, b: NodeFactMatcher): NodeFactMatcher
   def inverse(a: NodeFactMatcher): NodeFactMatcher
   def zero: NodeFactMatcher
@@ -99,9 +94,7 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
   def processOnlyIdPure(query: Query):                   IOResult[Chunk[NodeFact]] = { ??? }
   def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {
     val m = analyzeQuery(query)
-    nodeFactRepo.getAll.map(nodes =>
-      nodes.collect{ case node if(m.matches(node)) => node }
-    )
+    nodeFactRepo.getAll.map(nodes => nodes.collect { case node if (m.matches(node)) => node })
 
   }
 
@@ -111,21 +104,18 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
   def analyzeQuery(query: Query): NodeFactMatcher = {
     val group      = if (query.composition == And) GroupAnd else GroupOr
     // build matcher for criterion lines
-    val lineResult = query.criteria.foldLeft(group.zero) ( (matcher, criterion) =>
-      group.compose(matcher, analyseCriterion(criterion))
-    )
+    val lineResult =
+      query.criteria.foldLeft(group.zero)((matcher, criterion) => group.compose(matcher, analyseCriterion(criterion)))
     // inverse now if needed, because we don't want to return root if not asked *even* when inverse is present
-    val inv = if(query.transform == ResultTransformation.Invert) group.inverse(lineResult) else lineResult
+    val inv        = if (query.transform == ResultTransformation.Invert) group.inverse(lineResult) else lineResult
     // finally, filter out root if need
-    val res = if(query.returnType == NodeAndRootServerReturnType) inv else GroupAnd.compose(NodeFactMatcher.nodeAndRelayMatcher, inv)
+    val res        =
+      if (query.returnType == NodeAndRootServerReturnType) inv else GroupAnd.compose(NodeFactMatcher.nodeAndRelayMatcher, inv)
     res
   }
 
   def analyseCriterion(c: CriterionLine): NodeFactMatcher = {
-    val comparator = c.attribute.cType.matchesFact(c.comparator, c.value)
-    NodeFactMatcher(
-      (n:NodeFact) => comparator.matches(c.attribute.extractor(n))
-    )
+    NodeFactMatcher((n: NodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value))
   }
 
   def processOne(matcher: NodeFactMatcher, n: NodeFact): Boolean = matcher.matches(n)
