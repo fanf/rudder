@@ -215,7 +215,7 @@ class TestNodeFactQueryProcessor {
           "20130515123456.948Z",
           "20130515123456.948Z",
           ipAddresses = Chunk("192.168.56.100"),
-          software = Chunk(software(0))
+          software = Chunk()
         ),
         NodeFact(
           "node1",
@@ -236,7 +236,7 @@ class TestNodeFactQueryProcessor {
             LocalUser(1001, "nicolas.charles", "nicolas.charles", "/home/nch", "/bin/bash"),
             LocalUser(1002, "jonathan.clarke", "jonathan.clarke", "/home/jcl", "/bin/bash")
           ),
-          software = Chunk(software(0)),
+          software = Chunk(),
           environmentVariables = Chunk(("SHELL", "/bin/sh")),
           customProperties = Chunk(
             CustomProperty("datacenter", JString("Paris")),
@@ -1127,7 +1127,7 @@ class TestNodeFactQueryProcessor {
       query = q2.query.copy(composition = Or),
       (s(2) :: s(7) ::                // software
       s(4) :: s(5) :: s(6) :: s(7) :: // machine
-      s(2) :: root ::                 // free space
+      s(7) :: root ::                 // free space
       s(2) ::                         // bios
       Nil).distinct
     )

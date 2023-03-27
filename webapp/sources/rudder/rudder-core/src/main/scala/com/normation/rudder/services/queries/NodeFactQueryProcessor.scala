@@ -75,7 +75,7 @@ object NodeFactMatcher {
       (n: NodeFact) => {
         for {
           res <- (n.rudderSettings.kind != NodeKind.Root).succeed
-          _   <- FactQueryProcessorPure.trace(s"    - [${res}] for $s on '${n.rudderSettings.kind}'")
+          _   <- FactQueryProcessorPure.trace(s"    [${res}] for $s on '${n.rudderSettings.kind}'")
         } yield res
       }
     )
@@ -150,7 +150,7 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
   def processOne(matcher: NodeFactMatcher, n: NodeFact): IOResult[Boolean] = {
     for {
       res <- matcher.matches(n)
-      _   <- FactQueryProcessorPure.debug(s"  - on '${n.fqdn}'(${n.id.value}): ${res}")
+      _   <- FactQueryProcessorPure.debug(s"  = [${res}] on '${n.fqdn}'(${n.id.value})")
     } yield res
   }
 
