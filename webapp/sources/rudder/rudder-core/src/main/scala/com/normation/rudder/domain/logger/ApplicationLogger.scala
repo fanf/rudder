@@ -214,6 +214,10 @@ object ReportLogger extends Logger {
   }
 }
 
+object FactQueryProcessorPure extends NamedZioLogger {
+  override def loggerName: String = "query.node-fact"
+}
+
 object ReportLoggerPure extends NamedZioLogger {
   override def loggerName: String = "report"
 

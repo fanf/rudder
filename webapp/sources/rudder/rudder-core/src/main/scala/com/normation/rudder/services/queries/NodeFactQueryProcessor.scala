@@ -40,6 +40,7 @@ package com.normation.rudder.services.queries
 import com.normation.box._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.logger.FactQueryProcessorPure
 import com.normation.rudder.domain.nodes.NodeFact
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries.And
@@ -48,7 +49,8 @@ import com.normation.rudder.domain.queries.NodeAndRootServerReturnType
 import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.queries.ResultTransformation
 import net.liftweb.common.Box
-import zio.Chunk
+import zio._
+import zio.syntax._
 
 trait NodeFactRepository {
   def getAll: IOResult[Chunk[NodeFact]]
@@ -63,10 +65,21 @@ trait NodeFactRepository {
  *
  * NodeFactMatcher is a group for AND and for OR
  */
-final case class NodeFactMatcher(matches: NodeFact => Boolean)
+final case class NodeFactMatcher(debugString: String, matches: NodeFact => IOResult[Boolean])
 
 object NodeFactMatcher {
-  val nodeAndRelayMatcher = NodeFactMatcher((n: NodeFact) => n.rudderSettings.kind != NodeKind.Root)
+  val nodeAndRelayMatcher = {
+    val s = "only matches node and relay"
+    NodeFactMatcher(
+      s,
+      (n: NodeFact) => {
+        for {
+          res <- (n.rudderSettings.kind != NodeKind.Root).succeed
+          _   <- FactQueryProcessorPure.trace(s"    - [${res}] for $s on '${n.rudderSettings.kind}'")
+        } yield res
+      }
+    )
+  }
 }
 
 trait Group {
@@ -75,27 +88,40 @@ trait Group {
   def zero: NodeFactMatcher
 }
 object GroupAnd extends Group {
-  def compose(a: NodeFactMatcher, b: NodeFactMatcher) = NodeFactMatcher((n: NodeFact) => (a.matches(n) && b.matches(n)))
-  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher((n: NodeFact) => !a.matches(n))
-  def zero                                            = NodeFactMatcher(_ => true)
+  def compose(a: NodeFactMatcher, b: NodeFactMatcher) = {
+    (a, b) match {
+      case (`zero`, _) => b
+      case (_, `zero`) => a
+      case _           => NodeFactMatcher(s"(${a.debugString}) && (${b.debugString})", (n: NodeFact) => (a.matches(n) && b.matches(n)))
+    }
+  }
+  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher(s"!(${a.debugString})", (n: NodeFact) => a.matches(n).map(!_))
+  val zero                                            = NodeFactMatcher("true", _ => true.succeed)
 }
 object GroupOr extends Group {
-  def compose(a: NodeFactMatcher, b: NodeFactMatcher) = NodeFactMatcher((n: NodeFact) => (a.matches(n) || b.matches(n)))
-  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher((n: NodeFact) => !a.matches(n))
-  def zero                                            = NodeFactMatcher(_ => false)
+  def compose(a: NodeFactMatcher, b: NodeFactMatcher) = {
+    (a, b) match {
+      case (`zero`, _) => b
+      case (_, `zero`) => a
+      case _           => NodeFactMatcher(s"(${a.debugString}) || (${b.debugString})", (n: NodeFact) => (a.matches(n) || b.matches(n)))
+    }
+  }
+  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher(s"!(${a.debugString})", (n: NodeFact) => a.matches(n).map(!_))
+  val zero                                            = NodeFactMatcher("false", _ => false.succeed)
 }
 
 class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProcessor with QueryChecker {
 
   def process(query: Query):       Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
-  def processOnlyId(query: Query): Box[Seq[NodeId]] = processOnlyIdPure(query).map(_.toList.map(_.id)).toBox
+  def processOnlyId(query: Query): Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
 
   def check(query: Query, nodeIds: Option[Seq[NodeId]]): IOResult[Set[NodeId]]     = { ??? }
-  def processOnlyIdPure(query: Query):                   IOResult[Chunk[NodeFact]] = { ??? }
   def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {
     val m = analyzeQuery(query)
-    nodeFactRepo.getAll.map(nodes => nodes.collect { case node if (m.matches(node)) => node })
-
+    nodeFactRepo.getAll.flatMap(nodes => {
+      FactQueryProcessorPure.debug(m.debugString) *>
+      ZIO.foreach(nodes)(node => processOne(m, node).map(b => if (b) Some(node) else None)).map(_.flatten)
+    })
   }
 
   /*
@@ -115,9 +141,17 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
   }
 
   def analyseCriterion(c: CriterionLine): NodeFactMatcher = {
-    NodeFactMatcher((n: NodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value))
+    NodeFactMatcher(
+      s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
+      (n: NodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value)
+    )
   }
 
-  def processOne(matcher: NodeFactMatcher, n: NodeFact): Boolean = matcher.matches(n)
+  def processOne(matcher: NodeFactMatcher, n: NodeFact): IOResult[Boolean] = {
+    for {
+      res <- matcher.matches(n)
+      _   <- FactQueryProcessorPure.debug(s"  - on '${n.fqdn}'(${n.id.value}): ${res}")
+    } yield res
+  }
 
 }

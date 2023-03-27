@@ -71,8 +71,8 @@ import zio.json.internal.Write
 final case class Machine(
     id:           MachineUuid,
     provider:     MachineType,
-    systemSerial: Option[String],
-    manufacturer: Option[Manufacturer]
+    systemSerial: Option[String] = None,
+    manufacturer: Option[Manufacturer] = None
 )
 final case class IpAddress(inet: String)
 final case class ManagementTechnology(
