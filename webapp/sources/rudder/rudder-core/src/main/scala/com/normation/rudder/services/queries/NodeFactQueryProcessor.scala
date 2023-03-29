@@ -149,8 +149,9 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProc
 
   def processOne(matcher: NodeFactMatcher, n: NodeFact): IOResult[Boolean] = {
     for {
+      _   <- FactQueryProcessorPure.debug(s"  --'${n.fqdn}' (${n.id.value})--")
       res <- matcher.matches(n)
-      _   <- FactQueryProcessorPure.debug(s"  = [${res}] on '${n.fqdn}'(${n.id.value})")
+      _   <- FactQueryProcessorPure.debug(s"  = [${res}] on '${n.fqdn}' (${n.id.value})")
     } yield res
   }
 

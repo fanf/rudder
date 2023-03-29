@@ -38,6 +38,7 @@
 package com.normation.rudder.domain.queries
 
 import com.normation.errors._
+import com.normation.inventory.domain.AgentType
 import com.normation.inventory.ldap.core.LDAPConstants._
 import com.normation.inventory.ldap.core.LDAPConstants.A_PROCESS
 import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_GROUP_UUID
@@ -45,10 +46,16 @@ import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_PROPERTY
 import com.normation.rudder.domain.RudderLDAPConstants.A_STATE
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
 import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.properties.NodeProperty
+import com.normation.rudder.domain.queries.{KeyValueComparator => KVC}
+import com.normation.rudder.domain.queries.KeyValueComparator.HasKey
 import com.normation.utils.DateFormaterService
+import java.util.function.Predicate
 import java.util.regex.Pattern
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import scala.collection.SortedMap
+import scala.util.Try
 import zio._
 import zio.syntax._
 
@@ -217,7 +224,7 @@ class NodeQueryCriteriaData(getGroups: () => IOResult[Chunk[SubGroupChoice]]) {
         Criterion(A_STATE, NodeStateComparator, NodeCriterionMatcherString(n => Chunk(n.rudderSettings.state.name))),
         Criterion(A_OS_RAM, MemoryComparator, NodeCriterionMatcherLong(_.ram.map(_.size).toChunk)),
         Criterion(A_OS_SWAP, MemoryComparator, NodeCriterionMatcherLong(_.swap.map(_.size).toChunk)),
-        Criterion(A_AGENTS_NAME, AgentComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.tpe.id))),
+        Criterion(A_AGENTS_NAME, AgentComparator, AgentMatcher),
         Criterion(A_ACCOUNT, StringComparator, NodeCriterionMatcherString(_.accounts)),
         Criterion(A_LIST_OF_IP, NodeIpListComparator, NodeCriterionMatcherString(_.ipAddresses.map(_.inet))),
         Criterion(A_ROOT_USER, StringComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.user))),
@@ -341,18 +348,13 @@ class NodeQueryCriteriaData(getGroups: () => IOResult[Chunk[SubGroupChoice]]) {
     ObjectCriterion(
       A_EV,
       Chunk(
-        Criterion(
-          "name.value",
-          NameValueComparator(A_EV),
-          // TODO: we can now provide a real alternative to that but keep it for compat
-          NodeCriterionMatcherString(_.environmentVariables.map { case (k, v) => s""""name":"${k}","value":"${v}"""" })
-        )
+        Criterion("name.value", NameValueComparator(A_EV), EnvironmentVariableMatcher)
       )
     ),
     ObjectCriterion(
       A_NODE_PROPERTY,
       Chunk(
-        Criterion("name.value", NodePropertyComparator(A_NODE_PROPERTY), NodePropertiesCriterionMatcher)
+        Criterion("name.value", NodePropertyComparator(A_NODE_PROPERTY), NodePropertiesMatcher)
       )
     ),
     ObjectCriterion(
@@ -376,23 +378,43 @@ class NodeQueryCriteriaData(getGroups: () => IOResult[Chunk[SubGroupChoice]]) {
 /////////////////// direct matching with NodeFact ///////////////////
 /////////////////////////////////////////////////////////////////////
 
-final case class MatchHolder[A](comp: String, values: Chunk[A], matcher: Chunk[A] => Boolean)(implicit serializer: A => String) {
-  def matches = for {
-    res <- matcher(values).succeed
-    _   <- FactQueryProcessorPure.trace(s"    [${res}] for '${comp}' on [${values.map(serializer).mkString("|")}]")
-  } yield res
+object MatcherUtils {
+  def getRegex(regexText: String): IOResult[Predicate[String]] = {
+    IOResult.attempt(
+      s"The regular expression '${regexText}' is not valid. Expected regex syntax is the java " +
+      s"one, documented here: http://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html"
+    )(Pattern.compile(regexText, Pattern.DOTALL).asMatchPredicate())
+  }
+
 }
 
-final case class MatchHolderValue[A](comp: String, v: A, values: Chunk[A], matcher: (A, Chunk[A]) => Boolean)(implicit
-    serializer:                            A => String
+final case class DebugInfo(comparatorName: String, value: Option[String]) {
+  def formatValue = value match {
+    case None    => ""
+    case Some(v) => s" ${v}"
+  }
+  def debugMsg[A](values: Chunk[A], res: Boolean)(implicit serializer: A => String): String = {
+    s"    [${res}] for '${comparatorName}${formatValue}' on [${values.map(serializer).mkString("|")}]"
+  }
+}
+
+final case class MatchHolderZio[A](debug: DebugInfo, values: Chunk[A], matcher: Chunk[A] => IOResult[Boolean])(implicit
+    serializer:                           A => String
 ) {
   def matches = for {
-    res <- matcher(v, values).succeed
-    _   <- FactQueryProcessorPure.trace(s"    [${res}] for '${comp} ${v}' on [${values.map(serializer).mkString("|")}]")
+    res <- matcher(values)
+    _   <- FactQueryProcessorPure.trace(debug.debugMsg(values, res))
   } yield res
 }
 
-// for one criterion/critetion comparator, matches value on node
+object MatchHolder {
+  def apply[A](debugInfo: DebugInfo, values: Chunk[A], matcher: Chunk[A] => Boolean)(implicit
+      serializer:         A => String
+  ): MatchHolderZio[A] = {
+    MatchHolderZio[A](debugInfo, values, (vs: Chunk[A]) => matcher(vs).succeed)
+  }
+}
+
 trait NodeCriterionMatcher {
   def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean]
 }
@@ -404,17 +426,21 @@ object AlwaysFalse extends NodeCriterionMatcher {
   }
 }
 
+/*
+ * A generic matcher that matches anything that has an order and can be parsed/serialized
+ * to one value. Typically, it can be String, numeric value, date, memories, etc.
+ */
 trait NodeCriterionOrderedValueMatcher[A] extends NodeCriterionMatcher {
   def extractor: NodeFact => Chunk[A]
   def parseNum(value: String): Option[A]
   def serialise(a:    A):      String
   def order: Ordering[A]
 
-  def tryMatches(value: String, matches: A => MatchHolderValue[A]): IOResult[Boolean] = {
+  def tryMatches(value: String, matches: A => MatchHolderZio[A]): IOResult[Boolean] = {
     parseNum(value) match {
       case Some(a) => matches(a).matches
       case None    =>
-        FactQueryProcessorPure.trace(s"    - '${value}' can not be parsed as correct type: false'") *>
+        FactQueryProcessorPure.trace(s"    - '${value}' can not be parsed into correct type: false'") *>
         false.succeed
     }
   }
@@ -424,38 +450,43 @@ trait NodeCriterionOrderedValueMatcher[A] extends NodeCriterionMatcher {
 
     comparator match {
       case Equals    =>
-        tryMatches(value, a => MatchHolderValue(Equals.id, a, extractor(n), (v, vs) => vs.exists(_ == v)))
+        tryMatches(value, a => MatchHolder[A](DebugInfo(Equals.id, Some(value)), extractor(n), _.exists(_ == a)))
       case NotEquals =>
-        tryMatches(value, a => MatchHolderValue(NotEquals.id, a, extractor(n), (v, vs) => vs.forall(_ != v)))
+        tryMatches(value, a => MatchHolder[A](DebugInfo(NotEquals.id, Some(value)), extractor(n), _.forall(_ != a)))
       case Regex     =>
-        val m = Pattern.compile(value)
-        extractor(n).exists(a => m.matcher(serialise(a)).matches())
-        MatchHolderValue[String](
-          Regex.id,
-          value,
-          extractor(n).map(serialise),
-          (v, vs) => vs.exists(s => m.matcher(s).matches())
-        ).matches
+        for {
+          m <- MatcherUtils.getRegex(value)
+          r <- MatchHolder[A](
+                 DebugInfo(Regex.id, Some(value)),
+                 extractor(n),
+                 _.exists(s => m.test(serialise(s)))
+               ).matches
+        } yield r
       case NotRegex  =>
-        val m = Pattern.compile(value)
-        extractor(n).exists(a => m.matcher(serialise(a)).matches())
-        MatchHolderValue[String](
-          NotRegex.id,
-          value,
-          extractor(n).map(serialise),
-          (v, vs) => vs.forall(s => !m.matcher(s).matches())
-        ).matches
+        for {
+          m <- MatcherUtils.getRegex(value)
+          r <- MatchHolder[A](
+                 DebugInfo(NotRegex.id, Some(value)),
+                 extractor(n),
+                 _.forall(s => !m.test(serialise(s)))
+               ).matches
+        } yield r
       case Exists    =>
-        MatchHolder[A](Exists.id, extractor(n), _.nonEmpty).matches
+        MatchHolder[A](DebugInfo(Exists.id, None), extractor(n), _.nonEmpty).matches
       case NotExists =>
-        MatchHolder[A](NotExists.id, extractor(n), _.isEmpty).matches
-      case Lesser    => tryMatches(value, a => MatchHolderValue(Lesser.id, a, extractor(n), (v, vs) => vs.exists(order.lt(_, v))))
+        MatchHolder[A](DebugInfo(NotExists.id, None), extractor(n), _.isEmpty).matches
+      case Lesser    =>
+        tryMatches(value, a => MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(order.lt(_, a))))
       case LesserEq  =>
-        tryMatches(value, a => MatchHolderValue(Lesser.id, a, extractor(n), (v, vs) => vs.exists(order.lteq(_, v))))
-      case Greater   => tryMatches(value, a => MatchHolderValue(Lesser.id, a, extractor(n), (v, vs) => vs.exists(order.gt(_, v))))
+        tryMatches(value, a => MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(order.lteq(_, a))))
+      case Greater   =>
+        tryMatches(value, a => MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(order.gt(_, a))))
       case GreaterEq =>
-        tryMatches(value, a => MatchHolderValue(Lesser.id, a, extractor(n), (v, vs) => vs.exists(order.gteq(_, v))))
-      case _         => matches(n, Equals, value)
+        tryMatches(
+          value,
+          a => MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(order.gteq(_, a)))
+        )
+      case c         => MatchHolder[A](DebugInfo(s"unknown comparator: ${c}", Some(value)), Chunk(), _ => false).matches
     }
   }
 }
@@ -467,24 +498,27 @@ final case class NodeCriterionMatcherString(extractor: NodeFact => Chunk[String]
   val order = Ordering.String
 }
 
-final case class NodeCriterionMatcherInt(extractor: NodeFact => Chunk[Int])     extends NodeCriterionOrderedValueMatcher[Int]   {
+final case class NodeCriterionMatcherInt(extractor: NodeFact => Chunk[Int]) extends NodeCriterionOrderedValueMatcher[Int] {
   override def parseNum(value: String): Option[Int] = try { Some(Integer.parseInt(value)) }
   catch { case ex: NumberFormatException => None }
   override def serialise(a: Int):       String      = a.toString
   val order = Ordering.Int
 }
-final case class NodeCriterionMatcherLong(extractor: NodeFact => Chunk[Long])   extends NodeCriterionOrderedValueMatcher[Long]  {
+
+final case class NodeCriterionMatcherLong(extractor: NodeFact => Chunk[Long]) extends NodeCriterionOrderedValueMatcher[Long] {
   override def parseNum(value: String): Option[Long] = try { Some(java.lang.Long.parseLong(value)) }
   catch { case ex: NumberFormatException => None }
   override def serialise(a: Long):      String       = a.toString
   val order = Ordering.Long
 }
+
 final case class NodeCriterionMatcherFloat(extractor: NodeFact => Chunk[Float]) extends NodeCriterionOrderedValueMatcher[Float] {
   override def parseNum(value: String): Option[Float] = try { Some(java.lang.Float.parseFloat(value)) }
   catch { case ex: NumberFormatException => None }
   override def serialise(a: Float):     String        = a.toString
   val order = Ordering.Float.TotalOrdering
 }
+
 final case class NodeCriterionMatcherDouble(extractor: NodeFact => Chunk[Double])
     extends NodeCriterionOrderedValueMatcher[Double] {
   override def parseNum(value: String): Option[Double] = try { Some(java.lang.Double.parseDouble(value)) }
@@ -492,36 +526,186 @@ final case class NodeCriterionMatcherDouble(extractor: NodeFact => Chunk[Double]
   override def serialise(a: Double):    String         = a.toString
   val order = Ordering.Double.TotalOrdering
 }
-final case class NodeCriterionMatcherDate(extractor: NodeFact => Chunk[DateTime])
+
+final case class NodeCriterionMatcherDate(extractorNode: NodeFact => Chunk[DateTime])
     extends NodeCriterionOrderedValueMatcher[DateTime] {
-  override def parseNum(value: String): Option[DateTime] = DateFormaterService.parseDate(value).toOption
-  override def serialise(a: DateTime):  String           = DateFormaterService.serialize(a)
+  val parseDate = (s: String) =>
+    DateFormaterService.parseDate(s).toOption.orElse(Try(DateTimeFormat.forPattern("dd/MM/YYYY").parseDateTime(s)).toOption)
+  // we need to accept both ISO format and old dd/MM/YYYY format for compatibility
+  // also, we discard the time, only keep date
+
+  override def extractor:               NodeFact => Chunk[DateTime] = (n: NodeFact) => extractorNode(n).map(_.withTimeAtStartOfDay())
+  override def parseNum(value: String): Option[DateTime]            = parseDate(value).map(_.withTimeAtStartOfDay())
+  override def serialise(a: DateTime):  String                      = DateFormaterService.serialize(a)
   val order = Ordering.by(_.getMillis)
 }
 
-case object NodePropertiesCriterionMatcher extends NodeCriterionMatcher {
-  import com.normation.rudder.domain.queries.{KeyValueComparator => KVC}
-
+/*
+ * Agent matcher is very special with some magic case like "any cfengine"
+ */
+object AgentMatcher extends NodeCriterionMatcher {
   override def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
-    comparator match {
-      // equals means: the key is equals to kv._1 and the value is defined and the value is equals to kv._2.get
-      case Equals         =>
-        val kv = NodePropertyMatcherUtils.splitInput(value, "=")
-        n.properties.exists(p => p.name == kv.key && p.valueAsString == kv.value).succeed
 
-      // not equals mean: the key is not equals to kv._1 or the value is not defined or the value is defined but equals to kv._2.get
-      case NotEquals      => matches(n, Equals, value).map(!_)
-      case Exists         => n.properties.nonEmpty.succeed
-      case NotExists      => n.properties.isEmpty.succeed
-      case Regex          => NodePropertyMatcherUtils.matchesRegex(value, n.properties).succeed
-      case NotRegex       => matches(n, Regex, value).map(!_)
-      case KVC.HasKey     => n.properties.exists(_.name == value).succeed
-      case KVC.JsonSelect =>
-        val kv      = NodePropertyMatcherUtils.splitInput(value, ":")
-        val path    = JsonSelect.compilePath(kv.value).toPureResult
-        val matcher = NodePropertyMatcherUtils.matchJsonPath(kv.key, path) _
-        n.properties.exists(matcher).succeed
-      case _              => matches(n, Equals, value)
+    implicit val serializer = (a: AgentType) => a.id
+    // this is magic: we equals on agent ID and in addition we have the magic value "cfengine" that matches
+    // any cfengine, which is just cfengine-community since we don't do anything else
+    def eq(value: String, tpe: AgentType): Boolean = {
+      value match {
+        case AgentComparator.ANY_CFENGINE => tpe == AgentType.CfeCommunity || tpe == AgentType.CfeEnterprise
+        case x                            => tpe.id == x || tpe.oldShortName == x
+      }
+    }
+
+    comparator match {
+      case Equals    =>
+        MatchHolder[AgentType](DebugInfo(Equals.id, Some(value)), Chunk(n.rudderAgent.tpe), _.exists(eq(value, _))).matches
+      case NotEquals => matches(n, Equals, value).map(!_)
+      case c         => MatchHolder[AgentType](DebugInfo(s"unknown comparator: ${c}", Some(value)), Chunk(), _ => false).matches
     }
   }
+}
+
+/*
+ * A generic matcher for (key, value) elements.
+ * Key are string, values are string or json.
+ * It will allow to match on:
+ * - key=value
+ * - hasKey
+ * - jsonSelect
+ * In addition to eq/exist/regex
+ * Regex follows a
+ *
+ * The serialise method is used for the debug representation and k=v matcher.
+ * The getValue method is for the value part, used in jsonSelect.
+ */
+trait NodeCriterionKeyValueMatcher[A] extends NodeCriterionMatcher {
+  def extractor: NodeFact => Chunk[A]
+  def serialise(a: A): String
+  def getKey(a:    A): String
+  def getValue(a:  A): String
+  // ordering on key, alternative could be done on values
+  def order: Ordering[String] = Ordering.String
+
+  def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
+    implicit val ser = serialise _
+
+    // for Key/Value comparator, we have an expected format for the value for some operator:
+    // Equals and NotEquals: value is: ${key}=${value}, ie "=" is mandatory
+    // HasKey: value is: ${key}:${value} , ie ":" is mandatory
+    def getKVEquals(value: String): IOResult[SplittedValue] = {
+      val kv = NodePropertyMatcherUtils.splitInput(value, "=")
+      kv.values match {
+        case Nil =>
+          Inconsistency(
+            s"When looking for 'key=value', the '=' is mandatory. The left part is a key name, and the right part is the string to look for."
+          ).fail
+        case _   => kv.succeed
+      }
+    }
+
+    def getKVHasKey(value: String): IOResult[SplittedValue] = {
+      val kv = NodePropertyMatcherUtils.splitInput(value, ":")
+      kv.values match {
+        case Nil =>
+          Inconsistency(
+            s"When looking for 'key:json path expression', we found zero ':', but at least one is mandatory. The left " +
+            "part is a key name, and the right part is the JSON path expression (see https://github.com/json-path/JsonPath). " +
+            "For example: datacenter:world.europe.[?(@.city=='Paris')]"
+          ).fail
+        case _   => kv.succeed
+      }
+    }
+
+    comparator match {
+      case Equals    =>
+        for {
+          kv  <- getKVEquals(value)
+          res <- MatchHolder[A](
+                   DebugInfo(Equals.id, Some(value)),
+                   extractor(n),
+                   _.exists(v => getKey(v) == kv.key && getValue(v) == kv.value)
+                 ).matches
+        } yield res
+
+      // not equals look for a value not equal to parameter but only for the given key
+      // not having the key is also not equals
+      case NotEquals =>
+        for {
+          kv  <- getKVEquals(value)
+          res <- MatchHolder[A](
+                   DebugInfo(Equals.id, Some(value)),
+                   extractor(n),
+                   _.forall(v => getKey(v) != kv.key || (getKey(v) == kv.key && getValue(v) != kv.value))
+                 ).matches
+        } yield res
+
+      case Regex     =>
+        for {
+          m   <- MatcherUtils.getRegex(value)
+          res <- MatchHolder[A](
+                   DebugInfo(Regex.id, Some(value)),
+                   extractor(n),
+                   _.exists(s => m.test(serialise(s)))
+                 ).matches
+        } yield res
+      case NotRegex  =>
+        for {
+          m   <- MatcherUtils.getRegex(value)
+          res <- MatchHolder[A](
+                   DebugInfo(NotRegex.id, Some(value)),
+                   extractor(n),
+                   _.forall(s => !m.test(serialise(s)))
+                 ).matches
+        } yield res
+      case Exists    =>
+        MatchHolder[A](DebugInfo(Exists.id, None), extractor(n), _.nonEmpty).matches
+      case NotExists =>
+        MatchHolder[A](DebugInfo(NotExists.id, None), extractor(n), _.isEmpty).matches
+      case Lesser    =>
+        MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(a => order.lt(getKey(a), value))).matches
+      case LesserEq  =>
+        MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(a => order.lteq(getKey(a), value))).matches
+      case Greater   =>
+        MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(a => order.gt(getKey(a), value))).matches
+      case GreaterEq =>
+        MatchHolder[A](DebugInfo(Lesser.id, Some(value)), extractor(n), _.exists(a => order.gteq(getKey(a), value))).matches
+
+      case HasKey         =>
+        MatchHolder[A](DebugInfo(HasKey.id, Some(value)), extractor(n), _.exists(kv => getKey(kv) == value)).matches
+      case KVC.JsonSelect =>
+        // for JSON select: error in json path matching (ie "JsonSelect.exists") are considered as not matching, not as errors
+        for {
+          kv     <- getKVHasKey(value)
+          path   <- JsonSelect.compilePath(kv.value).toIO
+          matcher = (as: Chunk[A]) => {
+                      ZIO.exists(as)(a => {
+                        ZIO
+                          .when(getKey(a) == kv.key)(JsonSelect.exists(path, getValue(a)).toIO)
+                          .map(_.getOrElse(false))
+                          .catchAll(_ => false.succeed)
+                      })
+                    }
+          res    <- MatchHolderZio[A](DebugInfo(KVC.JsonSelect.id, Some(value)), extractor(n), matcher).matches
+        } yield res
+
+      case c => MatchHolder[A](DebugInfo(s"unknown comparator: ${c}", Some(value)), Chunk(), _ => false).matches
+    }
+  }
+}
+
+object EnvironmentVariableMatcher extends NodeCriterionKeyValueMatcher[(String, String)] {
+  override def extractor:                      NodeFact => Chunk[(String, String)] = { (n: NodeFact) => n.environmentVariables }
+  override def serialise(a: (String, String)): String                              = s"""${a._1}=${a._2}"""
+  override def getKey(a: (String, String)):    String                              = a._1
+  override def getValue(a: (String, String)):  String                              = a._2
+}
+
+object NodePropertiesMatcher extends NodeCriterionKeyValueMatcher[NodeProperty] {
+  /*
+   * Node properties search are done on both node properties and inventory custom properties
+   */
+  override def extractor:                  NodeFact => Chunk[NodeProperty] = { (n: NodeFact) => n.properties }
+  override def serialise(a: NodeProperty): String                          = s"""${a.name}=${a.valueAsString}"""
+  override def getKey(a: NodeProperty):    String                          = a.name
+  override def getValue(a: NodeProperty):  String                          = a.valueAsString
 }

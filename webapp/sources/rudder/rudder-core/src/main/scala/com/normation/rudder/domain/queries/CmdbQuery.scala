@@ -103,7 +103,6 @@ object KeyValueComparator {
   def values = ca.mrvisser.sealerate.values[KeyValueComparator]
 }
 
-
 object NodePropertyMatcherUtils {
 
   // split k=v (v may not exists if there is no '='
@@ -112,7 +111,7 @@ object NodePropertyMatcherUtils {
     val array = value.split(sep)
     val k     = array(0) // always exists with split
     val v     = array.toList.tail
-    SplittedValue(k, v)
+    SplittedValue(k, v, sep)
   }
 
   def matchJsonPath(key: String, path: PureResult[JsonPath])(p: NodeProperty): Boolean = {
@@ -137,8 +136,8 @@ object NodePropertyMatcherUtils {
     }
     properties.exists(predicat)
   }
-}
 
+}
 
 sealed trait ComparatorList {
 
@@ -403,8 +402,8 @@ final case object NodeIpListComparator extends NodeCriterionType {
  *   {"name":"k","value":{ "any":"json","here":"here"}}
  *
  */
-final case class SplittedValue(key: String, values: List[String]) {
-  def value = values.mkString("=")
+final case class SplittedValue(key: String, values: List[String], separator: String = "=") {
+  def value = values.mkString(separator)
 }
 
 final case class NodePropertyComparator(ldapAttr: String) extends NodeCriterionType {
@@ -858,10 +857,10 @@ final case class NameValueComparator(ldapAttr: String) extends TStringComparator
   // split k=v (v may not exists if there is no '='
   // is there is several '=', we consider they are part of the value
   def splitInput(value: String): (String, Option[String]) = {
-    val SplittedValue(k, l) = NodePropertyMatcherUtils.splitInput(value, "=")
-    val v                   = l match {
+    val SplittedValue(k, l, s) = NodePropertyMatcherUtils.splitInput(value, "=")
+    val v                      = l match {
       case Nil => None
-      case t   => Some(t.mkString("="))
+      case t   => Some(t.mkString(s))
     }
     (k, v)
   }

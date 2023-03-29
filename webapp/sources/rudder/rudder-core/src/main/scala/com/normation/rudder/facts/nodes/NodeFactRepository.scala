@@ -184,7 +184,7 @@ class GitNodeFactRepository(
     val node = nodeFact
       .modify(_.accounts)
       .using(_.sorted)
-      .modify(_.customProperties)
+      .modify(_.properties)
       .using(_.sortBy(_.name))
       .modify(_.environmentVariables)
       .using(_.sortBy(_._1))

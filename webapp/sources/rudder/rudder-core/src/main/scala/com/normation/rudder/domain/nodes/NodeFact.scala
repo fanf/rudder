@@ -214,6 +214,7 @@ object NodeFact {
         nodeInfo.agentsName(0).securityToken,
         nodeInfo.agentsName(0).capabilities.toChunk
       ),
+      // nodeInfo properties hold both node properties and custom properties with provider "inventory"
       nodeInfo.properties.toChunk,
       nodeInfo.inventoryDate,
       nodeInfo.inventoryDate, // TODO: this is broken
@@ -226,7 +227,6 @@ object NodeFact {
       inventory.node.accounts.toChunk,
       inventory.machine.chunk(_.bios),
       inventory.machine.chunk(_.controllers),
-      inventory.node.customProperties.toChunk,
       inventory.node.environmentVariables.map(ev => (ev.name, ev.value.getOrElse(""))).toChunk,
       inventory.node.fileSystems.toChunk,
       Chunk(),                // TODO: missing input devices in inventory
@@ -279,7 +279,6 @@ final case class NodeFact(
     accounts:             Chunk[String] = Chunk.empty,
     bios:                 Chunk[Bios] = Chunk.empty,
     controllers:          Chunk[Controller] = Chunk.empty,
-    customProperties:     Chunk[CustomProperty] = Chunk.empty,
     environmentVariables: Chunk[(String, String)] = Chunk.empty,
     fileSystems:          Chunk[FileSystem] = Chunk.empty,
     inputs:               Chunk[InputDevice] = Chunk.empty,

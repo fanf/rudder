@@ -37,6 +37,7 @@
 
 package com.normation.rudder.services.queries
 
+import com.github.ghik.silencer.silent
 import com.normation.NamedZioLogger
 import com.normation.errors._
 import com.normation.inventory.domain.AcceptedInventory
@@ -47,7 +48,6 @@ import com.normation.inventory.domain.AgentVersion
 import com.normation.inventory.domain.Bios
 import com.normation.inventory.domain.Certificate
 import com.normation.inventory.domain.CertifiedKey
-import com.normation.inventory.domain.CustomProperty
 import com.normation.inventory.domain.FileSystem
 import com.normation.inventory.domain.Linux
 import com.normation.inventory.domain.MachineUuid
@@ -77,9 +77,6 @@ import com.normation.utils.DateFormaterService
 import com.normation.utils.ParseVersion
 import com.softwaremill.quicklens._
 import net.liftweb.common._
-import net.liftweb.json.JsonAST.JField
-import net.liftweb.json.JsonAST.JObject
-import net.liftweb.json.JsonAST.JString
 import org.joda.time.format.DateTimeFormat
 import org.junit._
 import org.junit.Assert._
@@ -141,6 +138,7 @@ class TestNodeFactQueryProcessor {
       }
     }
 
+    @silent("a type was inferred to be `Object`")
     implicit def StringToDate(s: String) = {
       // we have 3 potentials date format: the common one, '20130515 123456.948Z', and "2015-01-21 17:2"
       val p1 = DateTimeFormat.forPattern("YYYYMMddHHmmss.SSSZ")
@@ -199,8 +197,8 @@ class TestNodeFactQueryProcessor {
           ),
           cfe,
           Chunk.empty,
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          "20120515123456.948Z",
+          "20120515123456.948Z",
           software = Chunk(software(0)),
           fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L)))
         ),
@@ -210,7 +208,7 @@ class TestNodeFactQueryProcessor {
           "node0.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
           defaultNodeSetting,
-          cfe,
+          nova,
           Chunk.empty,
           "20130515123456.948Z",
           "20130515123456.948Z",
@@ -224,9 +222,13 @@ class TestNodeFactQueryProcessor {
           Linux(Ubuntu, "", "Ubuntu 9.10", None, "2.6.18-17-generic"),
           defaultNodeSetting,
           cfe,
-          Chunk("""{"name":"foo","value":"bar"}"""),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          Chunk(
+            """{"name":"foo","value":"bar"}""",
+            """{"name":"datacenter","value":"Paris", "provider":"inventory"}""",
+            """{"name":"from_inv","value":{ "key1":"custom prop value", "key2":"some more json"}, "provider":"inventory"}"""
+          ),
+          "20140515123456.948Z",
+          "20140515123456.948Z",
           swap = Some(2878000000L),
           ram = Some(100000000L),
           ipAddresses = Chunk("192.168.56.101", "127.0.0.1"),
@@ -238,13 +240,6 @@ class TestNodeFactQueryProcessor {
           ),
           software = Chunk(),
           environmentVariables = Chunk(("SHELL", "/bin/sh")),
-          customProperties = Chunk(
-            CustomProperty("datacenter", JString("Paris")),
-            CustomProperty(
-              "from_inv",
-              JObject(JField("key1", JString("custom prop value")), JField("key2", JString("some more json")))
-            )
-          ),
           processes = Chunk(
             Process(
               1,
@@ -273,7 +268,7 @@ class TestNodeFactQueryProcessor {
             Network(
               "eth0",
               ifAddresses = Seq("192.168.1.1"),
-              ifMask = Seq("192.168.1.254"),
+              ifGateway = Seq("192.168.1.254"),
               macAddress = Some("08:00:27:42:37:be"),
               status = Some("Up")
             )
@@ -289,8 +284,8 @@ class TestNodeFactQueryProcessor {
           Chunk(
             """{"name":"datacenter","value":{"country":"France","id":1234,"replicated":true},"provider":"datasources"}"""
           ),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          "20150515123456.948Z",
+          "20150515123456.948Z",
           Chunk("192.168.56.102", "127.0.0.1"),
           ram = Some(1L),
           localUsers = Chunk(),
@@ -300,7 +295,7 @@ class TestNodeFactQueryProcessor {
             Network(
               "eth0",
               ifAddresses = Seq("192.168.1.2"),
-              ifMask = Seq("192.168.1.254"),
+              ifGateway = Seq("192.168.1.254"),
               macAddress = Some("08:00:27:42:37:be"),
               status = Some("Up")
             )
@@ -318,10 +313,9 @@ class TestNodeFactQueryProcessor {
             """{"name":"datacenter","value":{"country":"Germany","id":12345,"replicated":true,"provider":"user value"}}""",
             """{"name":"number","value":42}"""
           ),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          "20160515123456.948Z",
+          "20160515123456.948Z",
           Chunk("192.168.56.103", "127.0.0.1"),
-          ram = Some(1L),
           localUsers = Chunk(),
           environmentVariables = Chunk(
             (
@@ -365,8 +359,8 @@ class TestNodeFactQueryProcessor {
                 }
                }"""
           ),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          "20170515123456.948Z",
+          "20170515123456.948Z",
           ipAddresses = Chunk("127.0.0.1"),
           machine = Some(Machine(MachineUuid("machine0"), PhysicalMachineType)),
           environmentVariables = Chunk(("SHELL", "/bin/sh"))
@@ -398,8 +392,8 @@ class TestNodeFactQueryProcessor {
               |  }
               | }""".stripMargin
           ),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          "20180515123456.948Z",
+          "20180515123456.948Z",
           ipAddresses = Chunk(),
           machine = Some(
             Machine(
@@ -436,8 +430,8 @@ class TestNodeFactQueryProcessor {
               |  }
               | }""".stripMargin
           ),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          "20190515123456.948Z",
+          "20190515123456.948Z",
           ipAddresses = Chunk(),
           machine = Some(
             Machine(
@@ -454,28 +448,9 @@ class TestNodeFactQueryProcessor {
           Linux(Ubuntu, "", "nothing", None, "nothing"),
           defaultNodeSetting.copy(state = NodeState.Initializing),
           cfe,
-          Chunk(
-            """{"name":"user","value": {
-              |    "id": "yyyyy",
-              |    "accepted": false,
-              |    "personal": {
-              |      "name": "Alice All",
-              |        "address": {
-              |            "streetaddress": "10th on the big Street",
-              |            "city": "Los Angeles",
-              |            "state": "CA",
-              |            "postalcode": 90003
-              |        },
-              |        "phones": [
-              |          {"type":"home","number":"(111) 123-3010"},
-              |          {"type":"mobile","number":"(111) 256-9999"}
-              |        ]
-              |    }
-              |  }
-              | }""".stripMargin
-          ),
-          "20130515123456.948Z",
-          "20130515123456.948Z",
+          Chunk(),
+          "20200515123456.948Z",
+          "20200515123456.948Z",
           ipAddresses = Chunk(),
           fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L))),
           software = Chunk(software(0)),
@@ -609,18 +584,7 @@ class TestNodeFactQueryProcessor {
       q2_2.awaited
     )
 
-    // group of group, with or/and composition
-    val q3 = TestQuery(
-      "q3",
-      parser("""
-      {  "select":"node", "where":[
-        { "objectType":"group", "attribute":"nodeGroupId", "comparator":"eq", "value":"test-group-node1" }
-      ] }
-      """).openOrThrowException("For tests"),
-      s(1) :: Nil
-    )
-
-    testQueries(q2_0 :: q2_0_ :: q2_1 :: q2_1_ :: q2_2 :: q2_2_ :: q3 :: Nil, true)
+    testQueries(q2_0 :: q2_0_ :: q2_1 :: q2_1_ :: q2_2 :: q2_2_ :: Nil, true)
   }
 
   // group of group, with or/and composition
@@ -1276,32 +1240,32 @@ class TestNodeFactQueryProcessor {
     def q(name: String, comp: String, day: Int, expects: Seq[NodeId]) = TestQuery(
       name,
       parser("""
-          {  "select":"node", "where":[
+          {  "select":"nodeAndPolicyServer", "where":[
             { "objectType":"node", "attribute":"inventoryDate", "comparator":"%s"   , "value":"%s/05/2013" }
           ] }
           """.format(comp, day)).openOrThrowException("For tests"),
       expects
     )
 
-    def query(name: String, comp: String, day: Int, valid: Boolean) = q(name, comp, day, if (valid) s(0) :: Nil else Nil)
+    // nodes are going year by year [root=2012-05-15, s0=2013-05-15 <- select date, s1=2014-05-15 etc]
+    def query(name: String, comp: String, day: Int, nodes: Seq[NodeId]) = q(name, comp, day, nodes)
 
-    val q12 = q("q12", "notEq", 15, s.filterNot(_ == s(0)))
-    val q13 = q("q13", "notEq", 14, s)
-    val q14 = q("q14", "notEq", 16, s)
-
+    // root is not part of 's", no need to filter it out
     testQueries(
-      query("q1", "eq", 15, valid = true)
-      :: query("q2", "eq", 14, valid = false)
-      :: query("q3", "eq", 16, valid = false)
-      :: query("q4", "gteq", 15, valid = true)
-      :: query("q5", "gteq", 16, valid = false)
-      :: query("q6", "lteq", 15, valid = true)
-      :: query("q7", "lteq", 14, valid = false)
-      :: query("q8", "lt", 15, valid = false)
-      :: query("q9", "lt", 16, valid = true)
-      :: query("q10", "gt", 15, valid = false)
-      :: query("q11", "gt", 14, valid = true)
-      :: q12 :: q13 :: q14
+      query("q1", "eq", 15, s(0) :: Nil)
+      :: query("q2", "eq", 14, Nil)
+      :: query("q3", "eq", 16, Nil)
+      :: query("q4", "gteq", 15, s)
+      :: query("q5", "gteq", 16, s.filterNot(x => x == s(0)))
+      :: query("q6", "lteq", 15, root :: s(0) :: Nil)
+      :: query("q7", "lteq", 14, root :: Nil)
+      :: query("q8", "lt", 15, root :: Nil)
+      :: query("q9", "lt", 16, root :: s(0) :: Nil)
+      :: query("q10", "gt", 15, s.filterNot(x => x == s(0)))
+      :: query("q11", "gt", 14, s)
+      :: q("q12", "notEq", 15, root +: s.filterNot(_ == s(0)))
+      :: q("q13", "notEq", 14, root +: s)
+      :: q("q14", "notEq", 16, root +: s)
       :: Nil,
       true
     )
