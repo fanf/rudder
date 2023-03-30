@@ -54,12 +54,14 @@ import bootstrap.liftweb.checks.migration.CheckRemoveRuddercSetting
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
+
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
+
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.inventory.domain._
@@ -112,6 +114,7 @@ import com.normation.rudder.domain._
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.logger.NodeConfigurationLoggerImpl
 import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
+import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.GitNodeFactRepository
 import com.normation.rudder.git.GitRepositoryProviderImpl
@@ -183,12 +186,14 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
+
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -198,8 +203,10 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
+
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
+
 import zio.{Scheduler => _, System => _, _}
 import zio.syntax._
 
@@ -1990,8 +1997,7 @@ object RudderConfig extends Loggable {
    * For now, we don't want to query server other
    * than the accepted ones.
    */
-  private[this] lazy val getSubGroupChoices = () =>
-    roLdapNodeGroupRepository.getAll().map(seq => Chunk.fromIterable(seq).map(g => SubGroupChoice(g.id, g.name)))
+  private[this] lazy val getSubGroupChoices = new DefaultSubGroupComparatorRepository(roLdapNodeGroupRepository)
   private[this] lazy val nodeQueryData      = new NodeQueryCriteriaData(getSubGroupChoices)
   private[this] lazy val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryData)
   private[this] lazy val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
@@ -2170,7 +2176,10 @@ object RudderConfig extends Loggable {
       pendingNodesDitImpl,
       nodeDit,
       // here, we don't want to look for subgroups to show them in the form => always return an empty list
-      new DitQueryData(pendingNodesDitImpl, nodeDit, rudderDit, new NodeQueryCriteriaData(() => Chunk.empty.succeed)),
+      new DitQueryData(pendingNodesDitImpl, nodeDit, rudderDit, new NodeQueryCriteriaData(new SubGroupComparatorRepository {
+        override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]] = Chunk.empty.succeed
+        override def getGroups: IOResult[Chunk[SubGroupChoice]] = Chunk.empty.succeed
+      })),
       ldapEntityMapper
     ),
     nodeInfoServiceImpl

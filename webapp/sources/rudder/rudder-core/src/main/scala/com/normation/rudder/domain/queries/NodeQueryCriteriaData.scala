@@ -39,6 +39,7 @@ package com.normation.rudder.domain.queries
 
 import com.normation.errors._
 import com.normation.inventory.domain.AgentType
+import com.normation.inventory.domain.NodeId
 import com.normation.inventory.ldap.core.LDAPConstants._
 import com.normation.inventory.ldap.core.LDAPConstants.A_PROCESS
 import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_GROUP_UUID
@@ -46,20 +47,44 @@ import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_PROPERTY
 import com.normation.rudder.domain.RudderLDAPConstants.A_STATE
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
 import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries.{KeyValueComparator => KVC}
 import com.normation.rudder.domain.queries.KeyValueComparator.HasKey
+import com.normation.rudder.repository.RoNodeGroupRepository
 import com.normation.utils.DateFormaterService
+
 import java.util.function.Predicate
 import java.util.regex.Pattern
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
+
 import scala.collection.SortedMap
 import scala.util.Try
+
 import zio._
 import zio.syntax._
 
-class NodeQueryCriteriaData(getGroups: () => IOResult[Chunk[SubGroupChoice]]) {
+trait SubGroupComparatorRepository {
+  def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]]
+  def getGroups: IOResult[Chunk[SubGroupChoice]]
+}
+// default implementation out of test use GroupRepo for that
+class DefaultSubGroupComparatorRepository(repo: RoNodeGroupRepository) extends SubGroupComparatorRepository {
+
+  override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]] = {
+    repo.getNodeGroupOpt(groupId).map {
+      case None             => Chunk.empty
+      case Some((group, _)) => Chunk.fromIterable(group.serverList)
+    }
+  }
+
+  override def getGroups: IOResult[Chunk[SubGroupChoice]] = {
+    repo.getAll().map(seq => Chunk.fromIterable(seq).map(g => SubGroupChoice(g.id, g.name)))
+  }
+}
+
+class NodeQueryCriteriaData(groupRepo: SubGroupComparatorRepository) {
 
   implicit class IterableToChunk[A](it: Iterable[A]) {
     def toChunk: Chunk[A] = Chunk.fromIterable(it)
@@ -75,9 +100,9 @@ class NodeQueryCriteriaData(getGroups: () => IOResult[Chunk[SubGroupChoice]]) {
       Chunk(
         Criterion("machineType", MachineComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.provider.kind))),
         Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.id.value))),
-        Criterion(A_NAME, StringComparator, AlwaysFalse),
-        Criterion(A_DESCRIPTION, StringComparator, AlwaysFalse),
-        Criterion(A_MB_UUID, StringComparator, AlwaysFalse),
+        Criterion(A_NAME, StringComparator, AlwaysFalse("machine does not have a 'name' attribute in fusion")),
+        Criterion(A_DESCRIPTION, StringComparator, AlwaysFalse("machine does not have a 'description' attribute in fusion")),
+        Criterion(A_MB_UUID, StringComparator, AlwaysFalse("machine does not have a 'mother board uuid' attribute in fusion")),
         Criterion(
           A_MANUFACTURER,
           StringComparator,
@@ -362,9 +387,9 @@ class NodeQueryCriteriaData(getGroups: () => IOResult[Chunk[SubGroupChoice]]) {
       Chunk(
         Criterion(
           A_NODE_GROUP_UUID,
-          new SubGroupComparator(getGroups),
-          AlwaysFalse
-        ) // TODO: check that this one is solved in another way
+          SubGroupComparator(groupRepo),
+          AlwaysFalse("sub-group matcher should have been handled at a higher level. Please report.")
+        )
       )
     )
   )
@@ -419,9 +444,9 @@ trait NodeCriterionMatcher {
   def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean]
 }
 
-object AlwaysFalse extends NodeCriterionMatcher {
+case class AlwaysFalse(reason: String) extends NodeCriterionMatcher {
   override def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
-    FactQueryProcessorPure.trace(s"    [false] for AlwaysFalse") *>
+    FactQueryProcessorPure.trace(s"    [false] for AlwaysFalse: ${reason} ") *>
     false.succeed
   }
 }
@@ -709,3 +734,4 @@ object NodePropertiesMatcher extends NodeCriterionKeyValueMatcher[NodeProperty] 
   override def getKey(a: NodeProperty):    String                          = a.name
   override def getValue(a: NodeProperty):  String                          = a.valueAsString
 }
+

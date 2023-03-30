@@ -65,6 +65,8 @@ import com.normation.rudder.domain.nodes.IpAddress
 import com.normation.rudder.domain.nodes.LocalUser
 import com.normation.rudder.domain.nodes.Machine
 import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.nodes.NodeGroupId
+import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.nodes.RudderAgent
@@ -95,10 +97,30 @@ import zio.syntax._
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
 class TestNodeFactQueryProcessor {
+  implicit def StringToNodeId(s: String)  = NodeId(s)
+  implicit def StringToGroupId(s: String) = NodeGroupId(NodeGroupUid(s))
 
   val logger = NamedZioLogger(this.getClass.getPackageName + "." + this.getClass.getSimpleName)
 
-  val queryData = new NodeQueryCriteriaData(() => Inconsistency("For test, no subgroup").fail)
+  object subGroupComparatorRepo extends SubGroupComparatorRepository {
+    val groups = Map(
+      (SubGroupChoice("test-group-node1", "Only contains node1"), Chunk[NodeId]("node1")),
+      (SubGroupChoice("test-group-node2", "Only contains node2"), Chunk[NodeId]("node2")),
+      (SubGroupChoice("test-group-node12", "Only contains node1 and node2"), Chunk[NodeId]("node1", "node2")),
+      (SubGroupChoice("test-group-node23", "Only contains node2 and node3"), Chunk[NodeId]("node2", "node3")),
+      (SubGroupChoice("AIXSystems", "AIXSystems"), Chunk[NodeId]())
+    )
+
+    override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]] = {
+      (groups.find(_._1.id == groupId) match {
+        case Some(kv) => kv._2
+        case None     => Chunk.empty
+      }).succeed
+    }
+
+    override def getGroups: IOResult[Chunk[SubGroupChoice]] = Chunk.fromIterable(groups.keys).succeed
+  }
+  val queryData = new NodeQueryCriteriaData(subGroupComparatorRepo)
 
   // load all nodes that in resources: node-facts/*.json
 //  java.lang.Runtime.getRuntime.gc()
@@ -114,7 +136,6 @@ class TestNodeFactQueryProcessor {
 //  }
 
   object nodeRepository extends NodeFactRepository {
-    implicit def StringToNodeId(s: String) = NodeId(s)
 
     implicit def StringToNodeProp(s: String): NodeProperty = {
       NodeProperty.unserializeLdapNodeProperty(s) match {
@@ -465,7 +486,7 @@ class TestNodeFactQueryProcessor {
       ).succeed
     }
   }
-  val queryProcessor = new NodeFactQueryProcessor(nodeRepository)
+  val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo)
 
   val parser = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = queryData.criteriaMap.toMap

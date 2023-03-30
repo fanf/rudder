@@ -42,12 +42,10 @@ import com.normation.errors.IOResult
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
 import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.nodes.NodeGroupId
+import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
-import com.normation.rudder.domain.queries.And
-import com.normation.rudder.domain.queries.CriterionLine
-import com.normation.rudder.domain.queries.NodeAndRootServerReturnType
-import com.normation.rudder.domain.queries.Query
-import com.normation.rudder.domain.queries.ResultTransformation
+import com.normation.rudder.domain.queries._
 import net.liftweb.common.Box
 import zio._
 import zio.syntax._
@@ -110,41 +108,69 @@ object GroupOr extends Group {
   val zero                                            = NodeFactMatcher("false", _ => false.succeed)
 }
 
-class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository) extends QueryProcessor with QueryChecker {
+class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGroupComparatorRepository)
+    extends QueryProcessor with QueryChecker {
 
   def process(query: Query):       Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
   def processOnlyId(query: Query): Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
 
   def check(query: Query, nodeIds: Option[Seq[NodeId]]): IOResult[Set[NodeId]]     = { ??? }
   def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {
-    val m = analyzeQuery(query)
-    nodeFactRepo.getAll.flatMap(nodes => {
-      FactQueryProcessorPure.debug(m.debugString) *>
-      ZIO.foreach(nodes)(node => processOne(m, node).map(b => if (b) Some(node) else None)).map(_.flatten)
-    })
+    for {
+      m   <- analyzeQuery(query)
+      res <- nodeFactRepo.getAll.flatMap(nodes => {
+               FactQueryProcessorPure.debug(m.debugString) *>
+               ZIO.foreach(nodes)(node => processOne(m, node).map(b => if (b) Some(node) else None)).map(_.flatten)
+             })
+    } yield res
   }
 
   /*
    * transform the query into a function to apply to a NodeFact and that say "yes" or "no"
    */
-  def analyzeQuery(query: Query): NodeFactMatcher = {
-    val group      = if (query.composition == And) GroupAnd else GroupOr
-    // build matcher for criterion lines
-    val lineResult =
-      query.criteria.foldLeft(group.zero)((matcher, criterion) => group.compose(matcher, analyseCriterion(criterion)))
-    // inverse now if needed, because we don't want to return root if not asked *even* when inverse is present
-    val inv        = if (query.transform == ResultTransformation.Invert) group.inverse(lineResult) else lineResult
-    // finally, filter out root if need
-    val res        =
-      if (query.returnType == NodeAndRootServerReturnType) inv else GroupAnd.compose(NodeFactMatcher.nodeAndRelayMatcher, inv)
-    res
+  def analyzeQuery(query: Query): IOResult[NodeFactMatcher] = {
+    val group = if (query.composition == And) GroupAnd else GroupOr
+
+    for {
+      // build matcher for criterion lines
+      lineResult <- ZIO.foldLeft(query.criteria)(group.zero) {
+                      case (matcher, criterion) =>
+                        analyseCriterion(criterion).map(group.compose(matcher, _))
+                    }
+    } yield {
+      // inverse now if needed, because we don't want to return root if not asked *even* when inverse is present
+      val inv = if (query.transform == ResultTransformation.Invert) group.inverse(lineResult) else lineResult
+      // finally, filter out root if need
+      val res =
+        if (query.returnType == NodeAndRootServerReturnType) inv else GroupAnd.compose(NodeFactMatcher.nodeAndRelayMatcher, inv)
+      res
+    }
   }
 
-  def analyseCriterion(c: CriterionLine): NodeFactMatcher = {
-    NodeFactMatcher(
-      s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
-      (n: NodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value)
-    )
+  def analyseCriterion(c: CriterionLine): IOResult[NodeFactMatcher] = {
+    // here, we have two kind of processing:
+    // - one is testing one a node by node basis: this is the main case, where we want to know if a node
+    //   matches of not a bunch of criteria regarding its inventory/properties
+    // - one is "on all node at once": it is when an external service is the oracle and can decide what node
+    //   matches its criteria. This is the case for the node-group matcher for example.
+    // For now, we have to check the criterion to know, each external service is a special case
+    c.attribute.cType match {
+      // not sure why I need that
+      case SubGroupComparator(repo) =>
+        for {
+          groupNodes <- repo.getNodeIds(NodeGroupId(NodeGroupUid(c.value)))
+        } yield {
+          NodeFactMatcher(
+            s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
+            (n: NodeFact) => groupNodes.contains(n.id).succeed
+          )
+        }
+      case _                        =>
+        NodeFactMatcher(
+          s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
+          (n: NodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value)
+        ).succeed
+    }
   }
 
   def processOne(matcher: NodeFactMatcher, n: NodeFact): IOResult[Boolean] = {

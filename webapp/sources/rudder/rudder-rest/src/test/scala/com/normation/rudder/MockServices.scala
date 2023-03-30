@@ -2898,8 +2898,7 @@ class MockLdapQueryParsing(mockGit: MockGitConfigRepo, mockNodeGroups: MockNodeG
   val nodeDit             = new NodeDit(LDAP_BASEDN)
   val inventoryDitService: InventoryDitService =
     new InventoryDitServiceImpl(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
-  val getSubGroupChoices = () =>
-    mockNodeGroups.groupsRepo.getAll().map(seq => Chunk.fromIterable(seq).map(g => SubGroupChoice(g.id, g.name)))
+  val getSubGroupChoices = new DefaultSubGroupComparatorRepository(mockNodeGroups.groupsRepo)
   val nodeQueryData      = new NodeQueryCriteriaData(getSubGroupChoices)
   val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryData)
   val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
