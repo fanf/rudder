@@ -219,7 +219,7 @@ class TestNodeFactQueryProcessor {
           cfe,
           Chunk.empty,
           "20120515123456.948Z",
-          "20120515123456.948Z",
+          Some("20120515123456.948Z"),
           software = Chunk(software(0)),
           fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L)))
         ),
@@ -232,7 +232,7 @@ class TestNodeFactQueryProcessor {
           nova,
           Chunk.empty,
           "20130515123456.948Z",
-          "20130515123456.948Z",
+          Some("20130515123456.948Z"),
           ipAddresses = Chunk("192.168.56.100"),
           software = Chunk()
         ),
@@ -249,7 +249,7 @@ class TestNodeFactQueryProcessor {
             """{"name":"from_inv","value":{ "key1":"custom prop value", "key2":"some more json"}, "provider":"inventory"}"""
           ),
           "20140515123456.948Z",
-          "20140515123456.948Z",
+          Some("20140515123456.948Z"),
           swap = Some(2878000000L),
           ram = Some(100000000L),
           ipAddresses = Chunk("192.168.56.101", "127.0.0.1"),
@@ -306,7 +306,7 @@ class TestNodeFactQueryProcessor {
             """{"name":"datacenter","value":{"country":"France","id":1234,"replicated":true},"provider":"datasources"}"""
           ),
           "20150515123456.948Z",
-          "20150515123456.948Z",
+          Some("20150515123456.948Z"),
           Chunk("192.168.56.102", "127.0.0.1"),
           ram = Some(1L),
           localUsers = Chunk(),
@@ -335,7 +335,7 @@ class TestNodeFactQueryProcessor {
             """{"name":"number","value":42}"""
           ),
           "20160515123456.948Z",
-          "20160515123456.948Z",
+          Some("20160515123456.948Z"),
           Chunk("192.168.56.103", "127.0.0.1"),
           localUsers = Chunk(),
           environmentVariables = Chunk(
@@ -381,7 +381,7 @@ class TestNodeFactQueryProcessor {
                }"""
           ),
           "20170515123456.948Z",
-          "20170515123456.948Z",
+          Some("20170515123456.948Z"),
           ipAddresses = Chunk("127.0.0.1"),
           machine = Some(Machine(MachineUuid("machine0"), PhysicalMachineType)),
           environmentVariables = Chunk(("SHELL", "/bin/sh"))
@@ -414,7 +414,7 @@ class TestNodeFactQueryProcessor {
               | }""".stripMargin
           ),
           "20180515123456.948Z",
-          "20180515123456.948Z",
+          Some("20180515123456.948Z"),
           ipAddresses = Chunk(),
           machine = Some(
             Machine(
@@ -452,7 +452,7 @@ class TestNodeFactQueryProcessor {
               | }""".stripMargin
           ),
           "20190515123456.948Z",
-          "20190515123456.948Z",
+          Some("20190515123456.948Z"),
           ipAddresses = Chunk(),
           machine = Some(
             Machine(
@@ -471,7 +471,7 @@ class TestNodeFactQueryProcessor {
           cfe,
           Chunk(),
           "20200515123456.948Z",
-          "20200515123456.948Z",
+          Some("20200515123456.948Z"),
           ipAddresses = Chunk(),
           fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L))),
           software = Chunk(software(0)),

@@ -253,7 +253,7 @@ class NodeQueryCriteriaData(groupRepo: SubGroupComparatorRepository) {
         Criterion(A_ACCOUNT, StringComparator, NodeCriterionMatcherString(_.accounts)),
         Criterion(A_LIST_OF_IP, NodeIpListComparator, NodeCriterionMatcherString(_.ipAddresses.map(_.inet))),
         Criterion(A_ROOT_USER, StringComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.user))),
-        Criterion(A_INVENTORY_DATE, DateComparator, NodeCriterionMatcherDate(n => Chunk(n.lastInventoryDate))),
+        Criterion(A_INVENTORY_DATE, DateComparator, NodeCriterionMatcherDate(n => Chunk.fromIterable(n.lastInventoryDate))),
         Criterion(
           A_POLICY_SERVER_UUID,
           StringComparator,

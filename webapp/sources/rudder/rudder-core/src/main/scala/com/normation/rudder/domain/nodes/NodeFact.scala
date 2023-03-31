@@ -217,7 +217,7 @@ object NodeFact {
       // nodeInfo properties hold both node properties and custom properties with provider "inventory"
       nodeInfo.properties.toChunk,
       nodeInfo.inventoryDate,
-      nodeInfo.inventoryDate, // TODO: this is broken
+      Some(nodeInfo.inventoryDate),
       nodeInfo.ips.map(IpAddress(_)).toChunk,
       nodeInfo.timezone,
       nodeInfo.machine.map(mi => Machine(mi.id, mi.machineType, mi.systemSerial, mi.manufacturer)),
@@ -265,11 +265,11 @@ final case class NodeFact(
 
     // inventory information part of minimal node info (node create api
 
-    lastInventoryDate:      DateTime,
-    inventoryProcessedDate: DateTime,
-    ipAddresses:            Chunk[IpAddress] = Chunk.empty,
-    timezone:               Option[NodeTimezone] = None,
-    machine:                Option[Machine] = None,
+    factProcessedDate: DateTime,
+    lastInventoryDate: Option[DateTime],
+    ipAddresses:       Chunk[IpAddress] = Chunk.empty,
+    timezone:          Option[NodeTimezone] = None,
+    machine:           Option[Machine] = None,
 
     // inventory details, optional
 
