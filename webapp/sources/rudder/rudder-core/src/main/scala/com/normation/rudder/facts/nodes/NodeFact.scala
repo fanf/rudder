@@ -155,6 +155,15 @@ object NodeFact {
     def toChunk: Chunk[A] = Chunk.fromIterable(it)
   }
 
+  implicit class EitherToChunk[A](either: Either[_, A]) {
+    def toChunk: Chunk[A] = {
+      either match {
+        case Left(_)  => Chunk.empty
+        case Right(v) => Chunk(v)
+      }
+    }
+  }
+
   // to be able to: inventory.machine.get(_.bios) and get a Chunk
   implicit class MachineEltToChunk[A](opt: Option[MachineInventory]) {
     def chunk(iterable: MachineInventory => Iterable[A]): Chunk[A] = {
@@ -227,7 +236,10 @@ object NodeFact {
     )
   }
 
-  def fromCompat(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): NodeFact = {
+  /*
+   *
+   */
+  def fromCompat(nodeInfo: NodeInfo, inventory: Either[InventoryStatus, FullInventory], software: Seq[Software]): NodeFact = {
     NodeFact(
       nodeInfo.id,
       nodeInfo.description.strip() match {
@@ -240,7 +252,7 @@ object NodeFact {
         nodeInfo.keyStatus,
         nodeInfo.nodeReportingConfiguration,
         nodeInfo.nodeKind,
-        inventory.node.main.status,
+        inventory.fold(identity, _.node.main.status),
         nodeInfo.state,
         nodeInfo.policyMode,
         nodeInfo.policyServerId
@@ -261,31 +273,42 @@ object NodeFact {
       nodeInfo.timezone,
       nodeInfo.machine,
       nodeInfo.ram,
-      inventory.node.swap,
+      inventory.toOption.flatMap(_.node.swap),
       nodeInfo.archDescription,
-      inventory.node.accounts.toChunk,
-      inventory.machine.chunk(_.bios),
-      inventory.machine.chunk(_.controllers),
-      inventory.node.environmentVariables.map(ev => (ev.name, ev.value.getOrElse(""))).toChunk,
-      inventory.node.fileSystems.toChunk,
+      inventory.toChunk.flatMap(_.node.accounts),
+      inventory.toChunk.flatMap(_.machine.chunk(_.bios)),
+      inventory.toChunk.flatMap(_.machine.chunk(_.controllers)),
+      inventory.toChunk.flatMap(_.node.environmentVariables.map(ev => (ev.name, ev.value.getOrElse(""))).toChunk),
+      inventory.toChunk.flatMap(_.node.fileSystems.toChunk),
       Chunk(), // TODO: missing input devices in inventory
       Chunk(), // TODO: missing local groups in inventory
       Chunk(), // TODO: missing local users in inventory
       Chunk(), // TODO: missing logical volumes in inventory
-      inventory.machine.chunk(_.memories),
-      inventory.node.networks.toChunk,
+      inventory.toChunk.flatMap(_.machine.chunk(_.memories)),
+      inventory.toChunk.flatMap(_.node.networks.toChunk),
       Chunk(), // TODO: missing physical volumes in inventory
-      inventory.machine.chunk(_.ports),
-      inventory.node.processes.toChunk,
-      inventory.machine.chunk(_.processors),
-      inventory.machine.chunk(_.slots),
+      inventory.toChunk.flatMap(_.machine.chunk(_.ports)),
+      inventory.toChunk.flatMap(_.node.processes.toChunk),
+      inventory.toChunk.flatMap(_.machine.chunk(_.processors)),
+      inventory.toChunk.flatMap(_.machine.chunk(_.slots)),
       software.flatMap(_.toFact).toChunk,
-      inventory.node.softwareUpdates.toChunk,
-      inventory.machine.chunk(_.sounds),
-      inventory.machine.chunk(_.storages),
-      inventory.machine.chunk(_.videos),
-      inventory.node.vms.toChunk
+      inventory.toChunk.flatMap(_.node.softwareUpdates.toChunk),
+      inventory.toChunk.flatMap(_.machine.chunk(_.sounds)),
+      inventory.toChunk.flatMap(_.machine.chunk(_.storages)),
+      inventory.toChunk.flatMap(_.machine.chunk(_.videos)),
+      inventory.toChunk.flatMap(_.node.vms.toChunk)
     )
+  }
+
+  /*
+   * Update all inventory parts from that node fact.
+   * The inventory parts are overridden, there is no merge
+   * NOTICE: status is ignored !
+   */
+  def updateInventory(node: NodeFact, inventory: Inventory): NodeFact = {
+    import com.softwaremill.quicklens._
+    node.modify()
+
   }
 }
 
@@ -374,10 +397,10 @@ final case class JNodeProperty(name: String, value: ConfigValue, mode: Option[St
 
 object NodeFactSerialisation {
 
-  import com.normation.inventory.domain.JsonSerializers.implicits.{ decoderDateTime => _, encoderDateTime => _, _}
+  import com.normation.inventory.domain.JsonSerializers.implicits.{decoderDateTime => _, encoderDateTime => _, _}
 
-  implicit val encoderDateTime: JsonEncoder[DateTime] = JsonEncoder.string.contramap(DateFormaterService.serialize)
-  implicit val decoderDateTime: JsonDecoder[DateTime] =
+  implicit val encoderDateTime:     JsonEncoder[DateTime]       = JsonEncoder.string.contramap(DateFormaterService.serialize)
+  implicit val decoderDateTime:     JsonDecoder[DateTime]       =
     JsonDecoder.string.mapOrFail(d => DateFormaterService.parseDate(d).left.map(_.fullMsg))
   implicit val codecOptionDateTime: JsonCodec[Option[DateTime]] = DeriveJsonCodec.gen
   implicit val codecNodeId = JsonCodec.string.transform[NodeId](NodeId(_), _.value)

@@ -38,15 +38,29 @@
 package com.normation.rudder.facts.nodes
 
 import com.normation.errors.IOResult
+import com.normation.inventory.domain.Inventory
 import com.normation.inventory.domain.NodeId
+import com.normation.inventory.services.provisioning.PipelinedInventorySaver
+import com.normation.inventory.services.provisioning.PostCommit
+import com.normation.inventory.services.provisioning.PreCommit
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.services.nodes.NodeInfoService
-
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
+
+class NodeFactInventorySaver(
+    backend:               NodeFactRepository,
+    val preCommitPipeline: Seq[PreCommit],
+    val postCommitPipeline: Seq[PostCommit[Unit]]
+) extends PipelinedInventorySaver[Unit] {
+
+  override def commitChange(inventory: Inventory): IOResult[Unit] = {
+    backend.updateInventory(inventory)
+  }
+}
 
 /*
  * Proxy for node fact to full inventory / node inventory / machine inventory / node info and their repositories
@@ -89,7 +103,7 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
   }
 
   override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
-    backend.getAllPending().map(_.toNodeInfo).run(ZSink.collectAllToMap[NodeInfo, NodeId](_.id)((a,b) => b))
+    backend.getAllPending().map(_.toNodeInfo).run(ZSink.collectAllToMap[NodeInfo, NodeId](_.id)((a, b) => b))
   }
 
   override def getPendingNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
@@ -106,4 +120,3 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
     None.succeed
   }
 }
-

@@ -54,14 +54,12 @@ import bootstrap.liftweb.checks.migration.CheckRemoveRuddercSetting
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
-
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
-
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.inventory.domain._
@@ -116,7 +114,9 @@ import com.normation.rudder.domain.logger.NodeConfigurationLoggerImpl
 import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.queries._
-import com.normation.rudder.facts.nodes.GitNodeFactRepository
+import com.normation.rudder.facts.nodes.GitNodeFactRepositoryImpl
+import com.normation.rudder.facts.nodes.InMemoryNodeFactRepository
+import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
 import com.normation.rudder.inventory.DefaultProcessInventoryService
@@ -186,7 +186,6 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -194,7 +193,6 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
-
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -204,10 +202,8 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
-
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
-
 import zio.{Scheduler => _, System => _, _}
 import zio.syntax._
 
@@ -1546,13 +1542,48 @@ object RudderConfig extends Loggable {
     )
   )
 
-  lazy val gitFactRepo                 = GitRepositoryProviderImpl
+  lazy val gitFactRepoProvider         = GitRepositoryProviderImpl
     .make(RUDDER_GIT_ROOT_FACT_REPO)
     .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
-  private[this] lazy val gitFactRepoGC = new GitGC(gitFactRepo, RUDDER_GIT_GC)
+  private[this] lazy val gitFactRepoGC = new GitGC(gitFactRepoProvider, RUDDER_GIT_GC)
   gitFactRepoGC.start()
-  lazy val factRepo                    = new GitNodeFactRepository(gitFactRepo, RUDDER_GROUP_OWNER_CONFIG_REPO)
-  factRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
+  lazy val gitFactRepo                 = new GitNodeFactRepositoryImpl(gitFactRepoProvider, RUDDER_GROUP_OWNER_CONFIG_REPO)
+  gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
+
+  // TODO WARNING POC: this can't work on a machine with lots of node
+  lazy val factRepo = (
+    for {
+      pendingInfos  <- nodeInfoService.getPendingNodeInfos()
+      pendingInvs   <- fullInventoryRepository.getAllInventories(PendingInventory)
+      pendingSoft   <- softwareInventoryDAO.getSoftwareByNode(pendingInfos.keySet, PendingInventory)
+      pending       <- Ref.make(pendingInfos.map {
+                         case (id, nodeInfo) =>
+                           (
+                             id,
+                             NodeFact.fromCompat(
+                               nodeInfo,
+                               pendingInvs.get(id).toRight(PendingInventory),
+                               pendingSoft.getOrElse(id, Nil)
+                             )
+                           )
+                       })
+      acceptedInfos <- nodeInfoService.getPendingNodeInfos()
+      acceptedInvs  <- fullInventoryRepository.getAllInventories(PendingInventory)
+      acceptedSoft  <- softwareInventoryDAO.getSoftwareByNode(acceptedInfos.keySet, PendingInventory)
+      accepted      <- Ref.make(acceptedInfos.map {
+                         case (id, nodeInfo) =>
+                           (
+                             id,
+                             NodeFact.fromCompat(
+                               nodeInfo,
+                               acceptedInvs.get(id).toRight(PendingInventory),
+                               acceptedSoft.getOrElse(id, Nil)
+                             )
+                           )
+                       })
+      semaphore     <- Semaphore.make(1)
+    } yield new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, semaphore)
+  ).runNow
 
   lazy val ldifInventoryLogger = new DefaultLDIFInventoryLogger(LDIF_TRACELOG_ROOT_DIR)
   lazy val inventorySaver      = new DefaultInventorySaver(
@@ -1569,7 +1600,7 @@ object RudderConfig extends Loggable {
       :: Nil
     ),
     (
-        // deprecated: nodes are fully deleted now
+      // deprecated: nodes are fully deleted now
 //      new PendingNodeIfNodeWasRemoved(fullInventoryRepository)
       new FactRepositoryPostCommit[Seq[LDIFChangeRecord]](factRepo, nodeInfoService)
       // deprecated: we use fact repo now
@@ -1613,7 +1644,7 @@ object RudderConfig extends Loggable {
       inventorySaver,
       maxParallel,
       new InventoryDigestServiceV1(fullInventoryRepository),
-      checkLdapAlive,
+      checkLdapAlive
     )
   }
 
@@ -2177,10 +2208,15 @@ object RudderConfig extends Loggable {
       pendingNodesDitImpl,
       nodeDit,
       // here, we don't want to look for subgroups to show them in the form => always return an empty list
-      new DitQueryData(pendingNodesDitImpl, nodeDit, rudderDit, new NodeQueryCriteriaData(new SubGroupComparatorRepository {
-        override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]] = Chunk.empty.succeed
-        override def getGroups: IOResult[Chunk[SubGroupChoice]] = Chunk.empty.succeed
-      })),
+      new DitQueryData(
+        pendingNodesDitImpl,
+        nodeDit,
+        rudderDit,
+        new NodeQueryCriteriaData(new SubGroupComparatorRepository {
+          override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]]         = Chunk.empty.succeed
+          override def getGroups:                        IOResult[Chunk[SubGroupChoice]] = Chunk.empty.succeed
+        })
+      ),
       ldapEntityMapper
     ),
     nodeInfoServiceImpl

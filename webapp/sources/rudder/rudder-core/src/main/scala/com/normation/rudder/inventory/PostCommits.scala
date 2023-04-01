@@ -139,7 +139,7 @@ class FactRepositoryPostCommit[A](
                    case Some(nodeInfo) =>
                      nodeFactsRepository.save(NodeFact.fromCompat(
                        nodeInfo,
-                       FullInventory(inventory.node, Some(inventory.machine)),
+                       Right(FullInventory(inventory.node, Some(inventory.machine))),
                        inventory.applications
                      ))
                  }

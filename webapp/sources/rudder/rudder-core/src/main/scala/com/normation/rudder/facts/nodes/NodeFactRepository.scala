@@ -37,11 +37,11 @@
 
 package com.normation.rudder.facts.nodes
 
+import NodeFactSerialisation._
 import better.files.File
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
-import NodeFactSerialisation._
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
@@ -49,6 +49,7 @@ import com.softwaremill.quicklens._
 import org.eclipse.jgit.lib.PersonIdent
 import zio._
 import zio.json._
+import zio.stream.ZStream
 import zio.syntax._
 
 /*
@@ -99,7 +100,6 @@ import zio.syntax._
  */
 trait NodeFactRepository {
 
-
   /*
    * Get an accepted node
    */
@@ -117,7 +117,19 @@ trait NodeFactRepository {
 
   def getAllPending(): IOStream[NodeFact]
 
+  /*
+   * Save (create or override) a node fact.
+   * That method will force status to be `accepted`.
+   * Use "updateInventory` if you want to save in pending.
+   */
   def save(nodeFact: NodeFact): IOResult[Unit]
+
+  /*
+   * A method that will create in new node fact in pending, or
+   * update inventory part of the node with that nodeId in
+   * pending or in accepted.
+   */
+  def updateInventory(inventory: Inventory): IOResult[Unit]
 
   /*
    * Change the status of the node with given id to given status.
@@ -126,6 +138,106 @@ trait NodeFactRepository {
    * - if target status is "removed", persisted inventory is deleted
    */
   def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]
+
+  /*
+   * Delete any reference to that node id.
+   */
+  def delete(nodeId: NodeId): IOResult[Unit]
+}
+
+/*
+ * An In memory implementation of the NodeFactRepository that persist (for cold storage)
+ * it's information in given backend.
+ * The following operation are persisted and will be blocking:
+ * - create a new node fact
+ * - update an existing one
+ * - change status of a node
+ * - delete a node.
+ *
+ * once initialized, that repository IS the truth. No change done by
+ * an other mean in the cold storage will be visible from Rudder.
+ */
+class InMemoryNodeFactRepository(
+    pendingNodes:  Ref[Map[NodeId, NodeFact]],
+    acceptedNodes: Ref[Map[NodeId, NodeFact]],
+    storage:       NodeFactStorage,
+    semaphore:     Semaphore
+) extends NodeFactRepository {
+
+  def getOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
+    ref.get.map(_.get(nodeId))
+  }
+
+  def getAllOn(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
+    ZStream.fromZIO(ref.get.map(m => m.values)).flatMap(x => ZStream.fromIterable(x))
+  }
+
+  def saveOn(ref: Ref[Map[NodeId, NodeFact]], nodeFact: NodeFact): IOResult[Unit] = {
+    ref.update(_ + ((nodeFact.id, nodeFact)))
+  }
+
+  def deleteOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId): IOResult[Unit] = {
+    ref.update(_.removed(nodeId))
+  }
+
+  override def get(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    getOn(acceptedNodes, nodeId)
+  }
+
+  override def getPending(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    getOn(pendingNodes, nodeId)
+  }
+
+  override def getAll(): IOStream[NodeFact] = getAllOn(acceptedNodes)
+
+  override def getAllPending(): IOStream[NodeFact] = getAllOn(pendingNodes)
+
+  override def save(nodeFact: NodeFact):              IOResult[Unit] = {
+    semaphore.withPermit(for {
+      _ <- storage.save(nodeFact)
+      _ <- nodeFact.rudderSettings.status match {
+             case RemovedInventory  => ZIO.unit
+             case PendingInventory  => saveOn(pendingNodes, nodeFact)
+             case AcceptedInventory => saveOn(acceptedNodes, nodeFact)
+           }
+    } yield ())
+  }
+
+  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
+    semaphore.withPermit(
+      for {
+        _ <- storage.changeStatus(nodeId, status)
+        _ <-
+          for {
+            pending  <- getOn(pendingNodes, nodeId)
+            accepted <- getOn(acceptedNodes, nodeId)
+            _        <- (status, pending, accepted) match {
+                          case (_, None, None)                       =>
+                            Inconsistency(s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes")
+                          case (AcceptedInventory, None, Some(_))    => ZIO.unit
+                          case (AcceptedInventory, Some(x), None)    => deleteOn(pendingNodes, nodeId) *> saveOn(acceptedNodes, x)
+                          case (AcceptedInventory, Some(_), Some(_)) => deleteOn(pendingNodes, nodeId)
+                          case (PendingInventory, None, Some(_))     => deleteOn(acceptedNodes, nodeId) *> saveOn(pendingNodes, x)
+                          case (PendingInventory, Some(x), None)     => ZIO.unit
+                          case (PendingInventory, Some(_), Some(_))  => deleteOn(acceptedNodes, nodeId)
+                        }
+          } yield ()
+      } yield ()
+    )
+  }
+
+
+  override def delete(nodeId: NodeId): IOResult[Unit] = {
+    semaphore.withPermit(
+      for {
+        _ <- storage.delete(nodeId)
+        _ <- deleteOn(pendingNodes)
+        _ <- deleteOn(acceptedNodes)
+      } yield ()
+    )
+  }
+
+  override def updateInventory(inventory: Inventory): IOResult[Unit] = ???
 }
 
 /*
@@ -151,6 +263,29 @@ trait SerializeFacts[A, B] {
 
 }
 
+trait NodeFactStorage {
+
+  /*
+   * Save node fact in the status given in the corresponding attribute.
+   * No check will be done.
+   */
+  def save(nodeFact: NodeFact): IOResult[Unit]
+
+  /*
+   * Change the status of the node with given id to given status.
+   * - if the node is not found, an error is raised apart if target status is "delete"
+   * - if the target status is the current one, this function does nothing
+   * - if target status is "removed", persisted inventory is deleted
+   */
+  def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]
+
+  /*
+   * Delete the node. Storage need to loop for any status and delete
+   * any reference to that node.
+   */
+  def delete(nodeId: NodeId): IOResult[Unit]
+}
+
 /*
  * We have only one git for all fact repositories. This is the one managing semaphore, init, etc.
  * All fact repositories will be a subfolder on it:
@@ -160,7 +295,7 @@ trait SerializeFacts[A, B] {
  * etc
  */
 
-object GitNodeFactRepository {
+object GitNodeFactRepositoryImpl {
 
   final case class NodeFactArchive(
       entity:     String,
@@ -171,29 +306,15 @@ object GitNodeFactRepository {
   implicit val codecNodeFactArchive: JsonCodec[NodeFactArchive] = DeriveJsonCodec.gen
 }
 
-class GitNodeFactRepository(
+class GitNodeFactRepositoryImpl(
     override val gitRepo: GitRepositoryProvider,
     groupOwner:           String
-) extends NodeFactRepository with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
+) extends NodeFactStorage with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
 
   override val relativePath = "nodes"
   override val entity:     String = "node"
   override val fileFormat: String = "1"
   val committer = new PersonIdent("rudder-fact", "email not set")
-
-
-  // TODO
-  override def get(nodeId: NodeId): IOResult[Option[NodeFact]] = {
-    ???
-  }
-
-  override def getPending(nodeId: NodeId): IOResult[Option[NodeFact]] = ???
-
-  override def getAll(): IOStream[NodeFact] = ???
-
-  override def getAllPending(): IOStream[NodeFact] = ???
-
-
 
   override def getEntityPath(id: (NodeId, InventoryStatus)): String = {
     s"${id._2.name}/${id._1.value}.json"
@@ -208,7 +329,7 @@ class GitNodeFactRepository(
    * As we want it to be human readable and searchable, we will use an indented format.
    */
   def toJson(nodeFact: NodeFact): IOResult[String] = {
-    import GitNodeFactRepository._
+    import GitNodeFactRepositoryImpl._
     val node = nodeFact
       .modify(_.accounts)
       .using(_.sorted)
@@ -245,22 +366,39 @@ class GitNodeFactRepository(
   }
 
   override def save(nodeFact: NodeFact): IOResult[Unit] = {
-    for {
-      json   <- toJson(nodeFact)
-      file    = getFile(nodeFact.id, nodeFact.rudderSettings.status)
-      _      <- IOResult.attempt(file.write(json))
-      _      <- IOResult.attempt(file.setGroup(groupOwner))
-      gitPath = toGitPath(file.toJava)
-      saved  <- commitAddFile(
-                  committer,
-                  gitPath,
-                  s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
-                )
-    } yield ()
+    if (nodeFact.rudderSettings.status == RemovedInventory) {
+      ZIO.unit
+    } else {
+      for {
+        json   <- toJson(nodeFact)
+        file    = getFile(nodeFact.id, nodeFact.rudderSettings.status)
+        _      <- IOResult.attempt(file.write(json))
+        _      <- IOResult.attempt(file.setGroup(groupOwner))
+        gitPath = toGitPath(file.toJava)
+        saved  <-
+          commitAddFile(
+            committer,
+            gitPath,
+            s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
+          )
+      } yield ()
+    }
+  }
+
+  // when we delete, we check for all path to also remove possible left-over
+  // we may need to recreate pending/accepted directory, because git delete
+  // empty directories.
+  override def delete(nodeId: NodeId): IOResult[Unit] = {
+    ZIO.foreach(List(PendingInventory, AcceptedInventory)) { s =>
+      val file = getFile(nodeId, s)
+      ZIO.whenZIO(IOResult.attempt(file.exists)) {
+        commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
+      }
+    } *> checkInit()
   }
 
   override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
-    // pending and accepted are symetric, utility function for the two cases
+    // pending and accepted are symmetric, utility function for the two cases
     def move(from: InventoryStatus) = {
       val to = if (from == AcceptedInventory) PendingInventory else AcceptedInventory
 
@@ -284,18 +422,6 @@ class GitNodeFactRepository(
           ).fail
         }
       )
-    }
-
-    // when we delete, we check for all path to also remove possible left-over
-    // we may need to recreate pending/accepted directory, because git delete
-    // empty directories.
-    def delete() = {
-      ZIO.foreach(List(PendingInventory, AcceptedInventory)) { s =>
-        val file = getFile(nodeId, s)
-        ZIO.whenZIO(IOResult.attempt(file.exists)) {
-          commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
-        }
-      } *> checkInit()
     }
 
     (status match {
