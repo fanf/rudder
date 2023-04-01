@@ -35,17 +35,22 @@
  *************************************************************************************
  */
 
-package com.normation.rudder.domain.nodes
+package com.normation.rudder.facts.nodes
 
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.{Version => SVersion}
-import com.normation.inventory.domain.JsonSerializers.implicits._
+import com.normation.rudder.domain.nodes.MachineInfo
+import com.normation.rudder.domain.nodes.Node
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeKind
+import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.domain.properties.GenericProperty
 import com.normation.rudder.domain.properties.InheritMode
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.properties.PropertyProvider
 import com.normation.rudder.reports._
+import com.normation.utils.DateFormaterService
 import com.normation.utils.ParseVersion
 import com.normation.utils.Version
 import com.typesafe.config.ConfigRenderOptions
@@ -68,12 +73,6 @@ import zio.json.internal.Write
  * - no compliance scoring
  * - no resolved properties (for ex inherited ones)
  */
-final case class Machine(
-    id:           MachineUuid,
-    provider:     MachineType,
-    systemSerial: Option[String] = None,
-    manufacturer: Option[Manufacturer] = None
-)
 final case class IpAddress(inet: String)
 final case class ManagementTechnology(
     name:         String,
@@ -89,12 +88,12 @@ final case class ManagementTechnologyDetails(
 )
 
 final case class RudderAgent(
-    @jsonField("type") tpe: AgentType,
-    user:                   String,
-    version:                AgentVersion,
-    securityToken:          SecurityToken,
+    @jsonField("type") agentType: AgentType,
+    user:                         String,
+    version:                      AgentVersion,
+    securityToken:                SecurityToken,
     // agent capabilities are lower case string used as tags giving information about what agent can do
-    capabilities:           Chunk[AgentCapability]
+    capabilities:                 Chunk[AgentCapability]
 )
 // rudder settings for that node
 final case class RudderSettings(
@@ -189,6 +188,45 @@ object NodeFact {
     )
   }
 
+  implicit class ToCompat(node: NodeFact) {
+
+    def toNode: Node = Node(
+      node.id,
+      node.fqdn,
+      "", // description
+      node.rudderSettings.state,
+      node.isSystem,
+      node.isPolicyServer,
+      node.creationDate,
+      node.rudderSettings.reportingConfiguration,
+      node.properties.toList,
+      node.rudderSettings.policyMode
+    )
+
+    def toNodeInfo: NodeInfo = NodeInfo(
+      node.toNode,
+      node.fqdn,
+      node.machine,
+      node.os,
+      node.ipAddresses.toList.map(_.inet),
+      node.lastInventoryDate.getOrElse(node.factProcessedDate),
+      node.rudderSettings.keyStatus,
+      Chunk(
+        AgentInfo(
+          node.rudderAgent.agentType,
+          Some(node.rudderAgent.version),
+          node.rudderAgent.securityToken,
+          node.rudderAgent.capabilities.toSet
+        )
+      ),
+      node.rudderSettings.policyServerId,
+      node.rudderAgent.user,
+      node.archDescription,
+      node.ram,
+      node.timezone
+    )
+  }
+
   def fromCompat(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): NodeFact = {
     NodeFact(
       nodeInfo.id,
@@ -216,11 +254,12 @@ object NodeFact {
       ),
       // nodeInfo properties hold both node properties and custom properties with provider "inventory"
       nodeInfo.properties.toChunk,
+      nodeInfo.creationDate,
       nodeInfo.inventoryDate,
       Some(nodeInfo.inventoryDate),
       nodeInfo.ips.map(IpAddress(_)).toChunk,
       nodeInfo.timezone,
-      nodeInfo.machine.map(mi => Machine(mi.id, mi.machineType, mi.systemSerial, mi.manufacturer)),
+      nodeInfo.machine,
       nodeInfo.ram,
       inventory.node.swap,
       nodeInfo.archDescription,
@@ -229,13 +268,13 @@ object NodeFact {
       inventory.machine.chunk(_.controllers),
       inventory.node.environmentVariables.map(ev => (ev.name, ev.value.getOrElse(""))).toChunk,
       inventory.node.fileSystems.toChunk,
-      Chunk(),                // TODO: missing input devices in inventory
-      Chunk(),                // TODO: missing local groups in inventory
-      Chunk(),                // TODO: missing local users in inventory
-      Chunk(),                // TODO: missing logical volumes in inventory
+      Chunk(), // TODO: missing input devices in inventory
+      Chunk(), // TODO: missing local groups in inventory
+      Chunk(), // TODO: missing local users in inventory
+      Chunk(), // TODO: missing logical volumes in inventory
       inventory.machine.chunk(_.memories),
       inventory.node.networks.toChunk,
-      Chunk(),                // TODO: missing physical volumes in inventory
+      Chunk(), // TODO: missing physical volumes in inventory
       inventory.machine.chunk(_.ports),
       inventory.node.processes.toChunk,
       inventory.machine.chunk(_.processors),
@@ -264,12 +303,15 @@ final case class NodeFact(
 //    managementTechnologyDetails: ManagementTechnologyDetails,
 
     // inventory information part of minimal node info (node create api
-
+    // the date on which the node was accepted/created by API
+    creationDate:      DateTime,
+    // the date on which the fact describing that node fact was processed
     factProcessedDate: DateTime,
+    // the date on which information about that fact were generated on original system
     lastInventoryDate: Option[DateTime],
     ipAddresses:       Chunk[IpAddress] = Chunk.empty,
     timezone:          Option[NodeTimezone] = None,
-    machine:           Option[Machine] = None,
+    machine:           Option[MachineInfo] = None,
 
     // inventory details, optional
 
@@ -332,6 +374,12 @@ final case class JNodeProperty(name: String, value: ConfigValue, mode: Option[St
 
 object NodeFactSerialisation {
 
+  import com.normation.inventory.domain.JsonSerializers.implicits.{ decoderDateTime => _, encoderDateTime => _, _}
+
+  implicit val encoderDateTime: JsonEncoder[DateTime] = JsonEncoder.string.contramap(DateFormaterService.serialize)
+  implicit val decoderDateTime: JsonDecoder[DateTime] =
+    JsonDecoder.string.mapOrFail(d => DateFormaterService.parseDate(d).left.map(_.fullMsg))
+  implicit val codecOptionDateTime: JsonCodec[Option[DateTime]] = DeriveJsonCodec.gen
   implicit val codecNodeId = JsonCodec.string.transform[NodeId](NodeId(_), _.value)
   implicit val codecJsonOsDetails: JsonCodec[JsonOsDetails] = DeriveJsonCodec.gen
 
@@ -492,7 +540,7 @@ object NodeFactSerialisation {
     _.kind
   )
   implicit val codecManufacturer = JsonCodec.string.transform[Manufacturer](Manufacturer(_), _.name)
-  implicit val codecMachine:        JsonCodec[Machine]        = DeriveJsonCodec.gen
+  implicit val codecMachine:        JsonCodec[MachineInfo]    = DeriveJsonCodec.gen
   implicit val codecMemorySize:     JsonCodec[MemorySize]     = JsonCodec.long.transform[MemorySize](MemorySize(_), _.size)
   implicit val codecSVersion:       JsonCodec[SVersion]       = JsonCodec.string.transform[SVersion](new SVersion(_), _.value)
   implicit val codecSoftwareEditor: JsonCodec[SoftwareEditor] =

@@ -615,7 +615,7 @@ object PolicyServerConfigurationObjects {
           NodeCriterionMatcherString(n => Chunk(n.rudderSettings.policyServerId.value)),
           None
         ),
-        Criterion("agentName", AgentComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.tpe.id)), None)
+        Criterion("agentName", AgentComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.agentType.id)), None)
       )
     )
     NodeGroup(
@@ -631,7 +631,7 @@ object PolicyServerConfigurationObjects {
           List(
             CriterionLine(
               objectType,
-              Criterion("agentName", StringComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.tpe.id))),
+              Criterion("agentName", StringComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.agentType.id))),
               Equals,
               "cfengine"
             ),

@@ -2038,7 +2038,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     }
 
     // not implemented yet
-    override def getNumberOfManagedNodes: Int = ???
+    override def getNumberOfManagedNodes: IOResult[Int] = ???
 
     override def delete(id: NodeId, inventoryStatus: InventoryStatus):               IOResult[Seq[LDIFChangeRecord]] = ???
     override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus):     IOResult[Seq[LDIFChangeRecord]] = ???

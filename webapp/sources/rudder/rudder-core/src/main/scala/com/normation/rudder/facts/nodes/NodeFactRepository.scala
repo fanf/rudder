@@ -41,8 +41,7 @@ import better.files.File
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
-import com.normation.rudder.domain.nodes.NodeFact
-import com.normation.rudder.domain.nodes.NodeFactSerialisation._
+import NodeFactSerialisation._
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
@@ -100,10 +99,25 @@ import zio.syntax._
  */
 trait NodeFactRepository {
 
-  def persistCompat(nodeInfo: NodeInfo, inventory: FullInventory, software: Seq[Software]): IOResult[Unit] = {
-    persist(NodeFact.fromCompat(nodeInfo, inventory, software))
-  }
-  def persist(nodeFact: NodeFact): IOResult[Unit]
+
+  /*
+   * Get an accepted node
+   */
+  def get(nodeId: NodeId): IOResult[Option[NodeFact]]
+
+  /*
+   * Get a pending node
+   */
+  def getPending(nodeId: NodeId): IOResult[Option[NodeFact]]
+
+  /*
+   * get all node facts
+   */
+  def getAll(): IOStream[NodeFact]
+
+  def getAllPending(): IOStream[NodeFact]
+
+  def save(nodeFact: NodeFact): IOResult[Unit]
 
   /*
    * Change the status of the node with given id to given status.
@@ -167,6 +181,20 @@ class GitNodeFactRepository(
   override val fileFormat: String = "1"
   val committer = new PersonIdent("rudder-fact", "email not set")
 
+
+  // TODO
+  override def get(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    ???
+  }
+
+  override def getPending(nodeId: NodeId): IOResult[Option[NodeFact]] = ???
+
+  override def getAll(): IOStream[NodeFact] = ???
+
+  override def getAllPending(): IOStream[NodeFact] = ???
+
+
+
   override def getEntityPath(id: (NodeId, InventoryStatus)): String = {
     s"${id._2.name}/${id._1.value}.json"
   }
@@ -216,7 +244,7 @@ class GitNodeFactRepository(
     NodeFactArchive(entity, fileFormat, node).toJsonPretty.succeed
   }
 
-  override def persist(nodeFact: NodeFact): IOResult[Unit] = {
+  override def save(nodeFact: NodeFact): IOResult[Unit] = {
     for {
       json   <- toJson(nodeFact)
       file    = getFile(nodeFact.id, nodeFact.rudderSettings.status)

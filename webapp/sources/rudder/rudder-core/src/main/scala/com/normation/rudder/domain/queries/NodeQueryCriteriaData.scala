@@ -46,11 +46,11 @@ import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_GROUP_UUID
 import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_PROPERTY
 import com.normation.rudder.domain.RudderLDAPConstants.A_STATE
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
-import com.normation.rudder.domain.nodes.NodeFact
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries.{KeyValueComparator => KVC}
 import com.normation.rudder.domain.queries.KeyValueComparator.HasKey
+import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.repository.RoNodeGroupRepository
 import com.normation.utils.DateFormaterService
 
@@ -98,7 +98,7 @@ class NodeQueryCriteriaData(groupRepo: SubGroupComparatorRepository) {
     ObjectCriterion(
       OC_MACHINE,
       Chunk(
-        Criterion("machineType", MachineComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.provider.kind))),
+        Criterion("machineType", MachineComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.machineType.kind))),
         Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.id.value))),
         Criterion(A_NAME, StringComparator, AlwaysFalse("machine does not have a 'name' attribute in fusion")),
         Criterion(A_DESCRIPTION, StringComparator, AlwaysFalse("machine does not have a 'description' attribute in fusion")),
@@ -583,7 +583,7 @@ object AgentMatcher extends NodeCriterionMatcher {
 
     comparator match {
       case Equals    =>
-        MatchHolder[AgentType](DebugInfo(Equals.id, Some(value)), Chunk(n.rudderAgent.tpe), _.exists(eq(value, _))).matches
+        MatchHolder[AgentType](DebugInfo(Equals.id, Some(value)), Chunk(n.rudderAgent.agentType), _.exists(eq(value, _))).matches
       case NotEquals => matches(n, Equals, value).map(!_)
       case c         => MatchHolder[AgentType](DebugInfo(s"unknown comparator: ${c}", Some(value)), Chunk(), _ => false).matches
     }

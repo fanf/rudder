@@ -39,6 +39,7 @@ package com.normation.rudder.services.queries
 
 import com.github.ghik.silencer.silent
 import com.normation.NamedZioLogger
+
 import com.normation.errors._
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.AgentType.CfeCommunity
@@ -61,22 +62,23 @@ import com.normation.inventory.domain.SoftwareEditor
 import com.normation.inventory.domain.Ubuntu
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.VirtualMachine
-import com.normation.rudder.domain.nodes.IpAddress
-import com.normation.rudder.domain.nodes.LocalUser
-import com.normation.rudder.domain.nodes.Machine
-import com.normation.rudder.domain.nodes.NodeFact
+import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.nodes.NodeState
-import com.normation.rudder.domain.nodes.RudderAgent
-import com.normation.rudder.domain.nodes.RudderSettings
-import com.normation.rudder.domain.nodes.SoftwareFact
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries._
+import com.normation.rudder.facts.nodes.IpAddress
+import com.normation.rudder.facts.nodes.LocalUser
+import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.RudderAgent
+import com.normation.rudder.facts.nodes.RudderSettings
+import com.normation.rudder.facts.nodes.SoftwareFact
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.utils.DateFormaterService
 import com.normation.utils.ParseVersion
+
 import com.softwaremill.quicklens._
 import net.liftweb.common._
 import org.joda.time.format.DateTimeFormat
@@ -84,7 +86,9 @@ import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
+
 import scala.util.Try
+
 import zio._
 import zio.syntax._
 
@@ -179,7 +183,7 @@ class TestNodeFactQueryProcessor {
 
     val emptyReportConf    = ReportingConfiguration(None, None, None)
     val cfe                = RudderAgent(CfeCommunity, "root", AgentVersion("4.1.8"), PublicKey("test"), Chunk.empty)
-    val nova               = cfe.copy(tpe = CfeEnterprise)
+    val nova               = cfe.copy(agentType = CfeEnterprise)
     val dsc                = RudderAgent(
       Dsc,
       "root",
@@ -189,7 +193,7 @@ class TestNodeFactQueryProcessor {
       ),
       Chunk.empty
     )
-    val defaultNodeSetting = RudderSettings(
+    val defaultNodeSetting = com.normation.rudder.facts.nodes.RudderSettings(
       CertifiedKey,
       emptyReportConf,
       NodeKind.Node,
@@ -207,7 +211,7 @@ class TestNodeFactQueryProcessor {
           None,
           "root.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
-          RudderSettings(
+          com.normation.rudder.facts.nodes.RudderSettings(
             CertifiedKey,
             emptyReportConf,
             NodeKind.Root,
@@ -218,6 +222,7 @@ class TestNodeFactQueryProcessor {
           ),
           cfe,
           Chunk.empty,
+          "20130515123456.948Z",
           "20120515123456.948Z",
           Some("20120515123456.948Z"),
           software = Chunk(software(0)),
@@ -231,6 +236,7 @@ class TestNodeFactQueryProcessor {
           defaultNodeSetting,
           nova,
           Chunk.empty,
+          "20130515123456.948Z",
           "20130515123456.948Z",
           Some("20130515123456.948Z"),
           ipAddresses = Chunk("192.168.56.100"),
@@ -248,6 +254,7 @@ class TestNodeFactQueryProcessor {
             """{"name":"datacenter","value":"Paris", "provider":"inventory"}""",
             """{"name":"from_inv","value":{ "key1":"custom prop value", "key2":"some more json"}, "provider":"inventory"}"""
           ),
+          "20130515123456.948Z",
           "20140515123456.948Z",
           Some("20140515123456.948Z"),
           swap = Some(2878000000L),
@@ -305,6 +312,7 @@ class TestNodeFactQueryProcessor {
           Chunk(
             """{"name":"datacenter","value":{"country":"France","id":1234,"replicated":true},"provider":"datasources"}"""
           ),
+          "20130515123456.948Z",
           "20150515123456.948Z",
           Some("20150515123456.948Z"),
           Chunk("192.168.56.102", "127.0.0.1"),
@@ -334,6 +342,7 @@ class TestNodeFactQueryProcessor {
             """{"name":"datacenter","value":{"country":"Germany","id":12345,"replicated":true,"provider":"user value"}}""",
             """{"name":"number","value":42}"""
           ),
+          "20130515123456.948Z",
           "20160515123456.948Z",
           Some("20160515123456.948Z"),
           Chunk("192.168.56.103", "127.0.0.1"),
@@ -380,10 +389,11 @@ class TestNodeFactQueryProcessor {
                 }
                }"""
           ),
+          "20130515123456.948Z",
           "20170515123456.948Z",
           Some("20170515123456.948Z"),
           ipAddresses = Chunk("127.0.0.1"),
-          machine = Some(Machine(MachineUuid("machine0"), PhysicalMachineType)),
+          machine = Some(MachineInfo(MachineUuid("machine0"), PhysicalMachineType)),
           environmentVariables = Chunk(("SHELL", "/bin/sh"))
         ),
         NodeFact(
@@ -413,11 +423,12 @@ class TestNodeFactQueryProcessor {
               |  }
               | }""".stripMargin
           ),
+          "20130515123456.948Z",
           "20180515123456.948Z",
           Some("20180515123456.948Z"),
           ipAddresses = Chunk(),
           machine = Some(
-            Machine(
+            MachineInfo(
               MachineUuid("machine1"),
               PhysicalMachineType,
               systemSerial = Some("f47ac10b-58cc-4372-a567-0e02b2c3d479")
@@ -451,11 +462,12 @@ class TestNodeFactQueryProcessor {
               |  }
               | }""".stripMargin
           ),
+          "20130515123456.948Z",
           "20190515123456.948Z",
           Some("20190515123456.948Z"),
           ipAddresses = Chunk(),
           machine = Some(
-            Machine(
+            MachineInfo(
               MachineUuid("machine2"),
               PhysicalMachineType
             )
@@ -470,13 +482,14 @@ class TestNodeFactQueryProcessor {
           defaultNodeSetting.copy(state = NodeState.Initializing),
           cfe,
           Chunk(),
+          "20130515123456.948Z",
           "20200515123456.948Z",
           Some("20200515123456.948Z"),
           ipAddresses = Chunk(),
           fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L))),
           software = Chunk(software(0)),
           machine = Some(
-            Machine(
+            MachineInfo(
               MachineUuid("machine2"),
               PhysicalMachineType
             )

@@ -41,13 +41,16 @@ import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.Inventory
 import com.normation.inventory.services.provisioning._
+import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.PureHooksLogger
 import com.normation.rudder.hooks.RunHooks
 import com.normation.rudder.services.nodes.NodeInfoService
+
 import com.normation.zio.currentTimeMillis
 import com.unboundid.ldif.LDIFChangeRecord
+
 import zio._
 import zio.syntax._
 
@@ -134,11 +137,11 @@ class FactRepositoryPostCommit(
                      ZIO.unit // does nothing
 
                    case Some(nodeInfo) =>
-                     nodeFactsRepository.persistCompat(
+                     nodeFactsRepository.save(NodeFact.fromCompat(
                        nodeInfo,
                        FullInventory(inventory.node, Some(inventory.machine)),
                        inventory.applications
-                     )
+                     ))
                  }
     } yield ())
       .catchAll(err => {

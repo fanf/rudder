@@ -41,11 +41,11 @@ import com.normation.box._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
-import com.normation.rudder.domain.nodes.NodeFact
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries._
+import com.normation.rudder.facts.nodes.NodeFact
 import net.liftweb.common.Box
 import zio._
 import zio.syntax._

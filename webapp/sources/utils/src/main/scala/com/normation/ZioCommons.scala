@@ -26,9 +26,11 @@ package com.normation
 
 import _root_.zio._
 import _root_.zio.syntax._
+import _root_.zio.stream._
 import cats.data._
 import cats.implicits._
 import cats.kernel.Order
+
 import com.normation.errors.Chained
 import com.normation.errors.IOResult
 import com.normation.errors.PureResult
@@ -77,6 +79,7 @@ object errors {
    */
   type PureResult[A] = Either[RudderError, A]
   type IOResult[A]   = ZIO[Any, RudderError, A]
+  type IOStream[A]   = ZStream[Any, RudderError, A]
 
   /*
    * An object that provides utility methods to import effectfull
