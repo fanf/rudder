@@ -41,7 +41,9 @@ import com.normation.errors.IOResult
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.services.nodes.NodeInfoService
+
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
@@ -55,7 +57,7 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
   }
 
   override def getNodeInfos(nodeIds: Set[NodeId]): IOResult[Set[NodeInfo]] = {
-    backend.getAll().collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }.run(ZSink.collectAll).map(_.toSet)
+    backend.getAll().collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }.run(ZSink.collectAllToSet)
   }
 
   override def getNodeInfosSeq(nodeIds: Seq[NodeId]): IOResult[Seq[NodeInfo]] = {
@@ -66,19 +68,33 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
     backend.getAll().run(ZSink.count).map(_.toInt)
   }
 
-  override def getAll(): IOResult[Map[NodeId, NodeInfo]] = ???
+  override def getAll(): IOResult[Map[NodeId, NodeInfo]] = {
+    backend.getAll().map(_.toNodeInfo) run (ZSink.collectAllToMap[NodeInfo, NodeId](_.node.id)((a, b) => b))
+  }
 
-  override def getAllNodesIds(): IOResult[Set[NodeId]] = ???
+  override def getAllNodesIds(): IOResult[Set[NodeId]] = {
+    backend.getAll().map(_.id).run(ZSink.collectAllToSet)
+  }
 
-  override def getAllNodes(): IOResult[Map[NodeId, Node]] = ???
+  override def getAllNodes(): IOResult[Map[NodeId, Node]] = {
+    backend.getAll().map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
+  }
 
-  override def getAllNodeInfos(): IOResult[Seq[NodeInfo]] = ???
+  override def getAllNodeInfos(): IOResult[Seq[NodeInfo]] = {
+    backend.getAll().map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
+  }
 
-  override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = ???
+  override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = {
+    backend.getAll().collect { case n if (n.rudderSettings.kind != NodeKind.Node) => n.id }.run(ZSink.collectAll).map(_.toSeq)
+  }
 
-  override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = ???
+  override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
+    backend.getAllPending().map(_.toNodeInfo).run(ZSink.collectAllToMap[NodeInfo, NodeId](_.id)((a,b) => b))
+  }
 
-  override def getPendingNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = ???
+  override def getPendingNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
+    backend.getPending(nodeId).map(_.map(_.toNodeInfo))
+  }
 
   // not supported anymore
   override def getDeletedNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
@@ -90,3 +106,4 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
     None.succeed
   }
 }
+
