@@ -193,6 +193,7 @@ import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
+import com.unboundid.ldif.LDIFChangeRecord
 
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
@@ -1568,10 +1569,12 @@ object RudderConfig extends Loggable {
       :: Nil
     ),
     (
-      new PendingNodeIfNodeWasRemoved(fullInventoryRepository)
-      :: new FactRepositoryPostCommit(factRepo, nodeInfoService)
-      :: new PostCommitLogger(ldifInventoryLogger)
-      :: new PostCommitInventoryHooks(HOOKS_D, HOOKS_IGNORE_SUFFIXES)
+        // deprecated: nodes are fully deleted now
+//      new PendingNodeIfNodeWasRemoved(fullInventoryRepository)
+      new FactRepositoryPostCommit[Seq[LDIFChangeRecord]](factRepo, nodeInfoService)
+      // deprecated: we use fact repo now
+//      :: new PostCommitLogger(ldifInventoryLogger)
+      :: new PostCommitInventoryHooks[Seq[LDIFChangeRecord]](HOOKS_D, HOOKS_IGNORE_SUFFIXES)
       :: Nil
     )
   )
@@ -1609,10 +1612,8 @@ object RudderConfig extends Loggable {
       pipelinedInventoryParser,
       inventorySaver,
       maxParallel,
-      fullInventoryRepository,
       new InventoryDigestServiceV1(fullInventoryRepository),
       checkLdapAlive,
-      pendingNodesDit
     )
   }
 

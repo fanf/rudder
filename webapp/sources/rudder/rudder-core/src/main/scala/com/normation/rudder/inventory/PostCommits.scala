@@ -63,15 +63,15 @@ import zio.syntax._
  * A post commit that start node-inventory-received-pending
  * node-inventory-received-accepted hooks
  */
-class PostCommitInventoryHooks(
+class PostCommitInventoryHooks[A](
     HOOKS_D:               String,
     HOOKS_IGNORE_SUFFIXES: List[String]
-) extends PostCommit[Seq[LDIFChangeRecord]] {
+) extends PostCommit[A] {
   import scala.jdk.CollectionConverters._
 
   override val name = "post_commit_inventory:run_node-inventory-received_hooks"
 
-  override def apply(inventory: Inventory, records: Seq[LDIFChangeRecord]): IOResult[Seq[LDIFChangeRecord]] = {
+  override def apply(inventory: Inventory, records: A): IOResult[A] = {
     val node  = inventory.node.main
     val hooks = (for {
       systemEnv <- IOResult.attempt(java.lang.System.getenv.asScala.toSeq).map(seq => HookEnvPairs.build(seq: _*))
@@ -112,16 +112,16 @@ class PostCommitInventoryHooks(
   }
 }
 
-class FactRepositoryPostCommit(
+class FactRepositoryPostCommit[A](
     nodeFactsRepository: NodeFactRepository,
     nodeInfoService:     NodeInfoService
-) extends PostCommit[Seq[LDIFChangeRecord]] {
+) extends PostCommit[A] {
   override def name:                                                        String                          = "commit node in fact-repository"
   /*
    * This part is responsible of saving the inventory in the fact repository.
    * For now, it can't fail: errors are logged but don't stop inventory processing.
    */
-  override def apply(inventory: Inventory, records: Seq[LDIFChangeRecord]): IOResult[Seq[LDIFChangeRecord]] = {
+  override def apply(inventory: Inventory, records: A): IOResult[A] = {
     (for {
       optInfo <- inventory.node.main.status match {
                    case AcceptedInventory => nodeInfoService.getNodeInfo(inventory.node.main.id)

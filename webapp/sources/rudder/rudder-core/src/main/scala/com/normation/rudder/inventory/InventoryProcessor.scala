@@ -37,19 +37,11 @@
 
 package com.normation.rudder.inventory
 
-import better.files.File
-import com.github.ghik.silencer.silent
-import com.normation.box.IOManaged
-import com.normation.errors._
-import com.normation.errors.Chained
-import com.normation.errors.IOResult
 import com.normation.inventory.domain.CertifiedKey
 import com.normation.inventory.domain.Inventory
 import com.normation.inventory.domain.InventoryProcessingLogger
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.SecurityToken
-import com.normation.inventory.ldap.core.InventoryDit
-import com.normation.inventory.services.core.FullInventoryRepository
 import com.normation.inventory.services.provisioning.InventoryDigestServiceV1
 import com.normation.inventory.services.provisioning.InventoryParser
 import com.normation.inventory.services.provisioning.InventorySaver
@@ -58,17 +50,26 @@ import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.PureHooksLogger
 import com.normation.rudder.hooks.RunHooks
 import com.normation.utils.DateFormaterService
-import com.normation.zio._
-import com.normation.zio.ZioRuntime
+
+import better.files.File
+import com.github.ghik.silencer.silent
 import com.unboundid.ldif.LDIFChangeRecord
-import java.io.InputStream
-import java.nio.file.NoSuchFileException
-import java.security.{PublicKey => JavaSecPubKey}
 import org.joda.time.DateTime
 import org.joda.time.Duration
 import org.joda.time.format.PeriodFormat
+
+import java.io.InputStream
+import java.nio.file.NoSuchFileException
+import java.security.{PublicKey => JavaSecPubKey}
+
 import zio._
 import zio.syntax._
+import com.normation.box.IOManaged
+import com.normation.errors._
+import com.normation.errors.Chained
+import com.normation.errors.IOResult
+import com.normation.zio._
+import com.normation.zio.ZioRuntime
 
 /*
  * The interface between whatever event and the actual saving process.
@@ -158,12 +159,10 @@ object StatusLog {
 
 class InventoryProcessor(
     unmarshaller:     InventoryParser,
-    inventorySaver:   InventorySaver[Seq[LDIFChangeRecord]],
+    inventorySaver:   InventorySaver[_],
     val maxParallel:  Long,
-    repo:             FullInventoryRepository[Seq[LDIFChangeRecord]],
     digestService:    InventoryDigestServiceV1,
     checkAliveLdap:   () => IOResult[Unit],
-    nodeInventoryDit: InventoryDit
 ) {
   def logDirPerm(dir: File, name: String) = {
     if (dir.isDirectory && dir.isWritable) {
