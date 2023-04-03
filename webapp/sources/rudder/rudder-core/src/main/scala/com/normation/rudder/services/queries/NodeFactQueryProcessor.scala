@@ -158,7 +158,7 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGro
       // not sure why I need that
       case SubGroupComparator(repo) =>
         for {
-          groupNodes <- repo.getNodeIds(NodeGroupId(NodeGroupUid(c.value)))
+          groupNodes <- repo().getNodeIds(NodeGroupId(NodeGroupUid(c.value)))
         } yield {
           NodeFactMatcher(
             s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",

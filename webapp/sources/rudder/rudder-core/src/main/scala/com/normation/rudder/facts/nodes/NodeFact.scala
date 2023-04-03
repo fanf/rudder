@@ -300,16 +300,129 @@ object NodeFact {
     )
   }
 
+  def agentFromInventory(node: NodeInventory): Option[RudderAgent] = {
+    node.agents.headOption.flatMap(a =>
+      a.version.map(v => RudderAgent(a.agentType, node.main.rootUser, v, a.securityToken, a.capabilities.toChunk))
+    )
+  }
+
+  def defaultRudderSettings(): RudderSettings = {
+    RudderSettings(
+      UndefinedKey,
+      ReportingConfiguration(None, None, None),
+      NodeKind.Node,
+      PendingInventory,
+      NodeState.Enabled,
+      None,
+      NodeId("root")
+    )
+  }
+
+  def defaultRudderAgent(): RudderAgent = {
+    RudderAgent(AgentType.CfeCommunity, "root", AgentVersion("unknown"), PublicKey("not initialized"), Chunk.empty)
+  }
+
   /*
    * Update all inventory parts from that node fact.
    * The inventory parts are overridden, there is no merge
    * NOTICE: status is ignored !
    */
-  def updateInventory(node: NodeFact, inventory: Inventory): NodeFact = {
+  def updateInventory(node: NodeFact, inventory: Inventory): NodeFact       = {
     import com.softwaremill.quicklens._
-    node.modify()
+    // not sure we wwant that, TODO POC
+    require(
+      node.id == inventory.node.main.id,
+      s"Inventory can only be update on a node with the same ID, but nodeId='${node.id.value}' and in inventory='${inventory.node.main.id.value}'"
+    )
 
+    val properties = (node.properties.filterNot(
+      _.provider == Some(NodeProperty.customPropertyProvider)
+    ) ++ inventory.node.customProperties.map(NodeProperty.fromInventory)).sortBy(_.name)
+
+    val machine = MachineInfo(
+      inventory.machine.id,
+      inventory.machine.machineType,
+      inventory.machine.systemSerialNumber,
+      inventory.machine.manufacturer
+    )
+    node
+      .modify(_.fqdn)
+      .setTo(inventory.node.main.hostname)
+      .modify(_.os)
+      .setTo(inventory.node.main.osDetails)
+      .modify(_.rudderSettings.policyServerId)
+      .setTo(inventory.node.main.policyServerId)
+      .modify(_.rudderSettings.keyStatus)
+      .setTo(inventory.node.main.keyStatus)
+      .modify(_.rudderAgent)
+      .setToIfDefined(agentFromInventory(inventory.node))
+      .modify(_.properties)
+      .setTo(properties)
+      .modify(_.lastInventoryDate)
+      .setTo(inventory.node.inventoryDate)
+      .modify(_.ipAddresses)
+      .setTo(Chunk.fromIterable(inventory.node.serverIps.map(IpAddress)))
+      .modify(_.timezone)
+      .setTo(inventory.node.timezone)
+      .modify(_.machine)
+      .setTo(Some(machine))
+      .modify(_.ram)
+      .setTo(inventory.node.ram)
+      .modify(_.swap)
+      .setTo(inventory.node.swap)
+      .modify(_.archDescription)
+      .setTo(inventory.node.archDescription)
+      .modify(_.accounts)
+      .setTo(inventory.node.accounts.toChunk)
+      .modify(_.bios)
+      .setTo(inventory.machine.bios.toChunk)
+      .modify(_.controllers)
+      .setTo(inventory.machine.controllers.toChunk)
+      .modify(_.environmentVariables)
+      .setTo(inventory.node.environmentVariables.toChunk.map(ev => (ev.name, ev.value.getOrElse(""))))
+      .modify(_.fileSystems)
+      .setTo(inventory.node.fileSystems.toChunk)
+      // missing: inputs, local group, local users, logical volumes, physical volumes
+      .modify(_.memories)
+      .setTo(inventory.machine.memories.toChunk)
+      .modify(_.networks)
+      .setTo(inventory.node.networks.toChunk)
+      .modify(_.ports)
+      .setTo(inventory.machine.ports.toChunk)
+      .modify(_.processes)
+      .setTo(inventory.node.processes.toChunk)
+      .modify(_.slots)
+      .setTo(inventory.machine.slots.toChunk)
+      .modify(_.software)
+      .setTo(inventory.applications.flatMap(_.toFact).toChunk)
+      .modify(_.softwareUpdate)
+      .setTo(inventory.node.softwareUpdates.toChunk)
+      .modify(_.sounds)
+      .setTo(inventory.machine.sounds.toChunk)
+      .modify(_.storages)
+      .setTo(inventory.machine.storages.toChunk)
+      .modify(_.videos)
+      .setTo(inventory.machine.videos.toChunk)
+      .modify(_.vms)
+      .setTo(inventory.node.vms.toChunk)
   }
+
+  def newFromInventory(inventory: Inventory): NodeFact = {
+    val now = DateTime.now()
+    val fact = NodeFact(
+      inventory.node.main.id,
+      None,
+      inventory.node.main.hostname,
+      inventory.node.main.osDetails,
+      defaultRudderSettings(),
+      agentFromInventory(inventory.node).getOrElse(defaultRudderAgent()),
+      Chunk.empty,
+      now,
+      now
+    )
+    updateInventory(fact, inventory)
+  }
+
 }
 
 final case class NodeFact(
@@ -331,7 +444,7 @@ final case class NodeFact(
     // the date on which the fact describing that node fact was processed
     factProcessedDate: DateTime,
     // the date on which information about that fact were generated on original system
-    lastInventoryDate: Option[DateTime],
+    lastInventoryDate: Option[DateTime] = None,
     ipAddresses:       Chunk[IpAddress] = Chunk.empty,
     timezone:          Option[NodeTimezone] = None,
     machine:           Option[MachineInfo] = None,

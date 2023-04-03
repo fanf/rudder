@@ -38,19 +38,24 @@
 package com.normation.rudder.facts.nodes
 
 import NodeFactSerialisation._
+
 import better.files.File
+
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
-import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
+
 import com.softwaremill.quicklens._
 import org.eclipse.jgit.lib.PersonIdent
+
 import zio._
+import zio.concurrent.ReentrantLock
 import zio.json._
 import zio.stream.ZStream
 import zio.syntax._
+import com.normation.zio._
 
 /*
  * This file contains the base to persist facts into a git repository. There is a lot of question
@@ -161,8 +166,14 @@ class InMemoryNodeFactRepository(
     pendingNodes:  Ref[Map[NodeId, NodeFact]],
     acceptedNodes: Ref[Map[NodeId, NodeFact]],
     storage:       NodeFactStorage,
-    semaphore:     Semaphore
+    lock:          ReentrantLock
 ) extends NodeFactRepository {
+
+  (for {
+   p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
+   a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
+   _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
+  } yield ()).runNow
 
   def getOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
     ref.get.map(_.get(nodeId))
@@ -192,20 +203,24 @@ class InMemoryNodeFactRepository(
 
   override def getAllPending(): IOStream[NodeFact] = getAllOn(pendingNodes)
 
-  override def save(nodeFact: NodeFact):              IOResult[Unit] = {
-    semaphore.withPermit(for {
-      _ <- storage.save(nodeFact)
-      _ <- nodeFact.rudderSettings.status match {
-             case RemovedInventory  => ZIO.unit
-             case PendingInventory  => saveOn(pendingNodes, nodeFact)
-             case AcceptedInventory => saveOn(acceptedNodes, nodeFact)
-           }
-    } yield ())
+  override def save(nodeFact: NodeFact): IOResult[Unit] = {
+    ZIO.scoped(
+      for {
+        _ <- lock.withLock
+        _ <- storage.save(nodeFact)
+        _ <- nodeFact.rudderSettings.status match {
+               case RemovedInventory  => ZIO.unit
+               case PendingInventory  => saveOn(pendingNodes, nodeFact)
+               case AcceptedInventory => saveOn(acceptedNodes, nodeFact)
+             }
+      } yield ()
+    )
   }
 
   override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
-    semaphore.withPermit(
+    ZIO.scoped(
       for {
+        _ <- lock.withLock
         _ <- storage.changeStatus(nodeId, status)
         _ <-
           for {
@@ -213,31 +228,51 @@ class InMemoryNodeFactRepository(
             accepted <- getOn(acceptedNodes, nodeId)
             _        <- (status, pending, accepted) match {
                           case (_, None, None)                       =>
-                            Inconsistency(s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes")
+                            Inconsistency(
+                              s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes"
+                            ).fail
                           case (AcceptedInventory, None, Some(_))    => ZIO.unit
                           case (AcceptedInventory, Some(x), None)    => deleteOn(pendingNodes, nodeId) *> saveOn(acceptedNodes, x)
                           case (AcceptedInventory, Some(_), Some(_)) => deleteOn(pendingNodes, nodeId)
-                          case (PendingInventory, None, Some(_))     => deleteOn(acceptedNodes, nodeId) *> saveOn(pendingNodes, x)
+                          case (PendingInventory, None, Some(x))     => deleteOn(acceptedNodes, nodeId) *> saveOn(pendingNodes, x)
                           case (PendingInventory, Some(x), None)     => ZIO.unit
                           case (PendingInventory, Some(_), Some(_))  => deleteOn(acceptedNodes, nodeId)
+                          case (RemovedInventory, _, _)              => deleteOn(pendingNodes, nodeId) *> deleteOn(acceptedNodes, nodeId)
                         }
           } yield ()
       } yield ()
     )
   }
 
-
   override def delete(nodeId: NodeId): IOResult[Unit] = {
-    semaphore.withPermit(
+    ZIO.scoped(
       for {
+        _ <- lock.withLock
         _ <- storage.delete(nodeId)
-        _ <- deleteOn(pendingNodes)
-        _ <- deleteOn(acceptedNodes)
+        _ <- deleteOn(pendingNodes, nodeId)
+        _ <- deleteOn(acceptedNodes, nodeId)
       } yield ()
     )
   }
 
-  override def updateInventory(inventory: Inventory): IOResult[Unit] = ???
+  override def updateInventory(inventory: Inventory): IOResult[Unit] = {
+    val nodeId = inventory.node.main.id
+    ZIO.scoped(
+      for {
+        _          <- lock.withLock
+        optPending <- getOn(pendingNodes, nodeId)
+        optFact    <- optPending match {
+                        case Some(f) => Some(f).succeed
+                        case None    => getOn(acceptedNodes, nodeId)
+                      }
+        fact        = optFact match {
+                        case Some(f) => NodeFact.updateInventory(f, inventory)
+                        case None    => NodeFact.newFromInventory(inventory)
+                      }
+        _          <- save(fact)
+      } yield ()
+    )
+  }
 }
 
 /*
@@ -425,7 +460,7 @@ class GitNodeFactRepositoryImpl(
     }
 
     (status match {
-      case RemovedInventory => delete()
+      case RemovedInventory => delete(nodeId)
       case x                => move(x)
     }).unit
   }

@@ -73,7 +73,6 @@ import com.normation.rudder.facts.nodes.IpAddress
 import com.normation.rudder.facts.nodes.LocalUser
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.RudderAgent
-import com.normation.rudder.facts.nodes.RudderSettings
 import com.normation.rudder.facts.nodes.SoftwareFact
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.utils.DateFormaterService

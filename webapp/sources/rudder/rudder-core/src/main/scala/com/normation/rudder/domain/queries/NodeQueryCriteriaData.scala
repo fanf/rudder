@@ -84,7 +84,8 @@ class DefaultSubGroupComparatorRepository(repo: RoNodeGroupRepository) extends S
   }
 }
 
-class NodeQueryCriteriaData(groupRepo: SubGroupComparatorRepository) {
+// groupRepo must be `=> ` to avoid cyclic dep
+class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
 
   implicit class IterableToChunk[A](it: Iterable[A]) {
     def toChunk: Chunk[A] = Chunk.fromIterable(it)

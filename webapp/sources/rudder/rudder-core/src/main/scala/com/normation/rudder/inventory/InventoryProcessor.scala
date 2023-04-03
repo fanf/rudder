@@ -53,7 +53,6 @@ import com.normation.utils.DateFormaterService
 
 import better.files.File
 import com.github.ghik.silencer.silent
-import com.unboundid.ldif.LDIFChangeRecord
 import org.joda.time.DateTime
 import org.joda.time.Duration
 import org.joda.time.format.PeriodFormat

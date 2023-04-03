@@ -65,16 +65,10 @@ import com.normation.errors.SystemError
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core._
 import com.normation.inventory.ldap.provisioning.AddIpValues
-import com.normation.inventory.ldap.provisioning.CheckMachineName
 import com.normation.inventory.ldap.provisioning.CheckOsType
-import com.normation.inventory.ldap.provisioning.DefaultInventorySaver
-import com.normation.inventory.ldap.provisioning.DefaultLDIFInventoryLogger
 import com.normation.inventory.ldap.provisioning.FromMotherBoardUuidIdFinder
 import com.normation.inventory.ldap.provisioning.LastInventoryDate
-import com.normation.inventory.ldap.provisioning.LogInventoryPreCommit
 import com.normation.inventory.ldap.provisioning.NameAndVersionIdFinder
-import com.normation.inventory.ldap.provisioning.PendingNodeIfNodeWasRemoved
-import com.normation.inventory.ldap.provisioning.PostCommitLogger
 import com.normation.inventory.ldap.provisioning.UseExistingMachineIdFinder
 import com.normation.inventory.ldap.provisioning.UseExistingNodeIdFinder
 import com.normation.inventory.ldap.provisioning.UuidMergerPreCommit
@@ -113,10 +107,12 @@ import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.logger.NodeConfigurationLoggerImpl
 import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
 import com.normation.rudder.domain.nodes.NodeGroupId
+import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.GitNodeFactRepositoryImpl
 import com.normation.rudder.facts.nodes.InMemoryNodeFactRepository
 import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
 import com.normation.rudder.inventory.DefaultProcessInventoryService
@@ -192,7 +188,6 @@ import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
-import com.unboundid.ldif.LDIFChangeRecord
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -205,6 +200,7 @@ import org.joda.time.DateTimeZone
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
 import zio.{Scheduler => _, System => _, _}
+import zio.concurrent.ReentrantLock
 import zio.syntax._
 
 object RUDDER_CHARSET {
@@ -1551,61 +1547,70 @@ object RudderConfig extends Loggable {
   gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
   // TODO WARNING POC: this can't work on a machine with lots of node
-  lazy val factRepo = (
-    for {
-      pendingInfos  <- nodeInfoService.getPendingNodeInfos()
-      pendingInvs   <- fullInventoryRepository.getAllInventories(PendingInventory)
-      pendingSoft   <- softwareInventoryDAO.getSoftwareByNode(pendingInfos.keySet, PendingInventory)
-      pending       <- Ref.make(pendingInfos.map {
-                         case (id, nodeInfo) =>
-                           (
-                             id,
-                             NodeFact.fromCompat(
-                               nodeInfo,
-                               pendingInvs.get(id).toRight(PendingInventory),
-                               pendingSoft.getOrElse(id, Nil)
-                             )
-                           )
-                       })
-      acceptedInfos <- nodeInfoService.getPendingNodeInfos()
-      acceptedInvs  <- fullInventoryRepository.getAllInventories(PendingInventory)
-      acceptedSoft  <- softwareInventoryDAO.getSoftwareByNode(acceptedInfos.keySet, PendingInventory)
-      accepted      <- Ref.make(acceptedInfos.map {
-                         case (id, nodeInfo) =>
-                           (
-                             id,
-                             NodeFact.fromCompat(
-                               nodeInfo,
-                               acceptedInvs.get(id).toRight(PendingInventory),
-                               acceptedSoft.getOrElse(id, Nil)
-                             )
-                           )
-                       })
-      semaphore     <- Semaphore.make(1)
-    } yield new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, semaphore)
-  ).runNow
+  lazy val factRepo = {
+    // software are sooooo slow that even on test data, we can't get them
+    def getFacts(nodeInfos: Iterable[NodeInfo], status: InventoryStatus): IOResult[Map[NodeId, NodeFact]] = {
+      ZIO
+        .foreach(nodeInfos.zipWithIndex) {
+          case (nodeInfo, i) =>
+            for {
+              _    <-
+                InventoryDataLogger.trace(s"Retrieving inv for ${i}/${nodeInfos.size} '${nodeInfo.id.value}' (${status.name})")
+              inv  <- ldapFullInventoryRepository.get(nodeInfo.id, status)
+              _    <- InventoryDataLogger.trace(s"  ... software ...")
+              soft <- softwareInventoryDAO.getSoftwareByNode(Set(nodeInfo.id), status)
+            } yield {
+              (
+                nodeInfo.id,
+                NodeFact.fromCompat(
+                  nodeInfo,
+                  inv.toRight(status),
+                  soft.getOrElse(nodeInfo.id, Nil)
+                )
+              )
+            }
+        }
+        .map(_.toMap)
+    }
 
-  lazy val ldifInventoryLogger = new DefaultLDIFInventoryLogger(LDIF_TRACELOG_ROOT_DIR)
-  lazy val inventorySaver      = new DefaultInventorySaver(
-    rwLdap,
-    acceptedNodesDit,
-    inventoryMapper,
+    for {
+      _             <- InventoryDataLogger.debug("Getting pending node info for node fact repos")
+      // empty because too long for test
+//      pendingInfos <- nodeInfoServiceImpl.getPendingNodeInfos()
+//      pendingFacts <- getFacts(pendingInfos.values, PendingInventory)
+//      pending <- Ref.make(pendingFacts)
+      pending       <- Ref.make(Map[NodeId, NodeFact]())
+      _             <- InventoryDataLogger.debug("Getting accepted node info for node fact repos")
+      acceptedInfos <- nodeInfoServiceImpl.getAllNodeInfos()
+      acceptedFacts <- getFacts(acceptedInfos.take(2), AcceptedInventory)
+      accepted      <- Ref.make(acceptedFacts)
+      lock          <- ReentrantLock.make()
+      _             <- InventoryDataLogger.debug("Creating node fact repos")
+    } yield {
+      new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, lock)
+    }
+  }.runNow
+
+//  lazy val ldifInventoryLogger = new DefaultLDIFInventoryLogger(LDIF_TRACELOG_ROOT_DIR)
+  lazy val inventorySaver = new NodeFactInventorySaver(
+    factRepo,
     (
       CheckOsType
-      :: automaticMerger
-      :: CheckMachineName
+      // :: automaticMerger
+      // :: CheckMachineName
       :: new LastInventoryDate()
       :: AddIpValues
-      :: new LogInventoryPreCommit(inventoryMapper, ldifInventoryLogger)
+      // :: new LogInventoryPreCommit(inventoryMapper, ldifInventoryLogger)
       :: Nil
     ),
     (
       // deprecated: nodes are fully deleted now
 //      new PendingNodeIfNodeWasRemoved(fullInventoryRepository)
-      new FactRepositoryPostCommit[Seq[LDIFChangeRecord]](factRepo, nodeInfoService)
+      // already commited in fact repos
+//      new FactRepositoryPostCommit[Unit](factRepo, nodeInfoService)
       // deprecated: we use fact repo now
 //      :: new PostCommitLogger(ldifInventoryLogger)
-      :: new PostCommitInventoryHooks[Seq[LDIFChangeRecord]](HOOKS_D, HOOKS_IGNORE_SUFFIXES)
+      new PostCommitInventoryHooks[Unit](HOOKS_D, HOOKS_IGNORE_SUFFIXES)
       :: Nil
     )
   )
@@ -2030,7 +2035,7 @@ object RudderConfig extends Loggable {
    * than the accepted ones.
    */
   private[this] lazy val getSubGroupChoices = new DefaultSubGroupComparatorRepository(roLdapNodeGroupRepository)
-  private[this] lazy val nodeQueryData      = new NodeQueryCriteriaData(getSubGroupChoices)
+  private[this] lazy val nodeQueryData      = new NodeQueryCriteriaData(() => getSubGroupChoices)
   private[this] lazy val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryData)
   private[this] lazy val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = Map[String, ObjectCriterion]() ++ ditQueryDataImpl.criteriaMap
@@ -2202,25 +2207,28 @@ object RudderConfig extends Loggable {
   )
 
   // we need a roLdap query checker for nodes in pending
-  private[this] lazy val inventoryQueryChecker = new PendingNodesLDAPQueryChecker(
-    new InternalLDAPQueryProcessor(
-      roLdap,
-      pendingNodesDitImpl,
-      nodeDit,
-      // here, we don't want to look for subgroups to show them in the form => always return an empty list
-      new DitQueryData(
+  private[this] lazy val inventoryQueryChecker = {
+    val subGroup = new SubGroupComparatorRepository {
+      override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]]         = Chunk.empty.succeed
+      override def getGroups:                        IOResult[Chunk[SubGroupChoice]] = Chunk.empty.succeed
+    }
+    new PendingNodesLDAPQueryChecker(
+      new InternalLDAPQueryProcessor(
+        roLdap,
         pendingNodesDitImpl,
         nodeDit,
-        rudderDit,
-        new NodeQueryCriteriaData(new SubGroupComparatorRepository {
-          override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]]         = Chunk.empty.succeed
-          override def getGroups:                        IOResult[Chunk[SubGroupChoice]] = Chunk.empty.succeed
-        })
+        // here, we don't want to look for subgroups to show them in the form => always return an empty list
+        new DitQueryData(
+          pendingNodesDitImpl,
+          nodeDit,
+          rudderDit,
+          new NodeQueryCriteriaData(() => subGroup)
+        ),
+        ldapEntityMapper
       ),
-      ldapEntityMapper
-    ),
-    nodeInfoServiceImpl
-  )
+      nodeInfoServiceImpl
+    )
+  }
   private[this] lazy val dynGroupServiceImpl   = new DynGroupServiceImpl(rudderDitImpl, roLdap, ldapEntityMapper)
 
   lazy val pendingNodeCheckGroup = new CheckPendingNodeInDynGroups(inventoryQueryChecker)

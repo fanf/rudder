@@ -907,7 +907,8 @@ final case class NameValueComparator(ldapAttr: String) extends TStringComparator
  */
 final case class SubGroupChoice(id: NodeGroupId, name: String)
 
-final case class SubGroupComparator(subGroupComparatorRepo: SubGroupComparatorRepository) extends TStringComparator {
+// we must use `() => IOResult[...]` to avoid cyclic reference
+final case class SubGroupComparator(subGroupComparatorRepo: () => SubGroupComparatorRepository) extends TStringComparator {
   override val comparators = Equals :: Nil
 
   override def buildFilter(attributeName: String, comparator: CriterionComparator, value: String): Filter = comparator match {
@@ -919,7 +920,7 @@ final case class SubGroupComparator(subGroupComparatorRepo: SubGroupComparatorRe
     // we need to query for the list of groups here
     val subGroups: Seq[SelectableOption[String]] = {
       (for {
-        res <- subGroupComparatorRepo.getGroups
+        res <- subGroupComparatorRepo().getGroups
       } yield {
         val g = res.map { case SubGroupChoice(id, name) => SelectableOption(id.serialize, name) }
         // if current value is defined but not in the list, add it with a "missing group" label

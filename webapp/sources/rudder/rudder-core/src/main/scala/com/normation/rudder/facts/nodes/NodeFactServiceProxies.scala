@@ -47,7 +47,6 @@ import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.services.nodes.NodeInfoService
-import zio._
 import zio.stream.ZSink
 import zio.syntax._
 

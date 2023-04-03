@@ -49,7 +49,6 @@ import com.normation.rudder.hooks.RunHooks
 import com.normation.rudder.services.nodes.NodeInfoService
 
 import com.normation.zio.currentTimeMillis
-import com.unboundid.ldif.LDIFChangeRecord
 
 import zio._
 import zio.syntax._

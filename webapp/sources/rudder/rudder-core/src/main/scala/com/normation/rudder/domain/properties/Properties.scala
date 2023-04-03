@@ -39,12 +39,16 @@ package com.normation.rudder.domain.properties
 
 import com.normation.GitVersion
 import com.normation.GitVersion.Revision
+import com.normation.inventory.domain.CustomProperty
+
 import com.normation.errors._
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.services.policies.ParameterEntry
+
 import com.typesafe.config._
+
 import java.util.regex.Pattern
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
@@ -702,6 +706,8 @@ object NodeProperty {
   def unserializeLdapNodeProperty(json: String): PureResult[NodeProperty] = {
     GenericProperty.parseConfig(json).map(new NodeProperty(_))
   }
+
+  def fromInventory(prop: CustomProperty) = apply(prop.name, GenericProperty.fromJsonValue(prop.value), None, Some(NodeProperty.customPropertyProvider))
 }
 
 final case class GroupProperty(config: Config) extends GenericProperty[GroupProperty] {
