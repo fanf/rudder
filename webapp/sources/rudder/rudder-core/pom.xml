@@ -106,6 +106,12 @@ along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
       <version>${rudder-version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>com.normation.inventory</groupId>
+      <artifactId>inventory-provisioning-core</artifactId>
+      <version>${rudder-version}</version>
+    </dependency>
+
     <!-- only for tests -->
     <dependency>
       <groupId>com.normation.inventory</groupId>

@@ -38,39 +38,49 @@
 package com.normation.rudder.facts.nodes
 
 import com.github.ghik.silencer.silent
+
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.ldap.listener.InMemoryDsConnectionProvider
 import com.normation.ldap.sdk.RoLDAPConnection
 import com.normation.ldap.sdk.RwLDAPConnection
+import com.normation.rudder.batch.GitGC
+import com.normation.rudder.git.GitRepositoryProviderImpl
+
 import com.normation.zio.ZioRuntime
-import com.softwaremill.quicklens._
-import com.unboundid.ldap.sdk.DN
-import com.unboundid.ldap.sdk.Modification
-import com.unboundid.ldap.sdk.ModificationType
 import org.junit.runner._
-import org.specs2.matcher.MatchResult
 import org.specs2.mutable._
 import org.specs2.runner._
-import zio._
+import org.specs2.specification.BeforeAfterAll
+import better.files._
+import cron4s.Cron
+import org.apache.commons.io.FileUtils
+import com.normation.inventory.ldap.provisioning._
+import com.normation.inventory.provisioning.fusion.FusionInventoryParser
+import com.normation.inventory.provisioning.fusion.PreInventoryParserCheckConsistency
+import com.normation.inventory.services.provisioning.DefaultInventoryParser
+import com.normation.inventory.services.provisioning.InventoryDigestServiceV1
+import com.normation.inventory.services.provisioning.InventoryParser
+import com.normation.utils.StringUuidGeneratorImpl
 
-final case class SystemError(cause: Throwable) extends RudderError {
-  def msg = "Error in test"
-}
+import zio._
+import zio.syntax._
+import zio.concurrent.ReentrantLock
+import com.normation.zio._
 
 /**
  *
  * Test the processing of new inventory:
  * - check that new, never seen nodes end into pending
-* - check that new, already pending nodes update pending
+ * - check that new, already pending nodes update pending
  * - check that accepted nodes are updated
  * - check that signature things work.
  *
- * That test does not check for the file observer, only save logic. 
+ * That test does not check for the file observer, only save logic.
  */
 @silent("a type was inferred to be `\\w+`; this may indicate a programming error.")
 @RunWith(classOf[JUnitRunner])
-class TestInventory extends Specification {
+class TestSaveInventory extends Specification with BeforeAfterAll {
 
   implicit class RunThing[E, T](thing: ZIO[Any, E, T])      {
     def testRun = ZioRuntime.unsafeRun(thing.either)
@@ -94,168 +104,134 @@ class TestInventory extends Specification {
     }
   }
 
-  // needed because the in memory LDAP server is not used with connection pool
+  val basePath = "/tmp/test-rudder-inventory/"
+
+  val INVENTORY_ROOT_DIR = basePath + "inventories"
+  val INVENTORY_DIR_INCOMING = INVENTORY_ROOT_DIR + "/incoming"
+  val INVENTORY_DIR_FAILED = INVENTORY_ROOT_DIR + "/failed"
+  val INVENTORY_DIR_RECEIVED = INVENTORY_ROOT_DIR + "/received"
+  val INVENTORY_DIR_UPDATE = INVENTORY_ROOT_DIR + "/accepted-nodes-updates"
+
+
+  override def beforeAll(): Unit = {
+    File(basePath).createDirectoryIfNotExists()
+  }
+
+  override def afterAll(): Unit = {
+    if (java.lang.System.getProperty("tests.clean.tmp") != "false") {
+      FileUtils.deleteDirectory(File(basePath).toJava)
+    }
+  }
+
+
+  val cronSchedule = Cron.parse("0 42 3 * * ?").toOption
+  val gitFactRepoProvider = GitRepositoryProviderImpl
+    .make(basePath+"fact-repo")
+    .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
+  val gitFactRepoGC = new GitGC(gitFactRepoProvider, cronSchedule)
+  gitFactRepoGC.start()
+
+  val gitFactRepo = new GitNodeFactRepositoryImpl(gitFactRepoProvider, "rudder")
+  gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
+
+  // TODO WARNING POC: this can't work on a machine with lots of node
+  val factRepo = {
+    for {
+      pending <- Ref.make(Map[NodeId, NodeFact]())
+      accepted <- Ref.make(Map[NodeId, NodeFact]())
+      lock <- ReentrantLock.make()
+    } yield {
+      new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, lock)
+    }
+  }.runNow
+
+  //  lazy val ldifInventoryLogger = new DefaultLDIFInventoryLogger(LDIF_TRACELOG_ROOT_DIR)
+  lazy val inventorySaver = new NodeFactInventorySaver(
+    factRepo,
+    (
+      CheckOsType
+        :: new LastInventoryDate()
+        :: AddIpValues
+        :: Nil
+      ),
+    (
+//      new PostCommitInventoryHooks[Unit](HOOKS_D, HOOKS_IGNORE_SUFFIXES)
+         Nil
+      )
+  )
+  lazy val pipelinedInventoryParser: InventoryParser = {
+    val fusionReportParser = {
+      new FusionInventoryParser(
+        new StringUuidGeneratorImpl(),
+        rootParsingExtensions = Nil,
+        contentParsingExtensions = Nil,
+        ignoreProcesses = false
+      )
+    }
+
+    new DefaultInventoryParser(
+      fusionReportParser,
+      Seq(
+        new PreInventoryParserCheckConsistency
+      )
+    )
+  }
+
+  lazy val inventoryProcessorInternal = {
+    new InventoryProcessor(
+      pipelinedInventoryParser,
+      inventorySaver,
+      4,
+      new InventoryDigestServiceV1(fullInventoryRepository),
+      () => true.succeed
+    )
+  }
+
+
+
+  lazy val inventoryProcessor = {
+    val mover = new InventoryMover(
+      INVENTORY_DIR_RECEIVED,
+      INVENTORY_DIR_FAILED,
+      new InventoryFailedHook("/none","")
+    )
+    new DefaultProcessInventoryService(inventoryProcessorInternal, mover)
+  }
+
+  lazy val inventoryWatcher = {
+    val fileProcessor = new ProcessFile(inventoryProcessor, INVENTORY_DIR_INCOMING)
+
+    new InventoryFileWatcher(
+      fileProcessor,
+      INVENTORY_DIR_INCOMING,
+      INVENTORY_DIR_UPDATE,
+      3.days,
+      1.minute
+    )
+  }
+
+  lazy val cleanOldInventoryBatch = {
+    new PurgeOldInventoryFiles(
+      RUDDER_INVENTORIES_CLEAN_CRON,
+      RUDDER_INVENTORIES_CLEAN_AGE,
+      List(better.files.File(INVENTORY_DIR_FAILED), better.files.File(INVENTORY_DIR_RECEIVED))
+    )
+  }
+  cleanOldInventoryBatch.start()
+
+
   sequential
 
-  val schemaLDIFs = (
-    "00-core" ::
-      "01-pwpolicy" ::
-      "04-rfc2307bis" ::
-      "05-rfc4876" ::
-      "099-0-inventory" ::
-      Nil
-  ) map { name =>
-    val n = "ldap-data/schema/" + name + ".ldif"
-    val r = this.getClass.getClassLoader.getResource(n)
-    if (null == r) {
-      throw new IllegalArgumentException("Can not find ressources to load: " + n)
-    }
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    r.toURI.getPath()
-  }
 
-  val baseDN = "cn=rudder-configuration"
 
-  val bootstrapLDIFs = ("ldap-data/bootstrap.ldif" :: "ldap-data/inventory-sample-data.ldif" :: Nil) map { name =>
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    this.getClass.getClassLoader.getResource(name).toURI.getPath
-  }
 
-  val ldap = InMemoryDsConnectionProvider[RwLDAPConnection](
-    baseDNs = baseDN :: Nil,
-    schemaLDIFPaths = schemaLDIFs,
-    bootstrapLDIFPaths = bootstrapLDIFs
-  )
 
-  val roLdap = InMemoryDsConnectionProvider[RoLDAPConnection](
-    baseDNs = baseDN :: Nil,
-    schemaLDIFPaths = schemaLDIFs,
-    bootstrapLDIFPaths = bootstrapLDIFs
-  )
 
-  val softwareDN = new DN("ou=Inventories, cn=rudder-configuration")
 
-  val acceptedNodesDitImpl: InventoryDit = new InventoryDit(
-    new DN("ou=Accepted Inventories, ou=Inventories, cn=rudder-configuration"),
-    softwareDN,
-    "Accepted inventories"
-  )
-  val pendingNodesDitImpl:  InventoryDit = new InventoryDit(
-    new DN("ou=Pending Inventories, ou=Inventories, cn=rudder-configuration"),
-    softwareDN,
-    "Pending inventories"
-  )
-  val removedNodesDitImpl = new InventoryDit(
-    new DN("ou=Removed Inventories, ou=Inventories, cn=rudder-configuration"),
-    softwareDN,
-    "Removed Servers"
-  )
-  val inventoryDitService: InventoryDitService =
-    new InventoryDitServiceImpl(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
+  "Saving a new, unknown inventory" should {
 
-  val inventoryMapper: InventoryMapper =
-    new InventoryMapper(inventoryDitService, pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
+    "correctly save the node in pending" in {
 
-  val repo = new FullInventoryRepositoryImpl(inventoryDitService, inventoryMapper, ldap)
-
-  val readOnlySoftware = new ReadOnlySoftwareDAOImpl(inventoryDitService, roLdap, inventoryMapper)
-
-  val writeOnlySoftware = new WriteOnlySoftwareDAOImpl(acceptedNodesDitImpl, ldap)
-
-  val softwareService = new SoftwareServiceImpl(readOnlySoftware, writeOnlySoftware, acceptedNodesDitImpl)
-
-  val allStatus = Seq(RemovedInventory, PendingInventory, AcceptedInventory)
-
-  // shortcut to create a machine with the name has ID in the given status
-  def machine(name: String, status: InventoryStatus)                                         = MachineInventory(
-    MachineUuid(name),
-    status,
-    PhysicalMachineType,
-    Some(s"name for ${name}"),
-    None,
-    None,
-    None,
-    None,
-    None,
-    Nil,
-    Nil,
-    Nil,
-    Nil,
-    Nil,
-    Nil,
-    Nil,
-    Nil,
-    Nil
-  )
-  // shortcut to create a node with the name has ID and the given machine, in the
-  // given status, has container.
-  def node(name: String, status: InventoryStatus, container: (MachineUuid, InventoryStatus)) = NodeInventory(
-    NodeSummary(
-      NodeId(name),
-      status,
-      "root",
-      "localhost",
-      Linux(
-        Debian,
-        "foo",
-        new Version("1.0"),
-        None,
-        new Version("1.0")
-      ),
-      NodeId("root"),
-      CertifiedKey
-    ),
-    machineId = Some(container)
-  )
-
-  def full(n: NodeInventory, m: MachineInventory) = FullInventory(n, Some(m))
-
-  // just to validate that things are set up
-  "The in memory LDAP directory" should {
-
-    "correctly load and read back test-entries" in {
-
-      val numEntries = bootstrapLDIFs.foldLeft(0) {
-        case (x, path) =>
-          val reader = new com.unboundid.ldif.LDIFReader(path)
-          var i      = 0
-          while (reader.readEntry != null) i += 1
-          i + x
-      }
-
-      ldap.server.countEntries === numEntries
-    }
-
-    "can add case-ignore-match equals localaccounts" in {
-      val dn = "nodeId=node0,ou=Nodes,ou=Accepted Inventories,ou=Inventories,cn=rudder-configuration"
-      // it throws exception if not success
-      ldap.server.modify(dn, new Modification(ModificationType.ADD, "localAccountName", "TEST", "test"))
-
-      (try {
-        ldap.server.assertValueExists(dn, "localAccountName", java.util.Arrays.asList("TEST", "test"))
-        ok("success")
-      } catch {
-        case ae: AssertionError => ko(ae.getMessage)
-      }): MatchResult[Any]
-    }
-  }
-
-  "Saving, finding and moving machine around" should {
-
-    "correctly save and find a machine based on it's id (when only on one place)" in {
-      forall(allStatus) { status =>
-        val m = machine("machine in " + status.name, status)
-        repo.save(m).testRun
-
-        val found = repo.getMachine(m.id).testRunGet
-
-        (m === found) and {
-          repo.delete(m.id).testRun
-          val x = repo.getMachine(m.id).testRun
-          x must beEqualTo(Right(None))
-          ok
-        }
-      }
     }
 
     "correctly find the machine of top priority when on several branches" in {
@@ -533,5 +509,6 @@ class TestInventory extends Specification {
     ldap.close
     success
   }
+
 
 }

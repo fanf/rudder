@@ -38,11 +38,15 @@
 package com.normation.rudder.facts.nodes
 
 import com.github.ghik.silencer.silent
+
 import com.normation.errors._
 import com.normation.inventory.domain._
+import com.normation.inventory.services.core.FullInventoryRepository
+import com.normation.inventory.services.core.MachineRepository
 import com.normation.ldap.listener.InMemoryDsConnectionProvider
 import com.normation.ldap.sdk.RoLDAPConnection
 import com.normation.ldap.sdk.RwLDAPConnection
+
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
 import com.unboundid.ldap.sdk.DN
@@ -52,6 +56,7 @@ import org.junit.runner._
 import org.specs2.matcher.MatchResult
 import org.specs2.mutable._
 import org.specs2.runner._
+
 import zio._
 
 final case class SystemError(cause: Throwable) extends RudderError {
@@ -92,73 +97,6 @@ class TestInventory extends Specification {
 
   // needed because the in memory LDAP server is not used with connection pool
   sequential
-
-  val schemaLDIFs = (
-    "00-core" ::
-      "01-pwpolicy" ::
-      "04-rfc2307bis" ::
-      "05-rfc4876" ::
-      "099-0-inventory" ::
-      Nil
-  ) map { name =>
-    val n = "ldap-data/schema/" + name + ".ldif"
-    val r = this.getClass.getClassLoader.getResource(n)
-    if (null == r) {
-      throw new IllegalArgumentException("Can not find ressources to load: " + n)
-    }
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    r.toURI.getPath()
-  }
-
-  val baseDN = "cn=rudder-configuration"
-
-  val bootstrapLDIFs = ("ldap-data/bootstrap.ldif" :: "ldap-data/inventory-sample-data.ldif" :: Nil) map { name =>
-    // toURI is needed for https://issues.rudder.io/issues/19186
-    this.getClass.getClassLoader.getResource(name).toURI.getPath
-  }
-
-  val ldap = InMemoryDsConnectionProvider[RwLDAPConnection](
-    baseDNs = baseDN :: Nil,
-    schemaLDIFPaths = schemaLDIFs,
-    bootstrapLDIFPaths = bootstrapLDIFs
-  )
-
-  val roLdap = InMemoryDsConnectionProvider[RoLDAPConnection](
-    baseDNs = baseDN :: Nil,
-    schemaLDIFPaths = schemaLDIFs,
-    bootstrapLDIFPaths = bootstrapLDIFs
-  )
-
-  val softwareDN = new DN("ou=Inventories, cn=rudder-configuration")
-
-  val acceptedNodesDitImpl: InventoryDit = new InventoryDit(
-    new DN("ou=Accepted Inventories, ou=Inventories, cn=rudder-configuration"),
-    softwareDN,
-    "Accepted inventories"
-  )
-  val pendingNodesDitImpl:  InventoryDit = new InventoryDit(
-    new DN("ou=Pending Inventories, ou=Inventories, cn=rudder-configuration"),
-    softwareDN,
-    "Pending inventories"
-  )
-  val removedNodesDitImpl = new InventoryDit(
-    new DN("ou=Removed Inventories, ou=Inventories, cn=rudder-configuration"),
-    softwareDN,
-    "Removed Servers"
-  )
-  val inventoryDitService: InventoryDitService =
-    new InventoryDitServiceImpl(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
-
-  val inventoryMapper: InventoryMapper =
-    new InventoryMapper(inventoryDitService, pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
-
-  val repo = new FullInventoryRepositoryImpl(inventoryDitService, inventoryMapper, ldap)
-
-  val readOnlySoftware = new ReadOnlySoftwareDAOImpl(inventoryDitService, roLdap, inventoryMapper)
-
-  val writeOnlySoftware = new WriteOnlySoftwareDAOImpl(acceptedNodesDitImpl, ldap)
-
-  val softwareService = new SoftwareServiceImpl(readOnlySoftware, writeOnlySoftware, acceptedNodesDitImpl)
 
   val allStatus = Seq(RemovedInventory, PendingInventory, AcceptedInventory)
 
@@ -206,35 +144,7 @@ class TestInventory extends Specification {
 
   def full(n: NodeInventory, m: MachineInventory) = FullInventory(n, Some(m))
 
-  // just to validate that things are set up
-  "The in memory LDAP directory" should {
-
-    "correctly load and read back test-entries" in {
-
-      val numEntries = bootstrapLDIFs.foldLeft(0) {
-        case (x, path) =>
-          val reader = new com.unboundid.ldif.LDIFReader(path)
-          var i      = 0
-          while (reader.readEntry != null) i += 1
-          i + x
-      }
-
-      ldap.server.countEntries === numEntries
-    }
-
-    "can add case-ignore-match equals localaccounts" in {
-      val dn = "nodeId=node0,ou=Nodes,ou=Accepted Inventories,ou=Inventories,cn=rudder-configuration"
-      // it throws exception if not success
-      ldap.server.modify(dn, new Modification(ModificationType.ADD, "localAccountName", "TEST", "test"))
-
-      (try {
-        ldap.server.assertValueExists(dn, "localAccountName", java.util.Arrays.asList("TEST", "test"))
-        ok("success")
-      } catch {
-        case ae: AssertionError => ko(ae.getMessage)
-      }): MatchResult[Any]
-    }
-  }
+  val repo: FullInventoryRepository[Unit] with MachineRepository[Unit] = ???
 
   "Saving, finding and moving machine around" should {
 
@@ -285,10 +195,6 @@ class TestInventory extends Specification {
         (repo.save(m1).isOK)
         and (repo.save(m2).isOK)
         and (repo.move(m1.id, RemovedInventory).isOK)
-        and {
-          val dn = inventoryDitService.getDit(AcceptedInventory).MACHINES.MACHINE.dn(m1.id)
-          repo.getMachine(m1.id).testRunGet === m2 and ldap.server.entryExists(dn.toString) === false
-        }
       )
     }
   }
@@ -303,25 +209,10 @@ class TestInventory extends Specification {
       val n2 = node("pendingNode", PendingInventory, (mid, AcceptedInventory))
       val n3 = node("removedNode", RemovedInventory, (mid, AcceptedInventory))
 
-      def toDN(n: NodeInventory) = inventoryDitService.getDit(n.main.status).NODES.NODE.dn(n.main.id.value)
-
       (
         repo.save(FullInventory(n1, None)).isOK
         and repo.save(FullInventory(n2, None)).isOK
         and repo.save(FullInventory(n3, None)).isOK
-        and {
-          val res = (for {
-            con   <- ldap
-            nodes <- repo.getNodesForMachine(con, mid)
-          } yield {
-            nodes.map { case (k, v) => (k, v.map(_.dn)) }
-          })
-          res.testRun.forceGet must havePairs(
-            AcceptedInventory -> Set(toDN(n1)),
-            PendingInventory  -> Set(toDN(n2)),
-            RemovedInventory  -> Set(toDN(n3))
-          )
-        }
       )
     }
 
@@ -445,23 +336,6 @@ class TestInventory extends Specification {
 
   }
 
-  "Softwares" should {
-    "Find 2 software referenced by nodes with the repository" in {
-      val softwares = readOnlySoftware.getSoftwaresForAllNodes().testRun
-      softwares.map(_.size) must beEqualTo(Right(2))
-    }
-
-    "Find 3 software in ou=software with the repository" in {
-      val softwares = readOnlySoftware.getAllSoftwareIds().testRun
-      softwares.map(_.size) must beEqualTo(Right(3))
-    }
-
-    "Purge one unreferenced software with the SoftwareService" in {
-      val purgedSoftwares = softwareService.deleteUnreferencedSoftware().testRun
-      purgedSoftwares must beEqualTo(Right(1))
-    }
-  }
-
   "Software updates" should {
 
     "be correctly saved for a node" in {
@@ -520,13 +394,12 @@ class TestInventory extends Specification {
       )
 
       (su1 === Nil) and (dt0.isEmpty must beFalse) and
-      repo.save(inv.modify(_.node.softwareUpdates).setTo(updates)).isOK and
-      (ldap.server.getEntry(dn).getAttribute("softwareUpdate").getValues.toList must containTheSameElementsAs(ldapValues))
+      repo.save(inv.modify(_.node.softwareUpdates).setTo(updates)).isOK
+     // (ldap.server.getEntry(dn).getAttribute("softwareUpdate").getValues.toList must containTheSameElementsAs(ldapValues))
     }
   }
 
   step {
-    ldap.close
     success
   }
 
