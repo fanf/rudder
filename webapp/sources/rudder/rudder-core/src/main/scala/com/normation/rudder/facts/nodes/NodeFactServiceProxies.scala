@@ -38,8 +38,14 @@
 package com.normation.rudder.facts.nodes
 
 import com.normation.errors.IOResult
+import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.FullInventory
 import com.normation.inventory.domain.Inventory
+import com.normation.inventory.domain.InventoryStatus
+import com.normation.inventory.domain.MachineUuid
 import com.normation.inventory.domain.NodeId
+import com.normation.inventory.domain.NodeInventory
+import com.normation.inventory.services.core.FullInventoryRepository
 import com.normation.inventory.services.provisioning.PipelinedInventorySaver
 import com.normation.inventory.services.provisioning.PostCommit
 import com.normation.inventory.services.provisioning.PreCommit
@@ -51,8 +57,8 @@ import zio.stream.ZSink
 import zio.syntax._
 
 class NodeFactInventorySaver(
-    backend:               NodeFactRepository,
-    val preCommitPipeline: Seq[PreCommit],
+    backend:                NodeFactRepository,
+    val preCommitPipeline:  Seq[PreCommit],
     val postCommitPipeline: Seq[PostCommit[Unit]]
 ) extends PipelinedInventorySaver[Unit] {
 
@@ -66,39 +72,43 @@ class NodeFactInventorySaver(
  */
 class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService {
   override def getNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
-    backend.get(nodeId).map(_.map(_.toNodeInfo))
+    backend.getAccepted(nodeId).map(_.map(_.toNodeInfo))
   }
 
   override def getNodeInfos(nodeIds: Set[NodeId]): IOResult[Set[NodeInfo]] = {
-    backend.getAll().collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }.run(ZSink.collectAllToSet)
+    backend.getAllAccepted().collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }.run(ZSink.collectAllToSet)
   }
 
   override def getNodeInfosSeq(nodeIds: Seq[NodeId]): IOResult[Seq[NodeInfo]] = {
-    backend.getAll().collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }.run(ZSink.collectAll).map(_.toSeq)
+    backend.getAllAccepted().collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }.run(ZSink.collectAll).map(_.toSeq)
   }
 
   override def getNumberOfManagedNodes: IOResult[Int] = {
-    backend.getAll().run(ZSink.count).map(_.toInt)
+    backend.getAllAccepted().run(ZSink.count).map(_.toInt)
   }
 
   override def getAll(): IOResult[Map[NodeId, NodeInfo]] = {
-    backend.getAll().map(_.toNodeInfo) run (ZSink.collectAllToMap[NodeInfo, NodeId](_.node.id)((a, b) => b))
+    backend.getAllAccepted().map(_.toNodeInfo) run (ZSink.collectAllToMap[NodeInfo, NodeId](_.node.id)((a, b) => b))
   }
 
   override def getAllNodesIds(): IOResult[Set[NodeId]] = {
-    backend.getAll().map(_.id).run(ZSink.collectAllToSet)
+    backend.getAllAccepted().map(_.id).run(ZSink.collectAllToSet)
   }
 
   override def getAllNodes(): IOResult[Map[NodeId, Node]] = {
-    backend.getAll().map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
+    backend.getAllAccepted().map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
   }
 
   override def getAllNodeInfos(): IOResult[Seq[NodeInfo]] = {
-    backend.getAll().map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
+    backend.getAllAccepted().map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
   }
 
   override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = {
-    backend.getAll().collect { case n if (n.rudderSettings.kind != NodeKind.Node) => n.id }.run(ZSink.collectAll).map(_.toSeq)
+    backend
+      .getAllAccepted()
+      .collect { case n if (n.rudderSettings.kind != NodeKind.Node) => n.id }
+      .run(ZSink.collectAll)
+      .map(_.toSeq)
   }
 
   override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
@@ -118,4 +128,39 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
   override def getDeletedNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
     None.succeed
   }
+}
+
+class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullInventoryRepository[Unit] {
+
+  override def get(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[FullInventory]] = {
+    backend.getOn(id, inventoryStatus).map(_.map(_.toFullInventory))
+  }
+
+  override def get(id: NodeId): IOResult[Option[FullInventory]] = {
+    get(id, AcceptedInventory)
+  }
+
+  override def getMachineId(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[(MachineUuid, InventoryStatus)]] = {
+    (Some((NodeFact.toMachineId(id), inventoryStatus))).succeed
+  }
+
+  override def getAllInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, FullInventory]] = {
+    backend.getAllAccepted().map(n => (n.id, n.toFullInventory)).run(ZSink.collectAllToMap())
+  }
+
+  override def getAllNodeInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, NodeInventory]] = {
+    backend.getAllAccepted().map(n => (n.id, n.toNodeInventory)).run(ZSink.collectAllToMap())
+  }
+
+  override def save(serverAndMachine: FullInventory): IOResult[Unit] = {
+    // we must know if it's new or not to get back the correct facts.
+
+    backend.updateInventory()
+  }
+
+  override def delete(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Unit] = ???
+
+  override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = ???
+
+  override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = ???
 }

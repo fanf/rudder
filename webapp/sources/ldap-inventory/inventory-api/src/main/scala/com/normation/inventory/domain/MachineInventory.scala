@@ -173,6 +173,10 @@ final case object PhysicalMachineType           extends MachineType {
   override val kind = "physicalMachine"
   override def toString() = kind
 }
+final case object UnknownMachineType           extends MachineType {
+  override val kind = "unknownMachineType"
+  override def toString() = kind
+}
 
 final case class MachineInventory(
     id:                 MachineUuid,

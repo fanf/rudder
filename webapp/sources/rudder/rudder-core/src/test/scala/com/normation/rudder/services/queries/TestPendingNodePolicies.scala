@@ -115,9 +115,9 @@ class TestPendingNodePolicies extends Specification {
   val cl                = CriterionLine(
     ObjectCriterion(
       OC_MACHINE,
-      Seq(Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(n => Chunk.fromIterable(n.machine.map(_.id.value)))))
+      Seq(Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(n => Chunk(n.machine.id.value))))
     ),
-    Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(n => Chunk.fromIterable(n.machine.map(_.id.value)))),
+    Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(n => Chunk(n.machine.id.value))),
     Equals,
     "dummy"
   )

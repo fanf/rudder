@@ -37,36 +37,43 @@
 
 package com.normation.rudder.facts.nodes
 
+import better.files._
 import com.github.ghik.silencer.silent
-
 import com.normation.errors._
 import com.normation.inventory.domain._
-import com.normation.ldap.listener.InMemoryDsConnectionProvider
-import com.normation.ldap.sdk.RoLDAPConnection
-import com.normation.ldap.sdk.RwLDAPConnection
-import com.normation.rudder.batch.GitGC
-import com.normation.rudder.git.GitRepositoryProviderImpl
-
-import com.normation.zio.ZioRuntime
-import org.junit.runner._
-import org.specs2.mutable._
-import org.specs2.runner._
-import org.specs2.specification.BeforeAfterAll
-import better.files._
-import cron4s.Cron
-import org.apache.commons.io.FileUtils
 import com.normation.inventory.ldap.provisioning._
 import com.normation.inventory.provisioning.fusion.FusionInventoryParser
 import com.normation.inventory.provisioning.fusion.PreInventoryParserCheckConsistency
 import com.normation.inventory.services.provisioning.DefaultInventoryParser
 import com.normation.inventory.services.provisioning.InventoryDigestServiceV1
 import com.normation.inventory.services.provisioning.InventoryParser
+import com.normation.rudder.batch.GitGC
+import com.normation.rudder.batch.PurgeOldInventoryFiles
+import com.normation.rudder.git.GitRepositoryProviderImpl
+import com.normation.rudder.inventory.DefaultProcessInventoryService
+import com.normation.rudder.inventory.InventoryFailedHook
+import com.normation.rudder.inventory.InventoryFileWatcher
+import com.normation.rudder.inventory.InventoryMover
+import com.normation.rudder.inventory.InventoryPair
+import com.normation.rudder.inventory.InventoryProcessor
+import com.normation.rudder.inventory.InventoryProcessStatus.Saved
+import com.normation.rudder.inventory.ProcessFile
+import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
-
-import zio._
-import zio.syntax._
-import zio.concurrent.ReentrantLock
 import com.normation.zio._
+import com.normation.zio.ZioRuntime
+import com.softwaremill.quicklens._
+import cron4s.Cron
+import java.security.Security
+import org.apache.commons.io.FileUtils
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.joda.time.DateTime
+import org.junit.runner._
+import org.specs2.mutable._
+import org.specs2.runner._
+import org.specs2.specification.BeforeAfterAll
+import zio._
+import zio.concurrent.ReentrantLock
 
 /**
  *
@@ -81,6 +88,9 @@ import com.normation.zio._
 @silent("a type was inferred to be `\\w+`; this may indicate a programming error.")
 @RunWith(classOf[JUnitRunner])
 class TestSaveInventory extends Specification with BeforeAfterAll {
+
+  // load bouncyCastle
+  Security.addProvider(new BouncyCastleProvider())
 
   implicit class RunThing[E, T](thing: ZIO[Any, E, T])      {
     def testRun = ZioRuntime.unsafeRun(thing.either)
@@ -104,17 +114,28 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     }
   }
 
-  val basePath = "/tmp/test-rudder-inventory/"
+  implicit def stringToNodeId(id: String) = NodeId(id)
 
-  val INVENTORY_ROOT_DIR = basePath + "inventories"
-  val INVENTORY_DIR_INCOMING = INVENTORY_ROOT_DIR + "/incoming"
-  val INVENTORY_DIR_FAILED = INVENTORY_ROOT_DIR + "/failed"
-  val INVENTORY_DIR_RECEIVED = INVENTORY_ROOT_DIR + "/received"
-  val INVENTORY_DIR_UPDATE = INVENTORY_ROOT_DIR + "/accepted-nodes-updates"
+  val basePath = s"/tmp/test-rudder-inventory/${DateFormaterService.gitTagFormat.print(DateTime.now())}"
 
+  val GIT_PENDING                     = basePath + "/fact-repo/nodes/pending"
+  def pendingNodeGitFile(id: String)  = File(GIT_PENDING + "/" + id + ".json")
+  val GIT_ACCEPTED                    = basePath + "/fact-repo/nodes/accepted"
+  def acceptedNodeGitFile(id: String) = File(GIT_ACCEPTED + "/" + id + ".json")
+
+  val INVENTORY_ROOT_DIR                  = basePath + "/inventories"
+  val INVENTORY_DIR_INCOMING              = INVENTORY_ROOT_DIR + "/incoming"
+  def incomingInventoryFile(name: String) = File(INVENTORY_DIR_INCOMING + "/" + name)
+  val INVENTORY_DIR_FAILED                = INVENTORY_ROOT_DIR + "/failed"
+  val INVENTORY_DIR_RECEIVED              = INVENTORY_ROOT_DIR + "/received"
+  def receivedInventoryFile(name: String) = File(INVENTORY_DIR_RECEIVED + "/" + name)
+  val INVENTORY_DIR_UPDATE                = INVENTORY_ROOT_DIR + "/accepted-nodes-updates"
 
   override def beforeAll(): Unit = {
-    File(basePath).createDirectoryIfNotExists()
+    List(basePath, INVENTORY_DIR_INCOMING, INVENTORY_DIR_FAILED, INVENTORY_DIR_RECEIVED, INVENTORY_DIR_UPDATE).foreach(f =>
+      File(f).createDirectoryIfNotExists(true)
+    )
+
   }
 
   override def afterAll(): Unit = {
@@ -123,12 +144,11 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     }
   }
 
-
-  val cronSchedule = Cron.parse("0 42 3 * * ?").toOption
+  val cronSchedule        = Cron.parse("0 42 3 * * ?").toOption
   val gitFactRepoProvider = GitRepositoryProviderImpl
-    .make(basePath+"fact-repo")
+    .make(basePath + "/fact-repo")
     .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
-  val gitFactRepoGC = new GitGC(gitFactRepoProvider, cronSchedule)
+  val gitFactRepoGC       = new GitGC(gitFactRepoProvider, cronSchedule)
   gitFactRepoGC.start()
 
   val gitFactRepo = new GitNodeFactRepositoryImpl(gitFactRepoProvider, "rudder")
@@ -137,27 +157,27 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   // TODO WARNING POC: this can't work on a machine with lots of node
   val factRepo = {
     for {
-      pending <- Ref.make(Map[NodeId, NodeFact]())
+      pending  <- Ref.make(Map[NodeId, NodeFact]())
       accepted <- Ref.make(Map[NodeId, NodeFact]())
-      lock <- ReentrantLock.make()
+      lock     <- ReentrantLock.make()
     } yield {
       new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, lock)
     }
   }.runNow
 
-  //  lazy val ldifInventoryLogger = new DefaultLDIFInventoryLogger(LDIF_TRACELOG_ROOT_DIR)
   lazy val inventorySaver = new NodeFactInventorySaver(
     factRepo,
     (
       CheckOsType
-        :: new LastInventoryDate()
-        :: AddIpValues
-        :: Nil
-      ),
+      :: new LastInventoryDate()
+      :: AddIpValues
+      :: Nil
+    ),
     (
+// we don't want post commit hook in tests
 //      new PostCommitInventoryHooks[Unit](HOOKS_D, HOOKS_IGNORE_SUFFIXES)
-         Nil
-      )
+      Nil
+    )
   )
   lazy val pipelinedInventoryParser: InventoryParser = {
     val fusionReportParser = {
@@ -182,333 +202,107 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       pipelinedInventoryParser,
       inventorySaver,
       4,
-      new InventoryDigestServiceV1(fullInventoryRepository),
-      () => true.succeed
+      new InventoryDigestServiceV1(id => factRepo.lookup(id).map(_.map(_.toFullInventory))),
+      () => ZIO.unit
     )
   }
-
-
 
   lazy val inventoryProcessor = {
     val mover = new InventoryMover(
       INVENTORY_DIR_RECEIVED,
       INVENTORY_DIR_FAILED,
-      new InventoryFailedHook("/none","")
+      new InventoryFailedHook("/tmp", Nil)
     )
     new DefaultProcessInventoryService(inventoryProcessorInternal, mover)
   }
 
-  lazy val inventoryWatcher = {
-    val fileProcessor = new ProcessFile(inventoryProcessor, INVENTORY_DIR_INCOMING)
-
-    new InventoryFileWatcher(
-      fileProcessor,
-      INVENTORY_DIR_INCOMING,
-      INVENTORY_DIR_UPDATE,
-      3.days,
-      1.minute
-    )
-  }
-
-  lazy val cleanOldInventoryBatch = {
-    new PurgeOldInventoryFiles(
-      RUDDER_INVENTORIES_CLEAN_CRON,
-      RUDDER_INVENTORIES_CLEAN_AGE,
-      List(better.files.File(INVENTORY_DIR_FAILED), better.files.File(INVENTORY_DIR_RECEIVED))
-    )
-  }
-  cleanOldInventoryBatch.start()
-
-
   sequential
 
-
-
-
-
-
+  val node2id       = "86d9ec77-9db5-4ba3-bdca-f0baf3a5b477"
+  val node2name     = s"node2-${node2id}.ocs"
+  val node2resource = s"inventories/7.2/${node2name}"
+  val newfqdn       = "node42.fqdn"
+  val fqdn          = "node2.rudder.local"
 
   "Saving a new, unknown inventory" should {
 
     "correctly save the node in pending" in {
+      val n2     = incomingInventoryFile(node2name)
+      n2.write(Resource.getAsString(node2resource))
+      val n2sign = incomingInventoryFile(s"${node2name}.sign")
+      n2sign.write(Resource.getAsString(s"${node2resource}.sign"))
 
+      (inventoryProcessor.saveInventoryBlocking(InventoryPair(n2, n2sign)).runNow must beEqualTo(
+        Saved(node2name, node2id)
+      )) and
+      (receivedInventoryFile(node2name).exists must beTrue) and
+      (pendingNodeGitFile(node2id).exists must beTrue) and
+      (factRepo.getPending(node2id).runNow must beSome())
     }
 
-    "correctly find the machine of top priority when on several branches" in {
-      allStatus.foreach(status => repo.save(machine("m1", status)).testRun)
+    "change in node by repos are reflected in file" in {
+      (for {
+        n <- factRepo.getPending(node2id).notOptional("node2 should be there for the test")
+        _ <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
+      } yield ()).runNow
 
-      val toFound = machine("m1", AcceptedInventory)
-      val found   = repo.getMachine(toFound.id).testRunGet
-
-      toFound === found
-
+      pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue
     }
 
-    "correctly moved the machine from pending to accepted, then to removed" in {
-      val m = machine("movingMachine", PendingInventory)
+    "update the node that was modified in repo" in {
+      val n2     = receivedInventoryFile(node2name).moveTo(incomingInventoryFile(node2name))
+      val n2sign = receivedInventoryFile(s"${node2name}.sign").moveTo(incomingInventoryFile(s"${node2name}.sign"))
 
-      repo.save(m).testRun
-
-      (
-        repo.move(m.id, AcceptedInventory).isOK
-        and (repo.getMachine(m.id).testRunGet must beEqualTo(m.copy(status = AcceptedInventory)))
-        and repo.move(m.id, RemovedInventory).isOK
-        and (repo.getMachine(m.id).testRunGet must beEqualTo(m.copy(status = RemovedInventory)))
-      )
-    }
-
-    ", when asked to move machine in removed inventory and a machine with the same id exists there, keep the one in removed and delete the one in accepted" in {
-      val m1 = machine("keepingMachine", AcceptedInventory)
-      val m2 = m1.copy(status = RemovedInventory, name = Some("modified"))
-
-      (
-        (repo.save(m1).isOK)
-        and (repo.save(m2).isOK)
-        and (repo.move(m1.id, RemovedInventory).isOK)
-        and {
-          val dn = inventoryDitService.getDit(AcceptedInventory).MACHINES.MACHINE.dn(m1.id)
-          repo.getMachine(m1.id).testRunGet === m2 and ldap.server.entryExists(dn.toString) === false
-        }
-      )
+      (inventoryProcessor.saveInventoryBlocking(InventoryPair(n2, n2sign)).runNow must beEqualTo(
+        Saved(node2name, node2id)
+      )) and
+      (factRepo.getPending(node2id).testRunGet.fqdn must beEqualTo(fqdn)) and
+      (pendingNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue)
     }
   }
 
-  "Saving, finding and moving node" should {
+  "Accepting a new, unknown inventory" should {
 
-    "find node for machine, whatever the presence or status of the machine" in {
+    "correctly update status and move file around" in {
+      factRepo.changeStatus(node2id, AcceptedInventory).runNow
+      (acceptedNodeGitFile(node2id).exists must beTrue) and
+      (factRepo.getAccepted(node2id).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory))
+    }
+    "change in node by repos are reflected in file" in {
+      (
+        for {
+          n <- factRepo.getAccepted(node2id).notOptional("node2 should be there for the test")
+          _ <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
+        } yield ()
+      ).runNow
 
-      val mid = MachineUuid("foo")
+      acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue
+    }
 
-      val n1 = node("acceptedNode", AcceptedInventory, (mid, AcceptedInventory))
-      val n2 = node("pendingNode", PendingInventory, (mid, AcceptedInventory))
-      val n3 = node("removedNode", RemovedInventory, (mid, AcceptedInventory))
-
-      def toDN(n: NodeInventory) = inventoryDitService.getDit(n.main.status).NODES.NODE.dn(n.main.id.value)
+    "update the node that was modified in repo" in {
+      val n2     = receivedInventoryFile(node2name).moveTo(incomingInventoryFile(node2name))
+      val n2sign = receivedInventoryFile(s"${node2name}.sign").moveTo(incomingInventoryFile(s"${node2name}.sign"))
 
       (
-        repo.save(FullInventory(n1, None)).isOK
-        and repo.save(FullInventory(n2, None)).isOK
-        and repo.save(FullInventory(n3, None)).isOK
-        and {
-          val res = (for {
-            con   <- ldap
-            nodes <- repo.getNodesForMachine(con, mid)
-          } yield {
-            nodes.map { case (k, v) => (k, v.map(_.dn)) }
-          })
-          res.testRun.forceGet must havePairs(
-            AcceptedInventory -> Set(toDN(n1)),
-            PendingInventory  -> Set(toDN(n2)),
-            RemovedInventory  -> Set(toDN(n3))
-          )
-        }
-      )
-    }
-
-    "find back the machine after a move" in {
-      val m = machine("findBackMachine", PendingInventory)
-      val n = node("findBackNode", PendingInventory, (m.id, m.status))
-
-      (
-        repo.save(full(n, m)).isOK
-        and repo.move(n.main.id, PendingInventory, AcceptedInventory).isOK
-        and {
-          val FullInventory(node, machine) = repo.get(n.main.id, AcceptedInventory).testRunGet
-
-          (
-            machine === Some(m.copy(status = AcceptedInventory)) and
-            node === n
-              .copyWithMain(main => main.copy(status = AcceptedInventory))
-              .copy(machineId = Some((m.id, AcceptedInventory)))
-          )
-        }
-      )
-    }
-
-    "accept to have a machine in a different status than the node" in {
-      val m = machine("differentMachine", AcceptedInventory)
-      val n = node("differentNode", PendingInventory, (m.id, AcceptedInventory))
-      (
-        repo.save(full(n, m)).isOK
-        and {
-          val FullInventory(node, machine) = repo.get(n.main.id, PendingInventory).testRunGet
-
-          (
-            node === n
-            and machine === Some(m)
-          )
-        }
-      )
-    }
-
-    "not find a machine if the container information has a bad status" in {
-      val m = machine("invisibleMachine", PendingInventory)
-      val n = node("invisibleNode", PendingInventory, (m.id, AcceptedInventory))
-      (
-        repo.save(full(n, m)).isOK
-        and {
-          val FullInventory(node, machine) = repo.get(n.main.id, PendingInventory).testRunGet
-
-          (
-            node === n
-            and machine === None
-          )
-        }
-      )
-    }
-
-    ", when moving from pending to accepted, moved back a machine from removed to accepted and correct other node container" in {
-      val m  = machine("harcoreMachine", RemovedInventory)
-      val n0 = node("h-n0", PendingInventory, (m.id, PendingInventory))
-      val n1 = node("h-n1", PendingInventory, (m.id, PendingInventory))
-      val n2 = node("h-n2", AcceptedInventory, (m.id, AcceptedInventory))
-      val n3 = node("h-n3", RemovedInventory, (m.id, RemovedInventory))
-
-      (
-        repo.save(m).isOK and repo.save(FullInventory(n0, None)).isOK and repo.save(FullInventory(n1, None)).isOK and
-        repo.save(FullInventory(n2, None)).isOK and repo.save(FullInventory(n3, None)).isOK
-        and repo.move(n0.main.id, PendingInventory, AcceptedInventory).isOK
-        and {
-          val FullInventory(node0, m0) = repo.get(n0.main.id, AcceptedInventory).testRunGet
-          val FullInventory(node1, m1) = repo.get(n1.main.id, PendingInventory).testRunGet
-          val FullInventory(node2, m2) = repo.get(n2.main.id, AcceptedInventory).testRunGet
-          val FullInventory(node3, m3) = repo.get(n3.main.id, RemovedInventory).testRunGet
-
-          // expected machine value
-          val machine = m.copy(status = AcceptedInventory)
-          val ms      = Some((machine.id, machine.status))
-
-          (
-            m0 === Some(machine) and m1 === Some(machine) and m2 === Some(machine) and m3 === Some(machine) and
-            node0 === n0
-              .copyWithMain(main => main.copy(status = AcceptedInventory))
-              .copy(machineId = Some((m.id, AcceptedInventory)))
-            and node1 === n1.copy(machineId = ms)
-            and node2 === n2.copy(machineId = ms)
-            and node3 === n3.copy(machineId = ms)
-          )
-        }
-      )
-    }
-
-  }
-
-  "Trying to add specific Windows" should {
-
-    "Allow to save and read it back" in {
-      val nodeId = NodeId("windows-2012")
-
-      val node = NodeInventory(
-        NodeSummary(
-          nodeId,
-          AcceptedInventory,
-          "administrator",
-          "localhost",
-          Windows(
-            Windows2012,
-            "foo",
-            new Version("1.0"),
-            None,
-            new Version("1.0")
-          ),
-          NodeId("root"),
-          UndefinedKey
-        ),
-        machineId = None
-      )
-
-      repo.save(FullInventory(node, None)).isOK and {
-        val FullInventory(n, m) = repo.get(nodeId, AcceptedInventory).testRunGet
-        n === node
-      }
-    }
-
-  }
-
-  "Softwares" should {
-    "Find 2 software referenced by nodes with the repository" in {
-      val softwares = readOnlySoftware.getSoftwaresForAllNodes().testRun
-      softwares.map(_.size) must beEqualTo(Right(2))
-    }
-
-    "Find 3 software in ou=software with the repository" in {
-      val softwares = readOnlySoftware.getAllSoftwareIds().testRun
-      softwares.map(_.size) must beEqualTo(Right(3))
-    }
-
-    "Purge one unreferenced software with the SoftwareService" in {
-      val purgedSoftwares = softwareService.deleteUnreferencedSoftware().testRun
-      purgedSoftwares must beEqualTo(Right(1))
-    }
-  }
-
-  "Software updates" should {
-
-    "be correctly saved for a node" in {
-      val dn  = "nodeId=node0,ou=Nodes,ou=Accepted Inventories,ou=Inventories,cn=rudder-configuration"
-      val inv = repo.get(NodeId("node0")).testRunGet
-      val su1 = inv.node.softwareUpdates
-      val d0  = "2022-01-01T00:00:00Z"
-      val dt0 = JsonSerializers.parseSoftwareUpdateDateTime(d0).toOption
-      val id0 = "RHSA-2020-4566"
-      val id1 = "CVE-2021-4034"
-
-      val updates = List(
-        SoftwareUpdate(
-          "app1",
-          Some("2.15.6~RC1"),
-          Some("x86_64"),
-          Some("yum"),
-          SoftwareUpdateKind.Defect,
-          None,
-          Some("Some explanation"),
-          Some(SoftwareUpdateSeverity.Critical),
-          dt0,
-          Some(List(id0, id1))
-        ),
-        SoftwareUpdate(
-          "app2",
-          Some("1-23-RELEASE-1"),
-          Some("x86_64"),
-          Some("apt"),
-          SoftwareUpdateKind.None,
-          Some("default-repo"),
-          None,
-          None,
-          None,
-          None
-        ), // we can have several time the same app
-
-        SoftwareUpdate(
-          "app2",
-          Some("1-24-RELEASE-64"),
-          Some("x86_64"),
-          Some("apt"),
-          SoftwareUpdateKind.Security,
-          Some("security-backports"),
-          None,
-          Some(SoftwareUpdateSeverity.Other("backport")),
-          None,
-          Some(List(id1))
+        inventoryProcessor.saveInventoryBlocking(InventoryPair(n2, n2sign)).runNow must beEqualTo(
+          Saved(node2name, node2id)
         )
-      )
-
-      val ldapValues = List(
-        s"""{"name":"app1","version":"2.15.6~RC1","arch":"x86_64","from":"yum","kind":"defect","description":"Some explanation","severity":"critical","date":"${d0}","ids":["${id0}","${id1}"]}""",
-        s"""{"name":"app2","version":"1-23-RELEASE-1","arch":"x86_64","from":"apt","kind":"none","source":"default-repo"}""",
-        s"""{"name":"app2","version":"1-24-RELEASE-64","arch":"x86_64","from":"apt","kind":"security","source":"security-backports","severity":"backport","ids":["${id1}"]}"""
-      )
-
-      (su1 === Nil) and (dt0.isEmpty must beFalse) and
-      repo.save(inv.modify(_.node.softwareUpdates).setTo(updates)).isOK and
-      (ldap.server.getEntry(dn).getAttribute("softwareUpdate").getValues.toList must containTheSameElementsAs(ldapValues))
+      ) and
+      (factRepo.getAccepted(node2id).testRunGet.fqdn must beEqualTo(fqdn)) and
+      (acceptedNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue)
     }
   }
 
-  step {
-    ldap.close
-    success
-  }
+  "Changing status to deleted" should {
 
+    "correctly delete node and value in repos" in {
+      factRepo.changeStatus(node2id, RemovedInventory).runNow
+
+      (pendingNodeGitFile(node2id).exists must beFalse) and
+      (acceptedNodeGitFile(node2id).exists must beFalse) and
+      (factRepo.lookup(node2id).runNow must beNone)
+
+    }
+  }
 
 }

@@ -95,21 +95,25 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
     def toChunk: Chunk[A] = Chunk.fromIterable(opt)
   }
 
+  implicit class OneToChunk[A](a :A) {
+    def wrap: Chunk[A] = Chunk(a)
+  }
+
   val criteria = Chunk(
     ObjectCriterion(
       OC_MACHINE,
       Chunk(
-        Criterion("machineType", MachineComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.machineType.kind))),
-        Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(_.machine.toChunk.map(_.id.value))),
+        Criterion("machineType", MachineComparator, NodeCriterionMatcherString(_.machine.machineType.kind.wrap)),
+        Criterion(A_MACHINE_UUID, StringComparator, NodeCriterionMatcherString(_.machine.id.value.wrap)),
         Criterion(A_NAME, StringComparator, AlwaysFalse("machine does not have a 'name' attribute in fusion")),
         Criterion(A_DESCRIPTION, StringComparator, AlwaysFalse("machine does not have a 'description' attribute in fusion")),
         Criterion(A_MB_UUID, StringComparator, AlwaysFalse("machine does not have a 'mother board uuid' attribute in fusion")),
         Criterion(
           A_MANUFACTURER,
           StringComparator,
-          NodeCriterionMatcherString(_.machine.toChunk.flatMap(_.manufacturer.map(_.name)))
+          NodeCriterionMatcherString(_.machine.manufacturer.toChunk.map(_.name))
         ),
-        Criterion(A_SERIAL_NUMBER, StringComparator, NodeCriterionMatcherString(_.machine.toChunk.flatMap(_.systemSerial)))
+        Criterion(A_SERIAL_NUMBER, StringComparator, NodeCriterionMatcherString(_.machine.systemSerial.toChunk))
       )
     ),
     ObjectCriterion(
@@ -238,27 +242,27 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
     ObjectCriterion(
       OC_NODE,
       Chunk(
-        Criterion("OS", NodeOstypeComparator, NodeCriterionMatcherString(n => Chunk(n.os.os.kernelName))),
-        Criterion(A_NODE_UUID, StringComparator, NodeCriterionMatcherString(n => Chunk(n.id.value))),
-        Criterion(A_HOSTNAME, StringComparator, NodeCriterionMatcherString(n => Chunk(n.fqdn))),
-        Criterion(A_OS_NAME, NodeOsNameComparator, NodeCriterionMatcherString(n => Chunk(n.os.os.name))),
-        Criterion(A_OS_FULL_NAME, OrderedStringComparator, NodeCriterionMatcherString(n => Chunk(n.os.fullName))),
-        Criterion(A_OS_VERSION, OrderedStringComparator, NodeCriterionMatcherString(n => Chunk(n.os.version.value))),
+        Criterion("OS", NodeOstypeComparator, NodeCriterionMatcherString(_.os.os.kernelName.wrap)),
+        Criterion(A_NODE_UUID, StringComparator, NodeCriterionMatcherString(_.id.value.wrap)),
+        Criterion(A_HOSTNAME, StringComparator, NodeCriterionMatcherString(_.fqdn.wrap)),
+        Criterion(A_OS_NAME, NodeOsNameComparator, NodeCriterionMatcherString(_.os.os.name.wrap)),
+        Criterion(A_OS_FULL_NAME, OrderedStringComparator, NodeCriterionMatcherString(_.os.fullName.wrap)),
+        Criterion(A_OS_VERSION, OrderedStringComparator, NodeCriterionMatcherString(_.os.version.value.wrap)),
         Criterion(A_OS_SERVICE_PACK, OrderedStringComparator, NodeCriterionMatcherString(_.os.servicePack.toChunk)),
-        Criterion(A_OS_KERNEL_VERSION, OrderedStringComparator, NodeCriterionMatcherString(n => Chunk(n.os.kernelVersion.value))),
+        Criterion(A_OS_KERNEL_VERSION, OrderedStringComparator, NodeCriterionMatcherString(_.os.kernelVersion.value.wrap)),
         Criterion(A_ARCH, StringComparator, NodeCriterionMatcherString(_.archDescription.toChunk)),
-        Criterion(A_STATE, NodeStateComparator, NodeCriterionMatcherString(n => Chunk(n.rudderSettings.state.name))),
+        Criterion(A_STATE, NodeStateComparator, NodeCriterionMatcherString(_.rudderSettings.state.name.wrap)),
         Criterion(A_OS_RAM, MemoryComparator, NodeCriterionMatcherLong(_.ram.map(_.size).toChunk)),
         Criterion(A_OS_SWAP, MemoryComparator, NodeCriterionMatcherLong(_.swap.map(_.size).toChunk)),
         Criterion(A_AGENTS_NAME, AgentComparator, AgentMatcher),
         Criterion(A_ACCOUNT, StringComparator, NodeCriterionMatcherString(_.accounts)),
         Criterion(A_LIST_OF_IP, NodeIpListComparator, NodeCriterionMatcherString(_.ipAddresses.map(_.inet))),
-        Criterion(A_ROOT_USER, StringComparator, NodeCriterionMatcherString(n => Chunk(n.rudderAgent.user))),
-        Criterion(A_INVENTORY_DATE, DateComparator, NodeCriterionMatcherDate(n => Chunk.fromIterable(n.lastInventoryDate))),
+        Criterion(A_ROOT_USER, StringComparator, NodeCriterionMatcherString(_.rudderAgent.user.wrap)),
+        Criterion(A_INVENTORY_DATE, DateComparator, NodeCriterionMatcherDate(_.lastInventoryDate.toChunk)),
         Criterion(
           A_POLICY_SERVER_UUID,
           StringComparator,
-          NodeCriterionMatcherString(n => Chunk(n.rudderSettings.policyServerId.value))
+          NodeCriterionMatcherString(_.rudderSettings.policyServerId.value.wrap)
         )
       )
     ),

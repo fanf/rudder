@@ -62,6 +62,8 @@ import com.normation.inventory.domain.SoftwareEditor
 import com.normation.inventory.domain.Ubuntu
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.VirtualMachine
+import com.normation.inventory.domain.VirtualMachineType
+import com.normation.inventory.domain.VmType.VirtualBox
 import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
@@ -123,7 +125,7 @@ class TestNodeFactQueryProcessor {
 
     override def getGroups: IOResult[Chunk[SubGroupChoice]] = Chunk.fromIterable(groups.keys).succeed
   }
-  val queryData = new NodeQueryCriteriaData(subGroupComparatorRepo)
+  val queryData = new NodeQueryCriteriaData(() => subGroupComparatorRepo)
 
   // load all nodes that in resources: node-facts/*.json
 //  java.lang.Runtime.getRuntime.gc()
@@ -203,6 +205,8 @@ class TestNodeFactQueryProcessor {
     )
     val software           = Chunk(SoftwareFact("Software 0", "1.0.0"), SoftwareFact("Software 1", "2.0-rc"))
 
+    def machine(nodeId: String) = MachineInfo(NodeFact.toMachineId(nodeId), VirtualMachineType(VirtualBox), None, None)
+
     override def getAll: IOResult[Chunk[NodeFact]] = {
       Chunk(
         NodeFact(
@@ -210,6 +214,7 @@ class TestNodeFactQueryProcessor {
           None,
           "root.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("root"),
           com.normation.rudder.facts.nodes.RudderSettings(
             CertifiedKey,
             emptyReportConf,
@@ -232,6 +237,7 @@ class TestNodeFactQueryProcessor {
           Some("matchOnMe"),
           "node0.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("node0"),
           defaultNodeSetting,
           nova,
           Chunk.empty,
@@ -246,6 +252,7 @@ class TestNodeFactQueryProcessor {
           Some("#54-Ubuntu SMP Thu Dec 10 17:23:29 UTC 2009"),
           "hasAttributes.normation.com",
           Linux(Ubuntu, "", "Ubuntu 9.10", None, "2.6.18-17-generic"),
+          machine("node1"),
           defaultNodeSetting,
           cfe,
           Chunk(
@@ -306,6 +313,7 @@ class TestNodeFactQueryProcessor {
           None,
           "node2.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("node2"),
           defaultNodeSetting,
           nova,
           Chunk(
@@ -335,6 +343,7 @@ class TestNodeFactQueryProcessor {
           None,
           "node3.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          machine("node3"),
           defaultNodeSetting,
           cfe,
           Chunk(
@@ -376,6 +385,7 @@ class TestNodeFactQueryProcessor {
           None,
           "node4.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(MachineUuid("machine0"), PhysicalMachineType),
           defaultNodeSetting,
           cfe,
           Chunk(
@@ -392,7 +402,6 @@ class TestNodeFactQueryProcessor {
           "20170515123456.948Z",
           Some("20170515123456.948Z"),
           ipAddresses = Chunk("127.0.0.1"),
-          machine = Some(MachineInfo(MachineUuid("machine0"), PhysicalMachineType)),
           environmentVariables = Chunk(("SHELL", "/bin/sh"))
         ),
         NodeFact(
@@ -400,6 +409,11 @@ class TestNodeFactQueryProcessor {
           None,
           "node5.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(
+            MachineUuid("machine1"),
+            PhysicalMachineType,
+            systemSerial = Some("f47ac10b-58cc-4372-a567-0e02b2c3d479")
+          ),
           defaultNodeSetting,
           dsc,
           Chunk(
@@ -426,19 +440,16 @@ class TestNodeFactQueryProcessor {
           "20180515123456.948Z",
           Some("20180515123456.948Z"),
           ipAddresses = Chunk(),
-          machine = Some(
-            MachineInfo(
-              MachineUuid("machine1"),
-              PhysicalMachineType,
-              systemSerial = Some("f47ac10b-58cc-4372-a567-0e02b2c3d479")
-            )
-          )
         ),
         NodeFact(
           "node6",
           None,
           "node6.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(
+            MachineUuid("machine2"),
+            PhysicalMachineType
+          ),
           defaultNodeSetting,
           cfe,
           Chunk(
@@ -465,12 +476,6 @@ class TestNodeFactQueryProcessor {
           "20190515123456.948Z",
           Some("20190515123456.948Z"),
           ipAddresses = Chunk(),
-          machine = Some(
-            MachineInfo(
-              MachineUuid("machine2"),
-              PhysicalMachineType
-            )
-          ),
           bios = Chunk(Bios("bios1", version = Some("6.00"), editor = Some("Phoenix Technologies LTD")))
         ),
         NodeFact(
@@ -478,6 +483,10 @@ class TestNodeFactQueryProcessor {
           None,
           "node7.normation.com",
           Linux(Ubuntu, "", "nothing", None, "nothing"),
+          MachineInfo(
+            MachineUuid("machine2"),
+            PhysicalMachineType
+          ),
           defaultNodeSetting.copy(state = NodeState.Initializing),
           cfe,
           Chunk(),
@@ -487,12 +496,6 @@ class TestNodeFactQueryProcessor {
           ipAddresses = Chunk(),
           fileSystems = Chunk(FileSystem("/", Some("ext3"), None, None, Some(10), Some(803838361699L))),
           software = Chunk(software(0)),
-          machine = Some(
-            MachineInfo(
-              MachineUuid("machine2"),
-              PhysicalMachineType
-            )
-          ),
           bios = Chunk(Bios("bios1", version = Some("6.00"), editor = Some("Phoenix Technologies LTD")))
         )
       ).succeed

@@ -38,24 +38,20 @@
 package com.normation.rudder.facts.nodes
 
 import NodeFactSerialisation._
-
 import better.files.File
-
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
-
+import com.normation.zio._
 import com.softwaremill.quicklens._
 import org.eclipse.jgit.lib.PersonIdent
-
 import zio._
 import zio.concurrent.ReentrantLock
 import zio.json._
 import zio.stream.ZStream
 import zio.syntax._
-import com.normation.zio._
 
 /*
  * This file contains the base to persist facts into a git repository. There is a lot of question
@@ -105,10 +101,16 @@ import com.normation.zio._
  */
 trait NodeFactRepository {
 
+
+  /*
+   * Get node on given status
+   */
+  def getOn(nodeId: NodeId, status: InventoryStatus): IOResult[Option[NodeFact]]
+
   /*
    * Get an accepted node
    */
-  def get(nodeId: NodeId): IOResult[Option[NodeFact]]
+  def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]]
 
   /*
    * Get a pending node
@@ -116,9 +118,14 @@ trait NodeFactRepository {
   def getPending(nodeId: NodeId): IOResult[Option[NodeFact]]
 
   /*
+   * Lookup node with that ID in either pending or accepted nodes
+   */
+  def lookup(nodeId: NodeId): IOResult[Option[NodeFact]]
+
+  /*
    * get all node facts
    */
-  def getAll(): IOStream[NodeFact]
+  def getAllAccepted(): IOStream[NodeFact]
 
   def getAllPending(): IOStream[NodeFact]
 
@@ -170,9 +177,9 @@ class InMemoryNodeFactRepository(
 ) extends NodeFactRepository {
 
   (for {
-   p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
-   a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
-   _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
+    p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
+    a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
+    _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
   } yield ()).runNow
 
   def getOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
@@ -191,7 +198,7 @@ class InMemoryNodeFactRepository(
     ref.update(_.removed(nodeId))
   }
 
-  override def get(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+  override def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]] = {
     getOn(acceptedNodes, nodeId)
   }
 
@@ -199,7 +206,11 @@ class InMemoryNodeFactRepository(
     getOn(pendingNodes, nodeId)
   }
 
-  override def getAll(): IOStream[NodeFact] = getAllOn(acceptedNodes)
+  override def lookup(nodeId: NodeId): IOResult[Option[NodeFact]] = {
+    getAccepted(nodeId).flatMap(opt => opt.fold(getPending(nodeId))(Some(_).succeed))
+  }
+
+  override def getAllAccepted(): IOStream[NodeFact] = getAllOn(acceptedNodes)
 
   override def getAllPending(): IOStream[NodeFact] = getAllOn(pendingNodes)
 
@@ -232,10 +243,18 @@ class InMemoryNodeFactRepository(
                               s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes"
                             ).fail
                           case (AcceptedInventory, None, Some(_))    => ZIO.unit
-                          case (AcceptedInventory, Some(x), None)    => deleteOn(pendingNodes, nodeId) *> saveOn(acceptedNodes, x)
+                          case (AcceptedInventory, Some(x), None)    =>
+                            deleteOn(pendingNodes, nodeId) *> saveOn(
+                              acceptedNodes,
+                              x.modify(_.rudderSettings.status).setTo(AcceptedInventory)
+                            )
                           case (AcceptedInventory, Some(_), Some(_)) => deleteOn(pendingNodes, nodeId)
-                          case (PendingInventory, None, Some(x))     => deleteOn(acceptedNodes, nodeId) *> saveOn(pendingNodes, x)
-                          case (PendingInventory, Some(x), None)     => ZIO.unit
+                          case (PendingInventory, None, Some(x))     =>
+                            deleteOn(acceptedNodes, nodeId) *> saveOn(
+                              pendingNodes,
+                              x.modify(_.rudderSettings.status).setTo(PendingInventory)
+                            )
+                          case (PendingInventory, Some(_), None)     => ZIO.unit
                           case (PendingInventory, Some(_), Some(_))  => deleteOn(acceptedNodes, nodeId)
                           case (RemovedInventory, _, _)              => deleteOn(pendingNodes, nodeId) *> deleteOn(acceptedNodes, nodeId)
                         }
@@ -432,10 +451,10 @@ class GitNodeFactRepositoryImpl(
     } *> checkInit()
   }
 
-  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
+  override def changeStatus(nodeId: NodeId, toStatus: InventoryStatus): IOResult[Unit] = {
     // pending and accepted are symmetric, utility function for the two cases
-    def move(from: InventoryStatus) = {
-      val to = if (from == AcceptedInventory) PendingInventory else AcceptedInventory
+    def move(to: InventoryStatus) = {
+      val from = if (to == AcceptedInventory) PendingInventory else AcceptedInventory
 
       val fromFile = getFile(nodeId, from)
       val toFile   = getFile(nodeId, to)
@@ -448,7 +467,7 @@ class GitNodeFactRepositoryImpl(
           committer,
           toGitPath(fromFile.toJava),
           toGitPath(toFile.toJava),
-          s"Updating facts for node '${nodeId.value}': accepted"
+          s"Updating facts for node '${nodeId.value}' to status: ${to.name}"
         ), // if source file does not exist, check if dest is present. If present, assume it's ok, else error
 
         ZIO.whenZIO(IOResult.attempt(!toFile.exists)) {
@@ -459,7 +478,7 @@ class GitNodeFactRepositoryImpl(
       )
     }
 
-    (status match {
+    (toStatus match {
       case RemovedInventory => delete(nodeId)
       case x                => move(x)
     }).unit

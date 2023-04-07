@@ -124,7 +124,7 @@ class TestCertificate extends Specification with Loggable {
     parser,
     reportSaver,
     2,
-    new InventoryDigestServiceV1(fullInventoryRepo),
+    new InventoryDigestServiceV1(fullInventoryRepo.get),
     () => ZIO.unit,
   )
 

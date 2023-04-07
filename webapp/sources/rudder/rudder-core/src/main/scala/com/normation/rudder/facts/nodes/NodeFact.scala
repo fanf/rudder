@@ -94,7 +94,10 @@ final case class RudderAgent(
     securityToken:                SecurityToken,
     // agent capabilities are lower case string used as tags giving information about what agent can do
     capabilities:                 Chunk[AgentCapability]
-)
+) {
+  def toAgentInfo = AgentInfo(agentType, Some(version), securityToken, capabilities.toSet)
+}
+
 // rudder settings for that node
 final case class RudderSettings(
     keyStatus:              KeyStatus,
@@ -151,6 +154,9 @@ final case class SoftwareFact(
 )
 
 object NodeFact {
+
+  def toMachineId(nodeId: NodeId) = MachineUuid("machine-" + nodeId.value)
+
   implicit class IterableToChunk[A](it: Iterable[A]) {
     def toChunk: Chunk[A] = Chunk.fromIterable(it)
   }
@@ -215,7 +221,7 @@ object NodeFact {
     def toNodeInfo: NodeInfo = NodeInfo(
       node.toNode,
       node.fqdn,
-      node.machine,
+      Some(node.machine),
       node.os,
       node.ipAddresses.toList.map(_.inet),
       node.lastInventoryDate.getOrElse(node.factProcessedDate),
@@ -234,6 +240,68 @@ object NodeFact {
       node.ram,
       node.timezone
     )
+
+    def toNodeSummary: NodeSummary = {
+      NodeSummary(
+        node.id,
+        node.rudderSettings.status,
+        node.rudderAgent.user,
+        node.fqdn,
+        node.os,
+        node.rudderSettings.policyServerId,
+        node.rudderSettings.keyStatus
+      )
+    }
+
+    def toNodeInventory: NodeInventory = NodeInventory(
+      node.toNodeSummary,
+      name = None,
+      description = None,
+      node.ram,
+      node.swap,
+      node.lastInventoryDate,
+      Some(node.factProcessedDate),
+      node.archDescription,
+      lastLoggedUser = None,
+      lastLoggedUserTime = None,
+      List(node.rudderAgent.toAgentInfo),
+      node.serverIps,
+      Some((node.machineId, node.rudderSettings.status)),
+      // really not sure about what to do here
+      softwareIds = List(),
+      node.accounts,
+      node.environmentVariables.map { case (a, b) => EnvironmentVariable(a, Some(b), None) },
+      node.processes,
+      node.vms,
+      node.networks,
+      node.fileSystems,
+      node.timezone,
+      node.customProperties.toList,
+      node.softwareUpdate.toList
+    )
+
+    def toMachineInventory: MachineInventory = MachineInventory(
+      node.machineId,
+      node.rudderSettings.status,
+      node.machine.machineType,
+      name = None,
+      mbUuid = None,
+      node.lastInventoryDate,
+      Some(node.factProcessedDate),
+      node.machine.manufacturer,
+      node.machine.systemSerial,
+      node.bios.toList,
+      node.controllers.toList,
+      node.memories.toList,
+      node.ports.toList,
+      node.processors.toList,
+      node.slots.toList,
+      node.sounds.toList,
+      node.storages.toList,
+      node.videos.toList
+    )
+
+    def toFullInventory: FullInventory = FullInventory(node.toNodeInventory, Some(node.toMachineInventory))
   }
 
   /*
@@ -248,6 +316,7 @@ object NodeFact {
       },
       nodeInfo.hostname,
       nodeInfo.osDetails,
+      nodeInfo.machine.getOrElse(MachineInfo(NodeFact.toMachineId(nodeInfo.id), UnknownMachineType, None, None)),
       RudderSettings(
         nodeInfo.keyStatus,
         nodeInfo.nodeReportingConfiguration,
@@ -271,7 +340,6 @@ object NodeFact {
       Some(nodeInfo.inventoryDate),
       nodeInfo.ips.map(IpAddress(_)).toChunk,
       nodeInfo.timezone,
-      nodeInfo.machine,
       nodeInfo.ram,
       inventory.toOption.flatMap(_.node.swap),
       nodeInfo.archDescription,
@@ -322,12 +390,51 @@ object NodeFact {
     RudderAgent(AgentType.CfeCommunity, "root", AgentVersion("unknown"), PublicKey("not initialized"), Chunk.empty)
   }
 
+
+  def newFromFullInventory(inventory: FullInventory, software: Iterable[Software]): NodeFact = {
+    val now = DateTime.now()
+    val fact = NodeFact(
+      inventory.node.main.id,
+      None,
+      inventory.node.main.hostname,
+      inventory.node.main.osDetails,
+      MachineInfo(
+        NodeFact.toMachineId(inventory.node.main.id),
+        inventory.machine.map(_.machineType).getOrElse(UnknownMachineType),
+        inventory.machine.flatMap(_.systemSerialNumber),
+        inventory.machine.flatMap(_.manufacturer)
+      ),
+      defaultRudderSettings(),
+      agentFromInventory(inventory.node).getOrElse(defaultRudderAgent()),
+      Chunk.empty,
+      now,
+      now
+    )
+    updateFullInventory(fact, inventory, software)
+  }
+
+  def newFromInventory(inventory: Inventory): NodeFact = {
+    newFromFullInventory(FullInventory(inventory.node, Some(inventory.machine)), inventory.applications)
+  }
+
   /*
    * Update all inventory parts from that node fact.
    * The inventory parts are overridden, there is no merge
    * NOTICE: status is ignored !
    */
-  def updateInventory(node: NodeFact, inventory: Inventory): NodeFact       = {
+  def updateInventory(node: NodeFact, inventory: Inventory): NodeFact = {
+    updateFullInventory(node, FullInventory(inventory.node, Some(inventory.machine)), inventory.applications)
+  }
+
+  def updateFullInventory(node: NodeFact, inventory: FullInventory, software: Iterable[Software]): NodeFact = {
+
+    def chunkOpt[A](getter: MachineInventory => Seq[A]): Chunk[A] = {
+      inventory.machine match {
+        case None    => Chunk.empty
+        case Some(m) => getter(m).toChunk
+      }
+    }
+
     import com.softwaremill.quicklens._
     // not sure we wwant that, TODO POC
     require(
@@ -335,16 +442,22 @@ object NodeFact {
       s"Inventory can only be update on a node with the same ID, but nodeId='${node.id.value}' and in inventory='${inventory.node.main.id.value}'"
     )
 
-    val properties = (node.properties.filterNot(
-      _.provider == Some(NodeProperty.customPropertyProvider)
-    ) ++ inventory.node.customProperties.map(NodeProperty.fromInventory)).sortBy(_.name)
+    val properties = (
+      node.properties.filterNot(
+        _.provider == Some(NodeProperty.customPropertyProvider)
+      ) ++ inventory.node.customProperties.map(NodeProperty.fromInventory)
+    ).sortBy(_.name)
 
-    val machine = MachineInfo(
-      inventory.machine.id,
-      inventory.machine.machineType,
-      inventory.machine.systemSerialNumber,
-      inventory.machine.manufacturer
-    )
+    // now machine are mandatory so if we don't have it inventory, don't update
+    val machine = inventory.machine.map { m =>
+      MachineInfo(
+        NodeFact.toMachineId(inventory.node.main.id),
+        m.machineType,
+        m.systemSerialNumber,
+        m.manufacturer
+      )
+    }
+
     node
       .modify(_.fqdn)
       .setTo(inventory.node.main.hostname)
@@ -365,7 +478,7 @@ object NodeFact {
       .modify(_.timezone)
       .setTo(inventory.node.timezone)
       .modify(_.machine)
-      .setTo(Some(machine))
+      .setToIfDefined(machine)
       .modify(_.ram)
       .setTo(inventory.node.ram)
       .modify(_.swap)
@@ -375,52 +488,36 @@ object NodeFact {
       .modify(_.accounts)
       .setTo(inventory.node.accounts.toChunk)
       .modify(_.bios)
-      .setTo(inventory.machine.bios.toChunk)
+      .setTo(chunkOpt(_.bios))
       .modify(_.controllers)
-      .setTo(inventory.machine.controllers.toChunk)
+      .setTo(chunkOpt(_.controllers))
       .modify(_.environmentVariables)
       .setTo(inventory.node.environmentVariables.toChunk.map(ev => (ev.name, ev.value.getOrElse(""))))
       .modify(_.fileSystems)
       .setTo(inventory.node.fileSystems.toChunk)
       // missing: inputs, local group, local users, logical volumes, physical volumes
       .modify(_.memories)
-      .setTo(inventory.machine.memories.toChunk)
+      .setTo(chunkOpt(_.memories))
       .modify(_.networks)
       .setTo(inventory.node.networks.toChunk)
       .modify(_.ports)
-      .setTo(inventory.machine.ports.toChunk)
+      .setTo(chunkOpt(_.ports))
       .modify(_.processes)
       .setTo(inventory.node.processes.toChunk)
       .modify(_.slots)
-      .setTo(inventory.machine.slots.toChunk)
+      .setTo(chunkOpt(_.slots))
       .modify(_.software)
-      .setTo(inventory.applications.flatMap(_.toFact).toChunk)
+      .setTo(Chunk.fromIterable(software.flatMap(_.toFact)))
       .modify(_.softwareUpdate)
       .setTo(inventory.node.softwareUpdates.toChunk)
       .modify(_.sounds)
-      .setTo(inventory.machine.sounds.toChunk)
+      .setTo(chunkOpt(_.sounds))
       .modify(_.storages)
-      .setTo(inventory.machine.storages.toChunk)
+      .setTo(chunkOpt(_.storages))
       .modify(_.videos)
-      .setTo(inventory.machine.videos.toChunk)
+      .setTo(chunkOpt(_.videos))
       .modify(_.vms)
       .setTo(inventory.node.vms.toChunk)
-  }
-
-  def newFromInventory(inventory: Inventory): NodeFact = {
-    val now = DateTime.now()
-    val fact = NodeFact(
-      inventory.node.main.id,
-      None,
-      inventory.node.main.hostname,
-      inventory.node.main.osDetails,
-      defaultRudderSettings(),
-      agentFromInventory(inventory.node).getOrElse(defaultRudderAgent()),
-      Chunk.empty,
-      now,
-      now
-    )
-    updateInventory(fact, inventory)
   }
 
 }
@@ -431,6 +528,7 @@ final case class NodeFact(
     @jsonField("hostname")
     fqdn:           String,
     os:             OsDetails,
+    machine:        MachineInfo,
     rudderSettings: RudderSettings,
     rudderAgent:    RudderAgent,
     properties:     Chunk[NodeProperty],
@@ -447,7 +545,6 @@ final case class NodeFact(
     lastInventoryDate: Option[DateTime] = None,
     ipAddresses:       Chunk[IpAddress] = Chunk.empty,
     timezone:          Option[NodeTimezone] = None,
-    machine:           Option[MachineInfo] = None,
 
     // inventory details, optional
 
@@ -477,9 +574,15 @@ final case class NodeFact(
     videos:               Chunk[Video] = Chunk.empty,
     vms:                  Chunk[VirtualMachine] = Chunk.empty
 ) {
-  // todo
+  // we don't have a machine id anymore, by convention it's the node id prefixed by "machine-"
+  def machineId = NodeFact.toMachineId(id)
+
   def isPolicyServer: Boolean = rudderSettings.kind != NodeKind.Node
   def isSystem:       Boolean = isPolicyServer
+  def serverIps        = ipAddresses.map(_.inet).toList
+  def customProperties = properties.collect {
+    case p if (p.provider == Some(NodeProperty.customPropertyProvider)) => CustomProperty(p.name, p.jsonValue)
+  }
 }
 
 final case class JsonOsDetails(

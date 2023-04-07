@@ -38,15 +38,17 @@ package com.normation.inventory.services.provisioning
 
 import com.normation.errors._
 import com.normation.inventory.domain.{PublicKey => AgentKey, _}
-import com.normation.inventory.services.core.ReadOnlyFullInventoryRepository
+
 import java.io.InputStream
 import java.security.PublicKey
 import java.security.Signature
 import java.util.Properties
 import org.apache.commons.io.IOUtils
 import org.bouncycastle.util.encoders.Hex
+
 import zio._
 import zio.syntax._
+import com.normation.errors.IOResult
 
 /**
  * We are using a simple date structure that handle the digest file
@@ -163,7 +165,7 @@ trait GetKey {
 }
 
 class InventoryDigestServiceV1(
-    repo: ReadOnlyFullInventoryRepository
+    getExistingNode: NodeId => IOResult[Option[FullInventory]]
 ) extends ParseInventoryDigestFileV1 with GetKey with CheckInventoryDigest {
 
   /**
@@ -181,7 +183,7 @@ class InventoryDigestServiceV1(
       }
     }
 
-    repo.get(receivedInventory.node.main.id).flatMap {
+    getExistingNode(receivedInventory.node.main.id).flatMap {
       case Some(storedInventory) =>
         val keyStatus = storedInventory.node.main.keyStatus
         val inventory: NodeInventory = {

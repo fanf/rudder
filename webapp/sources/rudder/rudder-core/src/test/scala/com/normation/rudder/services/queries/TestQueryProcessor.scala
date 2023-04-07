@@ -120,7 +120,7 @@ class TestQueryProcessor extends Loggable {
     override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]]         = Inconsistency("For test, no subgroup").fail
     override def getGroups:                        IOResult[Chunk[SubGroupChoice]] = Inconsistency("For test, no subgroup").fail
   }
-  val ditQueryData = new DitQueryData(DIT, nodeDit, rudderDit, new NodeQueryCriteriaData(mockSubGroupComparatorRepo))
+  val ditQueryData = new DitQueryData(DIT, nodeDit, rudderDit, new NodeQueryCriteriaData(() => mockSubGroupComparatorRepo))
 
   val inventoryMapper            = new InventoryMapper(ditService, pendingDIT, DIT, removedDIT)
   val ldapMapper                 = new LDAPEntityMapper(rudderDit, nodeDit, DIT, null, inventoryMapper)
