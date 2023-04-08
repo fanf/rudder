@@ -48,16 +48,13 @@ import com.normation.inventory.services.provisioning.DefaultInventoryParser
 import com.normation.inventory.services.provisioning.InventoryDigestServiceV1
 import com.normation.inventory.services.provisioning.InventoryParser
 import com.normation.rudder.batch.GitGC
-import com.normation.rudder.batch.PurgeOldInventoryFiles
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.inventory.DefaultProcessInventoryService
 import com.normation.rudder.inventory.InventoryFailedHook
-import com.normation.rudder.inventory.InventoryFileWatcher
 import com.normation.rudder.inventory.InventoryMover
 import com.normation.rudder.inventory.InventoryPair
 import com.normation.rudder.inventory.InventoryProcessor
 import com.normation.rudder.inventory.InventoryProcessStatus.Saved
-import com.normation.rudder.inventory.ProcessFile
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
 import com.normation.zio._

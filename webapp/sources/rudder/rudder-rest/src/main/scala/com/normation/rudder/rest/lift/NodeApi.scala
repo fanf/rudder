@@ -40,6 +40,7 @@ package com.normation.rudder.rest.lift
 import cats.data.Validated.Invalid
 import cats.data.Validated.Valid
 import cats.data.ValidatedNel
+
 import com.normation.box._
 import com.normation.errors._
 import com.normation.eventlog.EventActor
@@ -47,7 +48,7 @@ import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.ldap.core.InventoryDit
-import com.normation.inventory.ldap.core.LDAPFullInventoryRepository
+import com.normation.inventory.services.core.FullInventoryRepository
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.ldap.sdk.LDAPConnectionProvider
 import com.normation.ldap.sdk.RwLDAPConnection
@@ -111,6 +112,9 @@ import com.normation.rudder.services.servers.RemoveNodeService
 import com.normation.utils.Control._
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGenerator
+
+import com.unboundid.ldif.LDIFChangeRecord
+
 import com.normation.zio._
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -144,6 +148,7 @@ import net.liftweb.json.JValue
 import org.joda.time.DateTime
 import scalaj.http.Http
 import scalaj.http.HttpOptions
+
 import zio.{System => _, _}
 import zio.syntax._
 
@@ -697,7 +702,7 @@ class NodeApiService12(
   }
 }
 class NodeApiService15(
-    inventoryRepos:   LDAPFullInventoryRepository,
+    inventoryRepos:   FullInventoryRepository[Seq[LDIFChangeRecord]],
     ldapConnection:   LDAPConnectionProvider[RwLDAPConnection],
     ldapEntityMapper: LDAPEntityMapper,
     newNodeManager:   NewNodeManager,
@@ -1239,7 +1244,7 @@ class NodeApiService2(
 }
 
 class NodeApiService4(
-    inventoryRepository:   LDAPFullInventoryRepository,
+    inventoryRepository:   FullInventoryRepository[Seq[LDIFChangeRecord]],
     nodeInfoService:       NodeInfoService,
     softwareRepository:    ReadOnlySoftwareDAO,
     uuidGen:               StringUuidGenerator,
@@ -1254,7 +1259,6 @@ class NodeApiService4(
       nodeId:      NodeId,
       detailLevel: NodeDetailLevel,
       state:       InventoryStatus,
-      version:     ApiVersion
   ): IOResult[Option[JValue]] = {
     for {
       optNodeInfo <- state match {
@@ -1309,7 +1313,7 @@ class NodeApiService4(
   ) = {
     implicit val prettify = restExtractor.extractPrettify(req.params)
     implicit val action   = s"${state.name}NodeDetails"
-    getNodeDetails(nodeId, detailLevel, state, version).either.runNow match {
+    getNodeDetails(nodeId, detailLevel, state).either.runNow match {
       case Right(Some(inventory)) =>
         toJsonResponse(Some(nodeId.value), ("nodes" -> JArray(List(inventory))))
       case Right(None)            =>
@@ -1330,14 +1334,14 @@ class NodeApiService4(
     implicit val prettify = restExtractor.extractPrettify(req.params)
     implicit val action   = "nodeDetails"
     (for {
-      accepted  <- getNodeDetails(nodeId, detailLevel, AcceptedInventory, version)
+      accepted  <- getNodeDetails(nodeId, detailLevel, AcceptedInventory)
       orPending <- accepted match {
                      case Some(i) => Some(i).succeed
-                     case None    => getNodeDetails(nodeId, detailLevel, PendingInventory, version)
+                     case None    => getNodeDetails(nodeId, detailLevel, PendingInventory)
                    }
       orDeleted <- orPending match {
                      case Some(i) => Some(i).succeed
-                     case None    => getNodeDetails(nodeId, detailLevel, RemovedInventory, version)
+                     case None    => getNodeDetails(nodeId, detailLevel, RemovedInventory)
                    }
     } yield {
       orDeleted match {
@@ -1363,7 +1367,7 @@ class NodeApiService4(
 
 class NodeApiService6(
     nodeInfoService:            NodeInfoService,
-    inventoryRepository:        LDAPFullInventoryRepository,
+    inventoryRepository:        FullInventoryRepository[Seq[LDIFChangeRecord]],
     softwareRepository:         ReadOnlySoftwareDAO,
     restExtractor:              RestExtractorService,
     restSerializer:             RestDataSerializer,

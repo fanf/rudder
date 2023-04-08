@@ -101,6 +101,11 @@ import zio.syntax._
  */
 trait NodeFactRepository {
 
+  /*
+   * Get the status of the node, or RemovedStatus if it is
+   * not found.
+   */
+  def getStatus(id: NodeId): IOResult[InventoryStatus]
 
   /*
    * Get node on given status
@@ -149,7 +154,7 @@ trait NodeFactRepository {
    * - if the target status is the current one, this function does nothing
    * - if target status is "removed", persisted inventory is deleted
    */
-  def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]
+  def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[Unit]
 
   /*
    * Delete any reference to that node id.
@@ -182,7 +187,27 @@ class InMemoryNodeFactRepository(
     _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
   } yield ()).runNow
 
-  def getOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
+  override def getStatus(id: NodeId): IOResult[InventoryStatus] = {
+    pendingNodes.get.flatMap { p =>
+      if (p.keySet.contains(id)) PendingInventory.succeed
+      else {
+        acceptedNodes.get.flatMap(a => {
+          if (a.keySet.contains(id)) AcceptedInventory.succeed
+          else RemovedInventory.succeed
+        })
+      }
+    }
+  }
+
+  override def getOn(nodeId: NodeId, status: InventoryStatus): IOResult[Option[NodeFact]] = {
+    status match {
+      case AcceptedInventory => getAccepted(nodeId)
+      case PendingInventory  => getPending(nodeId)
+      case RemovedInventory  => None.succeed
+    }
+  }
+
+  private[nodes] def getOnRef(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
     ref.get.map(_.get(nodeId))
   }
 
@@ -199,11 +224,11 @@ class InMemoryNodeFactRepository(
   }
 
   override def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]] = {
-    getOn(acceptedNodes, nodeId)
+    getOnRef(acceptedNodes, nodeId)
   }
 
   override def getPending(nodeId: NodeId): IOResult[Option[NodeFact]] = {
-    getOn(pendingNodes, nodeId)
+    getOnRef(pendingNodes, nodeId)
   }
 
   override def lookup(nodeId: NodeId): IOResult[Option[NodeFact]] = {
@@ -228,16 +253,16 @@ class InMemoryNodeFactRepository(
     )
   }
 
-  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
+  override def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[Unit] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
-        _ <- storage.changeStatus(nodeId, status)
+        _ <- storage.changeStatus(nodeId, into)
         _ <-
           for {
-            pending  <- getOn(pendingNodes, nodeId)
-            accepted <- getOn(acceptedNodes, nodeId)
-            _        <- (status, pending, accepted) match {
+            pending  <- getOnRef(pendingNodes, nodeId)
+            accepted <- getOnRef(acceptedNodes, nodeId)
+            _        <- (into, pending, accepted) match {
                           case (_, None, None)                       =>
                             Inconsistency(
                               s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes"
@@ -279,10 +304,10 @@ class InMemoryNodeFactRepository(
     ZIO.scoped(
       for {
         _          <- lock.withLock
-        optPending <- getOn(pendingNodes, nodeId)
+        optPending <- getOnRef(pendingNodes, nodeId)
         optFact    <- optPending match {
                         case Some(f) => Some(f).succeed
-                        case None    => getOn(acceptedNodes, nodeId)
+                        case None    => getOnRef(acceptedNodes, nodeId)
                       }
         fact        = optFact match {
                         case Some(f) => NodeFact.updateInventory(f, inventory)

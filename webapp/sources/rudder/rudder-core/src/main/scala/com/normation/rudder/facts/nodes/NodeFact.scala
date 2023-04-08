@@ -391,7 +391,7 @@ object NodeFact {
   }
 
 
-  def newFromFullInventory(inventory: FullInventory, software: Iterable[Software]): NodeFact = {
+  def newFromFullInventory(inventory: FullInventory, software: Option[Iterable[Software]]): NodeFact = {
     val now = DateTime.now()
     val fact = NodeFact(
       inventory.node.main.id,
@@ -414,7 +414,7 @@ object NodeFact {
   }
 
   def newFromInventory(inventory: Inventory): NodeFact = {
-    newFromFullInventory(FullInventory(inventory.node, Some(inventory.machine)), inventory.applications)
+    newFromFullInventory(FullInventory(inventory.node, Some(inventory.machine)), Some(inventory.applications))
   }
 
   /*
@@ -423,10 +423,13 @@ object NodeFact {
    * NOTICE: status is ignored !
    */
   def updateInventory(node: NodeFact, inventory: Inventory): NodeFact = {
-    updateFullInventory(node, FullInventory(inventory.node, Some(inventory.machine)), inventory.applications)
+    updateFullInventory(node, FullInventory(inventory.node, Some(inventory.machine)), Some(inventory.applications))
   }
 
-  def updateFullInventory(node: NodeFact, inventory: FullInventory, software: Iterable[Software]): NodeFact = {
+  // FullInventory does keep the software, but only their IDs, which is not a concept we still have.
+  // So the caller can say "I don't know what software" with a None, or "there's no software" with a Some(Nil)
+  // Also, we don't update status here, use move or similar methods to change node status.
+  def updateFullInventory(node: NodeFact, inventory: FullInventory, software: Option[Iterable[Software]]): NodeFact = {
 
     def chunkOpt[A](getter: MachineInventory => Seq[A]): Chunk[A] = {
       inventory.machine match {
@@ -507,7 +510,7 @@ object NodeFact {
       .modify(_.slots)
       .setTo(chunkOpt(_.slots))
       .modify(_.software)
-      .setTo(Chunk.fromIterable(software.flatMap(_.toFact)))
+      .setToIfDefined(software.map(s => Chunk.fromIterable(s.flatMap(_.toFact))))
       .modify(_.softwareUpdate)
       .setTo(inventory.node.softwareUpdates.toChunk)
       .modify(_.sounds)

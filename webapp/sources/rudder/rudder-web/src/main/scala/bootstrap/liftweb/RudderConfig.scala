@@ -118,7 +118,6 @@ import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
 import com.normation.rudder.inventory.DefaultProcessInventoryService
-import com.normation.rudder.inventory.FactRepositoryPostCommit
 import com.normation.rudder.inventory.InventoryFailedHook
 import com.normation.rudder.inventory.InventoryFileWatcher
 import com.normation.rudder.inventory.InventoryMover
@@ -192,6 +191,7 @@ import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
+import com.unboundid.ldif.LDIFChangeRecord
 
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
@@ -1021,7 +1021,7 @@ object RudderConfig extends Loggable {
   val personIdentService:                PersonIdentService           = personIdentServiceImpl
   lazy val gitRevisionProvider:          GitRevisionProvider          = gitRevisionProviderImpl
   val logDisplayer:                      LogDisplayer                 = logDisplayerImpl
-  val fullInventoryRepository:           LDAPFullInventoryRepository  = ldapFullInventoryRepository
+  val fullInventoryRepository:           FullInventoryRepository[Seq[LDIFChangeRecord]]  = ldapFullInventoryRepository
   val acceptedNodeQueryProcessor:        QueryProcessor               = queryProcessor
   val categoryHierarchyDisplayer:        CategoryHierarchyDisplayer   = categoryHierarchyDisplayerImpl
   val dynGroupService:                   DynGroupService              = dynGroupServiceImpl
@@ -3204,4 +3204,11 @@ object RudderConfig extends Loggable {
     _         <- cron.start
   } yield ()
 
+
+  /*
+   * here goes deprecated services that we can't remove yet, for example because they are used for migration
+   */
+  object deprecated {
+
+  }
 }

@@ -45,6 +45,7 @@ import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.MachineUuid
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.NodeInventory
+import com.normation.inventory.domain.RemovedInventory
 import com.normation.inventory.services.core.FullInventoryRepository
 import com.normation.inventory.services.provisioning.PipelinedInventorySaver
 import com.normation.inventory.services.provisioning.PostCommit
@@ -54,6 +55,7 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.services.nodes.NodeInfoService
 import zio.stream.ZSink
+import zio._
 import zio.syntax._
 
 class NodeFactInventorySaver(
@@ -145,22 +147,41 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullI
   }
 
   override def getAllInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, FullInventory]] = {
-    backend.getAllAccepted().map(n => (n.id, n.toFullInventory)).run(ZSink.collectAllToMap())
+    backend.getAllAccepted().map(_.toFullInventory).run(ZSink.collectAllToMap[FullInventory, NodeId](_.node.main.id)((a, _) => a))
   }
 
   override def getAllNodeInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, NodeInventory]] = {
-    backend.getAllAccepted().map(n => (n.id, n.toNodeInventory)).run(ZSink.collectAllToMap())
+    backend.getAllAccepted().map(_.toNodeInventory).run(ZSink.collectAllToMap[NodeInventory, NodeId](_.main.id)((a, _) => a))
   }
 
   override def save(serverAndMachine: FullInventory): IOResult[Unit] = {
     // we must know if it's new or not to get back the correct facts.
-
-    backend.updateInventory()
+    // if the fact exists, we keep its status (use move to change it)
+    for {
+      opt <- backend.lookup(serverAndMachine.node.main.id)
+      fact = opt match {
+               case None       => NodeFact.newFromFullInventory(serverAndMachine, None)
+               case Some(fact) => NodeFact.updateFullInventory(fact, serverAndMachine, None)
+             }
+      _   <- backend.save(fact)
+    } yield ()
   }
 
-  override def delete(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Unit] = ???
+  override def delete(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Unit] = {
+    // we need to only delete if the status is the one asked
+    backend.getStatus(id).flatMap { s =>
+      s match {
+        case RemovedInventory => ZIO.unit
+        case s                => ZIO.when(s == inventoryStatus)(backend.delete(id)).unit
+      }
+    }
+  }
 
-  override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = ???
+  override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
+    backend.changeStatus(id, into)
+  }
 
-  override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = ???
+  override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
+    backend.changeStatus(id, into)
+  }
 }
