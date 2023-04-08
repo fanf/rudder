@@ -40,7 +40,6 @@ package com.normation.rudder.rest.lift
 import cats.data.Validated.Invalid
 import cats.data.Validated.Valid
 import cats.data.ValidatedNel
-
 import com.normation.box._
 import com.normation.errors._
 import com.normation.eventlog.EventActor
@@ -112,10 +111,8 @@ import com.normation.rudder.services.servers.RemoveNodeService
 import com.normation.utils.Control._
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGenerator
-
-import com.unboundid.ldif.LDIFChangeRecord
-
 import com.normation.zio._
+import com.unboundid.ldif.LDIFChangeRecord
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.IOException
@@ -148,7 +145,6 @@ import net.liftweb.json.JValue
 import org.joda.time.DateTime
 import scalaj.http.Http
 import scalaj.http.HttpOptions
-
 import zio.{System => _, _}
 import zio.syntax._
 
@@ -161,13 +157,7 @@ import zio.syntax._
 class NodeApi(
     restExtractorService: RestExtractorService,
     serializer:           RestDataSerializer,
-    apiV2:                NodeApiService2,
-    apiV4:                NodeApiService4,
-    serviceV6:            NodeApiService6,
-    apiV8service:         NodeApiService8,
-    apiV12:               NodeApiService12,
-    apiV13:               NodeApiService13,
-    apiV15:               NodeApiService15,
+    nodeApiService:       NodeApiService,
     inheritedProperties:  NodeApiInheritedProperties,
     deleteDefaultMode:    DeleteMode
 ) extends LiftApiModuleProvider[API] {
@@ -218,7 +208,7 @@ class NodeApi(
         nodes <- serializeNodeDetails.parseAll(json)
         res   <- ZIO.foldLeft(nodes)(ResultHolder(Nil, Nil)) {
                    case (res, node) =>
-                     apiV15.saveNode(node, authzToken.actor).either.map {
+                     nodeApiService.saveNode(node, authzToken.actor).either.map {
                        case Right(id) => res.modify(_.created).using(_ :+ id)
                        case Left(err) => res.modify(_.failed).using(_ :+ ((node.id, err)))
                      }
@@ -253,7 +243,7 @@ class NodeApi(
     ): LiftResponse = {
       restExtractor.extractNodeDetailLevel(req.params) match {
         case Full(level) =>
-          apiV4.nodeDetailsGeneric(NodeId(id), level, version, req)
+          nodeApiService.nodeDetailsGeneric(NodeId(id), level, version, req)
         case eb: EmptyBox =>
           val failMsg = eb ?~ "node detail level not correctly sent"
           toJsonError(None, failMsg.msg)("nodeDetail", params.prettify)
@@ -312,7 +302,7 @@ class NodeApi(
         params:     DefaultParams,
         authzToken: AuthzToken
     ): LiftResponse = {
-      apiV2.pendingNodeDetails(NodeId(id), params.prettify)
+      nodeApiService.pendingNodeDetails(NodeId(id), params.prettify)
     }
   }
 
@@ -343,7 +333,7 @@ class NodeApi(
         .map(_.getOrElse(deleteDefaultMode))
         .getOrElse(deleteDefaultMode)
 
-      apiV12.deleteNode(NodeId(id), authzToken.actor, pretiffy, mode)
+      nodeApiService.deleteNode(NodeId(id), authzToken.actor, pretiffy, mode)
     }
   }
 
@@ -368,7 +358,7 @@ class NodeApi(
                       restExtractor.extractNode(req.params)
                     }
         reason   <- restExtractor.extractReason(req)
-        result   <- apiV8service.updateRestNode(NodeId(id), restNode, authzToken.actor, reason).toBox
+        result   <- nodeApiService.updateRestNode(NodeId(id), restNode, authzToken.actor, reason).toBox
       } yield {
         toJsonResponse(Some(id), serializer.serializeNode(result))
       }) match {
@@ -395,7 +385,7 @@ class NodeApi(
       } else {
         (restExtractor.extractNodeIds(req.params), restExtractor.extractNodeStatus(req.params))
       }
-      apiV2.changeNodeStatus(nodeIds, nodeStatus, authzToken.actor, prettify)
+      nodeApiService.changeNodeStatus(nodeIds, nodeStatus, authzToken.actor, prettify)
     }
   }
 
@@ -420,7 +410,7 @@ class NodeApi(
       } else {
         restExtractor.extractNodeStatus(req.params)
       }
-      apiV2.changeNodeStatus(Full(Some(List(NodeId(id)))), nodeStatus, authzToken.actor, prettify)
+      nodeApiService.changeNodeStatus(Full(Some(List(NodeId(id)))), nodeStatus, authzToken.actor, prettify)
     }
   }
 
@@ -433,9 +423,9 @@ class NodeApi(
         case Full(level) =>
           restExtractor.extractQuery(req.params) match {
             case Full(None)        =>
-              serviceV6.listNodes(AcceptedInventory, level, None, version)
+              nodeApiService.listNodes(AcceptedInventory, level, None, version)
             case Full(Some(query)) =>
-              serviceV6.queryNodes(query, AcceptedInventory, level, version)
+              nodeApiService.queryNodes(query, AcceptedInventory, level, version)
             case eb: EmptyBox =>
               val failMsg = eb ?~ "Node query not correctly sent"
               toJsonError(None, failMsg.msg)("listAcceptedNodes", prettify)
@@ -457,9 +447,9 @@ class NodeApi(
         case Full(level) =>
           restExtractor.extractQuery(req.params) match {
             case Full(None)        =>
-              serviceV6.listNodes(PendingInventory, level, None, version)
+              nodeApiService.listNodes(PendingInventory, level, None, version)
             case Full(Some(query)) =>
-              serviceV6.queryNodes(query, PendingInventory, level, version)
+              nodeApiService.queryNodes(query, PendingInventory, level, version)
             case eb: EmptyBox =>
               val failMsg = eb ?~ "Query for pending nodes not correctly sent"
               toJsonError(None, failMsg.msg)("listPendingNodes", prettify)
@@ -480,7 +470,7 @@ class NodeApi(
 
       (for {
         classes  <- restExtractorService.extractList("classes")(req)(json => Full(json))
-        response <- apiV8service.runAllNodes(classes)
+        response <- nodeApiService.runAllNodes(classes)
       } yield {
         toJsonResponse(None, response)
       }) match {
@@ -507,12 +497,12 @@ class NodeApi(
       implicit val prettify = params.prettify
       (for {
         classes <- restExtractorService.extractList("classes")(req)(json => Full(json))
-        optNode <- apiV2.nodeInfoService.getNodeInfo(NodeId(id)).toBox
+        optNode <- nodeApiService.nodeInfoService.getNodeInfo(NodeId(id)).toBox
       } yield {
         optNode match {
           case Some(node)
               if (node.agentsName.exists(a => a.agentType == AgentType.CfeCommunity || a.agentType == AgentType.CfeEnterprise)) =>
-            OutputStreamResponse(apiV8service.runNode(node.id, classes))
+            OutputStreamResponse(nodeApiService.runNode(node.id, classes))
           case Some(node) =>
             toJsonError(
               None,
@@ -545,9 +535,9 @@ class NodeApi(
         ids      <- (restExtractorService
                       .extractString("ids")(req)(ids => Full(ids.split(",").map(_.trim))))
                       .map(_.map(_.toList).getOrElse(Nil)) ?~! "Error: 'ids' parameter not found"
-        accepted <- apiV2.nodeInfoService.getAllNodesIds().map(_.map(_.value)).toBox ?~! errorMsg(ids)
-        pending  <- apiV2.nodeInfoService.getPendingNodeInfos().map(_.keySet.map(_.value)).toBox ?~! errorMsg(ids)
-        deleted  <- apiV2.nodeInfoService.getDeletedNodeInfos().map(_.keySet.map(_.value)).toBox ?~! errorMsg(ids)
+        accepted <- nodeApiService.nodeInfoService.getAllNodesIds().map(_.map(_.value)).toBox ?~! errorMsg(ids)
+        pending  <- nodeApiService.nodeInfoService.getPendingNodeInfos().map(_.keySet.map(_.value)).toBox ?~! errorMsg(ids)
+        deleted  <- nodeApiService.nodeInfoService.getDeletedNodeInfos().map(_.keySet.map(_.value)).toBox ?~! errorMsg(ids)
       } yield {
         val array = ids.map { id =>
           val status = {
@@ -579,7 +569,7 @@ class NodeApi(
     val restExtractor = restExtractorService
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       (for {
-        nodes <- apiV13.listNodes(req)
+        nodes <- nodeApiService.listNodes(req)
       } yield {
         JsonResponse(nodes)
       }) match {
@@ -602,7 +592,7 @@ class NodeApi(
         authzToken: AuthzToken
     ): LiftResponse = {
       (for {
-        response <- apiV13.software(req, software)
+        response <- nodeApiService.software(req, software)
       } yield {
         response
       }) match {
@@ -632,7 +622,7 @@ class NodeApi(
     ): LiftResponse = {
       (for {
         inheritedProperty <- req.json.flatMap(j => OptionnalJson.extractJsonBoolean(j, "inherited"))
-        response          <- apiV13.property(req, property, inheritedProperty.getOrElse(false))
+        response          <- nodeApiService.property(req, property, inheritedProperty.getOrElse(false))
       } yield {
         response
       }) match {
@@ -680,38 +670,37 @@ class NodeApiInheritedProperties(
   }
 }
 
-class NodeApiService12(
-    removeNodeService: RemoveNodeService,
-    uuidGen:           StringUuidGenerator,
-    restSerializer:    RestDataSerializer
+class NodeApiService(
+    ldapConnection:             LDAPConnectionProvider[RwLDAPConnection],
+    inventoryRepository:        FullInventoryRepository[Seq[LDIFChangeRecord]],
+    softwareDAO:                ReadOnlySoftwareDAO,
+    groupRepo:                  RoNodeGroupRepository,
+    paramRepo:                  RoParameterRepository,
+    reportsExecutionRepository: RoReportsExecutionRepository,
+    nodeRepository:             WoNodeRepository,
+    ldapEntityMapper:           LDAPEntityMapper,
+    uuidGen:                    StringUuidGenerator,
+    nodeDit:                    NodeDit,
+    pendingDit:                 InventoryDit,
+    acceptedDit:                InventoryDit,
+    val nodeInfoService:        NodeInfoService,
+    newNodeManager:             NewNodeManager,
+    removeNodeService:          RemoveNodeService,
+    restExtractor:              RestExtractorService,
+    restSerializer:             RestDataSerializer,
+    reportingService:           ReportingService,
+    acceptedNodeQueryProcessor: QueryProcessor,
+    pendingNodeQueryProcessor:  QueryChecker,
+    asyncRegenerate:            AsyncDeploymentActor,
+    userService:                UserService,
+    getGlobalMode:              () => Box[GlobalPolicyMode],
+    relayApiEndpoint:           String
 ) {
 
-  def deleteNode(id: NodeId, actor: EventActor, prettify: Boolean, mode: DeleteMode) = {
-    implicit val p      = prettify
-    implicit val action = "deleteNode"
-    val modId           = ModificationId(uuidGen.newUuid)
 
-    removeNodeService.removeNodePure(id, mode, modId, actor).toBox match {
-      case Full(info) =>
-        toJsonResponse(None, ("nodes" -> JArray(restSerializer.serializeNodeInfo(info, "deleted") :: Nil)))
+  import restSerializer._
 
-      case eb: EmptyBox =>
-        val message = (eb ?~ ("Error when deleting Nodes")).msg
-        toJsonError(None, message)
-    }
-  }
-}
-class NodeApiService15(
-    inventoryRepos:   FullInventoryRepository[Seq[LDIFChangeRecord]],
-    ldapConnection:   LDAPConnectionProvider[RwLDAPConnection],
-    ldapEntityMapper: LDAPEntityMapper,
-    newNodeManager:   NewNodeManager,
-    uuidGen:          StringUuidGenerator,
-    nodeDit:          NodeDit,
-    pendingDit:       InventoryDit,
-    acceptedDit:      InventoryDit
-) {
-  /// utility functions ///
+/// utility functions ///
 
   /*
    * for a given nodedetails, we:
@@ -772,7 +761,7 @@ class NodeApiService15(
    * is done afterward if needed.
    */
   def saveInventory(inventory: FullInventory): IO[CreationError, NodeId] = {
-    inventoryRepos
+    inventoryRepository
       .save(inventory)
       .map(_ => inventory.node.main.id)
       .mapError(err => CreationError.OnSaveInventory(s"Error during node creation: ${err.fullMsg}"))
@@ -839,18 +828,6 @@ class NodeApiService15(
       merged.id
     }).mapError(err => CreationError.OnSaveNode(s"Error during node creation: ${err.fullMsg}"))
   }
-}
-
-class NodeApiService13(
-    nodeInfoService:            NodeInfoService,
-    reportsExecutionRepository: RoReportsExecutionRepository,
-    readOnlySoftwareDAO:        ReadOnlySoftwareDAO,
-    restExtractor:              RestExtractorService,
-    getGlobalMode:              () => Box[GlobalPolicyMode],
-    reportingService:           ReportingService,
-    groupRepo:                  RoNodeGroupRepository,
-    paramRepo:                  RoParameterRepository
-) extends Loggable {
 
   /*
    * Return a map of (NodeId -> propertyName -> inherited property) for the given list of nodes and
@@ -995,7 +972,7 @@ class NodeApiService13(
       _                                     = TimingDebugLoggerPure.logEffect.trace(s"Getting global mode: ${n5 - n4}ms")
       softToLookAfter                      <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "software").map(_.getOrElse(Nil)))
       softs                                <- ZIO
-                                                .foreach(softToLookAfter)(soft => readOnlySoftwareDAO.getNodesbySofwareName(soft))
+                                                .foreach(softToLookAfter)(soft => softwareDAO.getNodesbySofwareName(soft))
                                                 .toBox
                                                 .map(_.flatten.groupMap(_._1)(_._2))
       n6                                    = System.currentTimeMillis
@@ -1065,7 +1042,7 @@ class NodeApiService13(
                  case None          => nodeInfoService.getAll().toBox
                  case Some(nodeIds) => nodeInfoService.getNodeInfosSeq(nodeIds).map(_.map(n => (n.id, n)).toMap).toBox
                }
-      softs <- readOnlySoftwareDAO.getNodesbySofwareName(software).toBox.map(_.toMap)
+      softs <- softwareDAO.getNodesbySofwareName(software).toBox.map(_.toMap)
     } yield {
       JsonResponse(
         JObject(nodes.keySet.toList.flatMap(id => softs.get(id).flatMap(_.version.map(v => JField(id.value, JString(v.value))))))
@@ -1100,16 +1077,6 @@ class NodeApiService13(
       JsonResponse(JObject(nodes.keySet.toList.flatMap(id => mapProps.get(id).toList.flatMap(_.map(p => JField(id.value, p))))))
     }
   }
-}
-
-class NodeApiService2(
-    newNodeManager:      NewNodeManager,
-    val nodeInfoService: NodeInfoService,
-    removeNodeService:   RemoveNodeService,
-    uuidGen:             StringUuidGenerator,
-    restExtractor:       RestExtractorService,
-    restSerializer:      RestDataSerializer
-) extends Loggable {
 
   import restSerializer._
   def listAcceptedNodes(req: Req) = {
@@ -1241,24 +1208,11 @@ class NodeApiService2(
     }
   }
 
-}
-
-class NodeApiService4(
-    inventoryRepository:   FullInventoryRepository[Seq[LDIFChangeRecord]],
-    nodeInfoService:       NodeInfoService,
-    softwareRepository:    ReadOnlySoftwareDAO,
-    uuidGen:               StringUuidGenerator,
-    restExtractor:         RestExtractorService,
-    restSerializer:        RestDataSerializer,
-    roAgentRunsRepository: RoReportsExecutionRepository
-) extends Loggable {
-
-  import restSerializer._
 
   def getNodeDetails(
       nodeId:      NodeId,
       detailLevel: NodeDetailLevel,
-      state:       InventoryStatus,
+      state:       InventoryStatus
   ): IOResult[Option[JValue]] = {
     for {
       optNodeInfo <- state match {
@@ -1270,7 +1224,7 @@ class NodeApiService4(
                        case None    => None.succeed
                        case Some(x) =>
                          for {
-                           runs      <- roAgentRunsRepository.getNodesLastRun(Set(nodeId))
+                           runs      <- reportsExecutionRepository.getNodesLastRun(Set(nodeId))
                            inventory <- if (detailLevel.needFullInventory()) {
                                           inventoryRepository.get(nodeId, state)
                                         } else {
@@ -1279,9 +1233,9 @@ class NodeApiService4(
                            software  <- if (detailLevel.needSoftware()) {
                                           for {
                                             software <- inventory match {
-                                                          case Some(i) => softwareRepository.getSoftware(i.node.softwareIds)
+                                                          case Some(i) => softwareDAO.getSoftware(i.node.softwareIds)
                                                           case None    =>
-                                                            softwareRepository
+                                                            softwareDAO
                                                               .getSoftwareByNode(Set(nodeId), state)
                                                               .map(_.get(nodeId).getOrElse(Seq()))
                                                         }
@@ -1363,20 +1317,7 @@ class NodeApiService4(
         toJsonError(Some(nodeId.value), msg)
     }
   }
-}
 
-class NodeApiService6(
-    nodeInfoService:            NodeInfoService,
-    inventoryRepository:        FullInventoryRepository[Seq[LDIFChangeRecord]],
-    softwareRepository:         ReadOnlySoftwareDAO,
-    restExtractor:              RestExtractorService,
-    restSerializer:             RestDataSerializer,
-    acceptedNodeQueryProcessor: QueryProcessor,
-    pendingNodeQueryProcessor:  QueryChecker,
-    roAgentRunsRepository:      RoReportsExecutionRepository
-) extends Loggable {
-
-  import restSerializer._
   def listNodes(state:   InventoryStatus, detailLevel: NodeDetailLevel, nodeFilter: Option[Seq[NodeId]], version: ApiVersion)(
       implicit prettify: Boolean
   ) = {
@@ -1389,14 +1330,14 @@ class NodeApiService6(
                        case RemovedInventory  => nodeInfoService.getDeletedNodeInfos()
                      }
       nodeIds      = nodeFilter.getOrElse(nodeInfos.keySet).toSet
-      runs        <- roAgentRunsRepository.getNodesLastRun(nodeIds)
+      runs        <- reportsExecutionRepository.getNodesLastRun(nodeIds)
       inventories <- if (detailLevel.needFullInventory()) {
                        inventoryRepository.getAllInventories(state).chainError("Error when looking for node inventories")
                      } else {
                        Map[NodeId, FullInventory]().succeed
                      }
       software    <- if (detailLevel.needSoftware()) {
-                       softwareRepository.getSoftwareByNode(nodeIds, state)
+                       softwareDAO.getSoftwareByNode(nodeIds, state)
                      } else {
                        Map[NodeId, Seq[Software]]().succeed
                      }
@@ -1444,17 +1385,6 @@ class NodeApiService6(
       }
     }
   }
-
-}
-
-class NodeApiService8(
-    nodeRepository:   WoNodeRepository,
-    nodeInfoService:  NodeInfoService,
-    uuidGen:          StringUuidGenerator,
-    asyncRegenerate:  AsyncDeploymentActor,
-    relayApiEndpoint: String,
-    userService:      UserService
-) extends Loggable {
 
   def updateRestNode(nodeId: NodeId, restNode: RestNode, actor: EventActor, reason: Option[String]): IOResult[Node] = {
 
@@ -1659,6 +1589,21 @@ class NodeApiService8(
         }
       }
       JArray(res)
+    }
+  }
+
+  def deleteNode(id: NodeId, actor: EventActor, prettify: Boolean, mode: DeleteMode) = {
+    implicit val p = prettify
+    implicit val action = "deleteNode"
+    val modId = ModificationId(uuidGen.newUuid)
+
+    removeNodeService.removeNodePure(id, mode, modId, actor).toBox match {
+      case Full(info) =>
+        toJsonResponse(None, ("nodes" -> JArray(restSerializer.serializeNodeInfo(info, "deleted") :: Nil)))
+
+      case eb: EmptyBox =>
+        val message = (eb ?~ ("Error when deleting Nodes")).msg
+        toJsonError(None, message)
     }
   }
 

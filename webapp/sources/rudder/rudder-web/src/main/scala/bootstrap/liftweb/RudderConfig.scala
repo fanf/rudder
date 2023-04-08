@@ -54,14 +54,12 @@ import bootstrap.liftweb.checks.migration.CheckRemoveRuddercSetting
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
-
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
-
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.inventory.domain._
@@ -184,7 +182,6 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -192,7 +189,6 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
-
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -202,10 +198,8 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
-
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
-
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -1009,25 +1003,25 @@ object RudderConfig extends Loggable {
   )
   val purgeUnreferencedSoftwares =
     new PurgeUnreferencedSoftwares(softwareService, FiniteDuration(RUDDER_BATCH_DELETE_SOFTWARE_INTERVAL.toLong, "hours"))
-  val databaseManager:                   DatabaseManager              = databaseManagerImpl
-  val automaticReportsCleaning:          AutomaticReportsCleaning     = dbCleaner
-  val checkTechniqueLibrary:             CheckTechniqueLibrary        = techniqueLibraryUpdater
-  val automaticReportLogger:             AutomaticReportLogger        = autoReportLogger
-  val removeNodeService:                 RemoveNodeService            = removeNodeServiceImpl
-  val nodeInfoService:                   NodeInfoService              = nodeInfoServiceImpl
-  val reportDisplayer:                   ReportDisplayer              = reportDisplayerImpl
-  lazy val dependencyAndDeletionService: DependencyAndDeletionService = dependencyAndDeletionServiceImpl
-  val itemArchiveManager:                ItemArchiveManager           = itemArchiveManagerImpl
-  val personIdentService:                PersonIdentService           = personIdentServiceImpl
-  lazy val gitRevisionProvider:          GitRevisionProvider          = gitRevisionProviderImpl
-  val logDisplayer:                      LogDisplayer                 = logDisplayerImpl
-  val fullInventoryRepository:           FullInventoryRepository[Seq[LDIFChangeRecord]]  = ldapFullInventoryRepository
-  val acceptedNodeQueryProcessor:        QueryProcessor               = queryProcessor
-  val categoryHierarchyDisplayer:        CategoryHierarchyDisplayer   = categoryHierarchyDisplayerImpl
-  val dynGroupService:                   DynGroupService              = dynGroupServiceImpl
-  val ditQueryData:                      DitQueryData                 = ditQueryDataImpl
-  val reportsRepository:                 ReportsRepository            = reportsRepositoryImpl
-  val eventLogDeploymentService:         EventLogDeploymentService    = eventLogDeploymentServiceImpl
+  val databaseManager:                   DatabaseManager                                = databaseManagerImpl
+  val automaticReportsCleaning:          AutomaticReportsCleaning                       = dbCleaner
+  val checkTechniqueLibrary:             CheckTechniqueLibrary                          = techniqueLibraryUpdater
+  val automaticReportLogger:             AutomaticReportLogger                          = autoReportLogger
+  val removeNodeService:                 RemoveNodeService                              = removeNodeServiceImpl
+  val nodeInfoService:                   NodeInfoService                                = nodeInfoServiceImpl
+  val reportDisplayer:                   ReportDisplayer                                = reportDisplayerImpl
+  lazy val dependencyAndDeletionService: DependencyAndDeletionService                   = dependencyAndDeletionServiceImpl
+  val itemArchiveManager:                ItemArchiveManager                             = itemArchiveManagerImpl
+  val personIdentService:                PersonIdentService                             = personIdentServiceImpl
+  lazy val gitRevisionProvider:          GitRevisionProvider                            = gitRevisionProviderImpl
+  val logDisplayer:                      LogDisplayer                                   = logDisplayerImpl
+  val fullInventoryRepository:           FullInventoryRepository[Seq[LDIFChangeRecord]] = ldapFullInventoryRepository
+  val acceptedNodeQueryProcessor:        QueryProcessor                                 = queryProcessor
+  val categoryHierarchyDisplayer:        CategoryHierarchyDisplayer                     = categoryHierarchyDisplayerImpl
+  val dynGroupService:                   DynGroupService                                = dynGroupServiceImpl
+  val ditQueryData:                      DitQueryData                                   = ditQueryDataImpl
+  val reportsRepository:                 ReportsRepository                              = reportsRepositoryImpl
+  val eventLogDeploymentService:         EventLogDeploymentService                      = eventLogDeploymentServiceImpl
   lazy val srvGrid = new SrvGrid(roAgentRunsRepository, configService, roLdapRuleRepository, nodeInfoService)
   val findExpectedReportRepository: FindExpectedReportRepository = findExpectedRepo
   val roApiAccountRepository:       RoApiAccountRepository       = roLDAPApiAccountRepository
@@ -1331,73 +1325,31 @@ object RudderConfig extends Loggable {
     )
   }
 
-  val nodeApiService2 = new NodeApiService2(
-    newNodeManager,
-    nodeInfoService,
-    removeNodeService,
-    uuidGen,
-    restExtractorService,
-    restDataSerializer
-  )
-
-  val nodeApiService4 = new NodeApiService4(
-    fullInventoryRepository,
-    nodeInfoService,
-    softwareInventoryDAO,
-    uuidGen,
-    restExtractorService,
-    restDataSerializer,
-    roAgentRunsRepository
-  )
-
-  val nodeApiService8 = {
-    new NodeApiService8(
-      woNodeRepository,
-      nodeInfoService,
-      uuidGen,
-      asyncDeploymentAgent,
-      RUDDER_RELAY_API,
-      userService
-    )
-  }
-
-  val nodeApiService12 = new NodeApiService12(
-    removeNodeService,
-    uuidGen,
-    restDataSerializer
-  )
-
-  val nodeApiService6 = new NodeApiService6(
-    nodeInfoService,
-    fullInventoryRepository,
-    softwareInventoryDAO,
-    restExtractorService,
-    restDataSerializer,
-    queryProcessor,
-    inventoryQueryChecker,
-    roAgentRunsRepository
-  )
-
-  val nodeApiService13 = new NodeApiService13(
-    nodeInfoService,
-    cachedAgentRunRepository,
-    readOnlySoftwareDAO,
-    restExtractorService,
-    () => configService.rudder_global_policy_mode().toBox,
-    reportingServiceImpl,
-    roNodeGroupRepository,
-    roLDAPParameterRepository
-  )
-
-  val nodeApiService16 = new NodeApiService15(
-    fullInventoryRepository,
+  val nodeApiService = new NodeApiService(
     rwLdap,
+    fullInventoryRepository,
+    softwareInventoryDAO,
+    roNodeGroupRepository,
+    roLDAPParameterRepository,
+    roAgentRunsRepository,
+    woNodeRepository,
     ldapEntityMapper,
-    newNodeManager,
     stringUuidGenerator,
     nodeDit,
     pendingNodesDit,
-    acceptedNodesDit
+    acceptedNodesDit,
+    nodeInfoService,
+    newNodeManager,
+    removeNodeService,
+    restExtractorService,
+    restDataSerializer,
+    reportingServiceImpl,
+    queryProcessor,
+    inventoryQueryChecker,
+    asyncDeploymentAgent,
+    userService,
+    () => configService.rudder_global_policy_mode().toBox,
+    RUDDER_RELAY_API
   )
 
   val parameterApiService2  = {
@@ -1785,13 +1737,7 @@ object RudderConfig extends Loggable {
       new NodeApi(
         restExtractorService,
         restDataSerializer,
-        nodeApiService2,
-        nodeApiService4,
-        nodeApiService6,
-        nodeApiService8,
-        nodeApiService12,
-        nodeApiService13,
-        nodeApiService16,
+        nodeApiService,
         nodeInheritedProperties,
         RUDDER_DEFAULT_DELETE_NODE_MODE
       ),
@@ -3204,11 +3150,8 @@ object RudderConfig extends Loggable {
     _         <- cron.start
   } yield ()
 
-
   /*
    * here goes deprecated services that we can't remove yet, for example because they are used for migration
    */
-  object deprecated {
-
-  }
+  object deprecated {}
 }
