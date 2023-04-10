@@ -163,7 +163,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
       lock      <- ReentrantLock.make()
       r          = new CoreNodeFactRepository(pending, accepted, callbacks, gitFactRepo, lock)
-      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e))))
+      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e.event))))
 //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
       r
@@ -234,6 +234,8 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   val newfqdn       = "node42.fqdn"
   val fqdn          = "node2.rudder.local"
 
+  implicit val cc = ChangeContext.newForRudder()
+
   "Saving a new, unknown inventory" should {
 
     "correctly save the node in pending" in {
@@ -260,7 +262,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       } yield e).runNow
 
       (pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
-      (e must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending]) and
       (getLogName === Chunk("updatedPending"))
 
     }
@@ -284,7 +286,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     "correctly update status and move file around" in {
       resetLog
       val e = factRepo.changeStatus(node2id, AcceptedInventory).runNow
-      (e must beAnInstanceOf[NodeFactChangeEvent.Accepted]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.Accepted]) and
       (acceptedNodeGitFile(node2id).exists must beTrue) and
       (factRepo.getAccepted(node2id).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
       (getLogName === Chunk("accepted"))
@@ -298,7 +300,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
         } yield e
       ).runNow
 
-      (e must beAnInstanceOf[NodeFactChangeEvent.Updated]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.Updated]) and
       (acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
       (getLogName === Chunk("updatedAccepted"))
     }
@@ -325,7 +327,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       resetLog
       val e = factRepo.changeStatus(node2id, RemovedInventory).runNow
 
-      (e must beAnInstanceOf[NodeFactChangeEvent.Deleted]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.Deleted]) and
       (pendingNodeGitFile(node2id).exists must beFalse) and
       (acceptedNodeGitFile(node2id).exists must beFalse) and
       (factRepo.lookup(node2id).runNow must beNone) and

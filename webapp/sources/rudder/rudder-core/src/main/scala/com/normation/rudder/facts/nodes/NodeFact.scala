@@ -38,8 +38,11 @@
 package com.normation.rudder.facts.nodes
 
 import com.normation.errors.IOResult
+import com.normation.eventlog.EventActor
+import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.{Version => SVersion}
+import com.normation.rudder.domain.eventlog
 import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
@@ -726,9 +729,21 @@ object NodeFactChangeEvent {
   }
 }
 
+final case class ChangeContext(modId: ModificationId, actor: EventActor, message: Option[String])
+
+object ChangeContext {
+  def newForRudder(msg: Option[String] = None) =
+    ChangeContext(ModificationId(java.util.UUID.randomUUID.toString), eventlog.RudderEventActor, msg)
+}
+
+final case class NodeFactChangeEventCC(
+    event: NodeFactChangeEvent,
+    cc:    ChangeContext
+)
+
 final case class NodeFactChangeEventCallback(
     name: String,
-    run:  NodeFactChangeEvent => IOResult[Unit]
+    run:  NodeFactChangeEventCC => IOResult[Unit]
 )
 
 object NodeFactSerialisation {

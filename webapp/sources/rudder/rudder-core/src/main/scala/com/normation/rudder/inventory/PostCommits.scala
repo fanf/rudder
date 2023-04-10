@@ -46,6 +46,7 @@ import com.normation.rudder.batch.AsyncDeploymentActor
 import com.normation.rudder.batch.AsyncDeploymentAgent
 import com.normation.rudder.batch.AutomaticStartDeployment
 import com.normation.rudder.domain.eventlog.RudderEventActor
+import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
@@ -53,6 +54,7 @@ import com.normation.rudder.hooks.PureHooksLogger
 import com.normation.rudder.hooks.RunHooks
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.utils.StringUuidGenerator
+
 import com.normation.zio.currentTimeMillis
 import zio._
 import zio.syntax._
@@ -147,7 +149,7 @@ class FactRepositoryPostCommit[A](
                          Right(FullInventory(inventory.node, Some(inventory.machine))),
                          inventory.applications
                        )
-                     )
+                     )(ChangeContext.newForRudder())
                  }
     } yield ())
       .catchAll(err => {

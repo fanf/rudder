@@ -61,6 +61,7 @@ import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeState
+import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.HookReturnCode
@@ -81,10 +82,12 @@ import com.normation.rudder.services.reports.CachedNodeConfigurationService
 import com.normation.rudder.services.reports.CacheExpectedReportAction.RemoveNodeInCache
 import com.normation.rudder.services.servers.DeletionResult._
 import com.normation.utils.StringUuidGenerator
+
 import com.normation.zio._
 import com.unboundid.ldap.sdk.Modification
 import com.unboundid.ldap.sdk.ModificationType
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -93,6 +96,7 @@ import java.util.function.BiPredicate
 import java.util.function.Consumer
 import net.liftweb.common.Box
 import org.joda.time.DateTime
+
 import zio.{System => _, _}
 import zio.stream._
 import zio.syntax._
@@ -176,6 +180,20 @@ trait RemoveNodeBackend {
   // the abstract method that actually commit in backend repo the deletion from accepted nodes
   def commitPurgeRemoved(nodeId: NodeId, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit]
 
+}
+
+class FactRemoveNodeBackend(backend: NodeFactRepository) extends RemoveNodeBackend {
+  override def findNodeStatuses(nodeId: NodeId): IOResult[Set[InventoryStatus]] = {
+    backend.getStatus(nodeId).map(x => Set(x))
+  }
+
+  override def commitDeleteAccepted(nodeInfo: NodeInfo, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit] = {
+    backend.delete(nodeInfo.id)(ChangeContext(modId, actor, None)).unit
+  }
+
+  override def commitPurgeRemoved(nodeId: NodeId, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit] = {
+    backend.delete(nodeId)(ChangeContext(modId, actor, None)).unit
+  }
 }
 
 class RemoveNodeServiceImpl(
@@ -766,7 +784,7 @@ class DeleteNodeFact(nodeFactRepo: NodeFactRepository) extends PostNodeDeleteAct
   override def run(nodeId: NodeId, mode: DeleteMode, info: Option[NodeInfo], status: Set[InventoryStatus]): UIO[Unit] = {
     NodeLoggerPure.Delete.debug(s"  - delete fact about node '${nodeId.value}'") *>
     nodeFactRepo
-      .changeStatus(nodeId, RemovedInventory)
+      .changeStatus(nodeId, RemovedInventory)(ChangeContext.newForRudder())
       .catchAll(err =>
         NodeLoggerPure.info(s"Error when trying to update fact when deleting node '${nodeId.value}': ${err.fullMsg}")
       )

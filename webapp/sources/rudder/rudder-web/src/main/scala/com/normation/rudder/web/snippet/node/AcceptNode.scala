@@ -38,10 +38,13 @@
 package com.normation.rudder.web.snippet.node
 
 import bootstrap.liftweb.RudderConfig
+
 import com.normation.box._
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
+import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.NodeId
+import com.normation.inventory.domain.PendingInventory
 import com.normation.rudder.domain.eventlog._
 import com.normation.rudder.domain.eventlog.AcceptNodeEventLog
 import com.normation.rudder.domain.eventlog.RefuseNodeEventLog
@@ -51,6 +54,7 @@ import com.normation.rudder.web.ChooseTemplate
 import com.normation.rudder.web.components.popup.ExpectedPolicyPopup
 import com.normation.rudder.web.services.CurrentUser
 import com.normation.utils.DateFormaterService
+
 import net.liftweb.common._
 import net.liftweb.http._
 import net.liftweb.http.js._
@@ -61,6 +65,7 @@ import net.liftweb.util.Helpers._
 import org.joda.time.DateTime
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetails
+
 import scala.xml._
 
 /**
@@ -164,7 +169,7 @@ class AcceptNode extends Loggable {
           val version = retrieveLastVersions(id)
           version match {
             case Some(x) =>
-              serverSummaryService.find(acceptedNodesDit, id) match {
+              serverSummaryService.find(AcceptedInventory, id) match {
                 case Full(srvs) if (srvs.size == 1) =>
                   val srv   = srvs.head
                   val entry = AcceptNodeEventLog.fromInventoryLogDetails(
@@ -291,7 +296,7 @@ class AcceptNode extends Loggable {
       "#server_os *" #> srv.osFullName)(serverLine)
     }
 
-    serverSummaryService.find(pendingNodeDit, listNode: _*) match {
+    serverSummaryService.find(PendingInventory, listNode: _*) match {
       case Full(servers) =>
         val lines: NodeSeq = servers.flatMap(displayServerLine)
         ("#server_lines" #> lines).apply(

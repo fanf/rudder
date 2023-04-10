@@ -54,14 +54,12 @@ import bootstrap.liftweb.checks.migration.CheckRemoveRuddercSetting
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
-
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
-
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.inventory.domain._
@@ -111,8 +109,8 @@ import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.queries._
-import com.normation.rudder.facts.nodes.GitNodeFactRepositoryImpl
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
+import com.normation.rudder.facts.nodes.GitNodeFactRepositoryImpl
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.NodeFactInventorySaver
@@ -185,7 +183,6 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -193,7 +190,6 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
-
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -203,10 +199,8 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
-
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
-
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -2666,7 +2660,6 @@ object RudderConfig extends Loggable {
     new NewNodeManagerImpl(
       roLdap,
       pendingNodesDitImpl,
-      acceptedNodesDitImpl,
       nodeSummaryServiceImpl,
       ldapFullInventoryRepository,
       unitAcceptors,
@@ -2682,6 +2675,49 @@ object RudderConfig extends Loggable {
       HOOKS_IGNORE_SUFFIXES
     )
   }
+
+  /*
+   * Cleaning action are run for the case where the node was accepted, deleted, and unknown
+   * (ie: we want to be able to run cleaning actions even on a node that was deleted in the past, but
+   * for some reason the user discover that theres remaining things, and he wants to get rid of them
+   * without knowing rudder internal place to look for all possible garbages)
+   */
+
+  /*
+   * The list of post deletion action to execute in a shared reference, created at class instanciation.
+   * External services can update it from removeNodeServiceImpl.
+   */
+  private[this] lazy val postNodeDeleteActions = Ref
+    .make(
+      new RemoveNodeInfoFromCache(nodeInfoServiceImpl)
+        :: new RemoveNodeFromGroups(roNodeGroupRepository, woNodeGroupRepository, uuidGen)
+        :: new CloseNodeConfiguration(updateExpectedRepo)
+        :: new RemoveNodeFromComplianceCache(cachedNodeConfigurationService, reportingServiceImpl)
+        :: new DeletePolicyServerPolicies(policyServerManagementService)
+        :: new ResetKeyStatus(rwLdap, removedNodesDitImpl)
+        :: new CleanUpCFKeys()
+        :: new CleanUpNodePolicyFiles("/var/rudder/share")
+        :: new DeleteNodeFact(factRepo)
+        :: Nil
+    )
+    .runNow
+
+  private lazy val factRemoveNodeBackend = new FactRemoveNodeBackend(factRepo)
+
+  private[this] lazy val removeNodeServiceImpl = new RemoveNodeServiceImpl(
+    //    deprecated.ldapRemoveNodeBackend,
+    factRemoveNodeBackend,
+    nodeInfoServiceImpl,
+    pathComputer,
+    newNodeManager,
+    logRepository,
+    postNodeDeleteActions,
+    HOOKS_D,
+    HOOKS_IGNORE_SUFFIXES
+  )
+
+
+ /////// reporting ///////
 
   lazy val nodeConfigurationHashRepo: NodeConfigurationHashRepository = {
     val x = new FileBasedNodeConfigurationHashRepository(FileBasedNodeConfigurationHashRepository.defaultHashesPath)
@@ -2855,52 +2891,6 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val jsTreeUtilServiceImpl = new JsTreeUtilService(roLdapDirectiveRepository, techniqueRepositoryImpl)
 
-  /*
-   * Cleaning action are run for the case where the node was accepted, deleted, and unknown
-   * (ie: we want to be able to run cleaning actions even on a node that was deleted in the past, but
-   * for some reason the user discover that theres remaining things, and he wants to get rid of them
-   * without knowing rudder internal place to look for all possible garbages)
-   */
-
-  /*
-   * The list of post deletion action to execute in a shared reference, created at class instanciation.
-   * External services can update it from removeNodeServiceImpl.
-   */
-  private[this] lazy val postNodeDeleteActions = Ref
-    .make(
-      new RemoveNodeInfoFromCache(nodeInfoServiceImpl)
-      :: new RemoveNodeFromGroups(roNodeGroupRepository, woNodeGroupRepository, uuidGen)
-      :: new CloseNodeConfiguration(updateExpectedRepo)
-      :: new RemoveNodeFromComplianceCache(cachedNodeConfigurationService, reportingServiceImpl)
-      :: new DeletePolicyServerPolicies(policyServerManagementService)
-      :: new ResetKeyStatus(rwLdap, removedNodesDitImpl)
-      :: new CleanUpCFKeys()
-      :: new CleanUpNodePolicyFiles("/var/rudder/share")
-      :: new DeleteNodeFact(factRepo)
-      :: Nil
-    )
-    .runNow
-
-  private lazy val ldapRemoveNodeBackend = new LdapRemoveNodeBackend(
-    nodeDitImpl,
-    pendingNodesDitImpl,
-    acceptedNodesDitImpl,
-    removedNodesDitImpl,
-    rwLdap,
-    ldapFullInventoryRepository,
-    nodeReadWriteMutex
-  )
-
-  private[this] lazy val removeNodeServiceImpl = new RemoveNodeServiceImpl(
-    ldapRemoveNodeBackend,
-    nodeInfoServiceImpl,
-    pathComputer,
-    newNodeManager,
-    logRepository,
-    postNodeDeleteActions,
-    HOOKS_D,
-    HOOKS_IGNORE_SUFFIXES
-  )
 
   private[this] lazy val healthcheckService = new HealthcheckService(
     List(
@@ -3162,5 +3152,16 @@ object RudderConfig extends Loggable {
   /*
    * here goes deprecated services that we can't remove yet, for example because they are used for migration
    */
-  object deprecated {}
+  object deprecated {
+    private lazy val ldapRemoveNodeBackend = new LdapRemoveNodeBackend(
+      nodeDitImpl,
+      pendingNodesDitImpl,
+      acceptedNodesDitImpl,
+      removedNodesDitImpl,
+      rwLdap,
+      ldapFullInventoryRepository,
+      nodeReadWriteMutex
+    )
+
+  }
 }

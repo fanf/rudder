@@ -37,6 +37,7 @@
 
 package com.normation.rudder.facts.nodes
 
+
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.FullInventory
@@ -53,10 +54,16 @@ import com.normation.inventory.services.provisioning.PreCommit
 import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeKind
+import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.services.nodes.NodeInfoService
-import zio.stream.ZSink
+import com.normation.rudder.services.servers.NodeSummaryService
+
+import net.liftweb.common.Box
+
 import zio._
+import zio.stream.ZSink
 import zio.syntax._
+import com.normation.box._
 
 class NodeFactInventorySaver(
     backend:                NodeFactRepository,
@@ -65,6 +72,7 @@ class NodeFactInventorySaver(
 ) extends PipelinedInventorySaver[Unit] {
 
   override def commitChange(inventory: Inventory): IOResult[Unit] = {
+    implicit val cc = ChangeContext.newForRudder()
     backend.updateInventory(inventory).unit
   }
 }
@@ -163,7 +171,7 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullI
                case None       => NodeFact.newFromFullInventory(serverAndMachine, None)
                case Some(fact) => NodeFact.updateFullInventory(fact, serverAndMachine, None)
              }
-      _   <- backend.save(fact)
+      _   <- backend.save(fact)(ChangeContext.newForRudder())
     } yield ()
   }
 
@@ -172,16 +180,22 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullI
     backend.getStatus(id).flatMap { s =>
       s match {
         case RemovedInventory => ZIO.unit
-        case s                => ZIO.when(s == inventoryStatus)(backend.delete(id)).unit
+        case s                => ZIO.when(s == inventoryStatus)(backend.delete(id)(ChangeContext.newForRudder())).unit
       }
     }
   }
 
   override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
-    backend.changeStatus(id, into).unit
+    backend.changeStatus(id, into)(ChangeContext.newForRudder()).unit
   }
 
   override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
-    backend.changeStatus(id, into).unit
+    backend.changeStatus(id, into)(ChangeContext.newForRudder()).unit
+  }
+}
+
+class FactNodeSummaryService(backend: NodeFactRepository) extends NodeSummaryService {
+  override def find(status: InventoryStatus, ids: NodeId*): Box[Seq[Srv]] = {
+    backend.getAllOn(status).collect { case n if ids.contains(n.id) => n.toSrv }.run(ZSink.collectAll).toBox
   }
 }

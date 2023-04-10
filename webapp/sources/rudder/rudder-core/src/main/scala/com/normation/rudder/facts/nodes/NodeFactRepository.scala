@@ -102,6 +102,13 @@ import zio.syntax._
 trait NodeFactRepository {
 
   /*
+   * Add a call back that will be called when a change occurs.
+   * The callbacks are not ordered and not blocking and will have a short time-out
+   * on them, the caller will need to manage that constraint.
+   */
+  def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit]
+
+  /*
    * Get the status of the node, or RemovedStatus if it is
    * not found.
    */
@@ -134,19 +141,22 @@ trait NodeFactRepository {
 
   def getAllPending(): IOStream[NodeFact]
 
+  def getAllOn(status: InventoryStatus): IOStream[NodeFact]
+  ///// changes /////
+
   /*
    * Save (create or override) a node fact.
    * That method will force status to be `accepted`.
    * Use "updateInventory` if you want to save in pending.
    */
-  def save(nodeFact: NodeFact): IOResult[NodeFactChangeEvent]
+  def save(nodeFact: NodeFact)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
 
   /*
    * A method that will create in new node fact in pending, or
    * update inventory part of the node with that nodeId in
    * pending or in accepted.
    */
-  def updateInventory(inventory: Inventory): IOResult[NodeFactChangeEvent]
+  def updateInventory(inventory: Inventory)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
 
   /*
    * Change the status of the node with given id to given status.
@@ -154,19 +164,24 @@ trait NodeFactRepository {
    * - if the target status is the current one, this function does nothing
    * - if target status is "removed", persisted inventory is deleted
    */
-  def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[NodeFactChangeEvent]
+  def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
 
   /*
    * Delete any reference to that node id.
    */
-  def delete(nodeId: NodeId): IOResult[NodeFactChangeEvent]
+  def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+}
 
-  /*
-   * Add a call back that will be called when a change occurs.
-   * The callbacks are not ordered and not blocking and will have a short time-out
-   * on them, the caller will need to manage that constraint.
-   */
-  def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit]
+/*
+ * Internal CRUD event that need to be translated into node change if needed
+ */
+sealed private trait InternalChangeEvent
+
+private object InternalChangeEvent {
+  final case class Create(node: NodeFact) extends InternalChangeEvent
+  final case class Update(node: NodeFact) extends InternalChangeEvent
+  final case class Delete(node: NodeFact) extends InternalChangeEvent
+  final case class Noop(nodeId: NodeId)   extends InternalChangeEvent
 }
 
 /*
@@ -196,17 +211,7 @@ class CoreNodeFactRepository(
     lock:          ReentrantLock,
     cbTimeout:     zio.Duration = 5.seconds
 ) extends NodeFactRepository {
-
-  /*
-   * Internal CRUD event that need to be translated into node change if needed
-   */
-  sealed private trait InternalChangeEvent
-  private object InternalChangeEvent {
-    final case class Create(node: NodeFact) extends InternalChangeEvent
-    final case class Update(node: NodeFact) extends InternalChangeEvent
-    final case class Delete(node: NodeFact) extends InternalChangeEvent
-    final case class Noop(nodeId: NodeId)   extends InternalChangeEvent
-  }
+  import NodeFactChangeEvent._
 
   (for {
     p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
@@ -243,10 +248,10 @@ class CoreNodeFactRepository(
    * - do we want to fork and timeout each callbacks ? likely so
    * - do we want to parallel exec them ? likely so, the user can build his own callback sequencer callback if he wants
    */
-  private[nodes] def runCallbacks(e: NodeFactChangeEvent): IOResult[Unit] = {
+  private[nodes] def runCallbacks(e: NodeFactChangeEventCC): IOResult[Unit] = {
     for {
       cs <- callbacks.get
-      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout) //.forkDaemon
+      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout) // .forkDaemon
     } yield ()
   }
 
@@ -254,7 +259,7 @@ class CoreNodeFactRepository(
     ref.get.map(_.get(nodeId))
   }
 
-  private[nodes] def getAllOn(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
+  private[nodes] def getAllOnRef(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
     ZStream.fromZIO(ref.get.map(m => m.values)).flatMap(x => ZStream.fromIterable(x))
   }
 
@@ -297,34 +302,42 @@ class CoreNodeFactRepository(
     getAccepted(nodeId).flatMap(opt => opt.fold(getPending(nodeId))(Some(_).succeed))
   }
 
-  override def getAllAccepted(): IOStream[NodeFact] = getAllOn(acceptedNodes)
+  override def getAllOn(status: InventoryStatus): IOStream[NodeFact] = {
+    status match {
+      case AcceptedInventory => getAllAccepted()
+      case PendingInventory  => getAllPending()
+      case RemovedInventory  => ZStream.empty
+    }
+  }
 
-  override def getAllPending(): IOStream[NodeFact] = getAllOn(pendingNodes)
+  override def getAllAccepted(): IOStream[NodeFact] = getAllOnRef(acceptedNodes)
 
-  override def save(nodeFact: NodeFact): IOResult[NodeFactChangeEvent] = {
+  override def getAllPending(): IOStream[NodeFact] = getAllOnRef(pendingNodes)
+
+  override def save(nodeFact: NodeFact)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
         _ <- storage.save(nodeFact)
         e <- nodeFact.rudderSettings.status match {
                case RemovedInventory  => // this case is ignored, we don't delete node based on status value
-                 NodeFactChangeEvent.Noop(nodeFact.id).succeed
+                 NodeFactChangeEventCC(Noop(nodeFact.id), cc).succeed
                case PendingInventory  =>
                  saveOn(pendingNodes, nodeFact).map { e =>
                    e match {
-                     case InternalChangeEvent.Create(node) => NodeFactChangeEvent.NewPending(node)
-                     case InternalChangeEvent.Update(node) => NodeFactChangeEvent.UpdatedPending(node)
-                     case InternalChangeEvent.Delete(node) => NodeFactChangeEvent.Deleted(node)
-                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEvent.Noop(nodeId)
+                     case InternalChangeEvent.Create(node) => NodeFactChangeEventCC(NewPending(node), cc)
+                     case InternalChangeEvent.Update(node) => NodeFactChangeEventCC(UpdatedPending(node), cc)
+                     case InternalChangeEvent.Delete(node) => NodeFactChangeEventCC(Deleted(node), cc)
+                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEventCC(Noop(nodeId), cc)
                    }
                  }
                case AcceptedInventory =>
                  saveOn(acceptedNodes, nodeFact).map { e =>
                    e match {
-                     case InternalChangeEvent.Create(node) => NodeFactChangeEvent.Accepted(node)
-                     case InternalChangeEvent.Update(node) => NodeFactChangeEvent.Updated(node)
-                     case InternalChangeEvent.Delete(node) => NodeFactChangeEvent.Deleted(node)
-                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEvent.Noop(nodeId)
+                     case InternalChangeEvent.Create(node) => NodeFactChangeEventCC(Accepted(node), cc)
+                     case InternalChangeEvent.Update(node) => NodeFactChangeEventCC(Updated(node), cc)
+                     case InternalChangeEvent.Delete(node) => NodeFactChangeEventCC(Deleted(node), cc)
+                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEventCC(Noop(nodeId), cc)
                    }
                  }
              }
@@ -333,7 +346,9 @@ class CoreNodeFactRepository(
     )
   }
 
-  override def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[NodeFactChangeEvent] = {
+  override def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit
+      cc:                           ChangeContext
+  ): IOResult[NodeFactChangeEventCC] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
@@ -343,34 +358,38 @@ class CoreNodeFactRepository(
             pending  <- getOnRef(pendingNodes, nodeId)
             accepted <- getOnRef(acceptedNodes, nodeId)
             e        <- (into, pending, accepted) match {
+                          case (RemovedInventory, Some(x), None)     =>
+                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEventCC(Refused(x), cc).succeed
+                          case (RemovedInventory, None, Some(x))     =>
+                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEventCC(Deleted(x), cc).succeed
+                          case (RemovedInventory, Some(_), Some(x))  =>
+                            deleteOn(pendingNodes, nodeId) *>
+                            deleteOn(acceptedNodes, nodeId) *>
+                            NodeFactChangeEventCC(Deleted(x), cc).succeed
+                          case (RemovedInventory, None, None) =>
+                            NodeFactChangeEventCC(Noop(nodeId), cc).succeed
                           case (_, None, None)                       =>
                             Inconsistency(
                               s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes"
                             ).fail
                           case (AcceptedInventory, None, Some(_))    =>
-                            NodeFactChangeEvent.Noop(nodeId).succeed
+                            NodeFactChangeEventCC(Noop(nodeId), cc).succeed
                           case (AcceptedInventory, Some(x), None)    =>
                             deleteOn(pendingNodes, nodeId) *> saveOn(
                               acceptedNodes,
                               x.modify(_.rudderSettings.status).setTo(AcceptedInventory)
-                            ) *> NodeFactChangeEvent.Accepted(x).succeed
+                            ) *> NodeFactChangeEventCC(Accepted(x), cc).succeed
                           case (AcceptedInventory, Some(_), Some(_)) =>
-                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEvent.Noop(nodeId).succeed
+                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEventCC(Noop(nodeId), cc).succeed
                           case (PendingInventory, None, Some(x))     =>
                             deleteOn(acceptedNodes, nodeId) *> saveOn(
                               pendingNodes,
                               x.modify(_.rudderSettings.status).setTo(PendingInventory)
-                            ) *> NodeFactChangeEvent.Deleted(x).succeed // not sure about the semantic here
+                            ) *> NodeFactChangeEventCC(Deleted(x), cc).succeed // not sure about the semantic here
                           case (PendingInventory, Some(_), None)     =>
-                            NodeFactChangeEvent.Noop(nodeId).succeed
+                            NodeFactChangeEventCC(Noop(nodeId), cc).succeed
                           case (PendingInventory, Some(_), Some(x))  =>
-                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEvent.Deleted(x).succeed
-                          case (RemovedInventory, Some(x), None)     =>
-                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEvent.Refused(x).succeed
-                          case (RemovedInventory, None, Some(x))     =>
-                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEvent.Deleted(x).succeed
-                          case (RemovedInventory, None, None)        =>
-                            NodeFactChangeEvent.Noop(nodeId).succeed
+                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEventCC(Deleted(x), cc).succeed
                         }
           } yield e
         _ <- runCallbacks(e)
@@ -378,7 +397,7 @@ class CoreNodeFactRepository(
     )
   }
 
-  override def delete(nodeId: NodeId): IOResult[NodeFactChangeEvent] = {
+  override def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
@@ -386,16 +405,16 @@ class CoreNodeFactRepository(
         p <- deleteOn(pendingNodes, nodeId)
         a <- deleteOn(acceptedNodes, nodeId)
         e  = ((p, a) match {
-               case (_, InternalChangeEvent.Delete(n)) => NodeFactChangeEvent.Deleted(n)
-               case (InternalChangeEvent.Delete(n), _) => NodeFactChangeEvent.Refused(n)
-               case _                                  => NodeFactChangeEvent.Noop(nodeId)
+               case (_, InternalChangeEvent.Delete(n)) => NodeFactChangeEventCC(Deleted(n), cc)
+               case (InternalChangeEvent.Delete(n), _) => NodeFactChangeEventCC(Refused(n), cc)
+               case _                                  => NodeFactChangeEventCC(Noop(nodeId), cc)
              })
         _ <- runCallbacks(e)
       } yield e
     )
   }
 
-  override def updateInventory(inventory: Inventory): IOResult[NodeFactChangeEvent] = {
+  override def updateInventory(inventory: Inventory)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
     val nodeId = inventory.node.main.id
     ZIO.scoped(
       for {
