@@ -755,6 +755,6 @@ class DeleteNodeFact(nodeFactRepo: NodeFactRepository) extends PostNodeDeleteAct
       .changeStatus(nodeId, RemovedInventory)
       .catchAll(err =>
         NodeLoggerPure.info(s"Error when trying to update fact when deleting node '${nodeId.value}': ${err.fullMsg}")
-      )
+      ).unit
   }
 }

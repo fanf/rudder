@@ -54,12 +54,14 @@ import bootstrap.liftweb.checks.migration.CheckRemoveRuddercSetting
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
+
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
+
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.inventory.domain._
@@ -110,8 +112,9 @@ import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.GitNodeFactRepositoryImpl
-import com.normation.rudder.facts.nodes.InMemoryNodeFactRepository
+import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
@@ -182,6 +185,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -189,6 +193,7 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -198,8 +203,10 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
+
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
+
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -1544,9 +1551,10 @@ object RudderConfig extends Loggable {
       acceptedFacts <- getFacts(acceptedInfos.take(2), AcceptedInventory)
       accepted      <- Ref.make(acceptedFacts)
       lock          <- ReentrantLock.make()
+      callbacks     <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
       _             <- InventoryDataLogger.debug("Creating node fact repos")
     } yield {
-      new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, lock)
+      new CoreNodeFactRepository(pending, accepted, callbacks, gitFactRepo, lock)
     }
   }.runNow
 

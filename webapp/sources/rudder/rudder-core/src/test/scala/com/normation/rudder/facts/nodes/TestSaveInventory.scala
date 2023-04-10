@@ -154,11 +154,15 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   // TODO WARNING POC: this can't work on a machine with lots of node
   val factRepo = {
     for {
-      pending  <- Ref.make(Map[NodeId, NodeFact]())
-      accepted <- Ref.make(Map[NodeId, NodeFact]())
-      lock     <- ReentrantLock.make()
+      pending   <- Ref.make(Map[NodeId, NodeFact]())
+      accepted  <- Ref.make(Map[NodeId, NodeFact]())
+      callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
+      lock      <- ReentrantLock.make()
+      r =  new CoreNodeFactRepository(pending, accepted, callbacks, gitFactRepo, lock)
+      // TODO : make a registering callback into a Ref[Chunk] and compare the trace callback
+      _ <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(print(e.debugString))))
     } yield {
-      new InMemoryNodeFactRepository(pending, accepted, gitFactRepo, lock)
+      r
     }
   }.runNow
 
@@ -238,12 +242,14 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     }
 
     "change in node by repos are reflected in file" in {
-      (for {
+      val e = (for {
         n <- factRepo.getPending(node2id).notOptional("node2 should be there for the test")
-        _ <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
-      } yield ()).runNow
+        e <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
+      } yield e).runNow
 
-      pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue
+      (pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
+      (e must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending])
+
     }
 
     "update the node that was modified in repo" in {
@@ -261,19 +267,21 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   "Accepting a new, unknown inventory" should {
 
     "correctly update status and move file around" in {
-      factRepo.changeStatus(node2id, AcceptedInventory).runNow
+      val e = factRepo.changeStatus(node2id, AcceptedInventory).runNow
+      (e must beAnInstanceOf[NodeFactChangeEvent.Accepted]) and
       (acceptedNodeGitFile(node2id).exists must beTrue) and
       (factRepo.getAccepted(node2id).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory))
     }
     "change in node by repos are reflected in file" in {
-      (
+      val e = (
         for {
           n <- factRepo.getAccepted(node2id).notOptional("node2 should be there for the test")
-          _ <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
-        } yield ()
+          e <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
+        } yield e
       ).runNow
 
-      acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue
+      (e must beAnInstanceOf[NodeFactChangeEvent.Updated]) and
+      (acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue)
     }
 
     "update the node that was modified in repo" in {
@@ -293,8 +301,9 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   "Changing status to deleted" should {
 
     "correctly delete node and value in repos" in {
-      factRepo.changeStatus(node2id, RemovedInventory).runNow
+      val e = factRepo.changeStatus(node2id, RemovedInventory).runNow
 
+      (e must beAnInstanceOf[NodeFactChangeEvent.Deleted]) and
       (pendingNodeGitFile(node2id).exists must beFalse) and
       (acceptedNodeGitFile(node2id).exists must beFalse) and
       (factRepo.lookup(node2id).runNow must beNone)

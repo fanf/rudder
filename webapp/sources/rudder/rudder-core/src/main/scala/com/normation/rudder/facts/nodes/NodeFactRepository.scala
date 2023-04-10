@@ -139,14 +139,14 @@ trait NodeFactRepository {
    * That method will force status to be `accepted`.
    * Use "updateInventory` if you want to save in pending.
    */
-  def save(nodeFact: NodeFact): IOResult[Unit]
+  def save(nodeFact: NodeFact): IOResult[NodeFactChangeEvent]
 
   /*
    * A method that will create in new node fact in pending, or
    * update inventory part of the node with that nodeId in
    * pending or in accepted.
    */
-  def updateInventory(inventory: Inventory): IOResult[Unit]
+  def updateInventory(inventory: Inventory): IOResult[NodeFactChangeEvent]
 
   /*
    * Change the status of the node with given id to given status.
@@ -154,12 +154,19 @@ trait NodeFactRepository {
    * - if the target status is the current one, this function does nothing
    * - if target status is "removed", persisted inventory is deleted
    */
-  def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[Unit]
+  def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[NodeFactChangeEvent]
 
   /*
    * Delete any reference to that node id.
    */
-  def delete(nodeId: NodeId): IOResult[Unit]
+  def delete(nodeId: NodeId): IOResult[NodeFactChangeEvent]
+
+  /*
+   * Add a call back that will be called when a change occurs.
+   * The callbacks are not ordered and not blocking and will have a short time-out
+   * on them, the caller will need to manage that constraint.
+   */
+  def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit]
 }
 
 /*
@@ -173,19 +180,43 @@ trait NodeFactRepository {
  *
  * once initialized, that repository IS the truth. No change done by
  * an other mean in the cold storage will be visible from Rudder.
+ *
+ * For change, that repos try to ensure that the backend does commit the
+ * change before having it done in memory. That arch does not scale to
+ * many backend, since once there is more than one, compensation strategy
+ * must be put into action to compensate for errors (see zio-workflow for
+ * that kind of things).
+ *
  */
-class InMemoryNodeFactRepository(
+class CoreNodeFactRepository(
     pendingNodes:  Ref[Map[NodeId, NodeFact]],
     acceptedNodes: Ref[Map[NodeId, NodeFact]],
+    callbacks:     Ref[Chunk[NodeFactChangeEventCallback]],
     storage:       NodeFactStorage,
-    lock:          ReentrantLock
+    lock:          ReentrantLock,
+    cbTimeout:     zio.Duration = 5.seconds
 ) extends NodeFactRepository {
+
+  /*
+   * Internal CRUD event that need to be translated into node change if needed
+   */
+  sealed private trait InternalChangeEvent
+  private object InternalChangeEvent {
+    final case class Create(node: NodeFact) extends InternalChangeEvent
+    final case class Update(node: NodeFact) extends InternalChangeEvent
+    final case class Delete(node: NodeFact) extends InternalChangeEvent
+    final case class Noop(nodeId: NodeId)   extends InternalChangeEvent
+  }
 
   (for {
     p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
     a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
     _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
   } yield ()).runNow
+
+  override def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit] = {
+    callbacks.update(_.appended(callback))
+  }
 
   override def getStatus(id: NodeId): IOResult[InventoryStatus] = {
     pendingNodes.get.flatMap { p =>
@@ -207,20 +238,51 @@ class InMemoryNodeFactRepository(
     }
   }
 
+  /*
+   * This method will need some thoughts:
+   * - do we want to fork and timeout each callbacks ? likely so
+   * - do we want to parallel exec them ? likely so, the user can build his own callback sequencer callback if he wants
+   */
+  private[nodes] def runCallbacks(e: NodeFactChangeEvent): IOResult[Unit] = {
+    for {
+      cs <- callbacks.get
+      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout).forkDaemon
+    } yield ()
+  }
+
   private[nodes] def getOnRef(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
     ref.get.map(_.get(nodeId))
   }
 
-  def getAllOn(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
+  private[nodes] def getAllOn(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
     ZStream.fromZIO(ref.get.map(m => m.values)).flatMap(x => ZStream.fromIterable(x))
   }
 
-  def saveOn(ref: Ref[Map[NodeId, NodeFact]], nodeFact: NodeFact): IOResult[Unit] = {
-    ref.update(_ + ((nodeFact.id, nodeFact)))
+  /*
+   *
+   */
+  private def saveOn(ref: Ref[Map[NodeId, NodeFact]], nodeFact: NodeFact): IOResult[InternalChangeEvent] = {
+    ref
+      .getAndUpdate(_ + ((nodeFact.id, nodeFact)))
+      .map { old =>
+        old.get(nodeFact.id) match {
+          case Some(n) =>
+            if (NodeFact.same(n, nodeFact)) InternalChangeEvent.Noop(nodeFact.id)
+            else InternalChangeEvent.Update(nodeFact)
+          case None    => InternalChangeEvent.Create(nodeFact)
+        }
+      }
   }
 
-  def deleteOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId): IOResult[Unit] = {
-    ref.update(_.removed(nodeId))
+  private def deleteOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId): IOResult[InternalChangeEvent] = {
+    ref
+      .getAndUpdate(_.removed(nodeId))
+      .map(old => {
+        old.get(nodeId) match {
+          case None    => InternalChangeEvent.Noop(nodeId)
+          case Some(n) => InternalChangeEvent.Delete(n)
+        }
+      })
   }
 
   override def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]] = {
@@ -239,67 +301,101 @@ class InMemoryNodeFactRepository(
 
   override def getAllPending(): IOStream[NodeFact] = getAllOn(pendingNodes)
 
-  override def save(nodeFact: NodeFact): IOResult[Unit] = {
+  override def save(nodeFact: NodeFact): IOResult[NodeFactChangeEvent] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
         _ <- storage.save(nodeFact)
-        _ <- nodeFact.rudderSettings.status match {
-               case RemovedInventory  => ZIO.unit
-               case PendingInventory  => saveOn(pendingNodes, nodeFact)
-               case AcceptedInventory => saveOn(acceptedNodes, nodeFact)
+        e <- nodeFact.rudderSettings.status match {
+               case RemovedInventory  => // this case is ignored, we don't delete node based on status value
+                 NodeFactChangeEvent.Noop(nodeFact.id).succeed
+               case PendingInventory  =>
+                 saveOn(pendingNodes, nodeFact).map { e =>
+                   e match {
+                     case InternalChangeEvent.Create(node) => NodeFactChangeEvent.NewPending(node)
+                     case InternalChangeEvent.Update(node) => NodeFactChangeEvent.UpdatedPending(node)
+                     case InternalChangeEvent.Delete(node) => NodeFactChangeEvent.Deleted(node)
+                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEvent.Noop(nodeId)
+                   }
+                 }
+               case AcceptedInventory =>
+                 saveOn(acceptedNodes, nodeFact).map { e =>
+                   e match {
+                     case InternalChangeEvent.Create(node) => NodeFactChangeEvent.Accepted(node)
+                     case InternalChangeEvent.Update(node) => NodeFactChangeEvent.Updated(node)
+                     case InternalChangeEvent.Delete(node) => NodeFactChangeEvent.Deleted(node)
+                     case InternalChangeEvent.Noop(nodeId) => NodeFactChangeEvent.Noop(nodeId)
+                   }
+                 }
              }
-      } yield ()
+        _ <- runCallbacks(e)
+      } yield e
     )
   }
 
-  override def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[Unit] = {
+  override def changeStatus(nodeId: NodeId, into: InventoryStatus): IOResult[NodeFactChangeEvent] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
         _ <- storage.changeStatus(nodeId, into)
-        _ <-
+        e <-
           for {
             pending  <- getOnRef(pendingNodes, nodeId)
             accepted <- getOnRef(acceptedNodes, nodeId)
-            _        <- (into, pending, accepted) match {
+            e        <- (into, pending, accepted) match {
                           case (_, None, None)                       =>
                             Inconsistency(
                               s"Error: node '${nodeId.value}' was not found in rudder (neither pending nor accepted nodes"
                             ).fail
-                          case (AcceptedInventory, None, Some(_))    => ZIO.unit
+                          case (AcceptedInventory, None, Some(_))    =>
+                            NodeFactChangeEvent.Noop(nodeId).succeed
                           case (AcceptedInventory, Some(x), None)    =>
                             deleteOn(pendingNodes, nodeId) *> saveOn(
                               acceptedNodes,
                               x.modify(_.rudderSettings.status).setTo(AcceptedInventory)
-                            )
-                          case (AcceptedInventory, Some(_), Some(_)) => deleteOn(pendingNodes, nodeId)
+                            ) *> NodeFactChangeEvent.Accepted(x).succeed
+                          case (AcceptedInventory, Some(_), Some(_)) =>
+                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEvent.Noop(nodeId).succeed
                           case (PendingInventory, None, Some(x))     =>
                             deleteOn(acceptedNodes, nodeId) *> saveOn(
                               pendingNodes,
                               x.modify(_.rudderSettings.status).setTo(PendingInventory)
-                            )
-                          case (PendingInventory, Some(_), None)     => ZIO.unit
-                          case (PendingInventory, Some(_), Some(_))  => deleteOn(acceptedNodes, nodeId)
-                          case (RemovedInventory, _, _)              => deleteOn(pendingNodes, nodeId) *> deleteOn(acceptedNodes, nodeId)
+                            ) *> NodeFactChangeEvent.Deleted(x).succeed // not sure about the semantic here
+                          case (PendingInventory, Some(_), None)     =>
+                            NodeFactChangeEvent.Noop(nodeId).succeed
+                          case (PendingInventory, Some(_), Some(x))  =>
+                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEvent.Deleted(x).succeed
+                          case (RemovedInventory, Some(x), None)     =>
+                            deleteOn(pendingNodes, nodeId) *> NodeFactChangeEvent.Refused(x).succeed
+                          case (RemovedInventory, None, Some(x))     =>
+                            deleteOn(acceptedNodes, nodeId) *> NodeFactChangeEvent.Deleted(x).succeed
+                          case (RemovedInventory, None, None)        =>
+                            NodeFactChangeEvent.Noop(nodeId).succeed
                         }
-          } yield ()
-      } yield ()
+          } yield e
+        _ <- runCallbacks(e)
+      } yield e
     )
   }
 
-  override def delete(nodeId: NodeId): IOResult[Unit] = {
+  override def delete(nodeId: NodeId): IOResult[NodeFactChangeEvent] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
         _ <- storage.delete(nodeId)
-        _ <- deleteOn(pendingNodes, nodeId)
-        _ <- deleteOn(acceptedNodes, nodeId)
-      } yield ()
+        p <- deleteOn(pendingNodes, nodeId)
+        a <- deleteOn(acceptedNodes, nodeId)
+        e  = ((p, a) match {
+               case (_, InternalChangeEvent.Delete(n)) => NodeFactChangeEvent.Deleted(n)
+               case (InternalChangeEvent.Delete(n), _) => NodeFactChangeEvent.Refused(n)
+               case _                                  => NodeFactChangeEvent.Noop(nodeId)
+             })
+        _ <- runCallbacks(e)
+      } yield e
     )
   }
 
-  override def updateInventory(inventory: Inventory): IOResult[Unit] = {
+  override def updateInventory(inventory: Inventory): IOResult[NodeFactChangeEvent] = {
     val nodeId = inventory.node.main.id
     ZIO.scoped(
       for {
@@ -313,8 +409,9 @@ class InMemoryNodeFactRepository(
                         case Some(f) => NodeFact.updateInventory(f, inventory)
                         case None    => NodeFact.newFromInventory(inventory)
                       }
-        _          <- save(fact)
-      } yield ()
+        e          <- save(fact)
+        _          <- runCallbacks(e)
+      } yield e
     )
   }
 }

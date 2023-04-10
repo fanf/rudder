@@ -37,6 +37,7 @@
 
 package com.normation.rudder.facts.nodes
 
+import com.normation.errors.IOResult
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.{Version => SVersion}
 import com.normation.rudder.domain.nodes.MachineInfo
@@ -154,6 +155,66 @@ final case class SoftwareFact(
 )
 
 object NodeFact {
+
+  /*
+   * Check if the node fact are the same.
+   * Sameness is not equatity. It does not look for:
+   * - inventory date
+   * - fact processing time
+   * - acceptation time
+   * - order in any collection
+   *
+   * Having a hashcode on node fact would be inefficient,
+   * most node fact are never compared for sameness.
+   * Same is heavy, don't use it often !
+   */
+  def same(a: NodeFact, b: NodeFact): Boolean = {
+    // compare two chunk sameness
+    def compare[A, B: Ordering](accessor: NodeFact => Chunk[A])(orderOn: A => B): Boolean = {
+      accessor(a).size == accessor(b).size &&
+      accessor(a).sortBy(orderOn) == accessor(b).sortBy(orderOn)
+    }
+
+    def eq[A](accessor: NodeFact => A): Boolean = {
+      accessor(a) == accessor(b)
+    }
+
+    eq(_.id) &&
+    eq(_.description) &&
+    eq(_.fqdn) &&
+    eq(_.os) &&
+    eq(_.machine) &&
+    eq(_.rudderSettings) &&
+    eq(_.rudderAgent) &&
+    compare(_.properties)(_.name) &&
+    compare(_.ipAddresses)(_.inet) &&
+    eq(_.timezone) &&
+    eq(_.ram) &&
+    eq(_.swap) &&
+    eq(_.archDescription) &&
+    compare(_.accounts)(identity) &&
+    compare(_.bios)(_.name) &&
+    compare(_.controllers)(_.name) &&
+    compare(_.environmentVariables)(_._1) &&
+    compare(_.fileSystems)(_.mountPoint) &&
+    compare(_.inputs)(_.tpe) &&
+    compare(_.localGroups)(_.id) &&
+    compare(_.localUsers)(_.id) &&
+    compare(_.logicalVolumes)(_.lvUUID) &&
+    compare(_.memories)(_.slotNumber) &&
+    compare(_.networks)(_.name) &&
+    compare(_.physicalVolumes)(_.pvUUID) &&
+    compare(_.ports)(_.name) &&
+    compare(_.processes)(_.pid) &&
+    compare(_.processors)(_.name) &&
+    compare(_.slots)(_.name) &&
+    compare(_.software)(_.name) &&
+    compare(_.softwareUpdate)(_.name) &&
+    compare(_.sounds)(_.name) &&
+    compare(_.storages)(_.name) &&
+    compare(_.videos)(_.name) &&
+    compare(_.vms)(_.uuid.value)
+  }
 
   def toMachineId(nodeId: NodeId) = MachineUuid("machine-" + nodeId.value)
 
@@ -390,9 +451,8 @@ object NodeFact {
     RudderAgent(AgentType.CfeCommunity, "root", AgentVersion("unknown"), PublicKey("not initialized"), Chunk.empty)
   }
 
-
   def newFromFullInventory(inventory: FullInventory, software: Option[Iterable[Software]]): NodeFact = {
-    val now = DateTime.now()
+    val now  = DateTime.now()
     val fact = NodeFact(
       inventory.node.main.id,
       None,
@@ -613,6 +673,48 @@ final case class JsonAgentRunInterval(
 final case class JSecurityToken(kind: String, token: String)
 
 final case class JNodeProperty(name: String, value: ConfigValue, mode: Option[String], provider: Option[String])
+
+sealed trait NodeFactChangeEvent {
+  def name:        String
+  def debugString: String
+}
+
+object NodeFactChangeEvent {
+  final case class NewPending(node: NodeFact)     extends NodeFactChangeEvent {
+    override val name:        String = "newPending"
+    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+  }
+  final case class UpdatedPending(node: NodeFact) extends NodeFactChangeEvent {
+    override val name: String = "updatedPending"
+
+    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+  }
+  final case class Accepted(node: NodeFact)       extends NodeFactChangeEvent {
+    override val name:        String = "accepted"
+    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+  }
+  final case class Refused(node: NodeFact)        extends NodeFactChangeEvent {
+    override val name:        String = "refused"
+    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+  }
+  final case class Updated(node: NodeFact)        extends NodeFactChangeEvent {
+    override val name:        String = "updated"
+    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+  }
+  final case class Deleted(node: NodeFact)        extends NodeFactChangeEvent {
+    override val name:        String = "deleted"
+    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+  }
+  final case class Noop(nodeId: NodeId)           extends NodeFactChangeEvent {
+    override val name:        String = "noop"
+    override def debugString: String = s"[${name}] node '${nodeId.value}' "
+  }
+}
+
+final case class NodeFactChangeEventCallback(
+    name:     String,
+    run: NodeFactChangeEvent => IOResult[Unit]
+)
 
 object NodeFactSerialisation {
 

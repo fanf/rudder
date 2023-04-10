@@ -65,7 +65,7 @@ class NodeFactInventorySaver(
 ) extends PipelinedInventorySaver[Unit] {
 
   override def commitChange(inventory: Inventory): IOResult[Unit] = {
-    backend.updateInventory(inventory)
+    backend.updateInventory(inventory).unit
   }
 }
 
@@ -178,10 +178,10 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullI
   }
 
   override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
-    backend.changeStatus(id, into)
+    backend.changeStatus(id, into).unit
   }
 
   override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
-    backend.changeStatus(id, into)
+    backend.changeStatus(id, into).unit
   }
 }
