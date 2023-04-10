@@ -698,7 +698,7 @@ object NodeFactChangeEvent {
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
   final case class Updated(node: NodeFact)        extends NodeFactChangeEvent {
-    override val name:        String = "updated"
+    override val name:        String = "updatedAccepted"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
   final case class Deleted(node: NodeFact)        extends NodeFactChangeEvent {

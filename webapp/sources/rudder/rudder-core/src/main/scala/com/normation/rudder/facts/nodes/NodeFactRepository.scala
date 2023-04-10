@@ -246,7 +246,7 @@ class CoreNodeFactRepository(
   private[nodes] def runCallbacks(e: NodeFactChangeEvent): IOResult[Unit] = {
     for {
       cs <- callbacks.get
-      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout).forkDaemon
+      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout) //.forkDaemon
     } yield ()
   }
 
@@ -409,8 +409,7 @@ class CoreNodeFactRepository(
                         case Some(f) => NodeFact.updateInventory(f, inventory)
                         case None    => NodeFact.newFromInventory(inventory)
                       }
-        e          <- save(fact)
-        _          <- runCallbacks(e)
+        e          <- save(fact) // save already runs callbacks
       } yield e
     )
   }

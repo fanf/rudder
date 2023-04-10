@@ -152,15 +152,19 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
   // TODO WARNING POC: this can't work on a machine with lots of node
+  val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent]).runNow
+  def resetLog    = callbackLog.set(Chunk.empty).runNow
+  def getLogName  = callbackLog.get.map(_.map(_.name)).runNow
+
   val factRepo = {
     for {
       pending   <- Ref.make(Map[NodeId, NodeFact]())
       accepted  <- Ref.make(Map[NodeId, NodeFact]())
       callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
       lock      <- ReentrantLock.make()
-      r =  new CoreNodeFactRepository(pending, accepted, callbacks, gitFactRepo, lock)
-      // TODO : make a registering callback into a Ref[Chunk] and compare the trace callback
-      _ <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(print(e.debugString))))
+      r          = new CoreNodeFactRepository(pending, accepted, callbacks, gitFactRepo, lock)
+      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e))))
+//      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
       r
     }
@@ -217,6 +221,11 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     new DefaultProcessInventoryService(inventoryProcessorInternal, mover)
   }
 
+//  org.slf4j.LoggerFactory
+//    .getLogger("inventory-processing")
+//    .asInstanceOf[ch.qos.logback.classic.Logger]
+//    .setLevel(ch.qos.logback.classic.Level.TRACE)
+
   sequential
 
   val node2id       = "86d9ec77-9db5-4ba3-bdca-f0baf3a5b477"
@@ -228,6 +237,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   "Saving a new, unknown inventory" should {
 
     "correctly save the node in pending" in {
+      resetLog
       val n2     = incomingInventoryFile(node2name)
       n2.write(Resource.getAsString(node2resource))
       val n2sign = incomingInventoryFile(s"${node2name}.sign")
@@ -238,21 +248,25 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       )) and
       (receivedInventoryFile(node2name).exists must beTrue) and
       (pendingNodeGitFile(node2id).exists must beTrue) and
-      (factRepo.getPending(node2id).runNow must beSome())
+      (factRepo.getPending(node2id).runNow must beSome()) and
+      (getLogName === Chunk("newPending"))
     }
 
     "change in node by repos are reflected in file" in {
+      resetLog
       val e = (for {
         n <- factRepo.getPending(node2id).notOptional("node2 should be there for the test")
         e <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
       } yield e).runNow
 
       (pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
-      (e must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending])
+      (e must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending]) and
+      (getLogName === Chunk("updatedPending"))
 
     }
 
     "update the node that was modified in repo" in {
+      resetLog
       val n2     = receivedInventoryFile(node2name).moveTo(incomingInventoryFile(node2name))
       val n2sign = receivedInventoryFile(s"${node2name}.sign").moveTo(incomingInventoryFile(s"${node2name}.sign"))
 
@@ -260,19 +274,23 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
         Saved(node2name, node2id)
       )) and
       (factRepo.getPending(node2id).testRunGet.fqdn must beEqualTo(fqdn)) and
-      (pendingNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue)
+      (pendingNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue) and
+      (getLogName === Chunk("updatedPending"))
     }
   }
 
   "Accepting a new, unknown inventory" should {
 
     "correctly update status and move file around" in {
+      resetLog
       val e = factRepo.changeStatus(node2id, AcceptedInventory).runNow
       (e must beAnInstanceOf[NodeFactChangeEvent.Accepted]) and
       (acceptedNodeGitFile(node2id).exists must beTrue) and
-      (factRepo.getAccepted(node2id).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory))
+      (factRepo.getAccepted(node2id).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
+      (getLogName === Chunk("accepted"))
     }
     "change in node by repos are reflected in file" in {
+      resetLog
       val e = (
         for {
           n <- factRepo.getAccepted(node2id).notOptional("node2 should be there for the test")
@@ -281,10 +299,12 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       ).runNow
 
       (e must beAnInstanceOf[NodeFactChangeEvent.Updated]) and
-      (acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue)
+      (acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
+      (getLogName === Chunk("updatedAccepted"))
     }
 
     "update the node that was modified in repo" in {
+      resetLog
       val n2     = receivedInventoryFile(node2name).moveTo(incomingInventoryFile(node2name))
       val n2sign = receivedInventoryFile(s"${node2name}.sign").moveTo(incomingInventoryFile(s"${node2name}.sign"))
 
@@ -294,20 +314,22 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
         )
       ) and
       (factRepo.getAccepted(node2id).testRunGet.fqdn must beEqualTo(fqdn)) and
-      (acceptedNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue)
+      (acceptedNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue) and
+      (getLogName === Chunk("updatedAccepted"))
     }
   }
 
   "Changing status to deleted" should {
 
     "correctly delete node and value in repos" in {
+      resetLog
       val e = factRepo.changeStatus(node2id, RemovedInventory).runNow
 
       (e must beAnInstanceOf[NodeFactChangeEvent.Deleted]) and
       (pendingNodeGitFile(node2id).exists must beFalse) and
       (acceptedNodeGitFile(node2id).exists must beFalse) and
-      (factRepo.lookup(node2id).runNow must beNone)
-
+      (factRepo.lookup(node2id).runNow must beNone) and
+      (getLogName === Chunk("deleted"))
     }
   }
 
