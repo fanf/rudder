@@ -1004,7 +1004,7 @@ object RudderConfig extends Loggable {
     RUDDER_BATCH_CHECK_NODE_CACHE_INTERVAL
   )
   val purgeDeletedInventories    = new PurgeDeletedInventories(
-    removeNodeServiceImpl,
+    new PurgeDeletedNodesImpl(rwLdap, removedNodesDitImpl, ldapFullInventoryRepository),
     FiniteDuration(RUDDER_BATCH_PURGE_DELETED_INVENTORIES_INTERVAL.toLong, "hours"),
     RUDDER_BATCH_PURGE_DELETED_INVENTORIES
   )
@@ -2869,6 +2869,7 @@ object RudderConfig extends Loggable {
   private[this] lazy val postNodeDeleteActions = Ref
     .make(
       new RemoveNodeInfoFromCache(nodeInfoServiceImpl)
+      :: new RemoveNodeFromGroups(roNodeGroupRepository, woNodeGroupRepository, uuidGen)
       :: new CloseNodeConfiguration(updateExpectedRepo)
       :: new RemoveNodeFromComplianceCache(cachedNodeConfigurationService, reportingServiceImpl)
       :: new DeletePolicyServerPolicies(policyServerManagementService)
@@ -2880,22 +2881,22 @@ object RudderConfig extends Loggable {
     )
     .runNow
 
-  private[this] lazy val removeNodeServiceImpl = new RemoveNodeServiceImpl(
+  private lazy val ldapRemoveNodeBackend = new LdapRemoveNodeBackend(
     nodeDitImpl,
-    rudderDitImpl,
     pendingNodesDitImpl,
     acceptedNodesDitImpl,
     removedNodesDitImpl,
     rwLdap,
-    ldapEntityMapper,
-    roLdapNodeGroupRepository,
-    woLdapNodeGroupRepository,
-    nodeInfoServiceImpl,
     ldapFullInventoryRepository,
-    logRepository,
-    nodeReadWriteMutex,
+    nodeReadWriteMutex
+  )
+
+  private[this] lazy val removeNodeServiceImpl = new RemoveNodeServiceImpl(
+    ldapRemoveNodeBackend,
+    nodeInfoServiceImpl,
     pathComputer,
     newNodeManager,
+    logRepository,
     postNodeDeleteActions,
     HOOKS_D,
     HOOKS_IGNORE_SUFFIXES

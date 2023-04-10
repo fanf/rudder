@@ -50,6 +50,7 @@ import com.normation.rudder.domain.properties.GenericProperty
 import com.normation.rudder.domain.properties.InheritMode
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.properties.PropertyProvider
+import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.reports._
 import com.normation.utils.DateFormaterService
 import com.normation.utils.ParseVersion
@@ -301,6 +302,20 @@ object NodeFact {
       node.ram,
       node.timezone
     )
+
+    def toSrv: Srv = {
+      Srv(
+        node.id,
+        node.rudderSettings.status,
+        node.fqdn,
+        node.os.os.kernelName,
+        node.os.os.name,
+        node.os.fullName,
+        node.serverIps,
+        node.creationDate,
+        node.isPolicyServer
+      )
+    }
 
     def toNodeSummary: NodeSummary = {
       NodeSummary(
@@ -712,8 +727,8 @@ object NodeFactChangeEvent {
 }
 
 final case class NodeFactChangeEventCallback(
-    name:     String,
-    run: NodeFactChangeEvent => IOResult[Unit]
+    name: String,
+    run:  NodeFactChangeEvent => IOResult[Unit]
 )
 
 object NodeFactSerialisation {

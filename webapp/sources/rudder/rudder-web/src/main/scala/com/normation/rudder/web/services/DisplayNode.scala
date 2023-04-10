@@ -687,6 +687,7 @@ object DisplayNode extends Loggable {
       case None          => NodeSeq.Empty
       case Some(machine) => (
         machine.machineType match {
+          case UnknownMachineType         => Text("Unknown machine type")
           case PhysicalMachineType        => Text("Physical machine")
           case VirtualMachineType(vmType) => Text("Virtual machine (%s)".format(S.?("vm.type." + vmType.name)))
         }
