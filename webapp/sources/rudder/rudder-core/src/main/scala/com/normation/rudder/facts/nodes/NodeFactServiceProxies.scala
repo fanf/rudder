@@ -37,7 +37,7 @@
 
 package com.normation.rudder.facts.nodes
 
-
+import com.normation.box._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.FullInventory
@@ -47,7 +47,9 @@ import com.normation.inventory.domain.MachineUuid
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.NodeInventory
 import com.normation.inventory.domain.RemovedInventory
+import com.normation.inventory.domain.Software
 import com.normation.inventory.services.core.FullInventoryRepository
+import com.normation.inventory.services.core.ReadOnlySoftwareNameDAO
 import com.normation.inventory.services.provisioning.PipelinedInventorySaver
 import com.normation.inventory.services.provisioning.PostCommit
 import com.normation.inventory.services.provisioning.PreCommit
@@ -57,13 +59,10 @@ import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.servers.NodeSummaryService
-
 import net.liftweb.common.Box
-
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
-import com.normation.box._
 
 class NodeFactInventorySaver(
     backend:                NodeFactRepository,
@@ -140,7 +139,14 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
   }
 }
 
-class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullInventoryRepository[Unit] {
+/*
+ * Proxy for full node inventory.
+ * We willfully chose to not implement machine repo because it doesn't make any sense with fact.
+ * There is also a limit with software, since now they are directly in the node and they don't
+ * have specific IDs. So they will need to be retrieved by node id.
+ */
+class NodeFactFullInventoryRepository(backend: NodeFactRepository)
+    extends FullInventoryRepository[Unit] with ReadOnlySoftwareNameDAO {
 
   override def get(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[FullInventory]] = {
     backend.getOn(id, inventoryStatus).map(_.map(_.toFullInventory))
@@ -164,7 +170,9 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullI
 
   override def save(serverAndMachine: FullInventory): IOResult[Unit] = {
     // we must know if it's new or not to get back the correct facts.
-    // if the fact exists, we keep its status (use move to change it)
+    // if the fact exists, we keep its status (use move to change it).
+    // if it does not yet, we use the given status BUT know that you should not
+    // use that to save node in accepted status directly.
     for {
       opt <- backend.lookup(serverAndMachine.node.main.id)
       fact = opt match {
@@ -191,6 +199,24 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository) extends FullI
 
   override def moveNode(id: NodeId, from: InventoryStatus, into: InventoryStatus): IOResult[Unit] = {
     backend.changeStatus(id, into)(ChangeContext.newForRudder()).unit
+  }
+
+  override def getSoftwareByNode(nodeIds: Set[NodeId], status: InventoryStatus): IOResult[Map[NodeId, Seq[Software]]] = {
+    backend
+      .getAllOn(status)
+      .collect { case n if (nodeIds.contains(n.id)) => (n.id, n.software.toList.map(_.toSoftware)) }
+      .run(ZSink.collectAll)
+      .map(_.toMap)
+  }
+
+  override def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]] = {
+    backend
+      .getAllAccepted()
+      .collect {
+        case n if (n.software.exists(_.name == softName)) => n.software.find(_.name == softName).map(s => (n.id, s.toSoftware))
+      }
+      .run(ZSink.collectAll)
+      .map(_.flatten.toList)
   }
 }
 

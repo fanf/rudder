@@ -203,11 +203,21 @@ private object InternalChangeEvent {
  * that kind of things).
  *
  */
+object CoreNodeFactRepository {
+  def make(storage: NodeFactStorage, pending: Map[NodeId, NodeFact], accepted: Map[NodeId, NodeFact], callbacks: Chunk[NodeFactChangeEventCallback]) = for {
+    p <- Ref.make(pending)
+    a <- Ref.make(accepted)
+    lock <- ReentrantLock.make()
+    cbs <- Ref.make(callbacks)
+  } yield {
+    new CoreNodeFactRepository(storage, p, a, cbs, lock)
+  }
+}
 class CoreNodeFactRepository(
+    storage:       NodeFactStorage,
     pendingNodes:  Ref[Map[NodeId, NodeFact]],
     acceptedNodes: Ref[Map[NodeId, NodeFact]],
     callbacks:     Ref[Chunk[NodeFactChangeEventCallback]],
-    storage:       NodeFactStorage,
     lock:          ReentrantLock,
     cbTimeout:     zio.Duration = 5.seconds
 ) extends NodeFactRepository {

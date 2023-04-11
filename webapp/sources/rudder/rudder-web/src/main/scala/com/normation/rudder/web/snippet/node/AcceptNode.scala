@@ -42,12 +42,7 @@ import bootstrap.liftweb.RudderConfig
 import com.normation.box._
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
-import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.NodeId
-import com.normation.inventory.domain.PendingInventory
-import com.normation.rudder.domain.eventlog._
-import com.normation.rudder.domain.eventlog.AcceptNodeEventLog
-import com.normation.rudder.domain.eventlog.RefuseNodeEventLog
 import com.normation.rudder.domain.logger.TimingDebugLogger
 import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.web.ChooseTemplate
@@ -68,6 +63,8 @@ import org.springframework.security.core.userdetails.UserDetails
 
 import scala.xml._
 
+import zio.stream.ZSink
+
 /**
  * Check for server in the pending repository and propose to
  * accept or refuse them.
@@ -75,10 +72,10 @@ import scala.xml._
  */
 class AcceptNode extends Loggable {
 
-  val newNodeManager       = RudderConfig.newNodeManager
-  val rudderDit            = RudderConfig.rudderDit
-  val serverGrid           = RudderConfig.nodeGrid
-  val serverSummaryService = RudderConfig.nodeSummaryService
+  val newNodeManager     = RudderConfig.newNodeManager
+  val rudderDit          = RudderConfig.rudderDit
+  val serverGrid         = RudderConfig.nodeGrid
+  val nodeFactRepository = RudderConfig.nodeFactRepository
 
   val diffRepos        = RudderConfig.inventoryHistoryLogRepository
   val logRepository    = RudderConfig.eventLogRepository
@@ -169,35 +166,9 @@ class AcceptNode extends Loggable {
           val version = retrieveLastVersions(id)
           version match {
             case Some(x) =>
-              serverSummaryService.find(AcceptedInventory, id) match {
-                case Full(srvs) if (srvs.size == 1) =>
-                  val srv   = srvs.head
-                  val entry = AcceptNodeEventLog.fromInventoryLogDetails(
-                    principal = authedUser,
-                    inventoryDetails = InventoryLogDetails(
-                      nodeId = srv.id,
-                      inventoryVersion = x,
-                      hostname = srv.hostname,
-                      fullOsName = srv.osFullName,
-                      actorIp = S.containerRequest.map(_.remoteAddress).openOr("Unknown IP")
-                    )
-                  )
-
-                  logRepository.saveEventLog(modId, entry).toBox match {
-                    case Full(_) => logger.debug("Successfully added node '%s'".format(id.value.toString))
-                    case _       => logger.warn("Node '%s'added, but the action couldn't be logged".format(id.value.toString))
-                  }
-
-                case _ =>
-                  logger.error(
-                    "Something bad happened while searching for node %s to log the acceptation, search %s".format(
-                      id.value.toString,
-                      id.value
-                    )
-                  )
-              }
-
-            case None => logger.warn("Node '%s'added, but couldn't find it's inventory %s".format(id.value.toString, id.value))
+              logger.debug("Successfully accepted node '%s'".format(id.value.toString))
+            case None    =>
+              logger.warn("Node '%s' accepteed, but couldn't find it's inventory %s".format(id.value.toString, id.value))
           }
       }
     }
@@ -214,28 +185,12 @@ class AcceptNode extends Loggable {
           logger.error("Refuse node '%s' lead to Failure.".format(id.value.toString), e)
           S.error(<span class="error">Error while refusing node(s).</span>)
         case Full(srv) =>
-          // TODO : this will probably move to the NewNodeManager, when we'll know
-          // how we handle the user
           val version = retrieveLastVersions(srv.id)
           version match {
             case Some(x) =>
-              val entry = RefuseNodeEventLog.fromInventoryLogDetails(
-                principal = authedUser,
-                inventoryDetails = InventoryLogDetails(
-                  nodeId = srv.id,
-                  inventoryVersion = x,
-                  hostname = srv.hostname,
-                  fullOsName = srv.osFullName,
-                  actorIp = S.containerRequest.map(_.remoteAddress).openOr("Unknown IP")
-                )
-              )
-
-              logRepository.saveEventLog(modId, entry).toBox match {
-                case Full(_) => logger.debug("Successfully refused node '%s'".format(id.value.toString))
-                case _       => logger.warn("Node '%refused, but the action couldn't be logged".format(id.value.toString))
-              }
-
-            case None => logger.warn("Node '%s' refused, but couldn't find it's inventory %s".format(id.value.toString, id.value))
+              logger.debug("Successfully refused node '%s'".format(id.value.toString))
+            case None    =>
+              logger.warn("Node '%s' refused, but couldn't find it's inventory %s".format(id.value.toString, id.value))
           }
       }
     }
@@ -296,7 +251,7 @@ class AcceptNode extends Loggable {
       "#server_os *" #> srv.osFullName)(serverLine)
     }
 
-    serverSummaryService.find(PendingInventory, listNode: _*) match {
+    nodeFactRepository.getAllPending().collect { case n if(listNode.contains(n.id)) => n.toSrv}.run(ZSink.collectAll).toBox match {
       case Full(servers) =>
         val lines: NodeSeq = servers.flatMap(displayServerLine)
         ("#server_lines" #> lines).apply(

@@ -95,21 +95,29 @@ import com.normation.rudder.services.reports.CacheExpectedReportAction
 import com.normation.rudder.services.reports.CacheExpectedReportAction.InsertNodeInCache
 import com.normation.rudder.services.reports.InvalidateCache
 import com.normation.utils.Control.sequence
-import com.unboundid.ldif.LDIFChangeRecord
+
 import net.liftweb.common.Box
 import net.liftweb.common.Empty
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
 import org.joda.time.DateTime
+
 import zio.{System => _, _}
+import zio.stream.ZSink
 import zio.syntax._
 
 /**
  * A newNodeManager hook is a class that accept callbacks.
  */
-trait NewNodeManagerHooks {
+trait NewNodePostAcceptHooks {
 
+  def name: String
+  def run(nodeId: NodeId): Unit
+
+}
+
+trait NewNodeManagerHooks {
   /*
    * Hooks to call after the node is accepted.
    * These hooks are async and we don't wait for
@@ -118,6 +126,7 @@ trait NewNodeManagerHooks {
    */
   def afterNodeAcceptedAsync(nodeId: NodeId): Unit
 
+  def appendPostAcceptCodeHook(hook: NewNodePostAcceptHooks): Unit
 }
 
 /**
@@ -154,7 +163,6 @@ trait NewNodeManager {
    */
   def refuse(id: Seq[NodeId], modId: ModificationId, actor: EventActor, actorIp: String): Box[Seq[Srv]]
 
-  def appendPostAcceptCodeHook(hook: NewNodeManagerHooks): Unit
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -166,9 +174,10 @@ class PostNodeAcceptanceHookScripts(
     HOOKS_D:               String,
     HOOKS_IGNORE_SUFFIXES: List[String],
     nodeInfoService:       NodeInfoService
-) extends NewNodeManagerHooks {
+) extends NewNodePostAcceptHooks {
+  override def name: String = "new-node-post-accept-hooks"
 
-  override def afterNodeAcceptedAsync(nodeId: NodeId): Unit = {
+  override def run(nodeId: NodeId): Unit = {
     val systemEnv = {
       import scala.jdk.CollectionConverters._
       HookEnvPairs.build(System.getenv.asScala.toSeq: _*)
@@ -202,6 +211,27 @@ class PostNodeAcceptanceHookScripts(
   }
 }
 
+class NewNodeManagerHooksImpl(
+    nodeInfoService:       NodeInfoService,
+    HOOKS_D:               String,
+    HOOKS_IGNORE_SUFFIXES: List[String]
+) extends NewNodeManagerHooks {
+
+  private[this] val codeHooks = collection.mutable.Buffer[NewNodePostAcceptHooks]()
+
+  // by default, add the script hooks
+  appendPostAcceptCodeHook(new PostNodeAcceptanceHookScripts(HOOKS_D, HOOKS_IGNORE_SUFFIXES, nodeInfoService))
+
+  override def afterNodeAcceptedAsync(nodeId: NodeId): Unit = {
+    codeHooks.foreach(_.run(nodeId))
+  }
+
+  def appendPostAcceptCodeHook(hook: NewNodePostAcceptHooks): Unit = {
+    this.codeHooks.append(hook)
+  }
+
+}
+
 /**
  * Default implementation: a new server manager composed with a sequence of
  * "unit" accept, one by main goals of what it means to accept a server;
@@ -212,23 +242,7 @@ class PostNodeAcceptanceHookScripts(
 class NewNodeManagerImpl[A](
     composedNewNodeManager: ComposedNewNodeManager[A],
     listNodes:              ListNewNode,
-    nodeInfoService:        NodeInfoService,
-    HOOKS_D:                String,
-    HOOKS_IGNORE_SUFFIXES:  List[String]
-) extends NewNodeManager with NewNodeManagerHooks {
-
-  private[this] val codeHooks = collection.mutable.Buffer[NewNodeManagerHooks]()
-
-  // by default, add the script hooks
-  appendPostAcceptCodeHook(new PostNodeAcceptanceHookScripts(HOOKS_D, HOOKS_IGNORE_SUFFIXES, nodeInfoService))
-
-  override def afterNodeAcceptedAsync(nodeId: NodeId): Unit = {
-    codeHooks.foreach(_.afterNodeAcceptedAsync(nodeId))
-  }
-
-  def appendPostAcceptCodeHook(hook: NewNodeManagerHooks): Unit = {
-    this.codeHooks.append(hook)
-  }
+) extends NewNodeManager {
 
   override def listNewNodes: Box[Seq[Srv]] = {
     listNodes.listNewNodes
@@ -255,6 +269,12 @@ class NewNodeManagerImpl[A](
 
 trait ListNewNode {
   def listNewNodes: Box[Seq[Srv]]
+}
+
+class FactListNewNodes(backend: NodeFactRepository) extends ListNewNode {
+  override def listNewNodes: Box[Seq[Srv]] = {
+    backend.getAllPending().map(_.toSrv).run(ZSink.collectAll).toBox
+  }
 }
 
 class LdapListNewNode(

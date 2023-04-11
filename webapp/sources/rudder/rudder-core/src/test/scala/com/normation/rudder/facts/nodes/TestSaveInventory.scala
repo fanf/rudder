@@ -162,7 +162,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       accepted  <- Ref.make(Map[NodeId, NodeFact]())
       callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
       lock      <- ReentrantLock.make()
-      r          = new CoreNodeFactRepository(pending, accepted, callbacks, gitFactRepo, lock)
+      r          = new CoreNodeFactRepository(gitFactRepo, pending, accepted, callbacks, lock)
       _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e.event))))
 //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {

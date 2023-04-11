@@ -743,8 +743,8 @@ class RestTestSetUp {
 
   val nodeApiService  = new NodeApiService(
     null,
-    nodeInfo,
-    softDao,
+    null, //nodeInfo,
+    null, //softDao,
     null,
     null,
     roReportsExecutionRepository,

@@ -270,7 +270,7 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
       OC_SOFTWARE,
       Chunk(
         Criterion(A_NAME, StringComparator, NodeCriterionMatcherString(_.software.map(_.name))),
-        Criterion(A_SOFT_VERSION, StringComparator, NodeCriterionMatcherString(_.software.map(_.version.toVersionString))),
+        Criterion(A_SOFT_VERSION, StringComparator, NodeCriterionMatcherString(_.software.map(_.version.value))),
         Criterion(A_EDITOR, EditorComparator, NodeCriterionMatcherString(_.software.flatMap(_.publisher))),
         Criterion(A_LICENSE_EXP, DateComparator, NodeCriterionMatcherDate(_.software.flatMap(_.expirationDate))),
         Criterion(A_LICENSE_NAME, StringComparator, NodeCriterionMatcherString(_.software.flatMap(_.licenseName))),

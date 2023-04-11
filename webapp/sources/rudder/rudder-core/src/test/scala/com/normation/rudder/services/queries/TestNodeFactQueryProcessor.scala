@@ -39,7 +39,6 @@ package com.normation.rudder.services.queries
 
 import com.github.ghik.silencer.silent
 import com.normation.NamedZioLogger
-
 import com.normation.errors._
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.AgentType.CfeCommunity
@@ -50,6 +49,7 @@ import com.normation.inventory.domain.Bios
 import com.normation.inventory.domain.Certificate
 import com.normation.inventory.domain.CertifiedKey
 import com.normation.inventory.domain.FileSystem
+import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.Linux
 import com.normation.inventory.domain.MachineUuid
 import com.normation.inventory.domain.MemorySize
@@ -71,15 +71,17 @@ import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries._
+import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.facts.nodes.IpAddress
 import com.normation.rudder.facts.nodes.LocalUser
 import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactStorage
 import com.normation.rudder.facts.nodes.RudderAgent
 import com.normation.rudder.facts.nodes.SoftwareFact
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.utils.DateFormaterService
 import com.normation.utils.ParseVersion
-
+import com.normation.zio._
 import com.softwaremill.quicklens._
 import net.liftweb.common._
 import org.joda.time.format.DateTimeFormat
@@ -87,9 +89,7 @@ import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
-
 import scala.util.Try
-
 import zio._
 import zio.syntax._
 
@@ -140,7 +140,7 @@ class TestNodeFactQueryProcessor {
 //    }
 //  }
 
-  object nodeRepository extends NodeFactRepository {
+  val nodeRepository = {
 
     implicit def StringToNodeProp(s: String): NodeProperty = {
       NodeProperty.unserializeLdapNodeProperty(s) match {
@@ -207,7 +207,7 @@ class TestNodeFactQueryProcessor {
 
     def machine(nodeId: String) = MachineInfo(NodeFact.toMachineId(nodeId), VirtualMachineType(VirtualBox), None, None)
 
-    override def getAll: IOResult[Chunk[NodeFact]] = {
+    val allAcceptedNodes: Map[NodeId, NodeFact] = {
       Chunk(
         NodeFact(
           "root",
@@ -439,7 +439,7 @@ class TestNodeFactQueryProcessor {
           "20130515123456.948Z",
           "20180515123456.948Z",
           Some("20180515123456.948Z"),
-          ipAddresses = Chunk(),
+          ipAddresses = Chunk()
         ),
         NodeFact(
           "node6",
@@ -498,9 +498,16 @@ class TestNodeFactQueryProcessor {
           software = Chunk(software(0)),
           bios = Chunk(Bios("bios1", version = Some("6.00"), editor = Some("Phoenix Technologies LTD")))
         )
-      ).succeed
+      ).map(n => (n.id, n)).toMap
     }
+    object NoopStorage extends NodeFactStorage {
+      override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
+      override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
+      override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
+    }
+    CoreNodeFactRepository.make(NoopStorage, Map(), allAcceptedNodes, Chunk.empty).runNow
   }
+
   val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo)
 
   val parser = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {

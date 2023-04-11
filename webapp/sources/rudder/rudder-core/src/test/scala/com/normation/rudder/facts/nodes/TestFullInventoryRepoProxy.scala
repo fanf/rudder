@@ -37,39 +37,29 @@
 
 package com.normation.rudder.facts.nodes
 
-import com.github.ghik.silencer.silent
-
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.services.core.FullInventoryRepository
-import com.normation.inventory.services.core.MachineRepository
-import com.normation.ldap.listener.InMemoryDsConnectionProvider
-import com.normation.ldap.sdk.RoLDAPConnection
-import com.normation.ldap.sdk.RwLDAPConnection
-
+import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
-import com.unboundid.ldap.sdk.DN
-import com.unboundid.ldap.sdk.Modification
-import com.unboundid.ldap.sdk.ModificationType
+import org.joda.time.DateTime
 import org.junit.runner._
-import org.specs2.matcher.MatchResult
 import org.specs2.mutable._
 import org.specs2.runner._
-
 import zio._
+import zio.concurrent.ReentrantLock
 
 final case class SystemError(cause: Throwable) extends RudderError {
   def msg = "Error in test"
 }
 
-/**
- * A simple test class to check that the demo data file is up to date
- * with the schema (there may still be a desynchronization if both
- * demo-data, test data and test schema for UnboundID are not synchronized
- * with OpenLDAP Schema).
+/*
+ * A class to trace semantic changes between full ldap repo with ldap
+ * and with fact backend (see com/normation/inventory/ldap/core/TestInventory.scala
+ * for original results)
  */
-@silent("a type was inferred to be `\\w+`; this may indicate a programming error.")
+//@silent("a type was inferred to be `\\w+`; this may indicate a programming error.")
 @RunWith(classOf[JUnitRunner])
 class TestInventory extends Specification {
 
@@ -95,6 +85,42 @@ class TestInventory extends Specification {
     }
   }
 
+  // TODO WARNING POC: this can't work on a machine with lots of node
+  val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent]).runNow
+
+  def resetLog = callbackLog.set(Chunk.empty).runNow
+
+  def getLogName = callbackLog.get.map(_.map(_.name)).runNow
+  object NoopFactStorage extends NodeFactStorage {
+    override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
+    override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
+    override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
+  }
+
+  val pendingRef  = (Ref.make(Map[NodeId, NodeFact]())).runNow
+  val acceptedRef = (Ref.make(Map[NodeId, NodeFact]())).runNow
+
+  def resetStorage = (for {
+    _ <- pendingRef.set(Map())
+    _ <- acceptedRef.set(Map())
+  } yield ()).runNow
+
+  val factRepo = {
+    for {
+      callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
+      lock      <- ReentrantLock.make()
+      r          = new CoreNodeFactRepository(NoopFactStorage, pendingRef, acceptedRef, callbacks, lock)
+      _         <- r.registerChangeCallbackAction(
+                     new NodeFactChangeEventCallback(
+                       "trail",
+                       e => callbackLog.update(_.appended(e.event))
+                     )
+                   )
+      //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
+    } yield {
+      r
+    }
+  }.runNow
   // needed because the in memory LDAP server is not used with connection pool
   sequential
 
@@ -105,11 +131,11 @@ class TestInventory extends Specification {
     MachineUuid(name),
     status,
     PhysicalMachineType,
-    Some(s"name for ${name}"),
     None,
     None,
-    None,
-    None,
+    Some(DateTime.parse("2023-01-11T10:20:30.000Z")), // now, node and inventory always have the same
+    Some(DateTime.parse("2023-02-22T15:25:35.000Z")), // inventory and received date
+    Some(Manufacturer("manufacturer")),
     None,
     Nil,
     Nil,
@@ -139,70 +165,20 @@ class TestInventory extends Specification {
       NodeId("root"),
       CertifiedKey
     ),
+    inventoryDate = Some(DateTime.parse("2023-01-11T10:20:30.000Z")),
+    receiveDate = Some(DateTime.parse("2023-02-22T15:25:35.000Z")),
+    agents = Seq(NodeFact.defaultRudderAgent("root").toAgentInfo), // always present now
     machineId = Some(container)
   )
 
   def full(n: NodeInventory, m: MachineInventory) = FullInventory(n, Some(m))
 
-  val repo: FullInventoryRepository[Unit] with MachineRepository[Unit] = ???
-
-  "Saving, finding and moving machine around" should {
-
-    "correctly save and find a machine based on it's id (when only on one place)" in {
-      forall(allStatus) { status =>
-        val m = machine("machine in " + status.name, status)
-        repo.save(m).testRun
-
-        val found = repo.getMachine(m.id).testRunGet
-
-        (m === found) and {
-          repo.delete(m.id).testRun
-          val x = repo.getMachine(m.id).testRun
-          x must beEqualTo(Right(None))
-          ok
-        }
-      }
-    }
-
-    "correctly find the machine of top priority when on several branches" in {
-      allStatus.foreach(status => repo.save(machine("m1", status)).testRun)
-
-      val toFound = machine("m1", AcceptedInventory)
-      val found   = repo.getMachine(toFound.id).testRunGet
-
-      toFound === found
-
-    }
-
-    "correctly moved the machine from pending to accepted, then to removed" in {
-      val m = machine("movingMachine", PendingInventory)
-
-      repo.save(m).testRun
-
-      (
-        repo.move(m.id, AcceptedInventory).isOK
-        and (repo.getMachine(m.id).testRunGet must beEqualTo(m.copy(status = AcceptedInventory)))
-        and repo.move(m.id, RemovedInventory).isOK
-        and (repo.getMachine(m.id).testRunGet must beEqualTo(m.copy(status = RemovedInventory)))
-      )
-    }
-
-    ", when asked to move machine in removed inventory and a machine with the same id exists there, keep the one in removed and delete the one in accepted" in {
-      val m1 = machine("keepingMachine", AcceptedInventory)
-      val m2 = m1.copy(status = RemovedInventory, name = Some("modified"))
-
-      (
-        (repo.save(m1).isOK)
-        and (repo.save(m2).isOK)
-        and (repo.move(m1.id, RemovedInventory).isOK)
-      )
-    }
-  }
+  val repo: FullInventoryRepository[Unit] = new NodeFactFullInventoryRepository(factRepo)
 
   "Saving, finding and moving node" should {
 
     "find node for machine, whatever the presence or status of the machine" in {
-
+      resetStorage
       val mid = MachineUuid("foo")
 
       val n1 = node("acceptedNode", AcceptedInventory, (mid, AcceptedInventory))
@@ -216,7 +192,8 @@ class TestInventory extends Specification {
       )
     }
 
-    "find back the machine after a move" in {
+    "find back the machine after a move with a normalized id to `machine-nodeid`" in {
+      resetStorage
       val m = machine("findBackMachine", PendingInventory)
       val n = node("findBackNode", PendingInventory, (m.id, m.status))
 
@@ -225,78 +202,93 @@ class TestInventory extends Specification {
         and repo.move(n.main.id, PendingInventory, AcceptedInventory).isOK
         and {
           val FullInventory(node, machine) = repo.get(n.main.id, AcceptedInventory).testRunGet
-
+          val machineId                    = MachineUuid(s"machine-${n.main.id.value}")
           (
-            machine === Some(m.copy(status = AcceptedInventory)) and
+            machine === Some(m.copy(status = AcceptedInventory, id = machineId)) and
             node === n
-              .copyWithMain(main => main.copy(status = AcceptedInventory))
-              .copy(machineId = Some((m.id, AcceptedInventory)))
+              .modify(_.main.status)
+              .setTo(AcceptedInventory)
+              .modify(_.machineId)
+              .setTo(Some((machineId, AcceptedInventory)))
           )
         }
       )
     }
 
-    "accept to have a machine in a different status than the node" in {
+    "don't accept to have a machine in a different status than the node" in {
+      resetStorage
       val m = machine("differentMachine", AcceptedInventory)
       val n = node("differentNode", PendingInventory, (m.id, AcceptedInventory))
       (
         repo.save(full(n, m)).isOK
         and {
           val FullInventory(node, machine) = repo.get(n.main.id, PendingInventory).testRunGet
+          val machineId                    = MachineUuid(s"machine-${n.main.id.value}")
 
           (
-            node === n
-            and machine === Some(m)
+            (node === n.modify(_.machineId).setTo(Some((machineId, PendingInventory)))) and
+            (machine === Some(m.modify(_.id).setTo(machineId).modify(_.status).setTo(PendingInventory)))
           )
         }
       )
     }
 
-    "not find a machine if the container information has a bad status" in {
+    "use the given machine in full inventory whatever the ID given in node" in {
+      resetStorage
       val m = machine("invisibleMachine", PendingInventory)
-      val n = node("invisibleNode", PendingInventory, (m.id, AcceptedInventory))
+      val n = node("invisibleNode", PendingInventory, (MachineUuid("something else"), AcceptedInventory))
       (
         repo.save(full(n, m)).isOK
         and {
           val FullInventory(node, machine) = repo.get(n.main.id, PendingInventory).testRunGet
+          val generatedMachineId           = MachineUuid(s"machine-${n.main.id.value}")
 
           (
-            node === n
-            and machine === None
+            node === n.modify(_.machineId).setTo(Some((generatedMachineId, PendingInventory)))
+            and machine === Some(m.modify(_.id).setTo(generatedMachineId).modify(_.status).setTo(PendingInventory))
           )
         }
       )
     }
 
-    ", when moving from pending to accepted, moved back a machine from removed to accepted and correct other node container" in {
-      val m  = machine("harcoreMachine", RemovedInventory)
+    "machine, even with the same 'id', are bound to their node" in {
+      resetStorage
+      val m  = machine("hardcoreMachine", RemovedInventory)
       val n0 = node("h-n0", PendingInventory, (m.id, PendingInventory))
       val n1 = node("h-n1", PendingInventory, (m.id, PendingInventory))
       val n2 = node("h-n2", AcceptedInventory, (m.id, AcceptedInventory))
       val n3 = node("h-n3", RemovedInventory, (m.id, RemovedInventory))
 
       (
-        repo.save(m).isOK and repo.save(FullInventory(n0, None)).isOK and repo.save(FullInventory(n1, None)).isOK and
-        repo.save(FullInventory(n2, None)).isOK and repo.save(FullInventory(n3, None)).isOK
+        repo.save(FullInventory(n0, Some(m))).isOK and repo.save(FullInventory(n1, Some(m))).isOK and
+        repo.save(FullInventory(n2, Some(m))).isOK and repo.save(FullInventory(n3, Some(m))).isOK
         and repo.move(n0.main.id, PendingInventory, AcceptedInventory).isOK
         and {
           val FullInventory(node0, m0) = repo.get(n0.main.id, AcceptedInventory).testRunGet
           val FullInventory(node1, m1) = repo.get(n1.main.id, PendingInventory).testRunGet
           val FullInventory(node2, m2) = repo.get(n2.main.id, AcceptedInventory).testRunGet
-          val FullInventory(node3, m3) = repo.get(n3.main.id, RemovedInventory).testRunGet
+          val node3                    = repo.get(n3.main.id, RemovedInventory).runNow
 
           // expected machine value
-          val machine = m.copy(status = AcceptedInventory)
-          val ms      = Some((machine.id, machine.status))
+          val n0now                     = n0.modify(_.main.status).setTo(AcceptedInventory)
+          // update node's machine info to what is normalized
+          def updated(n: NodeInventory) = {
+            (
+              n.modify(_.machineId).setTo(Some((MachineUuid(s"machine-${n.main.id.value}"), n.main.status))),
+              m.modify(_.id).setTo(MachineUuid(s"machine-${n.main.id.value}")).modify(_.status).setTo(n.main.status)
+            )
+          }
+
+          val (n0_, m0_) = updated(n0now)
+          val (n1_, m1_) = updated(n1)
+          val (n2_, m2_) = updated(n2)
 
           (
-            m0 === Some(machine) and m1 === Some(machine) and m2 === Some(machine) and m3 === Some(machine) and
-            node0 === n0
-              .copyWithMain(main => main.copy(status = AcceptedInventory))
-              .copy(machineId = Some((m.id, AcceptedInventory)))
-            and node1 === n1.copy(machineId = ms)
-            and node2 === n2.copy(machineId = ms)
-            and node3 === n3.copy(machineId = ms)
+            m0 === Some(m0_) and m1 === Some(m1_) and m2 === Some(m2_) and
+            node0 === n0_
+            and node1 === n1_
+            and node2 === n2_
+            and node3 === None // no move to delete
           )
         }
       )
@@ -307,6 +299,7 @@ class TestInventory extends Specification {
   "Trying to add specific Windows" should {
 
     "Allow to save and read it back" in {
+      resetStorage
       val nodeId = NodeId("windows-2012")
 
       val node = NodeInventory(
@@ -325,12 +318,15 @@ class TestInventory extends Specification {
           NodeId("root"),
           UndefinedKey
         ),
+        inventoryDate = Some(DateTime.parse("2023-01-11T10:20:30.000Z")),
+        receiveDate = Some(DateTime.parse("2023-02-22T15:25:35.000Z")),
+        agents = Seq(NodeFact.defaultRudderAgent("administrator").toAgentInfo), // always present now
         machineId = None
       )
 
       repo.save(FullInventory(node, None)).isOK and {
         val FullInventory(n, m) = repo.get(nodeId, AcceptedInventory).testRunGet
-        n === node
+        n === node.modify(_.machineId).setTo(Some((MachineUuid("machine-windows-2012"),AcceptedInventory)))
       }
     }
 
@@ -338,10 +334,7 @@ class TestInventory extends Specification {
 
   "Software updates" should {
 
-    "be correctly saved for a node" in {
-      val dn  = "nodeId=node0,ou=Nodes,ou=Accepted Inventories,ou=Inventories,cn=rudder-configuration"
-      val inv = repo.get(NodeId("node0")).testRunGet
-      val su1 = inv.node.softwareUpdates
+    "are correctly serialized" in {
       val d0  = "2022-01-01T00:00:00Z"
       val dt0 = JsonSerializers.parseSoftwareUpdateDateTime(d0).toOption
       val id0 = "RHSA-2020-4566"
@@ -387,15 +380,16 @@ class TestInventory extends Specification {
         )
       )
 
-      val ldapValues = List(
+      val jsonString = List(
         s"""{"name":"app1","version":"2.15.6~RC1","arch":"x86_64","from":"yum","kind":"defect","description":"Some explanation","severity":"critical","date":"${d0}","ids":["${id0}","${id1}"]}""",
         s"""{"name":"app2","version":"1-23-RELEASE-1","arch":"x86_64","from":"apt","kind":"none","source":"default-repo"}""",
         s"""{"name":"app2","version":"1-24-RELEASE-64","arch":"x86_64","from":"apt","kind":"security","source":"security-backports","severity":"backport","ids":["${id1}"]}"""
-      )
+      ).mkString("[", ",", "]")
 
-      (su1 === Nil) and (dt0.isEmpty must beFalse) and
-      repo.save(inv.modify(_.node.softwareUpdates).setTo(updates)).isOK
-     // (ldap.server.getEntry(dn).getAttribute("softwareUpdate").getValues.toList must containTheSameElementsAs(ldapValues))
+      import zio.json._
+      import JsonSerializers.implicits._
+
+      updates.toJson === jsonString
     }
   }
 

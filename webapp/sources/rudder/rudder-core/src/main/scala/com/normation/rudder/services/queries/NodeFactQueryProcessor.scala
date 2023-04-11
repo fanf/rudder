@@ -46,13 +46,11 @@ import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactRepository
 import net.liftweb.common.Box
 import zio._
+import zio.stream.ZSink
 import zio.syntax._
-
-trait NodeFactRepository {
-  def getAll: IOResult[Chunk[NodeFact]]
-}
 
 /*
  * A NodeFactMatcher is the transformation of a query into a method that is able to
@@ -118,10 +116,10 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGro
   def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {
     for {
       m   <- analyzeQuery(query)
-      res <- nodeFactRepo.getAll.flatMap(nodes => {
-               FactQueryProcessorPure.debug(m.debugString) *>
-               ZIO.foreach(nodes)(node => processOne(m, node).map(b => if (b) Some(node) else None)).map(_.flatten)
-             })
+      res <- nodeFactRepo
+               .getAllAccepted()
+               .filterZIO(node => FactQueryProcessorPure.debug(m.debugString) *> processOne(m, node))
+               .run(ZSink.collectAll)
     } yield res
   }
 

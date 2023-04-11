@@ -142,13 +142,13 @@ final case class VolumeGroup(
 
 final case class SoftwareFact(
     name:               String,
-    version:            Version,
+    version:            SVersion,
     arch:               Option[String] = None,
     size:               Option[Long] = None,
     from:               Option[String] = None,
     publisher:          Option[String] = None,
     sourceName:         Option[String] = None,
-    sourceVersion:      Option[Version] = None,
+    sourceVersion:      Option[SVersion] = None,
     systemCategory:     Option[String] = None,
     licenseName:        Option[String] = None,
     licenseDescription: Option[String] = None,
@@ -157,6 +157,22 @@ final case class SoftwareFact(
     productKey:         Option[String] = None,
     oem:                Option[String] = None
 )
+
+object SoftwareFact {
+  implicit class ToSoftware(sf: SoftwareFact) {
+    def toSoftware: Software = Software(
+      SoftwareUuid(sf.name),
+      Some(sf.name),
+      None,
+      Some(sf.version),
+      sf.publisher.map(SoftwareEditor),
+      None,
+      sf.licenseName.map(l => License(l, sf.licenseDescription, sf.productId, sf.productKey, sf.oem, sf.expirationDate)),
+      sf.sourceName,
+      sf.sourceVersion
+    )
+  }
+}
 
 object NodeFact {
 
@@ -248,16 +264,15 @@ object NodeFact {
     def toFact: Option[SoftwareFact] = for {
       n  <- s.name
       v  <- s.version
-      vv <- ParseVersion.parse(v.value).toOption
     } yield SoftwareFact(
       n,
-      vv,
+      v,
       None,
       None,
       None,
       s.editor.map(_.name),
       s.sourceName,
-      s.sourceVersion.flatMap(v => ParseVersion.parse(v.value).toOption),
+      s.sourceVersion,
       None,
       s.license.map(_.name),
       s.license.flatMap(_.description),
@@ -453,20 +468,20 @@ object NodeFact {
     )
   }
 
-  def defaultRudderSettings(): RudderSettings = {
+  def defaultRudderSettings(status: InventoryStatus): RudderSettings = {
     RudderSettings(
       UndefinedKey,
       ReportingConfiguration(None, None, None),
       NodeKind.Node,
-      PendingInventory,
+      status,
       NodeState.Enabled,
       None,
       NodeId("root")
     )
   }
 
-  def defaultRudderAgent(): RudderAgent = {
-    RudderAgent(AgentType.CfeCommunity, "root", AgentVersion("unknown"), PublicKey("not initialized"), Chunk.empty)
+  def defaultRudderAgent(localAdmin: String): RudderAgent = {
+    RudderAgent(AgentType.CfeCommunity, localAdmin, AgentVersion("unknown"), PublicKey("not initialized"), Chunk.empty)
   }
 
   def newFromFullInventory(inventory: FullInventory, software: Option[Iterable[Software]]): NodeFact = {
@@ -482,8 +497,8 @@ object NodeFact {
         inventory.machine.flatMap(_.systemSerialNumber),
         inventory.machine.flatMap(_.manufacturer)
       ),
-      defaultRudderSettings(),
-      agentFromInventory(inventory.node).getOrElse(defaultRudderAgent()),
+      defaultRudderSettings(inventory.node.main.status),
+      agentFromInventory(inventory.node).getOrElse(defaultRudderAgent(inventory.node.main.rootUser)),
       Chunk.empty,
       now,
       now
@@ -552,6 +567,8 @@ object NodeFact {
       .setToIfDefined(agentFromInventory(inventory.node))
       .modify(_.properties)
       .setTo(properties)
+      .modify(_.factProcessedDate)
+      .setToIfDefined(inventory.node.receiveDate)
       .modify(_.lastInventoryDate)
       .setTo(inventory.node.inventoryDate)
       .modify(_.ipAddresses)
@@ -908,6 +925,7 @@ object NodeFactSerialisation {
   implicit val codecMachineUuid  = JsonCodec.string.transform[MachineUuid](MachineUuid(_), _.value)
   implicit val codecMachineType  = JsonCodec.string.transform[MachineType](
     _ match {
+      case UnknownMachineType.kind  => UnknownMachineType
       case PhysicalMachineType.kind => PhysicalMachineType
       case x                        => VirtualMachineType(VmType.parse(x))
     },

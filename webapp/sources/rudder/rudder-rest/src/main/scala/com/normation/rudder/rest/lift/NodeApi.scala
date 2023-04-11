@@ -47,8 +47,6 @@ import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.ldap.core.InventoryDit
-import com.normation.inventory.services.core.FullInventoryRepository
-import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.ldap.sdk.LDAPConnectionProvider
 import com.normation.ldap.sdk.RwLDAPConnection
 import com.normation.rudder.UserService
@@ -73,6 +71,9 @@ import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.properties.NodePropertyHierarchy
 import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.reports.ComplianceLevel
+import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepository
+import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.rudder.reports.execution.AgentRunWithNodeConfig
 import com.normation.rudder.reports.execution.RoReportsExecutionRepository
@@ -112,7 +113,6 @@ import com.normation.utils.Control._
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGenerator
 import com.normation.zio._
-import com.unboundid.ldif.LDIFChangeRecord
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.IOException
@@ -126,7 +126,6 @@ import net.liftweb.common.Box
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
-import net.liftweb.common.Loggable
 import net.liftweb.http.JsonResponse
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.OutputStreamResponse
@@ -146,6 +145,7 @@ import org.joda.time.DateTime
 import scalaj.http.Http
 import scalaj.http.HttpOptions
 import zio.{System => _, _}
+import zio.stream.ZSink
 import zio.syntax._
 
 /*
@@ -672,8 +672,8 @@ class NodeApiInheritedProperties(
 
 class NodeApiService(
     ldapConnection:             LDAPConnectionProvider[RwLDAPConnection],
-    inventoryRepository:        FullInventoryRepository[Seq[LDIFChangeRecord]],
-    softwareDAO:                ReadOnlySoftwareDAO,
+    nodeFactRepository:         NodeFactRepository,
+    inventoryRepository:        NodeFactFullInventoryRepository,
     groupRepo:                  RoNodeGroupRepository,
     paramRepo:                  RoParameterRepository,
     reportsExecutionRepository: RoReportsExecutionRepository,
@@ -696,9 +696,6 @@ class NodeApiService(
     getGlobalMode:              () => Box[GlobalPolicyMode],
     relayApiEndpoint:           String
 ) {
-
-
-  import restSerializer._
 
 /// utility functions ///
 
@@ -972,7 +969,7 @@ class NodeApiService(
       _                                     = TimingDebugLoggerPure.logEffect.trace(s"Getting global mode: ${n5 - n4}ms")
       softToLookAfter                      <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "software").map(_.getOrElse(Nil)))
       softs                                <- ZIO
-                                                .foreach(softToLookAfter)(soft => softwareDAO.getNodesbySofwareName(soft))
+                                                .foreach(softToLookAfter)(soft => inventoryRepository.getNodesbySofwareName(soft))
                                                 .toBox
                                                 .map(_.flatten.groupMap(_._1)(_._2))
       n6                                    = System.currentTimeMillis
@@ -1042,7 +1039,7 @@ class NodeApiService(
                  case None          => nodeInfoService.getAll().toBox
                  case Some(nodeIds) => nodeInfoService.getNodeInfosSeq(nodeIds).map(_.map(n => (n.id, n)).toMap).toBox
                }
-      softs <- softwareDAO.getNodesbySofwareName(software).toBox.map(_.toMap)
+      softs <- inventoryRepository.getNodesbySofwareName(software).toBox.map(_.toMap)
     } yield {
       JsonResponse(
         JObject(nodes.keySet.toList.flatMap(id => softs.get(id).flatMap(_.version.map(v => JField(id.value, JString(v.value))))))
@@ -1208,52 +1205,29 @@ class NodeApiService(
     }
   }
 
-
   def getNodeDetails(
       nodeId:      NodeId,
       detailLevel: NodeDetailLevel,
       state:       InventoryStatus
   ): IOResult[Option[JValue]] = {
     for {
-      optNodeInfo <- state match {
-                       case AcceptedInventory => nodeInfoService.getNodeInfo(nodeId)
-                       case PendingInventory  => nodeInfoService.getPendingNodeInfo(nodeId)
-                       case RemovedInventory  => nodeInfoService.getDeletedNodeInfo(nodeId)
-                     }
+      optNodeInfo <- nodeFactRepository.getOn(nodeId, state)
       nodeInfo    <- optNodeInfo match {
                        case None    => None.succeed
                        case Some(x) =>
                          for {
-                           runs      <- reportsExecutionRepository.getNodesLastRun(Set(nodeId))
-                           inventory <- if (detailLevel.needFullInventory()) {
-                                          inventoryRepository.get(nodeId, state)
-                                        } else {
-                                          None.succeed
-                                        }
-                           software  <- if (detailLevel.needSoftware()) {
-                                          for {
-                                            software <- inventory match {
-                                                          case Some(i) => softwareDAO.getSoftware(i.node.softwareIds)
-                                                          case None    =>
-                                                            softwareDAO
-                                                              .getSoftwareByNode(Set(nodeId), state)
-                                                              .map(_.get(nodeId).getOrElse(Seq()))
-                                                        }
-                                          } yield {
-                                            software
-                                          }
-                                        } else {
-                                          Seq().succeed
-                                        }
+                           runs     <- reportsExecutionRepository.getNodesLastRun(Set(nodeId))
+                           inventory = x.toFullInventory
+                           software  = x.software.toList.map(_.toSoftware)
                          } yield {
-                           Some((x, runs, inventory, software))
+                           Some((x.toNodeInfo, runs, inventory, software))
                          }
                      }
     } yield {
       nodeInfo.map {
         case (node, runs, inventory, software) =>
           val runDate = runs.get(nodeId).flatMap(_.map(_.agentRunId.date))
-          serializeInventory(node, state, runDate, inventory, software, detailLevel)
+          serializeInventory(node, state, runDate, Some(inventory), software, detailLevel)
       }
     }
   }
@@ -1322,32 +1296,34 @@ class NodeApiService(
       implicit prettify: Boolean
   ) = {
     implicit val action = s"list${state.name.capitalize}Nodes"
+    val predicate       = (n: NodeFact) => {
+      (nodeFilter match {
+        case Some(ids) => ids.contains(n.id)
+        case None      => true
+      })
+    }
 
     (for {
-      nodeInfos   <- state match {
-                       case AcceptedInventory => nodeInfoService.getAll()
-                       case PendingInventory  => nodeInfoService.getPendingNodeInfos()
-                       case RemovedInventory  => nodeInfoService.getDeletedNodeInfos()
-                     }
-      nodeIds      = nodeFilter.getOrElse(nodeInfos.keySet).toSet
-      runs        <- reportsExecutionRepository.getNodesLastRun(nodeIds)
-      inventories <- if (detailLevel.needFullInventory()) {
-                       inventoryRepository.getAllInventories(state).chainError("Error when looking for node inventories")
-                     } else {
-                       Map[NodeId, FullInventory]().succeed
-                     }
-      software    <- if (detailLevel.needSoftware()) {
-                       softwareDAO.getSoftwareByNode(nodeIds, state)
-                     } else {
-                       Map[NodeId, Seq[Software]]().succeed
-                     }
+      nodeInfos  <-
+        nodeFactRepository.getAllOn(state).filter(predicate).run(ZSink.collectAllToMap[NodeFact, NodeId](_.id)((a, b) => a))
+      nodeIds     = nodeInfos.keySet
+      runs       <- reportsExecutionRepository.getNodesLastRun(nodeIds)
+      inventories = nodeInfos.map { case (k, v) => (k, v.toFullInventory) }
+      software    = nodeInfos.map { case (k, v) => (k, v.software.map(_.toSoftware)) }
     } yield {
       for {
         nodeId   <- nodeIds
         nodeInfo <- nodeInfos.get(nodeId)
       } yield {
         val runDate = runs.get(nodeId).flatMap(_.map(_.agentRunId.date))
-        serializeInventory(nodeInfo, state, runDate, inventories.get(nodeId), software.getOrElse(nodeId, Seq()), detailLevel)
+        serializeInventory(
+          nodeInfo.toNodeInfo,
+          state,
+          runDate,
+          inventories.get(nodeId),
+          software.getOrElse(nodeId, Seq()),
+          detailLevel
+        )
       }
     }).either.runNow match {
       case Right(nodes) => {
@@ -1593,9 +1569,9 @@ class NodeApiService(
   }
 
   def deleteNode(id: NodeId, actor: EventActor, prettify: Boolean, mode: DeleteMode) = {
-    implicit val p = prettify
+    implicit val p      = prettify
     implicit val action = "deleteNode"
-    val modId = ModificationId(uuidGen.newUuid)
+    val modId           = ModificationId(uuidGen.newUuid)
 
     removeNodeService.removeNodePure(id, mode, modId, actor).toBox match {
       case Full(info) =>
