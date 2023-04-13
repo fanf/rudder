@@ -80,7 +80,6 @@ import com.normation.rudder.facts.nodes.RudderAgent
 import com.normation.rudder.facts.nodes.SoftwareFact
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.utils.DateFormaterService
-import com.normation.utils.ParseVersion
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import net.liftweb.common._
@@ -171,13 +170,6 @@ class TestNodeFactQueryProcessor {
       val p2 = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")
       DateFormaterService.parseDate(s).orElse(Try(p1.parseDateTime(s)).toEither).orElse(Try(p2.parseDateTime(s)).toEither) match {
         case Left(err)    => throw new IllegalArgumentException(s"Error in test init date: ${s}")
-        case Right(value) => value
-      }
-    }
-
-    implicit def StringToSVersion(s: String) = {
-      ParseVersion.parse(s) match {
-        case Left(err)    => throw new IllegalArgumentException(s"Error in test init software version: ${err}")
         case Right(value) => value
       }
     }

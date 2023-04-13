@@ -37,6 +37,9 @@
 
 package com.normation.rudder.services.queries
 
+import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.InventoryStatus
+
 import com.normation.box._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.NodeId
@@ -47,7 +50,9 @@ import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
+
 import net.liftweb.common.Box
+
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
@@ -106,7 +111,7 @@ object GroupOr extends Group {
   val zero                                            = NodeFactMatcher("false", _ => false.succeed)
 }
 
-class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGroupComparatorRepository)
+class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGroupComparatorRepository, status: InventoryStatus = AcceptedInventory)
     extends QueryProcessor with QueryChecker {
 
   def process(query: Query):       Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
@@ -117,7 +122,7 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGro
     for {
       m   <- analyzeQuery(query)
       res <- nodeFactRepo
-               .getAllAccepted()
+               .getAllOn(status)
                .filterZIO(node => FactQueryProcessorPure.debug(m.debugString) *> processOne(m, node))
                .run(ZSink.collectAll)
     } yield res

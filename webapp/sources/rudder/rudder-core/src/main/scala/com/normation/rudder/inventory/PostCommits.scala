@@ -43,7 +43,6 @@ import com.normation.inventory.domain._
 import com.normation.inventory.domain.Inventory
 import com.normation.inventory.services.provisioning._
 import com.normation.rudder.batch.AsyncDeploymentActor
-import com.normation.rudder.batch.AsyncDeploymentAgent
 import com.normation.rudder.batch.AutomaticStartDeployment
 import com.normation.rudder.domain.eventlog.RudderEventActor
 import com.normation.rudder.facts.nodes.ChangeContext

@@ -25,12 +25,11 @@
 package com.normation
 
 import _root_.zio._
-import _root_.zio.syntax._
 import _root_.zio.stream._
+import _root_.zio.syntax._
 import cats.data._
 import cats.implicits._
 import cats.kernel.Order
-
 import com.normation.errors.Chained
 import com.normation.errors.IOResult
 import com.normation.errors.PureResult
@@ -398,6 +397,21 @@ object zio {
    * Default ZIO Runtime used everywhere.
    */
   object ZioRuntime {
+    import _root_.zio.internal._
+
+    private val installedSignals = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+    private def installSignalHandlers(runtime: Runtime[Any])(implicit trace: Trace, unsafe: Unsafe): Unit = {
+      if (!installedSignals.getAndSet(true)) {
+        val dumpFibers = { () => runtime.unsafe.run(Fiber.dumpAll)(trace, unsafe).getOrThrowFiberFailure() }
+
+        Unsafe.unsafe { implicit unsafe =>
+          Platform.addSignalHandler("USR1", dumpFibers)
+          Platform.addSignalHandler("USR2", dumpFibers)
+        }
+      }
+    }
+
     /*
      * Internal runtime. You should not access it within rudder.
      * If you need to use it for "unsafeRun", you should always pin the
@@ -405,14 +419,13 @@ object zio {
      * a hierarchy of calls.
      */
     val internal = Runtime.default
+
 //    def platform: RuntimeConfig = internal.runtimeConfig
     def layers:      ZLayer[Any, Nothing, Any] = ZLayer.fromZIOEnvironment(internal.environment.succeed)
     def environment: ZEnvironment[Any]         = internal.environment
 
     def runNow[A](io: IOResult[A]): A = {
-      // unsafeRun will display a formatted fiber trace in case there is an error, which likely what we wants:
-      // here, error were not prevented before run, so it's a defect that should be corrected.
-      Unsafe.unsafe(implicit unsafe => internal.unsafe.run(io).getOrThrowFiberFailure())
+      unsafeRun[RudderError, A](io)
     }
 
     /*
@@ -427,7 +440,12 @@ object zio {
      * effect marked as blocking.
      */
     def unsafeRun[E, A](zio: => ZIO[Any, E, A]): A = {
-      Unsafe.unsafe(implicit unsafe => internal.unsafe.run(zio).getOrThrowFiberFailure())
+      // unsafeRun will display a formatted fiber trace in case there is an error, which likely what we wants:
+      // here, error were not prevented before run, so it's a defect that should be corrected.
+      Unsafe.unsafe { implicit unsafe =>
+        installSignalHandlers(internal)
+        internal.unsafe.run(zio).getOrThrowFiberFailure()
+      }
     }
 
   }
