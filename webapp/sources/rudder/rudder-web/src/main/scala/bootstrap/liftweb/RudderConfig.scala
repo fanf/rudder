@@ -54,14 +54,17 @@ import bootstrap.liftweb.checks.migration.CheckRemoveRuddercSetting
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
+
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
+
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
+import com.normation.errors.effectUioUnit
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core._
 import com.normation.inventory.ldap.provisioning.AddIpValues
@@ -117,6 +120,7 @@ import com.normation.rudder.facts.nodes.NodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepository
 import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
+import com.normation.rudder.facts.nodes.WoFactNodeRepository
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
 import com.normation.rudder.inventory.DefaultProcessInventoryService
@@ -186,6 +190,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -193,6 +198,7 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -202,8 +208,10 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
+
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
+
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -964,7 +972,7 @@ object RudderConfig extends Loggable {
   val rudderDit:                         RudderDit                     = rudderDitImpl
   val roRuleRepository:                  RoRuleRepository              = roLdapRuleRepository
   val woRuleRepository:                  WoRuleRepository              = woLdapRuleRepository
-  val woNodeRepository:                  WoNodeRepository              = woLdapNodeRepository
+  val woNodeRepository:                  WoNodeRepository              = woFactNodeRepository
   val roNodeGroupRepository:             RoNodeGroupRepository         = roLdapNodeGroupRepository
   val woNodeGroupRepository:             WoNodeGroupRepository         = woLdapNodeGroupRepository
   val techniqueRepository:               TechniqueRepository           = techniqueRepositoryImpl
@@ -1068,7 +1076,7 @@ object RudderConfig extends Loggable {
   lazy val roleApiMapping = new RoleApiMapping(authorizationApiMapping)
 
   // rudder user list
-  lazy val rudderUserListProvider: FileUserDetailListProvider = {
+  lazy val rudderUserListProvider: FileUserDetailListProvider = synchronized {
     UserFileProcessing.getUserResourceFile().either.runNow match {
       case Right(resource) =>
         new FileUserDetailListProvider(roleApiMapping, userAuthorisationLevel, resource)
@@ -1422,7 +1430,7 @@ object RudderConfig extends Loggable {
     techniqueSerializer
   )
 
-  lazy val pipelinedInventoryParser: InventoryParser = {
+  lazy val pipelinedInventoryParser: InventoryParser = synchronized {
     val fusionReportParser = {
       new FusionInventoryParser(
         uuidGen,
@@ -1440,6 +1448,7 @@ object RudderConfig extends Loggable {
     )
   }
 
+
   lazy val gitFactRepoProvider         = GitRepositoryProviderImpl
     .make(RUDDER_GIT_ROOT_FACT_REPO)
     .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
@@ -1449,9 +1458,11 @@ object RudderConfig extends Loggable {
   gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
   // TODO WARNING POC: this can't work on a machine with lots of node
-  lazy val nodeFactRepository = {
+  lazy val nodeFactRepository = InitLock.synchronized {
     println(s"****** init node fact repo")
-    Thread.sleep(20*1000)
+    // Thread.dumpStack()
+    // println(s"****** ===================")
+
     // software are sooooo slow that even on test data, we can't get them
     def getFacts(nodeInfos: Iterable[NodeInfo], status: InventoryStatus): IOResult[Map[NodeId, NodeFact]] = {
       ZIO
@@ -1479,6 +1490,8 @@ object RudderConfig extends Loggable {
     }
 
     val app = for {
+      _             <- InventoryDataLogger.debug("===== ********* =========")
+      _             <- effectUioUnit(Thread.dumpStack())
       _             <- InventoryDataLogger.debug("Getting pending node info for node fact repos")
       // empty because too long for test
       pendingInfos  <- deprecated.ldapNodeInfoServiceImpl.getPendingNodeInfos()
@@ -1496,31 +1509,7 @@ object RudderConfig extends Loggable {
       new CoreNodeFactRepository(gitFactRepo, pending, accepted, callbacks, lock)
     }
 
-    def monitorFibers(supervisor: Supervisor[Chunk[Fiber.Runtime[Any, Any]]]) = for {
-      length <- supervisor.value.map(_.length)
-      //      _      =  supervisor.onSuspend(f => f.dump.)
-      _      <- Console.printLine(s"number of fibers: $length")
-    } yield ()
-
-    def runApp = for {
-      _ <- Console.printLine("start supervisor")
-      supervisor <- Supervisor.track(true)
-      _ <- Console.printLine("for app in supervisor")
-      fiber      <- ZIO.blocking(app).supervised(supervisor).fork
-      policy      = Schedule
-                      .spaced(500.milliseconds)
-                      .whileInputZIO[Any, Unit](_ => fiber.status.map(_ != Fiber.Status.Done))
-      _ <- Console.printLine("start monitor")
-      logger     <- monitorFibers(supervisor)
-                      .repeat(policy)
-                      .fork
-      _ <- Console.printLine("join logger")
-      _          <- logger.join
-      _ <- Console.printLine("join app start")
-      repo       <- fiber.join
-    } yield repo
-
-    ZioRuntime.unsafeRun(runApp)
+    ZioRuntime.unsafeRun(app)
   }
 
 //  lazy val ldifInventoryLogger = new DefaultLDIFInventoryLogger(LDIF_TRACELOG_ROOT_DIR)
@@ -1549,7 +1538,7 @@ object RudderConfig extends Loggable {
     )
   )
 
-  lazy val inventoryProcessorInternal = {
+  lazy val inventoryProcessorInternal = synchronized {
     val checkLdapAlive: () => IOResult[Unit] = { () =>
       for {
         con <- rwLdap
@@ -1587,7 +1576,7 @@ object RudderConfig extends Loggable {
     )
   }
 
-  lazy val inventoryProcessor = {
+  lazy val inventoryProcessor = synchronized {
     val mover = new InventoryMover(
       INVENTORY_DIR_RECEIVED,
       INVENTORY_DIR_FAILED,
@@ -1599,7 +1588,7 @@ object RudderConfig extends Loggable {
     new DefaultProcessInventoryService(inventoryProcessorInternal, mover)
   }
 
-  lazy val inventoryWatcher = {
+  lazy val inventoryWatcher = synchronized {
     val fileProcessor = new ProcessFile(inventoryProcessor, INVENTORY_DIR_INCOMING)
 
     new InventoryFileWatcher(
@@ -1611,18 +1600,17 @@ object RudderConfig extends Loggable {
     )
   }
 
-  lazy val cleanOldInventoryBatch = {
-    new PurgeOldInventoryFiles(
-      RUDDER_INVENTORIES_CLEAN_CRON,
-      RUDDER_INVENTORIES_CLEAN_AGE,
-      List(better.files.File(INVENTORY_DIR_FAILED), better.files.File(INVENTORY_DIR_RECEIVED))
-    )
-  }
+  lazy val cleanOldInventoryBatch = new PurgeOldInventoryFiles(
+    RUDDER_INVENTORIES_CLEAN_CRON,
+    RUDDER_INVENTORIES_CLEAN_AGE,
+    List(better.files.File(INVENTORY_DIR_FAILED), better.files.File(INVENTORY_DIR_RECEIVED))
+  )
+
   cleanOldInventoryBatch.start()
 
   lazy val factFullInventoryRepo = new NodeFactFullInventoryRepository(nodeFactRepository)
 
-  val archiveApi = {
+  val archiveApi = synchronized {
     val archiveBuilderService =
       new ZipArchiveBuilderService(new FileArchiveNameService(), configurationRepository, gitParseTechniqueLibrary)
     // fixe archive name to make it simple to test
@@ -1674,7 +1662,7 @@ object RudderConfig extends Loggable {
 
   val resourceFileService = new ResourceFileService(gitConfigRepo)
   lazy val apiDispatcher  = new RudderEndpointDispatcher(LiftApiProcessingLogger)
-  lazy val rudderApi      = {
+  lazy val rudderApi      = synchronized {
     import com.normation.rudder.rest.lift._
 
     val nodeInheritedProperties  =
@@ -1776,14 +1764,12 @@ object RudderConfig extends Loggable {
   val sharedFileApi          = new SharedFilesAPI(restExtractorService, RUDDER_DIR_SHARED_FILES_FOLDER)
   val eventLogApi            = new EventLogAPI(eventLogRepository, restExtractorService, eventLogDetailsGenerator, personIdentService)
   lazy val asyncWorkflowInfo = new AsyncWorkflowInfo
-  lazy val configService: ReadConfigService with UpdateConfigService = {
-    new GenericConfigService(
-      config,
-      new LdapConfigRepository(rudderDit, rwLdap, ldapEntityMapper, eventLogRepository, stringUuidGenerator),
-      asyncWorkflowInfo,
-      workflowLevelService
-    )
-  }
+  lazy val configService: ReadConfigService with UpdateConfigService = new GenericConfigService(
+    config,
+    new LdapConfigRepository(rudderDit, rwLdap, ldapEntityMapper, eventLogRepository, stringUuidGenerator),
+    asyncWorkflowInfo,
+    workflowLevelService
+  )
 
   lazy val recentChangesService = new CachedNodeChangesServiceImpl(
     new NodeChangesServiceImpl(reportsRepository),
@@ -1828,6 +1814,9 @@ object RudderConfig extends Loggable {
       // is encapsulated in a try/catch ( see net.liftweb.http.provider.HTTPProvider.bootLift )
       val checks = RudderConfig.allBootstrapChecks
       checks.checks()
+
+      // node info cache needs early init
+      deprecated.ldapNodeInfoServiceImpl
     }
   }
 
@@ -1929,7 +1918,8 @@ object RudderConfig extends Loggable {
     new APIAccountSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
   private[this] lazy val propertySerialization:                GlobalPropertySerialisation          =
     new GlobalPropertySerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
-  lazy val changeRequestChangesSerialisation:                  ChangeRequestChangesSerialisation    = {
+
+  lazy val changeRequestChangesSerialisation: ChangeRequestChangesSerialisation = {
     new ChangeRequestChangesSerialisationImpl(
       Constants.XML_CURRENT_FILE_FORMAT.toString,
       nodeGroupSerialisation,
@@ -1940,8 +1930,10 @@ object RudderConfig extends Loggable {
       rootSectionSerialisation
     )
   }
-  lazy val secretSerialisation:                                SecretSerialisation                  =
+
+  lazy val secretSerialisation: SecretSerialisation =
     new SecretSerialisationImpl(Constants.XML_CURRENT_FILE_FORMAT.toString)
+
   private[this] lazy val eventLogFactory = new EventLogFactoryImpl(
     ruleSerialisation,
     directiveSerialisation,
@@ -2016,9 +2008,7 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val variableSpecParser = new VariableSpecParser
   private[this] lazy val sectionSpecParser  = new SectionSpecParser(variableSpecParser)
-  private[this] lazy val techniqueParser    = {
-    new TechniqueParser(variableSpecParser, sectionSpecParser, systemVariableSpecService)
-  }
+  private[this] lazy val techniqueParser    = new TechniqueParser(variableSpecParser, sectionSpecParser, systemVariableSpecService)
 
   private[this] lazy val userPropertyServiceImpl = new StatelessUserPropertyService(
     configService.rudder_ui_changeMessage_enabled _,
@@ -2032,7 +2022,7 @@ object RudderConfig extends Loggable {
 
   ///// end /////
 
-  private[this] lazy val logRepository                = {
+  private[this] lazy val logRepository                = synchronized {
     val eventLogRepo = new EventLogJdbcRepository(doobie, eventLogFactory)
     techniqueRepositoryImpl.registerCallback(
       new LogEventOnTechniqueReloadCallback(
@@ -2052,7 +2042,7 @@ object RudderConfig extends Loggable {
   gitConfigRepoGC.start()
   private[this] lazy val gitRevisionProviderImpl      =
     new LDAPGitRevisionProvider(rwLdap, rudderDitImpl, gitConfigRepo, RUDDER_TECHNIQUELIBRARY_GIT_REFS_PATH)
-  private[this] lazy val techniqueReader: TechniqueReader = {
+  private[this] lazy val techniqueReader: TechniqueReader = synchronized {
     // find the relative path from gitConfigRepo to the ptlib root
     val gitSlash = new File(RUDDER_GIT_ROOT_CONFIG_REPO).getPath + "/"
     if (!RUDDER_DIR_TECHNIQUES.startsWith(gitSlash)) {
@@ -2108,16 +2098,15 @@ object RudderConfig extends Loggable {
     )
   }
 
-  private[this] lazy val roLdap = {
-    new ROPooledSimpleAuthConnectionProvider(
-      host = LDAP_HOST,
-      port = LDAP_PORT,
-      authDn = LDAP_AUTHDN,
-      authPw = LDAP_AUTHPW,
-      poolSize = LDAP_MAX_POOL_SIZE
-    )
-  }
-  lazy val rwLdap               = {
+  private[this] lazy val roLdap = new ROPooledSimpleAuthConnectionProvider(
+    host = LDAP_HOST,
+    port = LDAP_PORT,
+    authDn = LDAP_AUTHDN,
+    authPw = LDAP_AUTHPW,
+    poolSize = LDAP_MAX_POOL_SIZE
+  )
+
+  lazy val rwLdap = {
     new RWPooledSimpleAuthConnectionProvider(
       host = LDAP_HOST,
       port = LDAP_PORT,
@@ -2128,13 +2117,11 @@ object RudderConfig extends Loggable {
   }
 
   // query processor for accepted nodes
-  private[this] lazy val queryProcessor = {
-    new NodeFactQueryProcessor(
-      nodeFactRepository,
-      new DefaultSubGroupComparatorRepository(roNodeGroupRepository),
-      AcceptedInventory
-    )
-  }
+  private[this] lazy val queryProcessor = new NodeFactQueryProcessor(
+    nodeFactRepository,
+    new DefaultSubGroupComparatorRepository(roNodeGroupRepository),
+    AcceptedInventory
+  )
 
   // we need a roLdap query checker for nodes in pending
   private[this] lazy val inventoryQueryChecker = new NodeFactQueryProcessor(
@@ -2147,8 +2134,9 @@ object RudderConfig extends Loggable {
 
   lazy val pendingNodeCheckGroup = new CheckPendingNodeInDynGroups(inventoryQueryChecker)
 
-  private[this] lazy val unitRefuseGroup:     UnitRefuseInventory =
+  private[this] lazy val unitRefuseGroup: UnitRefuseInventory =
     new RefuseGroups("refuse_node:delete_id_in_groups", roLdapNodeGroupRepository, woLdapNodeGroupRepository)
+
   private[this] lazy val acceptHostnameAndIp: UnitAcceptInventory = new AcceptHostnameAndIp(
     "accept_new_server:check_hostname_unicity",
     AcceptedInventory,
@@ -2160,7 +2148,7 @@ object RudderConfig extends Loggable {
   )
 
   // used in accept node to see & store inventories on acceptation
-  lazy val inventoryHistoryLogRepository: InventoryHistoryLogRepository = {
+  lazy val inventoryHistoryLogRepository: InventoryHistoryLogRepository = synchronized {
     val fullInventoryFromLdapEntries: FullInventoryFromLdapEntries =
       new FullInventoryFromLdapEntriesImpl(inventoryDitService, inventoryMapper)
 
@@ -2196,7 +2184,8 @@ object RudderConfig extends Loggable {
     linkUtil,
     diffDisplayer
   )
-  private[this] lazy val databaseManagerImpl      = new DatabaseManagerImpl(reportsRepositoryImpl, updateExpectedRepo)
+
+  private[this] lazy val databaseManagerImpl = new DatabaseManagerImpl(reportsRepositoryImpl, updateExpectedRepo)
 
   private[this] lazy val personIdentServiceImpl = new TrivialPersonIdentService
 
@@ -2206,7 +2195,8 @@ object RudderConfig extends Loggable {
 
   ///// items archivers - services that allows to transform items to XML and save then on a Git FS /////
   private[this] lazy val gitModificationRepository = new GitModificationRepositoryImpl(doobie)
-  private[this] lazy val gitRuleArchiver:                    GitRuleArchiver                    = new GitRuleArchiverImpl(
+
+  private[this] lazy val gitRuleArchiver: GitRuleArchiver = new GitRuleArchiverImpl(
     gitConfigRepo,
     ruleSerialisation,
     rulesDirectoryName,
@@ -2215,7 +2205,8 @@ object RudderConfig extends Loggable {
     RUDDER_CHARSET.name,
     RUDDER_GROUP_OWNER_CONFIG_REPO
   )
-  private[this] lazy val gitRuleCategoryArchiver:            GitRuleCategoryArchiver            = new GitRuleCategoryArchiverImpl(
+
+  private[this] lazy val gitRuleCategoryArchiver: GitRuleCategoryArchiver = new GitRuleCategoryArchiverImpl(
     gitConfigRepo,
     ruleCategorySerialisation,
     ruleCategoriesDirectoryName,
@@ -2225,6 +2216,7 @@ object RudderConfig extends Loggable {
     "category.xml",
     RUDDER_GROUP_OWNER_CONFIG_REPO
   )
+
   private[this] lazy val gitActiveTechniqueCategoryArchiver: GitActiveTechniqueCategoryArchiver = {
     new GitActiveTechniqueCategoryArchiverImpl(
       gitConfigRepo,
@@ -2237,7 +2229,8 @@ object RudderConfig extends Loggable {
       RUDDER_GROUP_OWNER_CONFIG_REPO
     )
   }
-  private[this] lazy val gitActiveTechniqueArchiver:         GitActiveTechniqueArchiverImpl     = new GitActiveTechniqueArchiverImpl(
+
+  private[this] lazy val gitActiveTechniqueArchiver: GitActiveTechniqueArchiverImpl = new GitActiveTechniqueArchiverImpl(
     gitConfigRepo,
     activeTechniqueSerialisation,
     userLibraryDirectoryName,
@@ -2248,7 +2241,8 @@ object RudderConfig extends Loggable {
     "activeTechniqueSettings.xml",
     RUDDER_GROUP_OWNER_CONFIG_REPO
   )
-  private[this] lazy val gitDirectiveArchiver:               GitDirectiveArchiver               = new GitDirectiveArchiverImpl(
+
+  private[this] lazy val gitDirectiveArchiver: GitDirectiveArchiver = new GitDirectiveArchiverImpl(
     gitConfigRepo,
     directiveSerialisation,
     userLibraryDirectoryName,
@@ -2257,7 +2251,8 @@ object RudderConfig extends Loggable {
     RUDDER_CHARSET.name,
     RUDDER_GROUP_OWNER_CONFIG_REPO
   )
-  private[this] lazy val gitNodeGroupArchiver:               GitNodeGroupArchiver               = new GitNodeGroupArchiverImpl(
+
+  private[this] lazy val gitNodeGroupArchiver: GitNodeGroupArchiver = new GitNodeGroupArchiverImpl(
     gitConfigRepo,
     nodeGroupSerialisation,
     nodeGroupCategorySerialisation,
@@ -2268,7 +2263,8 @@ object RudderConfig extends Loggable {
     "category.xml",
     RUDDER_GROUP_OWNER_CONFIG_REPO
   )
-  private[this] lazy val gitParameterArchiver:               GitParameterArchiver               = new GitParameterArchiverImpl(
+
+  private[this] lazy val gitParameterArchiver: GitParameterArchiver = new GitParameterArchiverImpl(
     gitConfigRepo,
     globalParameterSerialisation,
     parametersDirectoryName,
@@ -2288,7 +2284,7 @@ object RudderConfig extends Loggable {
 
   private[this] lazy val roLdapDirectiveRepository =
     new RoLDAPDirectiveRepository(rudderDitImpl, roLdap, ldapEntityMapper, techniqueRepositoryImpl, uptLibReadWriteMutex)
-  private[this] lazy val woLdapDirectiveRepository = {
+  private[this] lazy val woLdapDirectiveRepository = synchronized {
     val repo = new WoLDAPDirectiveRepository(
       roLdapDirectiveRepository,
       rwLdap,
@@ -2320,7 +2316,8 @@ object RudderConfig extends Loggable {
 
     repo
   }
-  private[this] lazy val roLdapRuleRepository      =
+
+  private[this] lazy val roLdapRuleRepository =
     new RoLDAPRuleRepository(rudderDitImpl, roLdap, ldapEntityMapper, ruleReadWriteMutex)
 
   private[this] lazy val woLdapRuleRepository: WoRuleRepository = new WoLDAPRuleRepository(
@@ -2334,16 +2331,7 @@ object RudderConfig extends Loggable {
     RUDDER_AUTOARCHIVEITEMS
   )
 
-  private[this] lazy val woLdapNodeRepository: WoNodeRepository = new WoLDAPNodeRepository(
-    nodeDitImpl,
-    acceptedNodesDit,
-    ldapEntityMapper,
-    rwLdap,
-    logRepository,
-    nodeReadWriteMutex,
-    cachedNodeConfigurationService,
-    reportingServiceImpl
-  )
+  private[this] lazy val woFactNodeRepository: WoNodeRepository = new WoFactNodeRepository(nodeFactRepository)
 
   private[this] lazy val roLdapNodeGroupRepository = new RoLDAPNodeGroupRepository(
     rudderDitImpl,
@@ -2381,12 +2369,13 @@ object RudderConfig extends Loggable {
     )
   }
 
-  lazy val roLDAPParameterRepository               = new RoLDAPParameterRepository(
+  lazy val roLDAPParameterRepository = new RoLDAPParameterRepository(
     rudderDitImpl,
     roLdap,
     ldapEntityMapper,
     parameterReadWriteMutex
   )
+
   private[this] lazy val woLDAPParameterRepository = new WoLDAPParameterRepository(
     roLDAPParameterRepository,
     rwLdap,
@@ -2427,13 +2416,14 @@ object RudderConfig extends Loggable {
     dynGroupUpdaterService
   )
 
-  private[this] lazy val globalComplianceModeService: ComplianceModeService   = {
+  private[this] lazy val globalComplianceModeService: ComplianceModeService = {
     new ComplianceModeServiceImpl(
       () => configService.rudder_compliance_mode_name().toBox,
       () => configService.rudder_compliance_heartbeatPeriod().toBox
     )
   }
-  private[this] lazy val globalAgentRunService:       AgentRunIntervalService = {
+
+  private[this] lazy val globalAgentRunService: AgentRunIntervalService = {
     new AgentRunIntervalServiceImpl(
       nodeFactInfoService,
       () => configService.agent_run_interval().toBox,
@@ -2468,6 +2458,7 @@ object RudderConfig extends Loggable {
     () => configService.rudder_report_protocol_default().toBox,
     () => configService.rudder_verify_certificates().toBox
   )
+
   private[this] lazy val rudderCf3PromisesFileWriterService = new PolicyWriterServiceImpl(
     techniqueRepositoryImpl,
     pathComputer,
@@ -2498,15 +2489,13 @@ object RudderConfig extends Loggable {
     )
   )
 
-  private[this] lazy val techniqueRepositoryImpl = {
-    val service = new TechniqueRepositoryImpl(
-      techniqueReader,
-      Seq(),
-      uuidGen
-    )
-    service
-  }
-  lazy val interpolationCompiler                 = new InterpolatedValueCompilerImpl(propertyEngineService)
+  private[this] lazy val techniqueRepositoryImpl = new TechniqueRepositoryImpl(
+    techniqueReader,
+    Seq(),
+    uuidGen
+  )
+
+  lazy val interpolationCompiler = new InterpolatedValueCompilerImpl(propertyEngineService)
   lazy val typeParameterService:         PlugableParameterTypeService = new PlugableParameterTypeService()
   private[this] lazy val ruleValService: RuleValService               = new RuleValServiceImpl(interpolationCompiler)
 
@@ -2556,7 +2545,7 @@ object RudderConfig extends Loggable {
 
   lazy val policyGenerationBootGuard = zio.Promise.make[Nothing, Unit].runNow
 
-  private[this] lazy val asyncDeploymentAgentImpl: AsyncDeploymentActor = {
+  private[this] lazy val asyncDeploymentAgentImpl: AsyncDeploymentActor = synchronized {
     val agent = new AsyncDeploymentActor(
       deploymentService,
       eventLogDeploymentServiceImpl,
@@ -2571,7 +2560,7 @@ object RudderConfig extends Loggable {
     agent
   }
 
-  private[this] lazy val newNodeManagerImpl = {
+  private[this] lazy val newNodeManagerImpl = synchronized {
     val nodeSummaryServiceImpl = new FactNodeSummaryService(nodeFactRepository)
 
     // the sequence of unit process to accept a new inventory
@@ -2658,7 +2647,7 @@ object RudderConfig extends Loggable {
     x
   }
 
-  private[this] lazy val reportingServiceImpl = {
+  private[this] lazy val reportingServiceImpl = synchronized {
     val reportingServiceImpl = new CachedReportingServiceImpl(
       new ReportingServiceImpl(
         findExpectedRepo,
@@ -2782,7 +2771,7 @@ object RudderConfig extends Loggable {
   private[this] lazy val dynGroupUpdaterService =
     new DynGroupUpdaterServiceImpl(roLdapNodeGroupRepository, woLdapNodeGroupRepository, queryProcessor)
 
-  private[this] lazy val dbCleaner: AutomaticReportsCleaning = {
+  private[this] lazy val dbCleaner: AutomaticReportsCleaning = synchronized {
     val cleanFrequency = AutomaticReportsCleaning.buildFrequency(
       RUDDER_BATCH_REPORTSCLEANER_FREQUENCY,
       RUDDER_BATCH_DATABASECLEANER_RUNTIME_MINUTE,
@@ -2993,7 +2982,7 @@ object RudderConfig extends Loggable {
   ////////////////////// Snippet plugins & extension register //////////////////////
   lazy val snippetExtensionRegister: SnippetExtensionRegister = new SnippetExtensionRegisterImpl()
 
-  private[this] lazy val cachedNodeConfigurationService: CachedNodeConfigurationService = {
+  private[this] lazy val cachedNodeConfigurationService: CachedNodeConfigurationService = synchronized {
     val cached = new CachedNodeConfigurationService(findExpectedRepo, nodeFactInfoService)
     cached.init().runOrDie(err => new RuntimeException(s"Error when initializing node configuration cache: " + err))
     cached
@@ -3002,7 +2991,7 @@ object RudderConfig extends Loggable {
   /*
    * Agent runs: we use a cache for them.
    */
-  private[this] lazy val cachedAgentRunRepository = {
+  private[this] lazy val cachedAgentRunRepository = synchronized {
     val roRepo = new RoReportsExecutionRepositoryImpl(
       doobie,
       new WoReportsExecutionRepositoryImpl(doobie),
@@ -3017,7 +3006,7 @@ object RudderConfig extends Loggable {
 
   val updatesEntryJdbcRepository = new LastProcessedReportRepositoryImpl(doobie)
 
-  val executionService = {
+  val executionService = synchronized {
     val maxCatchupTime  = {
       val temp = FiniteDuration(RUDDER_REPORTS_EXECUTION_MAX_DAYS.toLong, "day") + FiniteDuration(
         RUDDER_REPORTS_EXECUTION_MAX_MINUTES.toLong,
@@ -3078,33 +3067,36 @@ object RudderConfig extends Loggable {
    * here goes deprecated services that we can't remove yet, for example because they are used for migration
    */
   object deprecated {
-    val softwareInventoryDAO:   ReadOnlySoftwareDAO  =
+    lazy val softwareInventoryDAO:   ReadOnlySoftwareDAO  =
       new ReadOnlySoftwareDAOImpl(inventoryDitService, roLdap, inventoryMapper)
-    val softwareInventoryRWDAO: WriteOnlySoftwareDAO = new WriteOnlySoftwareDAOImpl(
+
+    lazy val softwareInventoryRWDAO: WriteOnlySoftwareDAO = new WriteOnlySoftwareDAOImpl(
       acceptedNodesDitImpl,
       rwLdap
     )
-    val softwareService:        SoftwareService      =
+
+    lazy val softwareService:        SoftwareService      =
       new SoftwareServiceImpl(softwareInventoryDAO, softwareInventoryRWDAO, acceptedNodesDit)
-    val purgeUnreferencedSoftwares = {
+
+    lazy val purgeUnreferencedSoftwares = {
       new PurgeUnreferencedSoftwares(
         softwareService,
         FiniteDuration(RUDDER_BATCH_DELETE_SOFTWARE_INTERVAL.toLong, "hours")
       )
     }
 
-    val ldapFullInventoryRepository =
+    lazy val ldapFullInventoryRepository =
       new FullInventoryRepositoryImpl(inventoryDitService, inventoryMapper, rwLdap)
 
-    val purgeDeletedInventories = new PurgeDeletedInventories(
+    lazy val purgeDeletedInventories = new PurgeDeletedInventories(
       new PurgeDeletedNodesImpl(rwLdap, removedNodesDitImpl, ldapFullInventoryRepository),
       FiniteDuration(RUDDER_BATCH_PURGE_DELETED_INVENTORIES_INTERVAL.toLong, "hours"),
       RUDDER_BATCH_PURGE_DELETED_INVENTORIES
     )
 
-    val nodeSummaryServiceImpl = new NodeSummaryServiceImpl(inventoryDitService, inventoryMapper, roLdap)
+    lazy val nodeSummaryServiceImpl = new NodeSummaryServiceImpl(inventoryDitService, inventoryMapper, roLdap)
 
-    val ldapNodeInfoServiceImpl = new NodeInfoServiceCachedImpl(
+    lazy val ldapNodeInfoServiceImpl = new NodeInfoServiceCachedImpl(
       roLdap,
       nodeDitImpl,
       acceptedNodesDitImpl,
@@ -3115,7 +3107,7 @@ object RudderConfig extends Loggable {
       FiniteDuration(LDAP_CACHE_NODE_INFO_MIN_INTERVAL.toMillis, "millis")
     )
 
-    val ldapRemoveNodeBackend = new LdapRemoveNodeBackend(
+    lazy val ldapRemoveNodeBackend = new LdapRemoveNodeBackend(
       nodeDitImpl,
       pendingNodesDitImpl,
       acceptedNodesDitImpl,
@@ -3125,7 +3117,7 @@ object RudderConfig extends Loggable {
       nodeReadWriteMutex
     )
 
-    val ldapNewNodeManagerImpl = {
+    lazy val ldapNewNodeManagerImpl = synchronized {
       val updateFactRepoOnChoice:       UnitAcceptInventory with UnitRefuseInventory = new UpdateFactRepoOnChoice(
         "accept_or_refuse_new_node:update_fact_repo",
         PendingInventory,
@@ -3171,6 +3163,7 @@ object RudderConfig extends Loggable {
       }
 
       val hooksRunner     = new NewNodeManagerHooksImpl(nodeInfoService, HOOKS_D, HOOKS_IGNORE_SUFFIXES)
+
       val composedManager = new ComposedNewNodeManager[Seq[LDIFChangeRecord]](
         ldapFullInventoryRepository,
         nodeSummaryServiceImpl,
@@ -3184,6 +3177,7 @@ object RudderConfig extends Loggable {
         List(ldapNodeInfoServiceImpl),
         hooksRunner
       )
+
       val listNodes       = new LdapListNewNode(roLdap, nodeSummaryServiceImpl, pendingNodesDit)
 
       new NewNodeManagerImpl[Seq[LDIFChangeRecord]](
@@ -3237,21 +3231,21 @@ object RudderConfig extends Loggable {
       )
     )
 
-    val checkInventoryUpdate = new CheckInventoryUpdate(
+    lazy val checkInventoryUpdate = new CheckInventoryUpdate(
       ldapNodeInfoServiceImpl,
       asyncDeploymentAgent,
       stringUuidGenerator,
       RUDDER_BATCH_CHECK_NODE_CACHE_INTERVAL
     )
 
-    val queryProcessor = new AcceptedNodesLDAPQueryProcessor(
+    lazy val queryProcessor = new AcceptedNodesLDAPQueryProcessor(
       nodeDitImpl,
       acceptedNodesDitImpl,
       new InternalLDAPQueryProcessor(roLdap, acceptedNodesDitImpl, nodeDit, ditQueryDataImpl, ldapEntityMapper),
       ldapNodeInfoServiceImpl
     )
 
-    val inventoryQueryChecker = {
+    lazy val inventoryQueryChecker = synchronized {
       val subGroup = new SubGroupComparatorRepository {
         override def getNodeIds(groupId: NodeGroupId): IOResult[Chunk[NodeId]] = Chunk.empty.succeed
 
@@ -3275,5 +3269,17 @@ object RudderConfig extends Loggable {
       )
     }
 
+    lazy val woLdapNodeRepository: WoNodeRepository = new WoLDAPNodeRepository(
+      nodeDitImpl,
+      acceptedNodesDit,
+      ldapEntityMapper,
+      rwLdap,
+      logRepository,
+      nodeReadWriteMutex,
+      cachedNodeConfigurationService,
+      reportingServiceImpl
+    )
   }
 }
+
+object InitLock

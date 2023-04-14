@@ -30,6 +30,7 @@ import _root_.zio.syntax._
 import cats.data._
 import cats.implicits._
 import cats.kernel.Order
+
 import com.normation.errors.Chained
 import com.normation.errors.IOResult
 import com.normation.errors.PureResult
@@ -39,6 +40,8 @@ import com.normation.errors.effectUioUnit
 import java.util.concurrent.TimeUnit
 import net.liftweb.common.{Logger => _, _}
 import org.slf4j.Logger
+import sun.misc.Signal
+import sun.misc.SignalHandler
 
 /**
  * This is our based error for Rudder. Any method that can
@@ -401,17 +404,6 @@ object zio {
 
     private val installedSignals = new java.util.concurrent.atomic.AtomicBoolean(false)
 
-    private def installSignalHandlers(runtime: Runtime[Any])(implicit trace: Trace, unsafe: Unsafe): Unit = {
-      if (!installedSignals.getAndSet(true)) {
-        val dumpFibers = { () => runtime.unsafe.run(Fiber.dumpAll)(trace, unsafe).getOrThrowFiberFailure() }
-
-        Unsafe.unsafe { implicit unsafe =>
-          Platform.addSignalHandler("USR1", dumpFibers)
-          Platform.addSignalHandler("USR2", dumpFibers)
-        }
-      }
-    }
-
     /*
      * Internal runtime. You should not access it within rudder.
      * If you need to use it for "unsafeRun", you should always pin the
@@ -420,7 +412,25 @@ object zio {
      */
     val internal = Runtime.default
 
-//    def platform: RuntimeConfig = internal.runtimeConfig
+    def installSignalHandlers(): Unit = {
+      if (!installedSignals.getAndSet(true)) {
+
+        val dumpFibers = { () =>
+          Unsafe.unsafe(implicit unsafe => Runtime.default.unsafe.run(Fiber.dumpAll).getOrThrowFiberFailure())
+        }
+
+        Signal.handle(new Signal("USR1"), new SignalHandler {
+          override def handle(sig: Signal): Unit = {
+            if(sig.getNumber == 10) println(s"Signal ${sig.getNumber}: ${sig.getName} correctly handled")
+            else println(s"Ignoring signal ${sig.getName} (${sig.getNumber})")
+          }
+        })
+        Unsafe.unsafe { implicit unsafe =>
+          Platform.addSignalHandler("USR2", dumpFibers)
+        }
+      }
+    }
+
     def layers:      ZLayer[Any, Nothing, Any] = ZLayer.fromZIOEnvironment(internal.environment.succeed)
     def environment: ZEnvironment[Any]         = internal.environment
 
@@ -440,12 +450,12 @@ object zio {
      * effect marked as blocking.
      */
     def unsafeRun[E, A](zio: => ZIO[Any, E, A]): A = {
+      println(s"******* unsafe run")
+      Thread.dumpStack()
+
       // unsafeRun will display a formatted fiber trace in case there is an error, which likely what we wants:
       // here, error were not prevented before run, so it's a defect that should be corrected.
-      Unsafe.unsafe { implicit unsafe =>
-        installSignalHandlers(internal)
-        internal.unsafe.run(zio).getOrThrowFiberFailure()
-      }
+      Unsafe.unsafe(implicit unsafe => Runtime.default.unsafe.run(ZIO.blocking(zio)).getOrThrowFiberFailure())
     }
 
   }

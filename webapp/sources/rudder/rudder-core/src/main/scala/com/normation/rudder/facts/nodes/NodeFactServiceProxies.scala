@@ -39,14 +39,19 @@ package com.normation.rudder.facts.nodes
 
 import com.normation.box._
 import com.normation.errors.IOResult
+import com.normation.eventlog.EventActor
+import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.FullInventory
 import com.normation.inventory.domain.Inventory
+import com.normation.inventory.domain.InventoryError.Inconsistency
 import com.normation.inventory.domain.InventoryStatus
+import com.normation.inventory.domain.KeyStatus
 import com.normation.inventory.domain.MachineUuid
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.NodeInventory
 import com.normation.inventory.domain.RemovedInventory
+import com.normation.inventory.domain.SecurityToken
 import com.normation.inventory.domain.Software
 import com.normation.inventory.services.core.FullInventoryRepository
 import com.normation.inventory.services.core.ReadOnlySoftwareNameDAO
@@ -57,6 +62,7 @@ import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.servers.Srv
+import com.normation.rudder.repository.WoNodeRepository
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.servers.NodeSummaryService
 import net.liftweb.common.Box
@@ -224,4 +230,30 @@ class FactNodeSummaryService(backend: NodeFactRepository) extends NodeSummarySer
   override def find(status: InventoryStatus, ids: NodeId*): Box[Seq[Srv]] = {
     backend.getAllOn(status).collect { case n if ids.contains(n.id) => n.toSrv }.run(ZSink.collectAll).toBox
   }
+}
+
+class WoFactNodeRepository(backend: NodeFactRepository) extends WoNodeRepository {
+  override def updateNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = {
+    for {
+      opt  <- backend.lookup(node.id)
+      fact <- opt match {
+                case None       => Inconsistency(s"Node with id '${node.id.value}' was not found").fail
+                case Some(fact) => NodeFact.updateNode(fact, node).succeed
+              }
+      _    <- backend.save(fact)(ChangeContext(modId, actor, reason))
+    } yield fact.toNode
+  }
+
+  override def deleteNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = ???
+
+  override def createNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = ???
+
+  override def updateNodeKeyInfo(
+      nodeId:         NodeId,
+      agentKey:       Option[SecurityToken],
+      agentKeyStatus: Option[KeyStatus],
+      modId:          ModificationId,
+      actor:          EventActor,
+      reason:         Option[String]
+  ): IOResult[Unit] = ???
 }

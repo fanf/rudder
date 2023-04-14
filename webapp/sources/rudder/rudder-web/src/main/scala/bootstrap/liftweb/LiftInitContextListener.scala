@@ -111,12 +111,6 @@ class LiftInitContextListener extends ContextLoaderListener {
     }
     FatalException.init(RUDDER_FATAL_EXCEPTIONS)
 
-    // install signal USR1 handling
-
-    println(s"***** sleeping a bit")
-    Thread.sleep(30*1000)
-    println(s"***** sleeping done")
-
     /*
      *
      * If any exception reaches that point in init, we want to stop

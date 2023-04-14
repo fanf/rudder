@@ -523,6 +523,7 @@ object NodeFact {
   // So the caller can say "I don't know what software" with a None, or "there's no software" with a Some(Nil)
   // Also, we don't update status here, use move or similar methods to change node status.
   def updateFullInventory(node: NodeFact, inventory: FullInventory, software: Option[Iterable[Software]]): NodeFact = {
+    import com.softwaremill.quicklens._
 
     def chunkOpt[A](getter: MachineInventory => Seq[A]): Chunk[A] = {
       inventory.machine match {
@@ -531,7 +532,6 @@ object NodeFact {
       }
     }
 
-    import com.softwaremill.quicklens._
     // not sure we wwant that, TODO POC
     require(
       node.id == inventory.node.main.id,
@@ -616,6 +616,25 @@ object NodeFact {
       .setTo(chunkOpt(_.videos))
       .modify(_.vms)
       .setTo(inventory.node.vms.toChunk)
+  }
+
+  def updateNode(node: NodeFact, n: Node): NodeFact = {
+    import com.softwaremill.quicklens._
+    node
+      .modify(_.description)
+      .setTo(Some(n.description))
+      .modify(_.rudderSettings.state)
+      .setTo(n.state)
+      .modify(_.rudderSettings.kind)
+      .setTo(if(n.isPolicyServer) NodeKind.Relay else NodeKind.Node)
+      .modify(_.creationDate)
+      .setTo(n.creationDate)
+      .modify(_.rudderSettings.reportingConfiguration)
+      .setTo(n.nodeReportingConfiguration)
+      .modify(_.properties)
+      .setTo(Chunk.fromIterable(n.properties))
+      .modify(_.rudderSettings.policyMode)
+      .setTo(n.policyMode)
   }
 
 }

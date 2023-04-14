@@ -859,10 +859,13 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
    */
   private[this] def getNotAcceptedNodeDataFromBackend(status: InventoryStatus): IOResult[Map[NodeId, NodeInfo]] = {
     import scala.collection.mutable.{Map => MutMap}
-
+println(s"***** in get node info")
     for {
+      _ <- effectUioUnit(s"******* in get node info 1")
       con        <- ldap
+      _ <- effectUioUnit(s"******* in get node info 2")
       allEntries <- getNodeInfoEntries(con, searchAttributes, status, None)
+      _ <- effectUioUnit(s"******* in get node info 3")
       res        <- {
         // some map of things - mutable, yes
         val nodeInventories    = MutMap[String, LDAPEntry]() // node_uuid -> entry
@@ -894,6 +897,7 @@ trait NodeInfoServiceCached extends NodeInfoService with NamedZioLogger with Cac
             }
         }
       }
+      _ <- effectUioUnit(s"******* in get node info 4")
     } yield {
       res
     }
