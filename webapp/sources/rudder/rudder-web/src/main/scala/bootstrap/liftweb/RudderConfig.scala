@@ -1754,13 +1754,12 @@ object RudderConfigInit {
                 )
               }
           }
-          .withParallelism(4)
+          .withParallelism(16)
           .map(_.toMap)
       }
 
       val app = for {
         _             <- InventoryDataLogger.debug("===== ********* =========")
-        _             <- effectUioUnit(Thread.dumpStack())
         _             <- InventoryDataLogger.debug("Getting pending node info for node fact repos")
         // empty because too long for test
         pendingInfos  <- deprecated.ldapNodeInfoServiceImpl.getPendingNodeInfos()
