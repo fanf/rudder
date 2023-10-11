@@ -628,7 +628,7 @@ class WebappTechniqueCompiler(
       //     name       |   description
       <INPUT>
         <NAME>{parameter.id.value.toUpperCase()}</NAME>
-        <DESCRIPTION>{parameter.name.value}</DESCRIPTION>
+        <DESCRIPTION>{parameter.name}</DESCRIPTION>
         <LONGDESCRIPTION>{parameter.description}</LONGDESCRIPTION>
         <CONSTRAINT>
           <TYPE>textarea</TYPE>
@@ -744,7 +744,7 @@ class ClassicTechniqueWriter(
     var bundleIncrement = 0
 
     val bundleParams =
-      if (technique.parameters.nonEmpty) technique.parameters.map(_.name.canonify).mkString("(", ",", ")") else ""
+      if (technique.parameters.nonEmpty) technique.parameters.map(_.variableName.value).mkString("(", ",", ")") else ""
 
     // generate a bundle which encapsulate the method_reporting_context + the actual method call
     // and the method to call this bundle
@@ -875,7 +875,8 @@ class ClassicTechniqueWriter(
          |# @description ${technique.description.replaceAll("\\R", "\n# ")}
          |# @version ${technique.version.value}
          |${technique.parameters.map { p =>
-          val param = ("name" -> p.name.value) ~ ("id" -> p.id.value) ~ ("description" -> p.description.replaceAll("\\R", "£# "))
+          val param =
+            ("name" -> p.variableName.value) ~ ("id" -> p.id.value) ~ ("description" -> p.description.replaceAll("\\R", "£# "))
           // for historical reason, we want to have real \n in the string, and not the char \n (because of how liftweb print them)
           s"""# @parameter ${compactRender(param).replaceAll("£#", "\n#")}"""
         }.mkString("\n")}
@@ -910,8 +911,8 @@ class ClassicTechniqueWriter(
     } else {
 
       val bundleParams =
-        if (technique.parameters.nonEmpty) technique.parameters.map(_.name.canonify).mkString("(", ",", ")") else ""
-      val args         = technique.parameters.map(p => s"$${${p.name.canonify}}").mkString(", ")
+        if (technique.parameters.nonEmpty) technique.parameters.map(_.variableName.value).mkString("(", ",", ")") else ""
+      val args         = technique.parameters.map(p => s"$${${p.variableName.value}}").mkString(", ")
 
       def bundleMethodCall(parentBlocks: List[MethodBlock])(method: MethodElem): List[(String, String)] = {
         method match {
@@ -1211,11 +1212,12 @@ class DSCTechniqueWriter(
     val parameters = technique.parameters.map { p =>
       val mandatory = if (p.mayBeEmpty) "$false" else "$true"
       s"""      [parameter(Mandatory=${mandatory})]
-         |      [string]$$${p.name.value},"""
+         |      [string]$$${p.variableName.value},"""
     }.mkString("\n").stripMargin('|')
 
     val techniquePath       = getTechniqueRelativePath(technique) + "/technique.ps1"
-    val techniqueParameters = technique.parameters.map(p => s"""    "${p.name.value}" = $$${p.name.value}""").mkString("\n")
+    val techniqueParameters =
+      technique.parameters.map(p => s"""    "${p.variableName.value}" = $$${p.variableName.value}""").mkString("\n")
 
     for {
 

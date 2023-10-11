@@ -58,8 +58,8 @@
     <SECTION name="Technique parameters">
       <INPUT>
         <NAME>1AAACD71-C2D5-482C-BCFF-5EEE6F8DA9C2</NAME>
-        <DESCRIPTION>technique_parameter</DESCRIPTION>
-        <LONGDESCRIPTION> a long description, with line 
+        <DESCRIPTION>technique parameter</DESCRIPTION>
+        <LONGDESCRIPTION> a long description, with line
  break within</LONGDESCRIPTION>
         <CONSTRAINT>
           <TYPE>textarea</TYPE>
