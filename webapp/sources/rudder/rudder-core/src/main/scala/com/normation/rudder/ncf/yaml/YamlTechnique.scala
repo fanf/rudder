@@ -89,8 +89,8 @@ case class Reporting(
 
 case class TechniqueParameter(
     id:            ParameterId,
-    name:          ParameterId,
-    description:   Option[String],
+    name:          String,
+    description:   String,
     documentation: Option[String],
     constraints:   Constraints
 )
@@ -211,9 +211,9 @@ object YamlTechniqueSerializer {
   private def fromJsonParam(techniqueParameter: com.normation.rudder.ncf.TechniqueParameter): TechniqueParameter = {
     TechniqueParameter(
       techniqueParameter.id,
-      techniqueParameter.variableName,
-      Some(techniqueParameter.name),
-      if (techniqueParameter.description.isEmpty) None else Some(techniqueParameter.description),
+      techniqueParameter.name,
+      techniqueParameter.description,
+      if (techniqueParameter.documentation.isEmpty) None else Some(techniqueParameter.documentation),
       Constraints(allow_empty = Some(techniqueParameter.mayBeEmpty))
     )
   }
@@ -221,8 +221,8 @@ object YamlTechniqueSerializer {
   private def toTechniqueParameter(techniqueParameter: TechniqueParameter): com.normation.rudder.ncf.TechniqueParameter = {
     com.normation.rudder.ncf.TechniqueParameter(
       techniqueParameter.id,
-      techniqueParameter.description.getOrElse(techniqueParameter.name.value),
       techniqueParameter.name,
+      techniqueParameter.description,
       techniqueParameter.documentation.getOrElse(""),
       techniqueParameter.constraints.allow_empty.getOrElse(false)
     )

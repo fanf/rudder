@@ -191,8 +191,8 @@ final case class MethodParameter(
 final case class TechniqueParameter(
     id:           ParameterId,
     name:         String,
-    variableName: ParameterId,
     description:  String,
+    documentation : String,
     mayBeEmpty:   Boolean
 )
 
