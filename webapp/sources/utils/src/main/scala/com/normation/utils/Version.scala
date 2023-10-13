@@ -40,8 +40,6 @@ package com.normation.utils
 import java.nio.charset.Charset
 import zio.Chunk
 
-import zio.Chunk
-
 /**
  * When comparing two version numbers, first the epoch of each are compared, then
  * the upstream_version if epoch is equal. epoch is compared numerically. The

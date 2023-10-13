@@ -37,8 +37,8 @@
 
 package com.normation.rudder.services.queries
 
-import com.github.ghik.silencer.silent
 import com.normation.NamedZioLogger
+
 import com.normation.errors._
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.AgentType.CfeCommunity
@@ -80,6 +80,7 @@ import com.normation.rudder.facts.nodes.RudderAgent
 import com.normation.rudder.facts.nodes.SoftwareFact
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.utils.DateFormaterService
+
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import net.liftweb.common._
@@ -88,7 +89,10 @@ import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
+
+import scala.annotation.nowarn
 import scala.util.Try
+
 import zio._
 import zio.syntax._
 
@@ -163,7 +167,7 @@ class TestNodeFactQueryProcessor {
       }
     }
 
-    @silent("a type was inferred to be `Object`")
+    @nowarn("msg=a type was inferred to be `Object`")
     implicit def StringToDate(s: String) = {
       // we have 3 potentials date format: the common one, '20130515 123456.948Z', and "2015-01-21 17:2"
       val p1 = DateTimeFormat.forPattern("YYYYMMddHHmmss.SSSZ")

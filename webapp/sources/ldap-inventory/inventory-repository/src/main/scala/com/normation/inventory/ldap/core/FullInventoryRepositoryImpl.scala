@@ -348,7 +348,7 @@ class FullInventoryRepositoryImpl(
     }
   }.chainError(s"Error when getting all node inventories for status '${inventoryStatus.name}'")
 
-  override def getInventories(inventoryStatus: InventoryStatus, nodeIds: Set[NodeId]): IOResult[Map[NodeId, FullInventory]] = {
+  def getInventories(inventoryStatus: InventoryStatus, nodeIds: Set[NodeId]): IOResult[Map[NodeId, FullInventory]] = {
     /*
      * We need to only get back the tree for nodes that we are looking for, we need to build filter like:
      * "(entryDN:dnSubtreeMatch:=cn=group_a,dc=abc,dc=xyz)"

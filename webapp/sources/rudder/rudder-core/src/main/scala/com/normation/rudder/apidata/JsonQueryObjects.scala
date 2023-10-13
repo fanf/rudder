@@ -59,7 +59,6 @@ import com.normation.rudder.domain.properties.PropertyProvider
 import com.normation.rudder.domain.queries.NodeReturnType
 import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.queries.QueryReturnType
-import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.rule.category.RuleCategory
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.rudder.services.queries.CmdbQueryParser

@@ -57,7 +57,6 @@ import com.normation.rudder.apidata.RestDataSerializer
 import com.normation.rudder.batch.AsyncDeploymentActor
 import com.normation.rudder.batch.AutomaticStartDeployment
 import com.normation.rudder.domain.NodeDit
-import com.normation.rudder.domain.logger.ApiLoggerPure
 import com.normation.rudder.domain.logger.NodeLogger
 import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.logger.TimingDebugLoggerPure

@@ -76,6 +76,7 @@ import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.queries.ResultTransformation
 import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.facts.nodes.ChangeContext
+import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.HooksLogger
@@ -104,7 +105,6 @@ import net.liftweb.common.EmptyBox
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
 import org.joda.time.DateTime
-
 import zio.{System => _, _}
 import zio.stream.ZSink
 import zio.syntax._
@@ -1070,7 +1070,7 @@ class HistorizeNodeStateOnChoice(
 class UpdateFactRepoOnChoice(
     override val name: String,
     inventoryStatus:   InventoryStatus, // expected inventory status of nodes for that processor
-    nodeFactStorage:   NodeFactStorage
+    factRepo:          NodeFactRepository
 ) extends UnitAcceptInventory with UnitRefuseInventory {
   override def preAccept(sms: Seq[FullInventory], modId: ModificationId, actor: EventActor): Box[Seq[FullInventory]] = Full(
     sms

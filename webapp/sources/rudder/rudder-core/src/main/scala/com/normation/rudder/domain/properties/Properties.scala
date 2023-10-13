@@ -39,17 +39,13 @@ package com.normation.rudder.domain.properties
 
 import com.normation.GitVersion
 import com.normation.GitVersion.Revision
-import com.normation.inventory.domain.CustomProperty
-
 import com.normation.errors._
 import com.normation.inventory.domain.CustomProperty
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.services.policies.ParameterEntry
-
 import com.typesafe.config._
-
 import java.util.regex.Pattern
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._

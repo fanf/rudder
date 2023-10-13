@@ -83,6 +83,7 @@ import com.normation.rudder.services.reports.CachedNodeConfigurationService
 import com.normation.rudder.services.reports.CacheExpectedReportAction.RemoveNodeInCache
 import com.normation.rudder.services.servers.DeletionResult._
 import com.normation.utils.StringUuidGenerator
+
 import com.normation.zio._
 import com.unboundid.ldap.sdk.Modification
 import com.unboundid.ldap.sdk.ModificationType
@@ -828,7 +829,7 @@ class CleanUpNodePolicyFiles(varRudderShare: String) extends PostNodeDeleteActio
   }
 }
 
-class DeleteNodeFact(nodeFactStorage: NodeFactStorage) extends PostNodeDeleteAction {
+class DeleteNodeFact(nodeFactRepo: NodeFactRepository) extends PostNodeDeleteAction {
   override def run(
       nodeId: NodeId,
       mode:   DeleteMode,

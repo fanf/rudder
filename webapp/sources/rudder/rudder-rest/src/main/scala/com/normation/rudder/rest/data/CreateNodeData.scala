@@ -277,7 +277,6 @@ object Validation {
       case UnknownMachineType                => UnknownMachineType.kind
       case PhysicalMachineType               => "physical"
       case VirtualMachineType(UnknownVmType) => "vm"
-      case UnknownMachineType                => "unknown"
       case VirtualMachineType(vm)            => vm.name
     }
   }

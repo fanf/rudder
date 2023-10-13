@@ -38,7 +38,7 @@
 package com.normation.rudder.facts.nodes
 
 import better.files._
-import com.github.ghik.silencer.silent
+
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.provisioning._
@@ -57,10 +57,12 @@ import com.normation.rudder.inventory.InventoryProcessor
 import com.normation.rudder.inventory.InventoryProcessStatus.Saved
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
 import cron4s.Cron
+
 import java.security.Security
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -69,6 +71,9 @@ import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.specs2.specification.BeforeAfterAll
+
+import scala.annotation.nowarn
+
 import zio._
 import zio.concurrent.ReentrantLock
 
@@ -82,7 +87,7 @@ import zio.concurrent.ReentrantLock
  *
  * That test does not check for the file observer, only save logic.
  */
-@silent("a type was inferred to be `\\w+`; this may indicate a programming error.")
+@nowarn("msg=a type was inferred to be `\\w+`; this may indicate a programming error.")
 @RunWith(classOf[JUnitRunner])
 class TestSaveInventory extends Specification with BeforeAfterAll {
 

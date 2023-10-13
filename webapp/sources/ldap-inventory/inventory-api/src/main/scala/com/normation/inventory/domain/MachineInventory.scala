@@ -157,10 +157,6 @@ object VmType {
   def parse(s: String) = all.find(_.name == s.toLowerCase).getOrElse(UnknownVmType)
 }
 
-  def all              = ca.mrvisser.sealerate.values[VmType]
-  def parse(s: String) = all.find(_.name == s.toLowerCase).getOrElse(UnknownVmType)
-}
-
 /**
  * The different machine type. For now, we know
  * two of them:

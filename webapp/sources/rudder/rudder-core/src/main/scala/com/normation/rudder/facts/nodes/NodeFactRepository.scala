@@ -38,15 +38,22 @@
 package com.normation.rudder.facts.nodes
 
 import NodeFactSerialisation._
+
 import better.files.File
+
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
+import com.normation.rudder.domain.logger.NodeLogger
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
+
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import org.eclipse.jgit.lib.PersonIdent
+
+import java.nio.charset.StandardCharsets
+
 import zio._
 import zio.concurrent.ReentrantLock
 import zio.json._
@@ -204,11 +211,16 @@ private object InternalChangeEvent {
  *
  */
 object CoreNodeFactRepository {
-  def make(storage: NodeFactStorage, pending: Map[NodeId, NodeFact], accepted: Map[NodeId, NodeFact], callbacks: Chunk[NodeFactChangeEventCallback]) = for {
-    p <- Ref.make(pending)
-    a <- Ref.make(accepted)
+  def make(
+      storage:   NodeFactStorage,
+      pending:   Map[NodeId, NodeFact],
+      accepted:  Map[NodeId, NodeFact],
+      callbacks: Chunk[NodeFactChangeEventCallback]
+  ) = for {
+    p    <- Ref.make(pending)
+    a    <- Ref.make(accepted)
     lock <- ReentrantLock.make()
-    cbs <- Ref.make(callbacks)
+    cbs  <- Ref.make(callbacks)
   } yield {
     new CoreNodeFactRepository(storage, p, a, cbs, lock)
   }
@@ -376,7 +388,7 @@ class CoreNodeFactRepository(
                             deleteOn(pendingNodes, nodeId) *>
                             deleteOn(acceptedNodes, nodeId) *>
                             NodeFactChangeEventCC(Deleted(x), cc).succeed
-                          case (RemovedInventory, None, None) =>
+                          case (RemovedInventory, None, None)        =>
                             NodeFactChangeEventCC(Noop(nodeId), cc).succeed
                           case (_, None, None)                       =>
                             Inconsistency(
@@ -488,6 +500,21 @@ trait NodeFactStorage {
    * any reference to that node.
    */
   def delete(nodeId: NodeId): IOResult[Unit]
+
+  def getAllPending():  IOStream[NodeFact]
+  def getAllAccepted(): IOStream[NodeFact]
+}
+
+/*
+ * Implementaton that store nothing and that can be used in tests or when a pure
+ * in-memory version of the nodeFactRepos is needed.
+ */
+object NoopFactStorage extends NodeFactStorage {
+  override def save(nodeFact: NodeFact):                              IOResult[Unit]     = ZIO.unit
+  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]     = ZIO.unit
+  override def delete(nodeId: NodeId):                                IOResult[Unit]     = ZIO.unit
+  override def getAllPending():                                       IOStream[NodeFact] = ZStream.empty
+  override def getAllAccepted():                                      IOStream[NodeFact] = ZStream.empty
 }
 
 /*
@@ -510,15 +537,38 @@ object GitNodeFactRepositoryImpl {
   implicit val codecNodeFactArchive: JsonCodec[NodeFactArchive] = DeriveJsonCodec.gen
 }
 
+/*
+ * Nodes are stored in the git facts repo under the relative path "nodes".
+ * They are then stored:
+ * - under nodes/pending or nodes/accepted given their status (which means that changing status of a node is
+ *   a special operation)
+ */
 class GitNodeFactRepositoryImpl(
     override val gitRepo: GitRepositoryProvider,
-    groupOwner:           String
+    groupOwner:           String,
+    actuallyCommit:       Boolean
 ) extends NodeFactStorage with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
 
   override val relativePath = "nodes"
   override val entity:     String = "node"
-  override val fileFormat: String = "1"
+  override val fileFormat: String = "10"
   val committer = new PersonIdent("rudder-fact", "email not set")
+
+  if (actuallyCommit) {
+    NodeLogger.info(s"Nodes changes will be historized in Git in ${gitRepo.rootDirectory.pathAsString}/nodes")
+  } else {
+    NodeLogger.info(
+      s"Nodes changes won't be historized in Git, only last state is stored in ${gitRepo.rootDirectory.pathAsString}/nodes"
+    )
+  }
+
+  if (actuallyCommit) {
+    NodeLogger.info(s"Nodes changes will be historized in Git in ${gitRepo.rootDirectory.pathAsString}/nodes")
+  } else {
+    NodeLogger.info(
+      s"Nodes changes won't be historized in Git, only last state is stored in ${gitRepo.rootDirectory.pathAsString}/nodes"
+    )
+  }
 
   override def getEntityPath(id: (NodeId, InventoryStatus)): String = {
     s"${id._2.name}/${id._1.value}.json"
@@ -569,22 +619,37 @@ class GitNodeFactRepositoryImpl(
     NodeFactArchive(entity, fileFormat, node).toJsonPretty.succeed
   }
 
+  private[nodes] def getAll(base: File): IOStream[NodeFact] = {
+    // TODO should be from git head, not from file directory
+    val stream = ZStream.fromIterator(base.collectChildren(_.extension(includeDot = true, includeAll = true) == Some(".json")))
+    stream
+      .mapError(ex => SystemError("Error when reading node fact persisted file", ex))
+      .mapZIO(f =>
+        f.contentAsString(StandardCharsets.UTF_8).fromJson[NodeFact].toIO.chainError(s"Error when decoding ${f.pathAsString}")
+      )
+  }
+
+  override def getAllPending():  IOStream[NodeFact] = getAll(gitRepo.rootDirectory / relativePath / PendingInventory.name)
+  override def getAllAccepted(): IOStream[NodeFact] = getAll(gitRepo.rootDirectory / relativePath / AcceptedInventory.name)
+
   override def save(nodeFact: NodeFact): IOResult[Unit] = {
     if (nodeFact.rudderSettings.status == RemovedInventory) {
+      InventoryDataLogger.info(
+        s"Not persisting deleted node '${nodeFact.fqdn}' [${nodeFact.id.value}]: it has removed inventory status"
+      ) *>
       ZIO.unit
     } else {
       for {
-        json   <- toJson(nodeFact)
-        file    = getFile(nodeFact.id, nodeFact.rudderSettings.status)
-        _      <- IOResult.attempt(file.write(json))
-        _      <- IOResult.attempt(file.setGroup(groupOwner))
-        gitPath = toGitPath(file.toJava)
-        saved  <-
-          commitAddFile(
-            committer,
-            gitPath,
-            s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
-          )
+        json <- toJson(nodeFact)
+        file  = getFile(nodeFact.id, nodeFact.rudderSettings.status)
+        _    <- IOResult.attempt(file.write(json))
+        _    <- IOResult.attempt(file.setGroup(groupOwner))
+        _    <- ZIO.when(actuallyCommit) {
+                  commitAddFile(
+                    committer,
+                    toGitPath(file.toJava),
+                    s"Save inventory facts for ${nodeFact.rudderSettings.status.name} node '${nodeFact.fqdn}' (${nodeFact.id.value})"
+                  )
                 }
       } yield ()
     }
@@ -593,11 +658,15 @@ class GitNodeFactRepositoryImpl(
   // when we delete, we check for all path to also remove possible left-over
   // we may need to recreate pending/accepted directory, because git delete
   // empty directories.
-  override def delete(nodeId: NodeId): IOResult[Unit] = {
+  override def delete(nodeId: NodeId) = {
     ZIO.foreach(List(PendingInventory, AcceptedInventory)) { s =>
       val file = getFile(nodeId, s)
       ZIO.whenZIO(IOResult.attempt(file.exists)) {
-        commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
+        if (actuallyCommit) {
+          commitRmFile(committer, toGitPath(file.toJava), s"Updating facts for node '${nodeId.value}': deleted")
+        } else {
+          IOResult.attempt(file.delete())
+        }
       }
     } *> checkInit()
   }
@@ -616,12 +685,13 @@ class GitNodeFactRepositoryImpl(
         IOResult.attempt(fromFile.moveTo(toFile)(File.CopyOptions(overwrite = true))) *>
         ZIO.when(actuallyCommit) {
           commitMvDirectory(
-          committer,
+            committer,
             toGitPath(fromFile.toJava),
             toGitPath(toFile.toJava),
-          s"Updating facts for node '${nodeId.value}' to status: ${to.name}"
-        ), // if source file does not exist, check if dest is present. If present, assume it's ok, else error
-
+            s"Updating facts for node '${nodeId.value}' to status: ${to.name}"
+          )
+        },
+        // if source file does not exist, check if dest is present. If present, assume it's ok, else error
         ZIO.whenZIO(IOResult.attempt(!toFile.exists)) {
           Inconsistency(
             s"Error when trying to move fact for node '${nodeId.value}' from '${fromFile.pathAsString}' to '${toFile.pathAsString}': missing files"

@@ -45,10 +45,8 @@ import java.security.Signature
 import java.util.Properties
 import org.apache.commons.io.IOUtils
 import org.bouncycastle.util.encoders.Hex
-
 import zio._
 import zio.syntax._
-import com.normation.errors.IOResult
 
 /**
  * We are using a simple date structure that handle the digest file
