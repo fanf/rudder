@@ -57,6 +57,7 @@ trait ReadOnlySoftwareNameDAO {
 trait ReadOnlySoftwareDAO extends ReadOnlySoftwareNameDAO {
 
   def getSoftware(ids: Seq[SoftwareUuid]): IOResult[Seq[Software]]
+
   /**
     * Returns all software ids in ou=Software,ou=Inventories
     */

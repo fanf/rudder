@@ -474,7 +474,7 @@ class InventoryMapper(
       case VirtualMachineType(Virtuozzo)     => OC(OC_VM_VIRTUOZZO)
       case VirtualMachineType(LXC)           => OC(OC_VM_LXC)
       case PhysicalMachineType               => OC(OC_PM)
-      case UnknownMachineType                => OC(OC_PM) //we didn't had unknown in that time and physical was the default
+      case UnknownMachineType                => OC(OC_PM) // we didn't had unknown in that time and physical was the default
     }
   }
 

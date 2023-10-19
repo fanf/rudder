@@ -166,7 +166,7 @@ object VmType {
 sealed trait MachineType { def kind: String }
 
 final case class VirtualMachineType(vm: VmType) extends MachineType {
-  override val kind = vm.name
+  override val kind       = vm.name
   override def toString() = kind
 }
 case object PhysicalMachineType                 extends MachineType {
