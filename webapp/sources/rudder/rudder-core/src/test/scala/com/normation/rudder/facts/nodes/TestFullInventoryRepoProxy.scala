@@ -40,6 +40,7 @@ package com.normation.rudder.facts.nodes
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.services.core.FullInventoryRepository
+
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
@@ -47,8 +48,10 @@ import org.joda.time.DateTime
 import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
+
 import zio._
 import zio.concurrent.ReentrantLock
+import zio.stream.ZStream
 
 final case class SystemError(cause: Throwable) extends RudderError {
   def msg = "Error in test"
@@ -95,6 +98,8 @@ class TestInventory extends Specification {
     override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
     override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
     override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
+    override def getAllPending(): IOStream[NodeFact] = ZStream.empty
+    override def getAllAccepted(): IOStream[NodeFact] = ZStream.empty
   }
 
   val pendingRef  = (Ref.make(Map[NodeId, NodeFact]())).runNow

@@ -116,7 +116,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     }
   }
 
-  implicit def stringToNodeId(id: String) = NodeId(id)
+  implicit def stringToNodeId(id: String): NodeId = NodeId(id)
 
   val basePath = s"/tmp/test-rudder-inventory/${DateFormaterService.gitTagFormat.print(DateTime.now())}"
 
@@ -153,7 +153,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   val gitFactRepoGC       = new GitGC(gitFactRepoProvider, cronSchedule)
   gitFactRepoGC.start()
 
-  val gitFactRepo = new GitNodeFactRepositoryImpl(gitFactRepoProvider, "rudder")
+  val gitFactRepo = new GitNodeFactRepositoryImpl(gitFactRepoProvider, "rudder", true)
   gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
   // TODO WARNING POC: this can't work on a machine with lots of node
@@ -239,7 +239,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   val newfqdn       = "node42.fqdn"
   val fqdn          = "node2.rudder.local"
 
-  implicit val cc = ChangeContext.newForRudder()
+  implicit val cc: ChangeContext = ChangeContext.newForRudder()
 
   "Saving a new, unknown inventory" should {
 

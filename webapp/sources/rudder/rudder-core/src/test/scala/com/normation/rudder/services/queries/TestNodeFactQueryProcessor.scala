@@ -94,6 +94,7 @@ import scala.annotation.nowarn
 import scala.util.Try
 
 import zio._
+import zio.stream.ZStream
 import zio.syntax._
 
 /*
@@ -105,8 +106,8 @@ import zio.syntax._
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
 class TestNodeFactQueryProcessor {
-  implicit def StringToNodeId(s: String)  = NodeId(s)
-  implicit def StringToGroupId(s: String) = NodeGroupId(NodeGroupUid(s))
+  implicit def StringToNodeId(s: String):  NodeId      = NodeId(s)
+  implicit def StringToGroupId(s: String): NodeGroupId = NodeGroupId(NodeGroupUid(s))
 
   val logger = NamedZioLogger(this.getClass.getPackageName + "." + this.getClass.getSimpleName)
 
@@ -500,6 +501,8 @@ class TestNodeFactQueryProcessor {
       override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
       override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
       override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
+      override def getAllPending(): IOStream[NodeFact] = ZStream.empty
+      override def getAllAccepted(): IOStream[NodeFact] = ZStream.empty
     }
     CoreNodeFactRepository.make(NoopStorage, Map(), allAcceptedNodes, Chunk.empty).runNow
   }

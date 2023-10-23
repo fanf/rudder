@@ -1988,7 +1988,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     override def getAllInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, FullInventory]] =
       getGenericAll(inventoryStatus, _fullInventory)
 
-    override def getInventories(inventoryStatus: InventoryStatus, nodeIds: Set[NodeId]): IOResult[Map[NodeId, FullInventory]] =
+    def getInventories(inventoryStatus: InventoryStatus, nodeIds: Set[NodeId]): IOResult[Map[NodeId, FullInventory]] =
       getAllInventories(inventoryStatus).map(_.filter(x => nodeIds.contains(x._1)))
 
     override def getAllNodeInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, NodeInventory]] =
@@ -2029,7 +2029,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     }
 
     // not implemented yet
-    override def getNumberOfManagedNodes: Int = ???
+    override def getNumberOfManagedNodes: IOResult[Int] = ???
 
     override def delete(id: NodeId, inventoryStatus: InventoryStatus):               IOResult[Seq[LDIFChangeRecord]] = ???
     override def move(id: NodeId, from: InventoryStatus, into: InventoryStatus):     IOResult[Seq[LDIFChangeRecord]] = ???
@@ -2886,8 +2886,9 @@ class MockLdapQueryParsing(mockGit: MockGitConfigRepo, mockNodeGroups: MockNodeG
   val nodeDit             = new NodeDit(LDAP_BASEDN)
   val inventoryDitService: InventoryDitService =
     new InventoryDitServiceImpl(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
-  val getSubGroupChoices = () => mockNodeGroups.groupsRepo.getAll().map(seq => seq.map(g => SubGroupChoice(g.id, g.name)))
-  val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, getSubGroupChoices)
+  val getSubGroupChoices = new DefaultSubGroupComparatorRepository(mockNodeGroups.groupsRepo)
+  val nodeQueryCriteriaData = new NodeQueryCriteriaData(() => getSubGroupChoices)
+  val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryCriteriaData)
   val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = Map[String, ObjectCriterion]() ++ ditQueryDataImpl.criteriaMap
   }

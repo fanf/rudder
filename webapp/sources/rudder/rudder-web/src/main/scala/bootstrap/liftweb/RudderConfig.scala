@@ -54,15 +54,16 @@ import bootstrap.liftweb.checks.migration.MigrateNodeAcceptationInventories
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
+
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
+
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
-import com.normation.errors.effectUioUnit
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core._
 import com.normation.inventory.ldap.provisioning.AddIpValues
@@ -122,6 +123,7 @@ import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
 import com.normation.rudder.facts.nodes.WoFactNodeRepository
+import com.normation.rudder.git.GitRepositoryProvider
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
 import com.normation.rudder.inventory.DefaultProcessInventoryService
@@ -203,6 +205,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -210,6 +213,7 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -219,8 +223,10 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
+
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
+
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -408,26 +414,6 @@ object RudderParsedProperties {
   //
 
   val filteredPasswords = scala.collection.mutable.Buffer[String]()
-
-  def logRudderParsedProperties() = {
-    import scala.jdk.CollectionConverters._
-    val config = RudderProperties.config
-    if (ApplicationLogger.isInfoEnabled) {
-      // sort properties by key name
-      val properties = config.entrySet.asScala.toSeq.sortBy(_.getKey).flatMap { x =>
-        // the log line: registered property: property_name=property_value
-        if (hiddenRegisteredProperties.contains(x.getKey)) None
-        else {
-          Some(
-            s"registered property: ${x.getKey}=${if (filteredPasswords.contains(x.getKey)) "**********" else x.getValue.render}"
-          )
-        }
-      }
-      ApplicationLogger.info("List of registered properties:")
-      properties.foreach(p => ApplicationLogger.info(p))
-      ApplicationLogger.info("Plugin's license directory: '/opt/rudder/etc/plugins/licenses/'")
-    }
-  }
 
   def logRudderParsedProperties() = {
     import scala.jdk.CollectionConverters._
@@ -1182,7 +1168,6 @@ object RudderConfig extends Loggable {
   val mainCampaignService:                 MainCampaignService                        = rci.mainCampaignService
   val ncfTechniqueReader:                  ncf.EditorTechniqueReader                  = rci.ncfTechniqueReader
   val newNodeManager:                      NewNodeManager                             = rci.newNodeManager
-  val newNodeManagerHooks:                 NewNodeManagerHooks                        = rci.newNodeManagerHooks
   val nodeDit:                             NodeDit                                    = rci.nodeDit
   val nodeFactRepository:                  NodeFactRepository                         = rci.nodeFactRepository
   val nodeGrid:                            NodeGrid                                   = rci.nodeGrid
@@ -1243,9 +1228,6 @@ object RudderConfig extends Loggable {
   val woRuleRepository:                    WoRuleRepository                           = rci.woRuleRepository
   val workflowEventLogService:             WorkflowEventLogService                    = rci.workflowEventLogService
   val workflowLevelService:                DefaultWorkflowLevel                       = rci.workflowLevelService
-  val aggregateReportScheduler:            FindNewReportsExecution                    = rci.aggregateReportScheduler
-  val secretEventLogService:               SecretEventLogService                      = rci.secretEventLogService
-  val changeRequestChangesSerialisation:   ChangeRequestChangesSerialisation          = rci.changeRequestChangesSerialisation
   val gitRepo:                             GitRepositoryProvider                      = rci.gitRepo
   val gitModificationRepository:           GitModificationRepository                  = rci.gitModificationRepository
 
@@ -1310,7 +1292,6 @@ case class RudderServiceApi(
     ruleApplicationStatus:               RuleApplicationStatusService,
     propertyEngineService:               PropertyEngineService,
     newNodeManager:                      NewNodeManager,
-    newNodeManagerHooks:                 NewNodeManagerHooks,
     nodeGrid:                            NodeGrid,
     nodeSummaryService:                  NodeSummaryService,
     jsTreeUtilService:                   JsTreeUtilService,
@@ -1832,7 +1813,7 @@ object RudderConfigInit {
         _.path,
         RUDDER_GIT_ROOT_CONFIG_REPO
       ),
-      new RuddercServiceImpl(RUDDERC_CMD, RUDDERC_FALLBACK_RETURN_CODE, 5.seconds),
+      new RuddercServiceImpl(RUDDERC_CMD, 5.seconds),
       TECHNIQUE_COMPILER_APP,
       _.path,
       RUDDER_GIT_ROOT_CONFIG_REPO
@@ -1876,7 +1857,7 @@ object RudderConfigInit {
       .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
     lazy val gitFactRepoGC       = new GitGC(gitFactRepoProvider, RUDDER_GIT_GC)
     gitFactRepoGC.start()
-    lazy val gitFactRepo         = new GitNodeFactRepositoryImpl(gitFactRepoProvider, RUDDER_GROUP_OWNER_CONFIG_REPO)
+    lazy val gitFactRepo         = new GitNodeFactRepositoryImpl(gitFactRepoProvider, RUDDER_GROUP_OWNER_CONFIG_REPO, true)
     gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
     // TODO WARNING POC: this can't work on a machine with lots of node
@@ -2587,6 +2568,8 @@ object RudderConfigInit {
 
     lazy val databaseManagerImpl = new DatabaseManagerImpl(reportsRepositoryImpl, updateExpectedRepo)
 
+    lazy val inventoryHistoryJdbcRepository = new InventoryHistoryJdbcRepository(doobie)
+
     lazy val personIdentServiceImpl: PersonIdentService = new TrivialPersonIdentService
     lazy val personIdentService = personIdentServiceImpl
 
@@ -3002,8 +2985,6 @@ object RudderConfigInit {
         composedManager,
         listNodes
       )
-
-      new NewNodeManagerImpl(composed, listNodes)
     }
 
 
@@ -3275,7 +3256,7 @@ object RudderConfigInit {
       new CheckRudderGlobalParameter(roLDAPParameterRepository, woLDAPParameterRepository, uuidGen),
       new CheckInitXmlExport(itemArchiveManagerImpl, personIdentServiceImpl, uuidGen),
       new MigrateNodeAcceptationInventories(
-        nodeInfoService,
+        nodeFactInfoService,
         doobie,
         inventoryHistoryLogRepository,
         inventoryHistoryJdbcRepository,
@@ -3598,7 +3579,7 @@ object RudderConfigInit {
           nodeSummaryServiceImpl,
           unitAcceptors,
           unitRefusors,
-          inventoryHistoryLogRepository,
+          inventoryHistoryJdbcRepository,
           eventLogRepository,
           dyngroupUpdaterBatch,
           cachedNodeConfigurationService,
@@ -3738,7 +3719,6 @@ object RudderConfigInit {
       ruleApplicationStatusImpl,
       propertyEngineService,
       newNodeManagerImpl,
-      newNodeHookRunner,
       nodeGridImpl,
       nodeSummaryServiceImpl,
       jsTreeUtilServiceImpl,

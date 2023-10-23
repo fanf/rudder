@@ -236,8 +236,8 @@ object ParseVersion {
     case (seq, n) => // seq is at least 1
       seq.last match {
         case Separator.Tilde =>
-          listOfSepToPart(seq.init.toList) ::: VersionPart.Before(Separator.Tilde, PartType.Numeric(n.toInt)) :: Nil
-        case sep             => listOfSepToPart(seq.init.toList) ::: VersionPart.After(sep, PartType.Numeric(n.toInt)) :: Nil
+          listOfSepToPart(seq.init.toList) ::: VersionPart.Before(Separator.Tilde, PartType.Numeric(n)) :: Nil
+        case sep             => listOfSepToPart(seq.init.toList) ::: VersionPart.After(sep, PartType.Numeric(n)) :: Nil
       }
   }
 
@@ -251,7 +251,7 @@ object ParseVersion {
   }
 
   def noSepPart1[A: P] = P(chars).map(c => VersionPart.After(Separator.None, c) :: Nil)
-  def noSepPart2[A: P] = P(num).map(n => VersionPart.After(Separator.None, PartType.Numeric(n.toInt)) :: Nil)
+  def noSepPart2[A: P] = P(num).map(n => VersionPart.After(Separator.None, PartType.Numeric(n)) :: Nil)
 
   def startNum[A: P] = P(num).map(i => PartType.Numeric(i))
 
