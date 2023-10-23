@@ -1988,9 +1988,6 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     override def getAllInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, FullInventory]] =
       getGenericAll(inventoryStatus, _fullInventory)
 
-    def getInventories(inventoryStatus: InventoryStatus, nodeIds: Set[NodeId]): IOResult[Map[NodeId, FullInventory]] =
-      getAllInventories(inventoryStatus).map(_.filter(x => nodeIds.contains(x._1)))
-
     override def getAllNodeInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, NodeInventory]] =
       getGenericAll(inventoryStatus, _fullInventory(_).map(_.node))
 
@@ -2308,7 +2305,6 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
       ???
 
     override def refuse(id: Seq[NodeId], modId: ModificationId, actor: EventActor, actorIp: String): Box[Seq[Srv]] = ???
-
   }
 }
 
@@ -2887,8 +2883,8 @@ class MockLdapQueryParsing(mockGit: MockGitConfigRepo, mockNodeGroups: MockNodeG
   val inventoryDitService: InventoryDitService =
     new InventoryDitServiceImpl(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl)
   val getSubGroupChoices = new DefaultSubGroupComparatorRepository(mockNodeGroups.groupsRepo)
-  val nodeQueryCriteriaData = new NodeQueryCriteriaData(() => getSubGroupChoices)
-  val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryCriteriaData)
+  val nodeQueryData      = new NodeQueryCriteriaData(() => getSubGroupChoices)
+  val ditQueryDataImpl   = new DitQueryData(acceptedNodesDitImpl, nodeDit, rudderDit, nodeQueryData)
   val queryParser        = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = Map[String, ObjectCriterion]() ++ ditQueryDataImpl.criteriaMap
   }
