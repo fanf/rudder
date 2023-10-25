@@ -74,7 +74,8 @@ class NodeFactInventorySaver(
     backend:                NodeFactRepository,
     val preCommitPipeline:  Seq[PreCommit],
     val postCommitPipeline: Seq[PostCommit[Unit]]
-) extends PipelinedInventorySaver[Unit] {
+)(implicit s:               NodeFactSaver[NodeFact])
+    extends PipelinedInventorySaver[Unit] {
 
   override def commitChange(inventory: Inventory): IOResult[Unit] = {
     implicit val cc = ChangeContext.newForRudder()
@@ -85,7 +86,8 @@ class NodeFactInventorySaver(
 /*
  * Proxy for node fact to full inventory / node inventory / machine inventory / node info and their repositories
  */
-class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService {
+class NodeInfoServiceProxy(backend: NodeFactRepository)(implicit g: NodeFactGetter[CoreNodeFact]) extends NodeInfoService {
+
   override def getNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
     backend.getAccepted(nodeId).map(_.map(_.toNodeInfo))
   }
@@ -151,8 +153,10 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
  * There is also a limit with software, since now they are directly in the node and they don't
  * have specific IDs. So they will need to be retrieved by node id.
  */
-class NodeFactFullInventoryRepository(backend: NodeFactRepository)
-    extends FullInventoryRepository[Unit] with ReadOnlySoftwareNameDAO {
+class NodeFactFullInventoryRepository(backend: NodeFactRepository)(implicit
+    g:                                    NodeFactGetter[NodeFact],
+    s:                                     NodeFactSaver[NodeFact]
+) extends FullInventoryRepository[Unit] with ReadOnlySoftwareNameDAO {
 
   override def get(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[FullInventory]] = {
     backend.getOn(id, inventoryStatus).map(_.map(_.toFullInventory))
@@ -185,7 +189,7 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository)
                case None       => NodeFact.newFromFullInventory(serverAndMachine, None)
                case Some(fact) => NodeFact.updateFullInventory(fact, serverAndMachine, None)
              }
-      _   <- backend.save(fact)(ChangeContext.newForRudder())
+      _   <- backend.save(fact)(ChangeContext.newForRudder(), s)
     } yield ()
   }
 
@@ -226,21 +230,21 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository)
   }
 }
 
-class FactNodeSummaryService(backend: NodeFactRepository) extends NodeSummaryService {
+class FactNodeSummaryService(backend: NodeFactRepository)(implicit g: NodeFactGetter[CoreNodeFact]) extends NodeSummaryService {
   override def find(status: InventoryStatus, ids: NodeId*): Box[Seq[Srv]] = {
     backend.getAllOn(status).collect { case n if ids.contains(n.id) => n.toSrv }.run(ZSink.collectAll).toBox
   }
 }
 
-class WoFactNodeRepository(backend: NodeFactRepository) extends WoNodeRepository {
+class WoFactNodeRepository(backend: NodeFactRepository)(implicit g: NodeFactGetter[CoreNodeFact], s: NodeFactSaver[CoreNodeFact]) extends WoNodeRepository {
   override def updateNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = {
     for {
       opt  <- backend.lookup(node.id)
       fact <- opt match {
                 case None       => Inconsistency(s"Node with id '${node.id.value}' was not found").fail
-                case Some(fact) => NodeFact.updateNode(fact, node).succeed
+                case Some(fact) => CoreNodeFact.updateNode(fact, node).succeed
               }
-      _    <- backend.save(fact)(ChangeContext(modId, actor, reason))
+      _    <- backend.save(fact)(ChangeContext(modId, actor, reason), s)
     } yield fact.toNode
   }
 

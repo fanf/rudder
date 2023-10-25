@@ -115,7 +115,7 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.facts.nodes.FactNodeSummaryService
-import com.normation.rudder.facts.nodes.GitNodeFactRepositoryImpl
+import com.normation.rudder.facts.nodes.GitNodeFactStorageImpl
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepository
@@ -1857,7 +1857,7 @@ object RudderConfigInit {
       .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
     lazy val gitFactRepoGC       = new GitGC(gitFactRepoProvider, RUDDER_GIT_GC)
     gitFactRepoGC.start()
-    lazy val gitFactRepo         = new GitNodeFactRepositoryImpl(gitFactRepoProvider, RUDDER_GROUP_OWNER_CONFIG_REPO, true)
+    lazy val gitFactRepo         = new GitNodeFactStorageImpl(gitFactRepoProvider, RUDDER_GROUP_OWNER_CONFIG_REPO, true)
     gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
     // TODO WARNING POC: this can't work on a machine with lots of node

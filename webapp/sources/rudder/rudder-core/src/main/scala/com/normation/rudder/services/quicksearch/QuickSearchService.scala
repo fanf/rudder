@@ -43,6 +43,8 @@ import com.normation.ldap.sdk.LDAPConnectionProvider
 import com.normation.ldap.sdk.RoLDAPConnection
 import com.normation.rudder.domain.NodeDit
 import com.normation.rudder.domain.RudderDit
+import com.normation.rudder.facts.nodes.CoreNodeFact
+import com.normation.rudder.facts.nodes.NodeFactGetter
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.utils.Control._
@@ -64,7 +66,8 @@ class FullQuickSearchService(implicit
     val inventoryDit:   InventoryDit,
     val rudderDit:      RudderDit,
     val directiveRepo:  RoDirectiveRepository,
-    val nodeInfos:      NodeFactRepository
+    val nodeInfos:      NodeFactRepository,
+    val g:              NodeFactGetter[CoreNodeFact]
 ) extends Loggable {
 
   import QuickSearchService._
@@ -111,12 +114,13 @@ object QuickSearchService {
       inventoryDit:               InventoryDit,
       nodeDit:                    NodeDit,
       rudderDit:                  RudderDit,
-      nodeFactRepo:               NodeFactRepository
+      nodeFactRepo:               NodeFactRepository,
+      g:                          NodeFactGetter[CoreNodeFact]
   ) {
 
     import QSBackend._
 
-    def search(query: Query) = b match {
+    def search(query: Query): Box[Seq[QuickSearchResult]] = b match {
       case LdapBackend      => QSLdapBackend.search(query)
       case DirectiveBackend => QSDirectiveBackend.search(query)
       case NodeFactBackend  => QSNodeFactBackend.search(query)

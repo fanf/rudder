@@ -51,17 +51,23 @@ import com.normation.rudder.domain.policies.Tag
 import com.normation.rudder.domain.policies.TagName
 import com.normation.rudder.domain.policies.TagValue
 import com.normation.rudder.domain.properties.NodeProperty
-import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.CoreNodeFact
+import com.normation.rudder.facts.nodes.MinimalNodeFactInterface
+import com.normation.rudder.facts.nodes.NodeFactGetter
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.json.DataExtractor.CompleteJson
+
 import com.unboundid.ldap.sdk.Attribute
 import com.unboundid.ldap.sdk.Filter
+
 import java.util.regex.Pattern
 import net.liftweb.common.Box
 import net.liftweb.common.Full
 import net.liftweb.common.Loggable
+
 import scala.util.control.NonFatal
+
 import zio.stream.ZSink
 
 /**
@@ -95,7 +101,7 @@ object QSNodeFactBackend extends Loggable {
   /**
    * Lookup directives
    */
-  def search(query: Query)(implicit repo: NodeFactRepository): Box[Set[QuickSearchResult]] = {
+  def search(query: Query)(implicit repo: NodeFactRepository, g: NodeFactGetter[CoreNodeFact]): Box[Seq[QuickSearchResult]] = {
 
     // only search if query is on Directives and attributes contains
     // DirectiveId, DirectiveVarName, DirectiveVarValue, TechniqueName, TechniqueVersion
@@ -106,18 +112,17 @@ object QSNodeFactBackend extends Loggable {
 
       repo
         .getAllAccepted()
-        .mapConcat((n: NodeFact) => attributes.flatMap(a => a.find(n, query.userToken)))
+        .mapConcat((n: CoreNodeFact) => attributes.flatMap(a => a.find(n, query.userToken)))
         .run(ZSink.collectAll)
         .toBox
-        .map(_.toSet)
     } else {
-      Full(Set())
+      Full(Seq())
     }
   }
 
   implicit class QSAttributeFilter(val a: QSAttribute) extends AnyVal {
 
-    private[this] def toMatch(node: NodeFact): Option[Set[(String, String)]] = {
+    private[this] def toMatch(node: CoreNodeFact): Option[Set[(String, String)]] = {
 
       def someSet(v: String)        = Some(Set((v, v)))
       def optSet(v: Option[String]) = v.map(x => Set((x, x)))
@@ -136,7 +141,7 @@ object QSNodeFactBackend extends Loggable {
         case OsServicePack     => optSet(node.os.servicePack)
         case Arch              => optSet(node.archDescription)
         case Ram               => optSet(node.ram.map(_.size.toString))
-        case IpAddresses       => Some(node.serverIps.map(ip => (ip, ip)).toSet)
+        case IpAddresses       => Some(MinimalNodeFactInterface.ipAddresses(node).map(ip => (ip, ip)).toSet)
         case PolicyServerId    => someSet(node.rudderSettings.policyServerId.value)
         case Properties        =>
           Some(node.properties.collect {
@@ -170,7 +175,7 @@ object QSNodeFactBackend extends Loggable {
       }
     }
 
-    def find(node: NodeFact, token: String): Option[QuickSearchResult] = {
+    def find(node: CoreNodeFact, token: String): Option[QuickSearchResult] = {
       toMatch(node).flatMap { set =>
         set.collectFirst {
           case (s, value) if QSPattern(token).matcher(s).matches =>
@@ -201,7 +206,7 @@ object QSDirectiveBackend extends Loggable {
   /**
    * Lookup directives
    */
-  def search(query: Query)(implicit repo: RoDirectiveRepository): Box[Set[QuickSearchResult]] = {
+  def search(query: Query)(implicit repo: RoDirectiveRepository): Box[Seq[QuickSearchResult]] = {
 
     // only search if query is on Directives and attributes contains
     // DirectiveId, DirectiveVarName, DirectiveVarValue, TechniqueName, TechniqueVersion
@@ -218,10 +223,10 @@ object QSDirectiveBackend extends Loggable {
           attribute <- attributes
         } yield {
           attribute.find(at, dir, query.userToken)
-        }).flatten.toSet
+        }).flatten.toSeq
       }
     } else {
-      Full(Set())
+      Full(Seq())
     }
   }
 

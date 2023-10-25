@@ -153,7 +153,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   val gitFactRepoGC       = new GitGC(gitFactRepoProvider, cronSchedule)
   gitFactRepoGC.start()
 
-  val gitFactRepo = new GitNodeFactRepositoryImpl(gitFactRepoProvider, "rudder", true)
+  val gitFactRepo = new GitNodeFactStorageImpl(gitFactRepoProvider, "rudder", true)
   gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
   // TODO WARNING POC: this can't work on a machine with lots of node

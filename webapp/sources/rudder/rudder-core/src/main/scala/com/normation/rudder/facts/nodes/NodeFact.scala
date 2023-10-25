@@ -174,6 +174,112 @@ object SoftwareFact {
   }
 }
 
+object MinimalNodeFactInterface {
+
+  /*
+   * Check if the node fact are the same.
+   * Sameness is not equality. It does not look for:
+   * - inventory date
+   * - fact processing time
+   * - acceptation time
+   * - order in any collection
+   *
+   * Having a hashcode on node fact would be inefficient,
+   * most node fact are never compared for sameness.
+   * Same is heavy, don't use it often !
+   */
+  def same(a: MinimalNodeFactInterface, b: MinimalNodeFactInterface): Boolean = {
+    def eq[A](accessor: MinimalNodeFactInterface => A):                                           Boolean = {
+      accessor(a) == accessor(b)
+    }
+    def compare[A, B: Ordering](accessor: MinimalNodeFactInterface => Chunk[A])(orderOn: A => B): Boolean = {
+      accessor(a).size == accessor(b).size &&
+      accessor(a).sortBy(orderOn) == accessor(b).sortBy(orderOn)
+    }
+
+    eq(_.id) &&
+    eq(_.description) &&
+    eq(_.fqdn) &&
+    eq(_.os) &&
+    eq(_.machine) &&
+    eq(_.rudderSettings) &&
+    eq(_.rudderAgent) &&
+    compare(_.properties)(_.name) &&
+    compare(_.ipAddresses)(_.inet) &&
+    eq(_.timezone)
+  }
+
+  def isSystem(node: MinimalNodeFactInterface): Boolean = {
+    node.rudderSettings.kind != NodeKind.Node
+  }
+
+  def ipAddresses(node: MinimalNodeFactInterface): List[String] = {
+    node.ipAddresses.map(_.inet).toList
+  }
+
+  def toNode(node: MinimalNodeFactInterface): Node = Node(
+    node.id,
+    node.fqdn,
+    "", // description
+    node.rudderSettings.state,
+    isSystem(node),
+    isSystem((node)),
+    node.creationDate,
+    node.rudderSettings.reportingConfiguration,
+    node.properties.toList,
+    node.rudderSettings.policyMode
+  )
+
+  def toNodeInfo(node: MinimalNodeFactInterface, ram: Option[MemorySize], archDescription: Option[String]): NodeInfo = NodeInfo(
+    toNode(node),
+    node.fqdn,
+    Some(node.machine),
+    node.os,
+    node.ipAddresses.toList.map(_.inet),
+    node.lastInventoryDate.getOrElse(node.factProcessedDate),
+    node.rudderSettings.keyStatus,
+    Chunk(
+      AgentInfo(
+        node.rudderAgent.agentType,
+        Some(node.rudderAgent.version),
+        node.rudderAgent.securityToken,
+        node.rudderAgent.capabilities.toSet
+      )
+    ),
+    node.rudderSettings.policyServerId,
+    node.rudderAgent.user,
+    archDescription,
+    ram,
+    node.timezone
+  )
+
+  def toSrv(node: MinimalNodeFactInterface): Srv = {
+    Srv(
+      node.id,
+      node.rudderSettings.status,
+      node.fqdn,
+      node.os.os.kernelName,
+      node.os.os.name,
+      node.os.fullName,
+      ipAddresses(node),
+      node.creationDate,
+      isSystem(node)
+    )
+  }
+
+  def toNodeSummary(node: MinimalNodeFactInterface): NodeSummary = {
+    NodeSummary(
+      node.id,
+      node.rudderSettings.status,
+      node.rudderAgent.user,
+      node.fqdn,
+      node.os,
+      node.rudderSettings.policyServerId,
+      node.rudderSettings.keyStatus
+    )
+  }
+}
+
 object NodeFact {
 
   /*
@@ -189,26 +295,16 @@ object NodeFact {
    * Same is heavy, don't use it often !
    */
   def same(a: NodeFact, b: NodeFact): Boolean = {
+    def eq[A](accessor: NodeFact => A):                                           Boolean = {
+      accessor(a) == accessor(b)
+    }
     // compare two chunk sameness
     def compare[A, B: Ordering](accessor: NodeFact => Chunk[A])(orderOn: A => B): Boolean = {
       accessor(a).size == accessor(b).size &&
       accessor(a).sortBy(orderOn) == accessor(b).sortBy(orderOn)
     }
 
-    def eq[A](accessor: NodeFact => A): Boolean = {
-      accessor(a) == accessor(b)
-    }
-
-    eq(_.id) &&
-    eq(_.description) &&
-    eq(_.fqdn) &&
-    eq(_.os) &&
-    eq(_.machine) &&
-    eq(_.rudderSettings) &&
-    eq(_.rudderAgent) &&
-    compare(_.properties)(_.name) &&
-    compare(_.ipAddresses)(_.inet) &&
-    eq(_.timezone) &&
+    MinimalNodeFactInterface.same(a, b) &&
     eq(_.ram) &&
     eq(_.swap) &&
     eq(_.archDescription) &&
@@ -335,67 +431,13 @@ object NodeFact {
 
   implicit class ToCompat(node: NodeFact) {
 
-    def toNode: Node = Node(
-      node.id,
-      node.fqdn,
-      "", // description
-      node.rudderSettings.state,
-      node.isSystem,
-      node.isPolicyServer,
-      node.creationDate,
-      node.rudderSettings.reportingConfiguration,
-      node.properties.toList,
-      node.rudderSettings.policyMode
-    )
+    def toNode: Node = MinimalNodeFactInterface.toNode(node)
 
-    def toNodeInfo: NodeInfo = NodeInfo(
-      node.toNode,
-      node.fqdn,
-      Some(node.machine),
-      node.os,
-      node.ipAddresses.toList.map(_.inet),
-      node.lastInventoryDate.getOrElse(node.factProcessedDate),
-      node.rudderSettings.keyStatus,
-      Chunk(
-        AgentInfo(
-          node.rudderAgent.agentType,
-          Some(node.rudderAgent.version),
-          node.rudderAgent.securityToken,
-          node.rudderAgent.capabilities.toSet
-        )
-      ),
-      node.rudderSettings.policyServerId,
-      node.rudderAgent.user,
-      node.archDescription,
-      node.ram,
-      node.timezone
-    )
+    def toNodeInfo: NodeInfo = MinimalNodeFactInterface.toNodeInfo(node, node.ram, node.archDescription)
 
-    def toSrv: Srv = {
-      Srv(
-        node.id,
-        node.rudderSettings.status,
-        node.fqdn,
-        node.os.os.kernelName,
-        node.os.os.name,
-        node.os.fullName,
-        node.serverIps,
-        node.creationDate,
-        node.isPolicyServer
-      )
-    }
+    def toSrv: Srv = MinimalNodeFactInterface.toSrv(node)
 
-    def toNodeSummary: NodeSummary = {
-      NodeSummary(
-        node.id,
-        node.rudderSettings.status,
-        node.rudderAgent.user,
-        node.fqdn,
-        node.os,
-        node.rudderSettings.policyServerId,
-        node.rudderSettings.keyStatus
-      )
-    }
+    def toNodeSummary: NodeSummary = MinimalNodeFactInterface.toNodeSummary(node)
 
     def toNodeInventory: NodeInventory = NodeInventory(
       node.toNodeSummary,
@@ -484,9 +526,9 @@ object NodeFact {
       Some(nodeInfo.inventoryDate),
       nodeInfo.ips.map(IpAddress(_)).toChunk,
       nodeInfo.timezone,
-      nodeInfo.ram,
-      inventory.toOption.flatMap(_.node.swap),
       nodeInfo.archDescription,
+      inventory.toOption.flatMap(_.node.swap),
+      nodeInfo.ram,
       inventory.toChunk.flatMap(_.node.accounts),
       inventory.toChunk.flatMap(_.machine.chunk(_.bios)),
       inventory.toChunk.flatMap(_.machine.chunk(_.controllers)),
@@ -560,6 +602,30 @@ object NodeFact {
     newFromFullInventory(FullInventory(inventory.node, Some(inventory.machine)), Some(inventory.applications))
   }
 
+  def fromMinimal(a: MinimalNodeFactInterface): NodeFact = {
+    a match {
+      case x: NodeFact => x
+      case _ =>
+        NodeFact(
+          a.id,
+          a.description,
+          a.fqdn,
+          a.os,
+          a.machine,
+          a.rudderSettings,
+          a.rudderAgent,
+          a.properties,
+          a.creationDate,
+          a.factProcessedDate,
+          a.lastInventoryDate,
+          a.ipAddresses,
+          a.timezone,
+          a.archDescription,
+          a.ram
+        )
+    }
+  }
+
   /*
    * Update all inventory parts from that node fact.
    * The inventory parts are overridden, there is no merge
@@ -567,6 +633,14 @@ object NodeFact {
    */
   def updateInventory(node: NodeFact, inventory: Inventory): NodeFact = {
     updateFullInventory(node, FullInventory(inventory.node, Some(inventory.machine)), Some(inventory.applications))
+  }
+
+  def updateInventory(core: CoreNodeFact, inventory: Inventory): NodeFact = {
+    updateFullInventory(
+      NodeFact.fromMinimal(core),
+      FullInventory(inventory.node, Some(inventory.machine)),
+      Some(inventory.applications)
+    )
   }
 
   // FullInventory does keep the software, but only their IDs, which is not a concept we still have.
@@ -690,6 +764,111 @@ object NodeFact {
 
 }
 
+trait MinimalNodeFactInterface {
+  def id:                NodeId
+  def description:       Option[String]
+  def fqdn:              String
+  def os:                OsDetails
+  def machine:           MachineInfo
+  def rudderSettings:    RudderSettings
+  def rudderAgent:       RudderAgent
+  def properties:        Chunk[NodeProperty]
+  def creationDate:      DateTime
+  def factProcessedDate: DateTime
+  def lastInventoryDate: Option[DateTime]
+  def ipAddresses:       Chunk[IpAddress]
+  def timezone:          Option[NodeTimezone]
+  def archDescription:   Option[String]
+  def ram:               Option[MemorySize]
+}
+
+/*
+ * Subset of commonly used properties of node fact, same as NodeInfo.
+ * It should have exactly the same fields as MinimalNodeFactInterface
+ */
+final case class CoreNodeFact(
+    id:                NodeId,
+    description:       Option[String],
+    @jsonField("hostname")
+    fqdn:              String,
+    os:                OsDetails,
+    machine:           MachineInfo,
+    rudderSettings:    RudderSettings,
+    rudderAgent:       RudderAgent,
+    properties:        Chunk[NodeProperty],
+    creationDate:      DateTime,
+    factProcessedDate: DateTime,
+    lastInventoryDate: Option[DateTime] = None,
+    ipAddresses:       Chunk[IpAddress] = Chunk.empty,
+    timezone:          Option[NodeTimezone] = None,
+    archDescription:   Option[String] = None,
+    ram:               Option[MemorySize] = None
+) extends MinimalNodeFactInterface
+
+object CoreNodeFact {
+
+  def updateNode(node: CoreNodeFact, n: Node): CoreNodeFact = {
+    import com.softwaremill.quicklens._
+    node
+      .modify(_.description)
+      .setTo(Some(n.description))
+      .modify(_.rudderSettings.state)
+      .setTo(n.state)
+      .modify(_.rudderSettings.kind)
+      .setTo(if (n.isPolicyServer) NodeKind.Relay else NodeKind.Node)
+      .modify(_.creationDate)
+      .setTo(n.creationDate)
+      .modify(_.rudderSettings.reportingConfiguration)
+      .setTo(n.nodeReportingConfiguration)
+      .modify(_.properties)
+      .setTo(Chunk.fromIterable(n.properties))
+      .modify(_.rudderSettings.policyMode)
+      .setTo(n.policyMode)
+  }
+
+
+  def fromMininal(a: MinimalNodeFactInterface): CoreNodeFact = {
+    a match {
+      case c: CoreNodeFact => c
+      case _ =>
+        CoreNodeFact(
+          a.id,
+          a.description,
+          a.fqdn,
+          a.os,
+          a.machine,
+          a.rudderSettings,
+          a.rudderAgent,
+          a.properties,
+          a.creationDate,
+          a.factProcessedDate,
+          a.lastInventoryDate,
+          a.ipAddresses,
+          a.timezone,
+          a.archDescription,
+          a.ram
+        )
+    }
+  }
+
+  def same(a: CoreNodeFact, b: CoreNodeFact): Boolean = {
+    MinimalNodeFactInterface.same(a, b) &&
+    a.archDescription == b.archDescription &&
+    a.ram == b.ram
+  }
+
+  implicit class ToCompat(node: CoreNodeFact) {
+
+    def toNode: Node = MinimalNodeFactInterface.toNode(node)
+
+    def toNodeInfo: NodeInfo = MinimalNodeFactInterface.toNodeInfo(node, node.ram, node.archDescription)
+
+    def toSrv: Srv = MinimalNodeFactInterface.toSrv(node)
+
+    def toNodeSummary: NodeSummary = MinimalNodeFactInterface.toNodeSummary(node)
+  }
+}
+
 final case class NodeFact(
     id:             NodeId,
     description:    Option[String],
@@ -716,9 +895,9 @@ final case class NodeFact(
 
     // inventory details, optional
 
+    archDescription:      Option[String] = None,
     ram:                  Option[MemorySize] = None,
     swap:                 Option[MemorySize] = None,
-    archDescription:      Option[String] = None,
     accounts:             Chunk[String] = Chunk.empty,
     bios:                 Chunk[Bios] = Chunk.empty,
     controllers:          Chunk[Controller] = Chunk.empty,
@@ -741,7 +920,7 @@ final case class NodeFact(
     storages:             Chunk[Storage] = Chunk.empty,
     videos:               Chunk[Video] = Chunk.empty,
     vms:                  Chunk[VirtualMachine] = Chunk.empty
-) {
+) extends MinimalNodeFactInterface {
   // we don't have a machine id anymore, by convention it's the node id prefixed by "machine-"
   def machineId = NodeFact.toMachineId(id)
 
@@ -779,38 +958,38 @@ final case class JSecurityToken(kind: String, token: String)
 
 final case class JNodeProperty(name: String, value: ConfigValue, mode: Option[String], provider: Option[String])
 
-sealed trait NodeFactChangeEvent {
+sealed trait NodeFactChangeEvent[+A <: MinimalNodeFactInterface] {
   def name:        String
   def debugString: String
 }
 
 object NodeFactChangeEvent {
-  final case class NewPending(node: NodeFact)     extends NodeFactChangeEvent {
+  final case class NewPending[A <: MinimalNodeFactInterface](node: A)     extends NodeFactChangeEvent[A]       {
     override val name:        String = "newPending"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class UpdatedPending(node: NodeFact) extends NodeFactChangeEvent {
+  final case class UpdatedPending[A <: MinimalNodeFactInterface](node: A) extends NodeFactChangeEvent[A]       {
     override val name: String = "updatedPending"
 
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Accepted(node: NodeFact)       extends NodeFactChangeEvent {
+  final case class Accepted[A <: MinimalNodeFactInterface](node: A)       extends NodeFactChangeEvent[A]       {
     override val name:        String = "accepted"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Refused(node: NodeFact)        extends NodeFactChangeEvent {
+  final case class Refused[A <: MinimalNodeFactInterface](node: A)        extends NodeFactChangeEvent[A]       {
     override val name:        String = "refused"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Updated(node: NodeFact)        extends NodeFactChangeEvent {
+  final case class Updated[A <: MinimalNodeFactInterface](node: A)        extends NodeFactChangeEvent[A]       {
     override val name:        String = "updatedAccepted"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Deleted(node: NodeFact)        extends NodeFactChangeEvent {
+  final case class Deleted[A <: MinimalNodeFactInterface](node: A)        extends NodeFactChangeEvent[A]       {
     override val name:        String = "deleted"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Noop(nodeId: NodeId)           extends NodeFactChangeEvent {
+  final case class Noop(nodeId: NodeId)                                   extends NodeFactChangeEvent[Nothing] {
     override val name:        String = "noop"
     override def debugString: String = s"[${name}] node '${nodeId.value}' "
   }
@@ -823,14 +1002,14 @@ object ChangeContext {
     ChangeContext(ModificationId(java.util.UUID.randomUUID.toString), eventlog.RudderEventActor, msg)
 }
 
-final case class NodeFactChangeEventCC(
-    event: NodeFactChangeEvent,
+final case class NodeFactChangeEventCC[+A <: MinimalNodeFactInterface](
+    event: NodeFactChangeEvent[A],
     cc:    ChangeContext
 )
 
-final case class NodeFactChangeEventCallback(
+final case class NodeFactChangeEventCallback[A <: MinimalNodeFactInterface](
     name: String,
-    run:  NodeFactChangeEventCC => IOResult[Unit]
+    run:  NodeFactChangeEventCC[A] => IOResult[Unit]
 )
 
 object NodeFactSerialisation {
@@ -844,184 +1023,185 @@ object NodeFactSerialisation {
 
   object SimpleCodec {
 
-  implicit val codecOptionDateTime: JsonCodec[Option[DateTime]] = DeriveJsonCodec.gen
-  implicit val codecNodeId:         JsonCodec[NodeId]           = JsonCodec.string.transform[NodeId](NodeId(_), _.value)
-  implicit val codecJsonOsDetails:  JsonCodec[JsonOsDetails]    = DeriveJsonCodec.gen
+    implicit val codecOptionDateTime: JsonCodec[Option[DateTime]] = DeriveJsonCodec.gen
+    implicit val codecNodeId:         JsonCodec[NodeId]           = JsonCodec.string.transform[NodeId](NodeId(_), _.value)
+    implicit val codecJsonOsDetails:  JsonCodec[JsonOsDetails]    = DeriveJsonCodec.gen
 
-  implicit val decoderOsDetails: JsonDecoder[OsDetails] = JsonDecoder[JsonOsDetails].map { jod =>
-    val tpe     = ParseOSType.getType(jod.osType, jod.name, jod.fullName)
-    val details =
-      ParseOSType.getDetails(tpe, jod.fullName, new SVersion(jod.version), jod.servicePack, new SVersion(jod.kernelVersion))
-    details match {
-      case w: Windows =>
-        w.copy(
-          userDomain = jod.userDomain,
-          registrationCompany = jod.registrationCompany,
-          productKey = jod.productKey,
-          productId = jod.productId
-        )
-      case other => other
-    }
-  }
-
-  implicit val encoderOsDetails: JsonEncoder[OsDetails] = JsonEncoder[JsonOsDetails].contramap { od =>
-    val jod = {
-      JsonOsDetails(
-        od.os.kernelName,
-        od.os.name,
-        od.version.value,
-        od.fullName,
-        od.kernelVersion.value,
-        od.servicePack,
-        None,
-        None,
-        None,
-        None
-      )
-    }
-    od match {
-      case w: Windows =>
-        jod.copy(
-          userDomain = w.userDomain,
-          registrationCompany = w.registrationCompany,
-          productKey = w.productKey,
-          productId = w.productId
-        )
-      case _ => jod
-    }
-  }
-
-  implicit val codecJsonAgentRunInterval:   JsonCodec[JsonAgentRunInterval]   = DeriveJsonCodec.gen
-  implicit val codecAgentRunInterval:       JsonCodec[AgentRunInterval]       = JsonCodec(
-    JsonEncoder[JsonAgentRunInterval].contramap[AgentRunInterval] { ari =>
-      JsonAgentRunInterval(
-        ari.overrides.map(_.toString()).getOrElse("default"),
-        ari.interval,
-        ari.startMinute,
-        ari.startHour,
-        ari.splaytime / 60,
-        ari.splaytime % 60
-      )
-    },
-    JsonDecoder[JsonAgentRunInterval].map[AgentRunInterval] { jari =>
-      val o = jari.overrides match {
-        case "true"  => Some(true)
-        case "false" => Some(false)
-        case _       => None
+    implicit val decoderOsDetails: JsonDecoder[OsDetails] = JsonDecoder[JsonOsDetails].map { jod =>
+      val tpe     = ParseOSType.getType(jod.osType, jod.name, jod.fullName)
+      val details =
+        ParseOSType.getDetails(tpe, jod.fullName, new SVersion(jod.version), jod.servicePack, new SVersion(jod.kernelVersion))
+      details match {
+        case w: Windows =>
+          w.copy(
+            userDomain = jod.userDomain,
+            registrationCompany = jod.registrationCompany,
+            productKey = jod.productKey,
+            productId = jod.productId
+          )
+        case other => other
       }
-      AgentRunInterval(o, jari.interval, jari.startMinute, jari.startHour, jari.splayHour * 60 + jari.splayMinute)
     }
-  )
-  implicit val codecAgentReportingProtocol: JsonCodec[AgentReportingProtocol] = {
-    JsonCodec.string.transformOrFail[AgentReportingProtocol](
-      s => AgentReportingProtocol.parse(s).left.map(_.fullMsg),
+
+    implicit val encoderOsDetails: JsonEncoder[OsDetails] = JsonEncoder[JsonOsDetails].contramap { od =>
+      val jod = {
+        JsonOsDetails(
+          od.os.kernelName,
+          od.os.name,
+          od.version.value,
+          od.fullName,
+          od.kernelVersion.value,
+          od.servicePack,
+          None,
+          None,
+          None,
+          None
+        )
+      }
+      od match {
+        case w: Windows =>
+          jod.copy(
+            userDomain = w.userDomain,
+            registrationCompany = w.registrationCompany,
+            productKey = w.productKey,
+            productId = w.productId
+          )
+        case _ => jod
+      }
+    }
+
+    implicit val codecJsonAgentRunInterval:   JsonCodec[JsonAgentRunInterval]   = DeriveJsonCodec.gen
+    implicit val codecAgentRunInterval:       JsonCodec[AgentRunInterval]       = JsonCodec(
+      JsonEncoder[JsonAgentRunInterval].contramap[AgentRunInterval] { ari =>
+        JsonAgentRunInterval(
+          ari.overrides.map(_.toString()).getOrElse("default"),
+          ari.interval,
+          ari.startMinute,
+          ari.startHour,
+          ari.splaytime / 60,
+          ari.splaytime % 60
+        )
+      },
+      JsonDecoder[JsonAgentRunInterval].map[AgentRunInterval] { jari =>
+        val o = jari.overrides match {
+          case "true"  => Some(true)
+          case "false" => Some(false)
+          case _       => None
+        }
+        AgentRunInterval(o, jari.interval, jari.startMinute, jari.startHour, jari.splayHour * 60 + jari.splayMinute)
+      }
+    )
+    implicit val codecAgentReportingProtocol: JsonCodec[AgentReportingProtocol] = {
+      JsonCodec.string.transformOrFail[AgentReportingProtocol](
+        s => AgentReportingProtocol.parse(s).left.map(_.fullMsg),
+        _.value
+      )
+    }
+    implicit val codecHeartbeatConfiguration: JsonCodec[HeartbeatConfiguration] = DeriveJsonCodec.gen
+    implicit val codecReportingConfiguration: JsonCodec[ReportingConfiguration] = DeriveJsonCodec.gen
+
+    implicit val codecNodeKind: JsonCodec[NodeKind] = JsonCodec.string.transformOrFail[NodeKind](NodeKind.parse, _.name)
+
+    implicit val encoderOptionPolicyMode: JsonEncoder[Option[PolicyMode]] = JsonEncoder.string.contramap {
+      case None       => "default"
+      case Some(mode) => mode.name
+    }
+    implicit val decoderOptionPolicyMode: JsonDecoder[Option[PolicyMode]] = JsonDecoder[Option[String]].mapOrFail(opt => {
+      opt match {
+        case None            => Right(None)
+        // we need to be able to set "default", for example to reset in clone
+        case Some("default") => Right(None)
+        case Some(s)         => PolicyMode.parse(s).left.map(_.fullMsg).map(Some(_))
+      }
+    })
+
+    implicit val codecKeyStatus: JsonCodec[KeyStatus] = JsonCodec.string.transform[KeyStatus](
+      _ match {
+        case "certified" => CertifiedKey
+        case _           => UndefinedKey
+      },
       _.value
     )
-  }
-  implicit val codecHeartbeatConfiguration: JsonCodec[HeartbeatConfiguration] = DeriveJsonCodec.gen
-  implicit val codecReportingConfiguration: JsonCodec[ReportingConfiguration] = DeriveJsonCodec.gen
 
-  implicit val codecNodeKind: JsonCodec[NodeKind] = JsonCodec.string.transformOrFail[NodeKind](NodeKind.parse, _.name)
+    implicit val codecInventoryStatus: JsonCodec[InventoryStatus] = JsonCodec.string.transformOrFail[InventoryStatus](
+      s => {
+        InventoryStatus(s) match {
+          case None     => Left(s"'${s}' is not recognized as a node status. Expected: 'pending', 'accepted'")
+          case Some(is) => Right(is)
+        }
+      },
+      _.name
+    )
 
-  implicit val encoderOptionPolicyMode: JsonEncoder[Option[PolicyMode]] = JsonEncoder.string.contramap {
-    case None       => "default"
-    case Some(mode) => mode.name
-  }
-  implicit val decoderOptionPolicyMode: JsonDecoder[Option[PolicyMode]] = JsonDecoder[Option[String]].mapOrFail(opt => {
-    opt match {
-      case None            => Right(None)
-      // we need to be able to set "default", for example to reset in clone
-      case Some("default") => Right(None)
-      case Some(s)         => PolicyMode.parse(s).left.map(_.fullMsg).map(Some(_))
-    }
-  })
+    implicit val codecNodeState:      JsonCodec[NodeState]      = JsonCodec.string.transformOrFail[NodeState](NodeState.parse, _.name)
+    implicit val codecRudderSettings: JsonCodec[RudderSettings] = DeriveJsonCodec.gen
+    implicit val codecAgentType:      JsonCodec[AgentType]      =
+      JsonCodec.string.transformOrFail[AgentType](s => AgentType.fromValue(s).left.map(_.fullMsg), _.id)
+    implicit val codecAgentVersion:   JsonCodec[AgentVersion]   = JsonCodec.string.transform[AgentVersion](AgentVersion(_), _.value)
+    implicit val codecVersion:        JsonCodec[Version]        =
+      JsonCodec.string.transformOrFail[Version](ParseVersion.parse, _.toVersionString)
+    implicit val codecJSecurityToken: JsonCodec[JSecurityToken] = DeriveJsonCodec.gen
 
-  implicit val codecKeyStatus: JsonCodec[KeyStatus] = JsonCodec.string.transform[KeyStatus](
-    _ match {
-      case "certified" => CertifiedKey
-      case _           => UndefinedKey
-    },
-    _.value
-  )
+    implicit val codecSecturityToken: JsonCodec[SecurityToken] = JsonCodec(
+      JsonEncoder[JSecurityToken].contramap[SecurityToken](st => JSecurityToken(SecurityToken.kind(st), st.key)),
+      JsonDecoder[JSecurityToken].mapOrFail[SecurityToken](jst => SecurityToken.token(jst.kind, jst.token))
+    )
 
-  implicit val codecInventoryStatus: JsonCodec[InventoryStatus] = JsonCodec.string.transformOrFail[InventoryStatus](
-    s => {
-      InventoryStatus(s) match {
-        case None     => Left(s"'${s}' is not recognized as a node status. Expected: 'pending', 'accepted'")
-        case Some(is) => Right(is)
-      }
-    },
-    _.name
-  )
+    implicit val codecAgentCapability: JsonCodec[AgentCapability] =
+      JsonCodec.string.transform[AgentCapability](AgentCapability(_), _.value)
 
-  implicit val codecNodeState:      JsonCodec[NodeState]      = JsonCodec.string.transformOrFail[NodeState](NodeState.parse, _.name)
-  implicit val codecRudderSettings: JsonCodec[RudderSettings] = DeriveJsonCodec.gen
-  implicit val codecAgentType:      JsonCodec[AgentType]      =
-    JsonCodec.string.transformOrFail[AgentType](s => AgentType.fromValue(s).left.map(_.fullMsg), _.id)
-  implicit val codecAgentVersion:   JsonCodec[AgentVersion]   = JsonCodec.string.transform[AgentVersion](AgentVersion(_), _.value)
-  implicit val codecVersion:        JsonCodec[Version]        = JsonCodec.string.transformOrFail[Version](ParseVersion.parse, _.toVersionString)
-  implicit val codecJSecurityToken: JsonCodec[JSecurityToken] = DeriveJsonCodec.gen
-
-  implicit val codecSecturityToken: JsonCodec[SecurityToken] = JsonCodec(
-    JsonEncoder[JSecurityToken].contramap[SecurityToken](st => JSecurityToken(SecurityToken.kind(st), st.key)),
-    JsonDecoder[JSecurityToken].mapOrFail[SecurityToken](jst => SecurityToken.token(jst.kind, jst.token))
-  )
-
-  implicit val codecAgentCapability: JsonCodec[AgentCapability] =
-    JsonCodec.string.transform[AgentCapability](AgentCapability(_), _.value)
-
-  implicit val codecConfigValue: JsonCodec[ConfigValue] = JsonCodec(
-    new JsonEncoder[ConfigValue] {
-      override def unsafeEncode(a: ConfigValue, indent: Option[Int], out: Write): Unit = {
+    implicit val codecConfigValue: JsonCodec[ConfigValue] = JsonCodec(
+      new JsonEncoder[ConfigValue] {
+        override def unsafeEncode(a: ConfigValue, indent: Option[Int], out: Write): Unit = {
           out.write(
             a.render(ConfigRenderOptions.concise().setFormatted(indent.getOrElse(0) > 0))
           )
-      }
-    },
-    JsonDecoder[Json].map(json => GenericProperty.fromZioJson(json))
-  )
+        }
+      },
+      JsonDecoder[Json].map(json => GenericProperty.fromZioJson(json))
+    )
 
-  implicit val codecJNodeProperty: JsonCodec[JNodeProperty] = DeriveJsonCodec.gen
+    implicit val codecJNodeProperty: JsonCodec[JNodeProperty] = DeriveJsonCodec.gen
 
-  implicit val codecNodeProperty: JsonCodec[NodeProperty] = JsonCodec(
-    JsonEncoder[JNodeProperty].contramap[NodeProperty](p =>
-      JNodeProperty(p.name, p.value, p.inheritMode.map(_.value), p.provider.map(_.value))
-    ),
-    JsonDecoder[JNodeProperty].mapOrFail[NodeProperty](jp => {
-      jp.mode match {
-        case None    => Right(NodeProperty(jp.name, jp.value, None, jp.provider.map(PropertyProvider(_))))
-        case Some(p) =>
-          InheritMode.parseString(p) match {
-            case Left(err) => Left(err.fullMsg)
-            case Right(x)  => Right(NodeProperty(jp.name, jp.value, Some(x), jp.provider.map(PropertyProvider(_))))
-          }
-      }
-    })
-  )
+    implicit val codecNodeProperty: JsonCodec[NodeProperty] = JsonCodec(
+      JsonEncoder[JNodeProperty].contramap[NodeProperty](p =>
+        JNodeProperty(p.name, p.value, p.inheritMode.map(_.value), p.provider.map(_.value))
+      ),
+      JsonDecoder[JNodeProperty].mapOrFail[NodeProperty](jp => {
+        jp.mode match {
+          case None    => Right(NodeProperty(jp.name, jp.value, None, jp.provider.map(PropertyProvider(_))))
+          case Some(p) =>
+            InheritMode.parseString(p) match {
+              case Left(err) => Left(err.fullMsg)
+              case Right(x)  => Right(NodeProperty(jp.name, jp.value, Some(x), jp.provider.map(PropertyProvider(_))))
+            }
+        }
+      })
+    )
 
-  implicit val codecRudderAgent:    JsonCodec[RudderAgent]    = DeriveJsonCodec.gen
-  implicit val codecIpAddress:      JsonCodec[IpAddress]      = JsonCodec.string.transform(IpAddress(_), _.inet)
-  implicit val codecNodeTimezone:   JsonCodec[NodeTimezone]   = DeriveJsonCodec.gen
-  implicit val codecMachineUuid:    JsonCodec[MachineUuid]    = JsonCodec.string.transform[MachineUuid](MachineUuid(_), _.value)
-  implicit val codecMachineType:    JsonCodec[MachineType]    = JsonCodec.string.transform[MachineType](
-    _ match {
-      case UnknownMachineType.kind  => UnknownMachineType
-      case PhysicalMachineType.kind => PhysicalMachineType
-      case x                        => VirtualMachineType(VmType.parse(x))
-    },
-    _.kind
-  )
-  implicit val codecManufacturer:   JsonCodec[Manufacturer]   = JsonCodec.string.transform[Manufacturer](Manufacturer(_), _.name)
-  implicit val codecMachine:        JsonCodec[MachineInfo]    = DeriveJsonCodec.gen
-  implicit val codecMemorySize:     JsonCodec[MemorySize]     = JsonCodec.long.transform[MemorySize](MemorySize(_), _.size)
-  implicit val codecSVersion:       JsonCodec[SVersion]       = JsonCodec.string.transform[SVersion](new SVersion(_), _.value)
-  implicit val codecSoftwareEditor: JsonCodec[SoftwareEditor] =
-    JsonCodec.string.transform[SoftwareEditor](SoftwareEditor(_), _.name)
+    implicit val codecRudderAgent:    JsonCodec[RudderAgent]    = DeriveJsonCodec.gen
+    implicit val codecIpAddress:      JsonCodec[IpAddress]      = JsonCodec.string.transform(IpAddress(_), _.inet)
+    implicit val codecNodeTimezone:   JsonCodec[NodeTimezone]   = DeriveJsonCodec.gen
+    implicit val codecMachineUuid:    JsonCodec[MachineUuid]    = JsonCodec.string.transform[MachineUuid](MachineUuid(_), _.value)
+    implicit val codecMachineType:    JsonCodec[MachineType]    = JsonCodec.string.transform[MachineType](
+      _ match {
+        case UnknownMachineType.kind  => UnknownMachineType
+        case PhysicalMachineType.kind => PhysicalMachineType
+        case x                        => VirtualMachineType(VmType.parse(x))
+      },
+      _.kind
+    )
+    implicit val codecManufacturer:   JsonCodec[Manufacturer]   = JsonCodec.string.transform[Manufacturer](Manufacturer(_), _.name)
+    implicit val codecMachine:        JsonCodec[MachineInfo]    = DeriveJsonCodec.gen
+    implicit val codecMemorySize:     JsonCodec[MemorySize]     = JsonCodec.long.transform[MemorySize](MemorySize(_), _.size)
+    implicit val codecSVersion:       JsonCodec[SVersion]       = JsonCodec.string.transform[SVersion](new SVersion(_), _.value)
+    implicit val codecSoftwareEditor: JsonCodec[SoftwareEditor] =
+      JsonCodec.string.transform[SoftwareEditor](SoftwareEditor(_), _.name)
   }
 
   import SimpleCodec._
 
-  implicit val codecBios:           JsonCodec[Bios]           = DeriveJsonCodec.gen
+  implicit val codecBios: JsonCodec[Bios] = DeriveJsonCodec.gen
 
   implicit val codecController: JsonCodec[Controller] = DeriveJsonCodec.gen
 

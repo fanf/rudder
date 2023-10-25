@@ -76,7 +76,9 @@ import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.queries.ResultTransformation
 import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.facts.nodes.ChangeContext
+import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.NodeFactGetter
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.HooksLogger
@@ -98,6 +100,7 @@ import com.normation.rudder.services.reports.CacheExpectedReportAction
 import com.normation.rudder.services.reports.CacheExpectedReportAction.InsertNodeInCache
 import com.normation.rudder.services.reports.InvalidateCache
 import com.normation.utils.Control.sequence
+
 import com.softwaremill.quicklens._
 import net.liftweb.common.Box
 import net.liftweb.common.Empty
@@ -105,6 +108,7 @@ import net.liftweb.common.EmptyBox
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
 import org.joda.time.DateTime
+
 import zio.{System => _, _}
 import zio.stream.ZSink
 import zio.syntax._
@@ -273,7 +277,7 @@ trait ListNewNode {
   def listNewNodes: Box[Seq[Srv]]
 }
 
-class FactListNewNodes(backend: NodeFactRepository) extends ListNewNode {
+class FactListNewNodes(backend: NodeFactRepository)(implicit g: NodeFactGetter[CoreNodeFact]) extends ListNewNode {
   override def listNewNodes: Box[Seq[Srv]] = {
     backend.getAllPending().map(_.toSrv).run(ZSink.collectAll).toBox
   }

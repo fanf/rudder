@@ -48,11 +48,12 @@ import com.normation.rudder.domain.logger.NodeLogger
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
 
-import com.normation.zio._
 import com.softwaremill.quicklens._
-import org.eclipse.jgit.lib.PersonIdent
 
 import java.nio.charset.StandardCharsets
+import org.eclipse.jgit.lib.PersonIdent
+
+import scala.annotation.nowarn
 
 import zio._
 import zio.concurrent.ReentrantLock
@@ -62,12 +63,12 @@ import zio.syntax._
 
 /*
  * This file contains the base to persist facts into a git repository. There is a lot of question
- * remaning, so don't take current traits/classes as an API, it *WILL* change. The basic questions to answer are:
+ * remaining, so don't take current traits/classes as an API, it *WILL* change. The basic questions to answer are:
  * - do we want one bit "FactRepo" that knows about all kind of facts and is able to persis any of them ? In that case,
  *   we will need some kind of parametrization of `persist` with a type class to teach that repo how to serialize and
  *   persist each case
  * - do we prefer lots of small repos, one by entity, which knows how to persist only that entity ?
- * - plus, we want to have some lattitude on the serialization part, and be able to use both liftjson and zio-json
+ * - plus, we want to have some latitude on the serialization part, and be able to use both liftjson and zio-json
  *   (because the complete migration toward zio-json won't be finish immediately)
  *
  * The "one big" repo feels more like it is what we need, since it's really just one big git repo with subcases,
@@ -83,7 +84,7 @@ import zio.syntax._
  * perhaps it's an exception, and for all other it's just an ID).
  *
  * With all these unknowns, I prefer to let parametrisation as simple as possible:
- * - no abstraction for repo, we just have a "node repo" with all the concret types. It's likely to become a:
+ * - no abstraction for repo, we just have a "node repo" with all the concrete types. It's likely to become a:
  *   ```
  *     trait FactRepo { def persist[E](e: E)(implicit Serialize[E]): IOResult[Unit])
  *   ```
@@ -95,13 +96,28 @@ import zio.syntax._
  *
  * - a simple implementation for nodes, that will need to be refactored depending of the chosen final arch.
  *
- * And finally, to complexify a bit more the picture, we see that there is events (observations?) linked to facts
+ * And finally, to complexity a bit more the picture, we see that there is events (observations?) linked to facts
  * that can update the previous fact partially. For nodes, it's "change the status" (which is, perhaps by luck,
  * the same subpart of the entity than the one used in the more-than-just-an-id parameter of serialization).
  * I don't know for now if it's a general truth, or if it's just an happenstance, and if there is a general
  * capability (like "partialUpdate[SomeSubParOfE => E]") to define (in a pure eventstore, we would save that
  * event as if, but well we want to have readable text files for users in our git repos)
  */
+
+/*
+ * NodeFact repo must be extensible at call site, so we have some type class around
+ */
+// do we want to constraint A <: MinimalNodeFactApi ?
+// Perhaps not, because we're likely to want to `getAccepted(nodeId): IOResult[Option[Chunck[Software]]`
+// OK, the constraint seems to be in the input in fact
+trait NodeFactGetter[A] {
+  def access(node: MinimalNodeFactInterface): IOResult[A]
+}
+
+// not sure about that one
+trait NodeFactSaver[A] {
+  def persist(nodeId: NodeId, info: A): IOResult[Unit]
+}
 
 /*
  * write node facts.
@@ -113,7 +129,7 @@ trait NodeFactRepository {
    * The callbacks are not ordered and not blocking and will have a short time-out
    * on them, the caller will need to manage that constraint.
    */
-  def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit]
+  def registerChangeCallbackAction(callback: NodeFactChangeEventCallback[MinimalNodeFactInterface]): IOResult[Unit]
 
   /*
    * Get the status of the node, or RemovedStatus if it is
@@ -124,71 +140,86 @@ trait NodeFactRepository {
   /*
    * Get node on given status
    */
-  def getOn(nodeId: NodeId, status: InventoryStatus): IOResult[Option[NodeFact]]
+  def getOn[A](nodeId: NodeId, status: InventoryStatus)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]]
 
   /*
    * Get an accepted node
    */
-  def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]]
+  def getAccepted[A](nodeId: NodeId)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]]
 
   /*
    * Get a pending node
    */
-  def getPending(nodeId: NodeId): IOResult[Option[NodeFact]]
+  def getPending[A](nodeId: NodeId)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]]
 
   /*
    * Lookup node with that ID in either pending or accepted nodes
    */
-  def lookup(nodeId: NodeId): IOResult[Option[NodeFact]]
+  def lookup[A](nodeId: NodeId)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]]
 
   /*
    * get all node facts
    */
-  def getAllAccepted(): IOStream[NodeFact]
+  def getAllAccepted[A]()(implicit getter: NodeFactGetter[A]): IOStream[A]
 
-  def getAllPending(): IOStream[NodeFact]
+  def getAllPending[A]()(implicit getter: NodeFactGetter[A]): IOStream[A]
 
-  def getAllOn(status: InventoryStatus): IOStream[NodeFact]
+  def getAllOn[A](status: InventoryStatus)(implicit getter: NodeFactGetter[A]): IOStream[A]
   ///// changes /////
 
   /*
-   * Save (create or override) a node fact.
+   * Save (create or override) a core node fact
    * That method will force status to be `accepted`.
    * Use "updateInventory` if you want to save in pending.
+   * User save[A](..) if you only want to save an aspect without the minimal nodefact api involved.
+   *
+   * Not that the diff is only done on the core properties
    */
-  def save(nodeFact: NodeFact)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+  def save[A <: MinimalNodeFactInterface](nodeFact: A)(implicit
+      cc:                                           ChangeContext,
+      save:                                         NodeFactSaver[A]
+  ): IOResult[NodeFactChangeEventCC[MinimalNodeFactInterface]]
+
+  /*
+   * Only save an aspect
+   */
+  def save[A](nodeId: NodeId, fact: A)(implicit cc: ChangeContext, save: NodeFactSaver[A]): IOResult[NodeFactChangeEventCC[A]]
 
   /*
    * A method that will create in new node fact in pending, or
    * update inventory part of the node with that nodeId in
    * pending or in accepted.
    */
-  def updateInventory(inventory: Inventory)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+  def updateInventory(
+      inventory: Inventory
+  )(implicit cc: ChangeContext, save: NodeFactSaver[NodeFact]): IOResult[NodeFactChangeEventCC[MinimalNodeFactInterface]]
 
   /*
    * Change the status of the node with given id to given status.
-   * - if the node is not found, an error is raised appart if target status is "delete"
+   * - if the node is not found, an error is raised apart if target status is "delete"
    * - if the target status is the current one, this function does nothing
    * - if target status is "removed", persisted inventory is deleted
    */
-  def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+  def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit
+      cc:                  ChangeContext
+  ): IOResult[NodeFactChangeEventCC[MinimalNodeFactInterface]]
 
   /*
    * Delete any reference to that node id.
    */
-  def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC]
+  def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC[MinimalNodeFactInterface]]
 }
 
 /*
  * Internal CRUD event that need to be translated into node change if needed
  */
-sealed private trait InternalChangeEvent
+sealed private trait InternalChangeEvent[+A]
 
 private object InternalChangeEvent {
-  final case class Create(node: NodeFact) extends InternalChangeEvent
-  final case class Update(node: NodeFact) extends InternalChangeEvent
-  final case class Delete(node: NodeFact) extends InternalChangeEvent
-  final case class Noop(nodeId: NodeId)   extends InternalChangeEvent
+  final case class Create[A](node: A)   extends InternalChangeEvent[A]
+  final case class Update[A](node: A)   extends InternalChangeEvent[A]
+  final case class Delete[A](node: A)   extends InternalChangeEvent[A]
+  final case class Noop(nodeId: NodeId) extends InternalChangeEvent[Nothing]
 }
 
 /*
@@ -212,10 +243,10 @@ private object InternalChangeEvent {
  */
 object CoreNodeFactRepository {
   def make(
-      storage:   NodeFactStorage,
-      pending:   Map[NodeId, NodeFact],
-      accepted:  Map[NodeId, NodeFact],
-      callbacks: Chunk[NodeFactChangeEventCallback]
+      storage:   NodeFactStorage[CoreNodeFact],
+      pending:   Map[NodeId, CoreNodeFact],
+      accepted:  Map[NodeId, CoreNodeFact],
+      callbacks: Chunk[NodeFactChangeEventCallback[_ <: MinimalNodeFactInterface]]
   ) = for {
     p    <- Ref.make(pending)
     a    <- Ref.make(accepted)
@@ -225,23 +256,36 @@ object CoreNodeFactRepository {
     new CoreNodeFactRepository(storage, p, a, cbs, lock)
   }
 }
+
+/*
+ * The core node fact repository save:
+ * - CoreNodeFact in a local map that is always in synch with persisted layers
+ * - extension data (for inventory) in external caches
+ *
+ * It also provide et default implementation for getting/saving CoreNodeFact and Full facts
+ * thanks to the provided NodeFactStorage. Other getter/saver will need to be implemented
+ * by your own.
+ */
 class CoreNodeFactRepository(
-    storage:       NodeFactStorage,
-    pendingNodes:  Ref[Map[NodeId, NodeFact]],
-    acceptedNodes: Ref[Map[NodeId, NodeFact]],
-    callbacks:     Ref[Chunk[NodeFactChangeEventCallback]],
+    storage:       NodeFactStorage[CoreNodeFact],
+    pendingNodes:  Ref[Map[NodeId, CoreNodeFact]],
+    acceptedNodes: Ref[Map[NodeId, CoreNodeFact]],
+    callbacks:     Ref[Chunk[NodeFactChangeEventCallback[_ <: MinimalNodeFactInterface]]],
     lock:          ReentrantLock,
     cbTimeout:     zio.Duration = 5.seconds
 ) extends NodeFactRepository {
   import NodeFactChangeEvent._
 
-  (for {
-    p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
-    a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
-    _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
-  } yield ()).runNow
+  // debug log
+//  (for {
+//    p <- pendingNodes.get.map(_.values.map(_.id.value).mkString(", "))
+//    a <- acceptedNodes.get.map(_.values.map(_.id.value).mkString(", "))
+//    _ <- InventoryDataLogger.debug(s"Loaded node fact repos with: \n - pending: ${p} \n - accepted: ${a}")
+//  } yield ()).runNow
 
-  override def registerChangeCallbackAction(callback: NodeFactChangeEventCallback): IOResult[Unit] = {
+  override def registerChangeCallbackAction(
+      callback: NodeFactChangeEventCallback[_ <: MinimalNodeFactInterface]
+  ): IOResult[Unit] = {
     callbacks.update(_.appended(callback))
   }
 
@@ -257,7 +301,7 @@ class CoreNodeFactRepository(
     }
   }
 
-  override def getOn(nodeId: NodeId, status: InventoryStatus): IOResult[Option[NodeFact]] = {
+  override def getOn[A](nodeId: NodeId, status: InventoryStatus)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]] = {
     status match {
       case AcceptedInventory => getAccepted(nodeId)
       case PendingInventory  => getPending(nodeId)
@@ -270,38 +314,79 @@ class CoreNodeFactRepository(
    * - do we want to fork and timeout each callbacks ? likely so
    * - do we want to parallel exec them ? likely so, the user can build his own callback sequencer callback if he wants
    */
-  private[nodes] def runCallbacks(e: NodeFactChangeEventCC): IOResult[Unit] = {
+  // TODO: perhaps we only want to accept post hooks on core node facts
+  @nowarn("msg=abstract type A in type pattern .+ is unchecked.")
+  private[nodes] def runCallbacks[A <: MinimalNodeFactInterface](e: NodeFactChangeEventCC[A]): IOResult[Unit] = {
     for {
       cs <- callbacks.get
-      _  <- ZIO.foreachPar(cs)(c => c.run(e)).timeout(cbTimeout) // .forkDaemon
+      _  <- ZIO
+              .foreachPar(cs) {
+                case c: NodeFactChangeEventCallback[A] => c.run(e)
+                case _ => ZIO.unit
+              }
+              .timeout(cbTimeout) // .forkDaemon
     } yield ()
   }
 
-  private[nodes] def getOnRef(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId) = {
+  private[nodes] def getOnRef(ref: Ref[Map[NodeId, CoreNodeFact]], nodeId: NodeId): IOResult[Option[CoreNodeFact]] = {
     ref.get.map(_.get(nodeId))
   }
 
-  private[nodes] def getAllOnRef(ref: Ref[Map[NodeId, NodeFact]]): IOStream[NodeFact] = {
-    ZStream.fromZIO(ref.get.map(m => m.values)).flatMap(x => ZStream.fromIterable(x))
+  private[nodes] def getAllOnRef[A](ref: Ref[Map[NodeId, CoreNodeFact]])(implicit getter: NodeFactGetter[A]): IOStream[A] = {
+    ZStream.fromZIO(ref.get.flatMap(m => ZIO.foreach(m.values)(getter.access(_)))).flatMap(x => ZStream.fromIterable(x))
+  }
+
+  override def getAccepted[A](nodeId: NodeId)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]] = {
+    getOnRef(acceptedNodes, nodeId).flatMap {
+      case None    => None.succeed
+      case Some(x) => getter.access(x).map(Some(_))
+    }
+  }
+
+  override def getPending[A](nodeId: NodeId)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]] = {
+    getOnRef(pendingNodes, nodeId).flatMap {
+      case None    => None.succeed
+      case Some(x) => getter.access(x).map(Some(_))
+    }
+  }
+
+  override def lookup[A](nodeId: NodeId)(implicit getter: NodeFactGetter[A]): IOResult[Option[A]] = {
+    getAccepted(nodeId).flatMap(opt => opt.fold(getPending(nodeId))(Some(_).succeed))
+  }
+
+  override def getAllOn[A](status: InventoryStatus)(implicit getter: NodeFactGetter[A]): IOStream[A] = {
+    status match {
+      case AcceptedInventory => getAllAccepted()
+      case PendingInventory  => getAllPending()
+      case RemovedInventory  => ZStream.empty
+    }
+  }
+
+  override def getAllAccepted[A]()(implicit getter: NodeFactGetter[A]): IOStream[A] = {
+    getAllOnRef[A](acceptedNodes)
+  }
+
+  override def getAllPending[A]()(implicit getter: NodeFactGetter[A]): IOStream[A] = {
+    getAllOnRef(pendingNodes)
   }
 
   /*
    *
    */
-  private def saveOn(ref: Ref[Map[NodeId, NodeFact]], nodeFact: NodeFact): IOResult[InternalChangeEvent] = {
+  private def saveOn(ref: Ref[Map[NodeId, CoreNodeFact]], nodeFact: CoreNodeFact): IOResult[InternalChangeEvent[CoreNodeFact]] = {
     ref
       .getAndUpdate(_ + ((nodeFact.id, nodeFact)))
       .map { old =>
         old.get(nodeFact.id) match {
           case Some(n) =>
-            if (NodeFact.same(n, nodeFact)) InternalChangeEvent.Noop(nodeFact.id)
+            if (CoreNodeFact.same(n, nodeFact)) InternalChangeEvent.Noop(nodeFact.id)
             else InternalChangeEvent.Update(nodeFact)
           case None    => InternalChangeEvent.Create(nodeFact)
         }
       }
   }
 
-  private def deleteOn(ref: Ref[Map[NodeId, NodeFact]], nodeId: NodeId): IOResult[InternalChangeEvent] = {
+  private def deleteOn(ref: Ref[Map[NodeId, CoreNodeFact]], nodeId: NodeId): IOResult[InternalChangeEvent[CoreNodeFact]] = {
     ref
       .getAndUpdate(_.removed(nodeId))
       .map(old => {
@@ -312,40 +397,25 @@ class CoreNodeFactRepository(
       })
   }
 
-  override def getAccepted(nodeId: NodeId): IOResult[Option[NodeFact]] = {
-    getOnRef(acceptedNodes, nodeId)
+  override def save[A](nodeId: NodeId, fact: A)(implicit cc: ChangeContext, save: NodeFactSaver[A]): IOResult[Unit] = {
+    save.persist(nodeId, fact)
   }
 
-  override def getPending(nodeId: NodeId): IOResult[Option[NodeFact]] = {
-    getOnRef(pendingNodes, nodeId)
-  }
-
-  override def lookup(nodeId: NodeId): IOResult[Option[NodeFact]] = {
-    getAccepted(nodeId).flatMap(opt => opt.fold(getPending(nodeId))(Some(_).succeed))
-  }
-
-  override def getAllOn(status: InventoryStatus): IOStream[NodeFact] = {
-    status match {
-      case AcceptedInventory => getAllAccepted()
-      case PendingInventory  => getAllPending()
-      case RemovedInventory  => ZStream.empty
-    }
-  }
-
-  override def getAllAccepted(): IOStream[NodeFact] = getAllOnRef(acceptedNodes)
-
-  override def getAllPending(): IOStream[NodeFact] = getAllOnRef(pendingNodes)
-
-  override def save(nodeFact: NodeFact)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
+  override def save[A <: MinimalNodeFactInterface](
+      nodeFact:  A
+  )(implicit cc: ChangeContext, save: NodeFactSaver[A]): IOResult[NodeFactChangeEventCC[MinimalNodeFactInterface]] = {
+    val cnf = CoreNodeFact.fromMininal(nodeFact)
     ZIO.scoped(
       for {
         _ <- lock.withLock
-        _ <- storage.save(nodeFact)
+        // here we persist all the data with the provided solution
+        _ <- save.persist(nodeFact.id, nodeFact)
+        // but then the diff are only done on the core elements
         e <- nodeFact.rudderSettings.status match {
                case RemovedInventory  => // this case is ignored, we don't delete node based on status value
                  NodeFactChangeEventCC(Noop(nodeFact.id), cc).succeed
                case PendingInventory  =>
-                 saveOn(pendingNodes, nodeFact).map { e =>
+                 saveOn(pendingNodes, cnf).map { e =>
                    e match {
                      case InternalChangeEvent.Create(node) => NodeFactChangeEventCC(NewPending(node), cc)
                      case InternalChangeEvent.Update(node) => NodeFactChangeEventCC(UpdatedPending(node), cc)
@@ -354,7 +424,7 @@ class CoreNodeFactRepository(
                    }
                  }
                case AcceptedInventory =>
-                 saveOn(acceptedNodes, nodeFact).map { e =>
+                 saveOn(acceptedNodes, cnf).map { e =>
                    e match {
                      case InternalChangeEvent.Create(node) => NodeFactChangeEventCC(Accepted(node), cc)
                      case InternalChangeEvent.Update(node) => NodeFactChangeEventCC(Updated(node), cc)
@@ -370,7 +440,7 @@ class CoreNodeFactRepository(
 
   override def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit
       cc:                           ChangeContext
-  ): IOResult[NodeFactChangeEventCC] = {
+  ): IOResult[NodeFactChangeEventCC[CoreNodeFact]] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
@@ -419,7 +489,7 @@ class CoreNodeFactRepository(
     )
   }
 
-  override def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
+  override def delete(nodeId: NodeId)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC[CoreNodeFact]] = {
     ZIO.scoped(
       for {
         _ <- lock.withLock
@@ -436,7 +506,9 @@ class CoreNodeFactRepository(
     )
   }
 
-  override def updateInventory(inventory: Inventory)(implicit cc: ChangeContext): IOResult[NodeFactChangeEventCC] = {
+  override def updateInventory(
+      inventory: Inventory
+  )(implicit cc: ChangeContext, s: NodeFactSaver[NodeFact]): IOResult[NodeFactChangeEventCC[MinimalNodeFactInterface]] = {
     val nodeId = inventory.node.main.id
     ZIO.scoped(
       for {
@@ -479,13 +551,13 @@ trait SerializeFacts[A, B] {
 
 }
 
-trait NodeFactStorage {
+trait NodeFactStorage[A <: MinimalNodeFactInterface] {
 
   /*
    * Save node fact in the status given in the corresponding attribute.
    * No check will be done.
    */
-  def save(nodeFact: NodeFact): IOResult[Unit]
+  def save(nodeFact: A): IOResult[Unit]
 
   /*
    * Change the status of the node with given id to given status.
@@ -501,20 +573,20 @@ trait NodeFactStorage {
    */
   def delete(nodeId: NodeId): IOResult[Unit]
 
-  def getAllPending():  IOStream[NodeFact]
-  def getAllAccepted(): IOStream[NodeFact]
+  def getAllPending():  IOStream[A]
+  def getAllAccepted(): IOStream[A]
 }
 
 /*
  * Implementaton that store nothing and that can be used in tests or when a pure
  * in-memory version of the nodeFactRepos is needed.
  */
-object NoopFactStorage extends NodeFactStorage {
-  override def save(nodeFact: NodeFact):                              IOResult[Unit]     = ZIO.unit
-  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]     = ZIO.unit
-  override def delete(nodeId: NodeId):                                IOResult[Unit]     = ZIO.unit
-  override def getAllPending():                                       IOStream[NodeFact] = ZStream.empty
-  override def getAllAccepted():                                      IOStream[NodeFact] = ZStream.empty
+object NoopFactStorage extends NodeFactStorage[MinimalNodeFactInterface] {
+  override def save(nodeFact: MinimalNodeFactInterface):              IOResult[Unit]                     = ZIO.unit
+  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]                     = ZIO.unit
+  override def delete(nodeId: NodeId):                                IOResult[Unit]                     = ZIO.unit
+  override def getAllPending():                                       IOStream[MinimalNodeFactInterface] = ZStream.empty
+  override def getAllAccepted():                                      IOStream[MinimalNodeFactInterface] = ZStream.empty
 }
 
 /*
@@ -526,7 +598,7 @@ object NoopFactStorage extends NodeFactStorage {
  * etc
  */
 
-object GitNodeFactRepositoryImpl {
+object GitNodeFactStorageImpl {
 
   final case class NodeFactArchive(
       entity:     String,
@@ -543,11 +615,11 @@ object GitNodeFactRepositoryImpl {
  * - under nodes/pending or nodes/accepted given their status (which means that changing status of a node is
  *   a special operation)
  */
-class GitNodeFactRepositoryImpl(
+class GitNodeFactStorageImpl(
     override val gitRepo: GitRepositoryProvider,
     groupOwner:           String,
     actuallyCommit:       Boolean
-) extends NodeFactStorage with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
+) extends NodeFactStorage[NodeFact] with GitItemRepository with SerializeFacts[(NodeId, InventoryStatus), NodeFact] {
 
   override val relativePath = "nodes"
   override val entity:     String = "node"
@@ -583,7 +655,7 @@ class GitNodeFactRepositoryImpl(
    * As we want it to be human readable and searchable, we will use an indented format.
    */
   def toJson(nodeFact: NodeFact): IOResult[String] = {
-    import GitNodeFactRepositoryImpl._
+    import GitNodeFactStorageImpl._
     val node = nodeFact
       .modify(_.accounts)
       .using(_.sorted)
