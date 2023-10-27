@@ -37,22 +37,20 @@
 
 package com.normation.rudder.services.queries
 
-import com.normation.inventory.domain.AcceptedInventory
-import com.normation.inventory.domain.InventoryStatus
-
 import com.normation.box._
 import com.normation.errors.IOResult
+import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries._
-import com.normation.rudder.facts.nodes.NodeFact
+import com.normation.rudder.facts.nodes.CoreNodeFact
+import com.normation.rudder.facts.nodes.NodeFactGetter
 import com.normation.rudder.facts.nodes.NodeFactRepository
-
 import net.liftweb.common.Box
-
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
@@ -66,14 +64,14 @@ import zio.syntax._
  *
  * NodeFactMatcher is a group for AND and for OR
  */
-final case class NodeFactMatcher(debugString: String, matches: NodeFact => IOResult[Boolean])
+final case class NodeFactMatcher(debugString: String, matches: CoreNodeFact => IOResult[Boolean])
 
 object NodeFactMatcher {
   val nodeAndRelayMatcher = {
     val s = "only matches node and relay"
     NodeFactMatcher(
       s,
-      (n: NodeFact) => {
+      (n: CoreNodeFact) => {
         for {
           res <- (n.rudderSettings.kind != NodeKind.Root).succeed
           _   <- FactQueryProcessorPure.trace(s"    [${res}] for $s on '${n.rudderSettings.kind}'")
@@ -93,32 +91,38 @@ object GroupAnd extends Group {
     (a, b) match {
       case (`zero`, _) => b
       case (_, `zero`) => a
-      case _           => NodeFactMatcher(s"(${a.debugString}) && (${b.debugString})", (n: NodeFact) => (a.matches(n) && b.matches(n)))
+      case _           => NodeFactMatcher(s"(${a.debugString}) && (${b.debugString})", (n: CoreNodeFact) => (a.matches(n) && b.matches(n)))
     }
   }
-  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher(s"!(${a.debugString})", (n: NodeFact) => a.matches(n).map(!_))
+  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher(s"!(${a.debugString})", (n: CoreNodeFact) => a.matches(n).map(!_))
   val zero                                            = NodeFactMatcher("true", _ => true.succeed)
 }
+
 object GroupOr extends Group {
   def compose(a: NodeFactMatcher, b: NodeFactMatcher) = {
     (a, b) match {
       case (`zero`, _) => b
       case (_, `zero`) => a
-      case _           => NodeFactMatcher(s"(${a.debugString}) || (${b.debugString})", (n: NodeFact) => (a.matches(n) || b.matches(n)))
+      case _           => NodeFactMatcher(s"(${a.debugString}) || (${b.debugString})", (n: CoreNodeFact) => (a.matches(n) || b.matches(n)))
     }
   }
-  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher(s"!(${a.debugString})", (n: NodeFact) => a.matches(n).map(!_))
+  def inverse(a: NodeFactMatcher)                     = NodeFactMatcher(s"!(${a.debugString})", (n: CoreNodeFact) => a.matches(n).map(!_))
   val zero                                            = NodeFactMatcher("false", _ => false.succeed)
 }
 
-class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGroupComparatorRepository, status: InventoryStatus = AcceptedInventory)
+class NodeFactQueryProcessor(
+    nodeFactRepo:  NodeFactRepository,
+    groupRepo:     SubGroupComparatorRepository,
+    ldapQueryProc: InternalLDAPQueryProcessor,
+    status:        InventoryStatus = AcceptedInventory
+)(implicit g:      NodeFactGetter[CoreNodeFact])
     extends QueryProcessor with QueryChecker {
 
   def process(query: Query):       Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
   def processOnlyId(query: Query): Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
 
-  def check(query: Query, nodeIds: Option[Seq[NodeId]]): IOResult[Set[NodeId]]     = { ??? }
-  def processPure(query: Query):                         IOResult[Chunk[NodeFact]] = {
+  def check(query: Query, nodeIds: Option[Seq[NodeId]]): IOResult[Set[NodeId]]         = { ??? }
+  def processPure(query: Query):                         IOResult[Chunk[CoreNodeFact]] = {
     for {
       m   <- analyzeQuery(query)
       res <- nodeFactRepo
@@ -130,15 +134,37 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGro
 
   /*
    * transform the query into a function to apply to a NodeFact and that say "yes" or "no"
+   *
+   * We have different "querier":
+   * - CoreNodeFact (we have info in cache)
+   * - SubGroupQuery (we want to do only one query to external service for each line)
+   * - LdapQuery (we want to have all lines of that kind grouped in a new query)
    */
   def analyzeQuery(query: Query): IOResult[NodeFactMatcher] = {
     val group = if (query.composition == And) GroupAnd else GroupOr
 
+    // we need a better pattern matching (extensible would be better) in place of `isInstanceOf`
+    val subgroupLines = subGroupMatcher(
+      query.criteria.collect {
+        case l if l.attribute.cType.isInstanceOf[SubGroupComparator] => l
+      },
+      groupRepo
+    )
+    val ldapLines     = ldapMatcher(
+      query.criteria.collect {
+        case l if l.attribute.cType.isInstanceOf[LDAPCriterionType] => l
+      },
+      query
+    )
+    val nodeLines     = nodeFactMatcher(query.criteria.collect {
+      case l if l.attribute.nodeCriterionMatcher != UnsupportedByNodeMinimalApi => l
+    })
+
     for {
       // build matcher for criterion lines
-      lineResult <- ZIO.foldLeft(query.criteria)(group.zero) {
-                      case (matcher, criterion) =>
-                        analyseCriterion(criterion).map(group.compose(matcher, _))
+      lineResult <- ZIO.foldLeft(subgroupLines ++ ldapLines ++ nodeLines)(group.zero) {
+                      case (matcher, line) =>
+                        line.map(group.compose(matcher, _))
                     }
     } yield {
       // inverse now if needed, because we don't want to return root if not asked *even* when inverse is present
@@ -150,33 +176,51 @@ class NodeFactQueryProcessor(nodeFactRepo: NodeFactRepository, groupRepo: SubGro
     }
   }
 
-  def analyseCriterion(c: CriterionLine): IOResult[NodeFactMatcher] = {
-    // here, we have two kind of processing:
-    // - one is testing one a node by node basis: this is the main case, where we want to know if a node
-    //   matches of not a bunch of criteria regarding its inventory/properties
-    // - one is "on all node at once": it is when an external service is the oracle and can decide what node
-    //   matches its criteria. This is the case for the node-group matcher for example.
-    // For now, we have to check the criterion to know, each external service is a special case
-    c.attribute.cType match {
-      // not sure why I need that
-      case SubGroupComparator(repo) =>
-        for {
-          groupNodes <- repo().getNodeIds(NodeGroupId(NodeGroupUid(c.value)))
-        } yield {
-          NodeFactMatcher(
-            s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
-            (n: NodeFact) => groupNodes.contains(n.id).succeed
-          )
-        }
-      case _                        =>
-        NodeFactMatcher(
-          s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
-          (n: NodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value)
-        ).succeed
+  // here, we have two kinds of processing:
+  // - one is testing on a node by node basis: this is the main case, where we want to know if a node
+  //   matches of not a bunch of criteria regarding its inventory/properties
+  // - one is "on all node at once": it is when an external service is the oracle and can decide what node
+  //   matches its criteria. This is the case for the node-group matcher for example.
+  // For now, we have to check the criterion to know, each external service is a special case
+  def ldapMatcher(lines: Seq[CriterionLine], q: Query): Seq[IOResult[NodeFactMatcher]] = {
+    // for LDAP, we rebuild a false query with only these lines and no transformation
+    val ldapQuery = q.copy(transform = ResultTransformation.Identity, criteria = lines.toList)
+    Seq(for {
+      nodeIds <- ldapQueryProc.rawInternalQueryProcessor(ldapQuery)
+    } yield {
+      NodeFactMatcher(
+        s"[sub-ldap query ${ldapQuery.toString()}]",
+        (n: CoreNodeFact) => nodeIds.contains(n.id).succeed
+      )
+    })
+  }
+
+  def nodeFactMatcher(lines: Seq[CriterionLine]): Seq[IOResult[NodeFactMatcher]] = {
+    lines.map { c =>
+      NodeFactMatcher(
+        s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
+        (n: CoreNodeFact) => c.attribute.nodeCriterionMatcher.matches(n, c.comparator, c.value)
+      ).succeed
     }
   }
 
-  def processOne(matcher: NodeFactMatcher, n: NodeFact): IOResult[Boolean] = {
+  def subGroupMatcher(
+      lines:     Seq[CriterionLine],
+      groupRepo: SubGroupComparatorRepository
+  ): Seq[IOResult[NodeFactMatcher]] = {
+    lines.map { c =>
+      for {
+        groupNodes <- groupRepo.getNodeIds(NodeGroupId(NodeGroupUid(c.value)))
+      } yield {
+        NodeFactMatcher(
+          s"[${c.objectType.objectType}.${c.attribute.name} ${c.comparator.id} ${c.value}]",
+          (n: CoreNodeFact) => groupNodes.contains(n.id).succeed
+        )
+      }
+    }
+  }
+
+  def processOne(matcher: NodeFactMatcher, n: CoreNodeFact): IOResult[Boolean] = {
     for {
       _   <- FactQueryProcessorPure.debug(s"  --'${n.fqdn}' (${n.id.value})--")
       res <- matcher.matches(n)

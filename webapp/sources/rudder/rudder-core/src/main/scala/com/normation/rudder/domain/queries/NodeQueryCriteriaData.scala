@@ -50,18 +50,16 @@ import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries.{KeyValueComparator => KVC}
 import com.normation.rudder.domain.queries.KeyValueComparator.HasKey
+import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.repository.RoNodeGroupRepository
 import com.normation.utils.DateFormaterService
-
 import java.util.function.Predicate
 import java.util.regex.Pattern
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-
 import scala.collection.SortedMap
 import scala.util.Try
-
 import zio._
 import zio.syntax._
 
@@ -95,7 +93,7 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
     def toChunk: Chunk[A] = Chunk.fromIterable(opt)
   }
 
-  implicit class OneToChunk[A](a :A) {
+  implicit class OneToChunk[A](a: A) {
     def wrap: Chunk[A] = Chunk(a)
   }
 
@@ -111,7 +109,7 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
         Criterion(
           A_MANUFACTURER,
           StringComparator,
-          NodeCriterionMatcherString(_.machine.manufacturer.toChunk.map(_.name))
+          AlwaysFalse("machine does not have a 'mother board uuid' attribute in fusion")
         ),
         Criterion(A_SERIAL_NUMBER, StringComparator, NodeCriterionMatcherString(_.machine.systemSerial.toChunk))
       )
@@ -119,124 +117,112 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
     ObjectCriterion(
       OC_MEMORY,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.memories.flatMap(_.description))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.memories.map(_.quantity))),
-        Criterion(A_NAME, StringComparator, NodeCriterionMatcherString(_.memories.flatMap(_.name))),
-        Criterion(A_MEMORY_CAPACITY, MemoryComparator, NodeCriterionMatcherLong(_.memories.flatMap(_.capacity.map(_.size)))),
-        Criterion(A_MEMORY_CAPTION, StringComparator, NodeCriterionMatcherString(_.memories.flatMap(_.caption))),
-        Criterion(A_MEMORY_SPEED, LongComparator, NodeCriterionMatcherString(_.memories.flatMap(_.speed))),
-        Criterion(A_MEMORY_SLOT_NUMBER, LongComparator, NodeCriterionMatcherString(_.memories.map(_.slotNumber))),
-        Criterion(A_MEMORY_TYPE, StringComparator, NodeCriterionMatcherString(_.memories.flatMap(_.memType))),
-        Criterion(A_SERIAL_NUMBER, StringComparator, NodeCriterionMatcherString(_.memories.flatMap(_.serialNumber)))
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MEMORY_CAPACITY, MemoryComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MEMORY_CAPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MEMORY_SPEED, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MEMORY_SLOT_NUMBER, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MEMORY_TYPE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SERIAL_NUMBER, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_STORAGE,
       Chunk(
-        Criterion(A_NAME, StringComparator, NodeCriterionMatcherString(_.storages.map(_.name))),
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.storages.flatMap(_.description))),
-        Criterion(A_MODEL, StringComparator, NodeCriterionMatcherString(_.storages.flatMap(_.model))),
-        Criterion(A_SERIAL_NUMBER, StringComparator, NodeCriterionMatcherString(_.storages.flatMap(_.serialNumber))),
-        Criterion(A_FIRMWARE, StringComparator, NodeCriterionMatcherString(_.storages.flatMap(_.firmware))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.storages.map(_.quantity))),
-        Criterion(A_SME_TYPE, StringComparator, NodeCriterionMatcherString(_.storages.flatMap(_.sType))),
-        Criterion(
-          A_MANUFACTURER,
-          StringComparator,
-          NodeCriterionMatcherString(_.storages.flatMap(_.manufacturer.map(_.name)))
-        ),
-        Criterion(A_STORAGE_SIZE, MemoryComparator, NodeCriterionMatcherLong(_.storages.flatMap(_.size.map(_.size)))),
-        Criterion(A_STORAGE_FIRMWARE, StringComparator, NodeCriterionMatcherString(_.storages.flatMap(_.firmware)))
+        Criterion(A_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MODEL, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SERIAL_NUMBER, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_FIRMWARE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SME_TYPE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MANUFACTURER, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_STORAGE_SIZE, MemoryComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_STORAGE_FIRMWARE, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_BIOS,
       Chunk(
-        Criterion(A_BIOS_NAME, StringComparator, NodeCriterionMatcherString(_.bios.map(_.name))),
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.bios.flatMap(_.description))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.bios.map(_.quantity))),
-        Criterion(A_SOFT_VERSION, StringComparator, NodeCriterionMatcherString(_.bios.flatMap(_.version.map(_.value)))),
-        Criterion(A_RELEASE_DATE, DateComparator, NodeCriterionMatcherDate(_.bios.flatMap(_.releaseDate))),
-        Criterion(A_EDITOR, StringComparator, NodeCriterionMatcherString(_.bios.flatMap(_.editor.map(_.name))))
+        Criterion(A_BIOS_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SOFT_VERSION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_RELEASE_DATE, DateComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_EDITOR, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_CONTROLLER,
       Chunk(
-        Criterion(A_CONTROLLER_NAME, StringComparator, NodeCriterionMatcherString(_.controllers.map(_.name))),
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.controllers.flatMap(_.description))),
-        Criterion(A_SME_TYPE, StringComparator, NodeCriterionMatcherString(_.controllers.flatMap(_.cType))),
-        Criterion(
-          A_MANUFACTURER,
-          StringComparator,
-          NodeCriterionMatcherString(_.controllers.flatMap(_.manufacturer.map(_.name)))
-        ),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.controllers.map(_.quantity)))
+        Criterion(A_CONTROLLER_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SME_TYPE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MANUFACTURER, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_PORT,
       Chunk(
-        Criterion(A_PORT_NAME, StringComparator, NodeCriterionMatcherString(_.ports.map(_.name))),
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.ports.flatMap(_.description))),
-        Criterion(A_SME_TYPE, StringComparator, NodeCriterionMatcherString(_.ports.flatMap(_.pType))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.ports.map(_.quantity)))
+        Criterion(A_PORT_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SME_TYPE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_PROCESSOR,
       Chunk(
-        Criterion(A_PROCESSOR_NAME, StringComparator, NodeCriterionMatcherString(_.processors.map(_.name))),
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.processors.flatMap(_.description))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.processors.map(_.quantity))),
-        Criterion(A_MODEL, StringComparator, NodeCriterionMatcherString(_.processors.flatMap(_.model.map(_.toString)))),
-        Criterion(
-          A_MANUFACTURER,
-          StringComparator,
-          NodeCriterionMatcherString(_.processors.flatMap(_.manufacturer.map(_.name)))
-        ),
-        Criterion(A_PROCESSOR_SPEED, LongComparator, NodeCriterionMatcherInt(_.processors.flatMap(_.speed))),
+        Criterion(A_PROCESSOR_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MODEL, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MANUFACTURER, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_PROCESSOR_SPEED, LongComparator, UnsupportedByNodeMinimalApi),
         Criterion(
           A_PROCESSOR_STEPPING,
           StringComparator,
-          NodeCriterionMatcherString(_.processors.flatMap(_.stepping.map(_.toString)))
+          UnsupportedByNodeMinimalApi
         ),
         Criterion(
           A_PROCESSOR_FAMILLY,
           StringComparator,
-          NodeCriterionMatcherString(_.processors.flatMap(_.family.map(_.toString)))
+          UnsupportedByNodeMinimalApi
         ),
-        Criterion(A_PROCESSOR_FAMILY_NAME, StringComparator, NodeCriterionMatcherString(_.processors.flatMap(_.familyName))),
-        Criterion(A_THREAD, StringComparator, NodeCriterionMatcherString(_.processors.flatMap(_.thread.map(_.toString)))),
-        Criterion(A_CORE, StringComparator, NodeCriterionMatcherString(_.processors.flatMap(_.core.map(_.toString))))
+        Criterion(A_PROCESSOR_FAMILY_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_THREAD, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_CORE, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_SLOT,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.slots.flatMap(_.description))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.slots.map(_.quantity))),
-        Criterion(A_STATUS, StringComparator, NodeCriterionMatcherString(_.slots.flatMap(_.status))),
-        Criterion(A_SLOT_NAME, StringComparator, NodeCriterionMatcherString(_.slots.map(_.name)))
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_STATUS, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SLOT_NAME, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_SOUND,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.sounds.flatMap(_.description))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.sounds.map(_.quantity))),
-        Criterion(A_SOUND_NAME, StringComparator, NodeCriterionMatcherString(_.sounds.map(_.name)))
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SOUND_NAME, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_VIDEO,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.videos.flatMap(_.description))),
-        Criterion(A_QUANTITY, LongComparator, NodeCriterionMatcherInt(_.videos.map(_.quantity))),
-        Criterion(A_VIDEO_NAME, StringComparator, NodeCriterionMatcherString(_.videos.map(_.name))),
-        Criterion(A_VIDEO_CHIPSET, StringComparator, NodeCriterionMatcherString(_.videos.flatMap(_.chipset))),
-        Criterion(A_VIDEO_RESOLUTION, StringComparator, NodeCriterionMatcherString(_.videos.flatMap(_.resolution))),
-        Criterion(A_MEMORY_CAPACITY, MemoryComparator, NodeCriterionMatcherLong(_.videos.flatMap(_.memory.map(_.size))))
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_QUANTITY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VIDEO_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VIDEO_CHIPSET, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VIDEO_RESOLUTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MEMORY_CAPACITY, MemoryComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
@@ -253,9 +239,9 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
         Criterion(A_ARCH, StringComparator, NodeCriterionMatcherString(_.archDescription.toChunk)),
         Criterion(A_STATE, NodeStateComparator, NodeCriterionMatcherString(_.rudderSettings.state.name.wrap)),
         Criterion(A_OS_RAM, MemoryComparator, NodeCriterionMatcherLong(_.ram.map(_.size).toChunk)),
-        Criterion(A_OS_SWAP, MemoryComparator, NodeCriterionMatcherLong(_.swap.map(_.size).toChunk)),
+        Criterion(A_OS_SWAP, MemoryComparator, UnsupportedByNodeMinimalApi),
         Criterion(A_AGENTS_NAME, AgentComparator, AgentMatcher),
-        Criterion(A_ACCOUNT, StringComparator, NodeCriterionMatcherString(_.accounts)),
+        Criterion(A_ACCOUNT, StringComparator, UnsupportedByNodeMinimalApi),
         Criterion(A_LIST_OF_IP, NodeIpListComparator, NodeCriterionMatcherString(_.ipAddresses.map(_.inet))),
         Criterion(A_ROOT_USER, StringComparator, NodeCriterionMatcherString(_.rudderAgent.user.wrap)),
         Criterion(A_INVENTORY_DATE, DateComparator, NodeCriterionMatcherDate(_.lastInventoryDate.toChunk)),
@@ -269,116 +255,108 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
     ObjectCriterion(
       OC_SOFTWARE,
       Chunk(
-        Criterion(A_NAME, StringComparator, NodeCriterionMatcherString(_.software.map(_.name))),
-        Criterion(A_SOFT_VERSION, StringComparator, NodeCriterionMatcherString(_.software.map(_.version.value))),
-        Criterion(A_EDITOR, EditorComparator, NodeCriterionMatcherString(_.software.flatMap(_.publisher))),
-        Criterion(A_LICENSE_EXP, DateComparator, NodeCriterionMatcherDate(_.software.flatMap(_.expirationDate))),
-        Criterion(A_LICENSE_NAME, StringComparator, NodeCriterionMatcherString(_.software.flatMap(_.licenseName))),
-        Criterion(A_LICENSE_PRODUCT_ID, StringComparator, NodeCriterionMatcherString(_.software.flatMap(_.productId))),
-        Criterion(A_LICENSE_PRODUCT_KEY, StringComparator, NodeCriterionMatcherString(_.software.flatMap(_.productKey)))
+        Criterion(A_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_SOFT_VERSION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_EDITOR, EditorComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_LICENSE_EXP, DateComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_LICENSE_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_LICENSE_PRODUCT_ID, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_LICENSE_PRODUCT_KEY, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_NET_IF,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.networks.flatMap(_.description))),
-        Criterion(A_NETWORK_NAME, StringComparator, NodeCriterionMatcherString(_.networks.map(_.name))),
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_NETWORK_NAME, StringComparator, UnsupportedByNodeMinimalApi),
         Criterion(
           A_NETIF_ADDRESS,
           StringComparator,
-          NodeCriterionMatcherString(_.networks.flatMap(_.ifAddresses.map(_.getHostAddress)))
+          UnsupportedByNodeMinimalApi
         ),
-        Criterion(
-          A_NETIF_DHCP,
-          StringComparator,
-          NodeCriterionMatcherString(_.networks.flatMap(_.ifDhcp.map(_.getHostAddress)))
-        ),
+        Criterion(A_NETIF_DHCP, StringComparator, UnsupportedByNodeMinimalApi),
         Criterion(
           A_NETIF_GATEWAY,
           StringComparator,
-          NodeCriterionMatcherString(_.networks.flatMap(_.ifGateway.map(_.getHostAddress)))
+          UnsupportedByNodeMinimalApi
         ),
-        Criterion(
-          A_NETIF_MASK,
-          StringComparator,
-          NodeCriterionMatcherString(_.networks.flatMap(_.ifMask.map(_.getHostAddress)))
-        ),
+        Criterion(A_NETIF_MASK, StringComparator, UnsupportedByNodeMinimalApi),
         Criterion(
           A_NETIF_SUBNET,
           StringComparator,
-          NodeCriterionMatcherString(_.networks.flatMap(_.ifSubnet.map(_.getHostAddress)))
+          UnsupportedByNodeMinimalApi
         ),
-        Criterion(A_NETIF_MAC, StringComparator, NodeCriterionMatcherString(_.networks.flatMap(_.macAddress))),
-        Criterion(A_NETIF_TYPE, StringComparator, NodeCriterionMatcherString(_.networks.flatMap(_.ifType))),
-        Criterion(A_NETIF_TYPE_MIB, StringComparator, NodeCriterionMatcherString(_.networks.flatMap(_.typeMib)))
+        Criterion(A_NETIF_MAC, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_NETIF_TYPE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_NETIF_TYPE_MIB, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       OC_FS,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.fileSystems.flatMap(_.description))),
-        Criterion(A_NAME, StringComparator, NodeCriterionMatcherString(_.fileSystems.flatMap(_.name))),
-        Criterion(A_MOUNT_POINT, StringComparator, NodeCriterionMatcherString(_.fileSystems.map(_.mountPoint))),
-        Criterion(A_FILE_COUNT, LongComparator, NodeCriterionMatcherInt(_.fileSystems.flatMap(_.fileCount))),
-        Criterion(A_FREE_SPACE, MemoryComparator, NodeCriterionMatcherLong(_.fileSystems.flatMap(_.freeSpace.map(_.size)))),
-        Criterion(A_TOTAL_SPACE, MemoryComparator, NodeCriterionMatcherLong(_.fileSystems.flatMap(_.totalSpace.map(_.size))))
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_NAME, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_MOUNT_POINT, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_FILE_COUNT, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_FREE_SPACE, MemoryComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_TOTAL_SPACE, MemoryComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       A_PROCESS,
       Chunk(
-        Criterion("pid", JsonFixedKeyComparator(A_PROCESS, "pid", false), NodeCriterionMatcherInt(_.processes.map(_.pid))),
+        Criterion("pid", JsonFixedKeyComparator(A_PROCESS, "pid", false), UnsupportedByNodeMinimalApi),
         Criterion(
           "commandName",
           JsonFixedKeyComparator(A_PROCESS, "commandName", true),
-          NodeCriterionMatcherString(_.processes.flatMap(_.commandName))
+          UnsupportedByNodeMinimalApi
         ),
         Criterion(
           "cpuUsage",
           JsonFixedKeyComparator(A_PROCESS, "cpuUsage", false),
-          NodeCriterionMatcherString(_.processes.flatMap(_.cpuUsage.map(_.toString)))
+          UnsupportedByNodeMinimalApi
         ),
         Criterion(
           "memory",
           JsonFixedKeyComparator(A_PROCESS, "memory", false),
-          NodeCriterionMatcherFloat(_.processes.flatMap(_.memory))
+          UnsupportedByNodeMinimalApi
         ),
-        Criterion("tty", JsonFixedKeyComparator(A_PROCESS, "tty", true), NodeCriterionMatcherString(_.processes.flatMap(_.tty))),
+        Criterion("tty", JsonFixedKeyComparator(A_PROCESS, "tty", true), UnsupportedByNodeMinimalApi),
         Criterion(
           "virtualMemory",
           JsonFixedKeyComparator(A_PROCESS, "virtualMemory", false),
-          NodeCriterionMatcherDouble(_.processes.flatMap(_.virtualMemory))
+          UnsupportedByNodeMinimalApi
         ),
         Criterion(
           "started",
           JsonFixedKeyComparator(A_PROCESS, "started", true),
-          NodeCriterionMatcherString(_.processes.flatMap(_.started))
+          UnsupportedByNodeMinimalApi
         ),
         Criterion(
           "user",
           JsonFixedKeyComparator(A_PROCESS, "user", true),
-          NodeCriterionMatcherString(_.processes.flatMap(_.user))
+          UnsupportedByNodeMinimalApi
         )
       )
     ),
     ObjectCriterion(
       OC_VM_INFO,
       Chunk(
-        Criterion(A_DESCRIPTION, StringComparator, NodeCriterionMatcherString(_.vms.flatMap(_.description))),
-        Criterion(A_VM_TYPE, StringComparator, NodeCriterionMatcherString(_.vms.flatMap(_.vmtype))),
-        Criterion(A_VM_OWNER, StringComparator, NodeCriterionMatcherString(_.vms.flatMap(_.owner))),
-        Criterion(A_VM_STATUS, StringComparator, NodeCriterionMatcherString(_.vms.flatMap(_.status))),
-        Criterion(A_VM_CPU, LongComparator, NodeCriterionMatcherInt(_.vms.flatMap(_.vcpu))),
-        Criterion(A_VM_MEMORY, LongComparator, NodeCriterionMatcherString(_.vms.flatMap(_.memory))),
-        Criterion(A_VM_ID, StringComparator, NodeCriterionMatcherString(_.vms.map(_.uuid.value))),
-        Criterion(A_VM_SUBSYSTEM, StringComparator, NodeCriterionMatcherString(_.vms.flatMap(_.subsystem))),
-        Criterion(A_VM_NAME, StringComparator, NodeCriterionMatcherString(_.vms.flatMap(_.name)))
+        Criterion(A_DESCRIPTION, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_TYPE, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_OWNER, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_STATUS, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_CPU, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_MEMORY, LongComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_ID, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_SUBSYSTEM, StringComparator, UnsupportedByNodeMinimalApi),
+        Criterion(A_VM_NAME, StringComparator, UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
       A_EV,
       Chunk(
-        Criterion("name.value", NameValueComparator(A_EV), EnvironmentVariableMatcher)
+        Criterion("name.value", NameValueComparator(A_EV), UnsupportedByNodeMinimalApi)
       )
     ),
     ObjectCriterion(
@@ -393,7 +371,7 @@ class NodeQueryCriteriaData(groupRepo: () => SubGroupComparatorRepository) {
         Criterion(
           A_NODE_GROUP_UUID,
           SubGroupComparator(groupRepo),
-          AlwaysFalse("sub-group matcher should have been handled at a higher level. Please report.")
+          UnsupportedByNodeMinimalApi
         )
       )
     )
@@ -446,12 +424,25 @@ object MatchHolder {
 }
 
 trait NodeCriterionMatcher {
+  def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean]
+}
+
+trait FullNodeCriterionMatcher {
   def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean]
 }
 
 case class AlwaysFalse(reason: String) extends NodeCriterionMatcher {
-  override def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
+  override def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
     FactQueryProcessorPure.trace(s"    [false] for AlwaysFalse: ${reason} ") *>
+    false.succeed
+  }
+}
+
+case object UnsupportedByNodeMinimalApi extends NodeCriterionMatcher {
+  override def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
+    FactQueryProcessorPure.trace(
+      s"    [false] ${comparator.id} is not supported by minimal node API, it must be handled by a special operator "
+    ) *>
     false.succeed
   }
 }
@@ -461,7 +452,7 @@ case class AlwaysFalse(reason: String) extends NodeCriterionMatcher {
  * to one value. Typically, it can be String, numeric value, date, memories, etc.
  */
 trait NodeCriterionOrderedValueMatcher[A] extends NodeCriterionMatcher {
-  def extractor: NodeFact => Chunk[A]
+  def extractor: CoreNodeFact => Chunk[A]
   def parseNum(value: String): Option[A]
   def serialise(a:    A):      String
   def order: Ordering[A]
@@ -475,7 +466,7 @@ trait NodeCriterionOrderedValueMatcher[A] extends NodeCriterionMatcher {
     }
   }
 
-  def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
+  def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
     implicit val ser = serialise _
 
     comparator match {
@@ -521,35 +512,36 @@ trait NodeCriterionOrderedValueMatcher[A] extends NodeCriterionMatcher {
   }
 }
 
-final case class NodeCriterionMatcherString(extractor: NodeFact => Chunk[String])
+final case class NodeCriterionMatcherString(extractor: CoreNodeFact => Chunk[String])
     extends NodeCriterionOrderedValueMatcher[String] {
   override def parseNum(value: String): Option[String] = Some(value)
   override def serialise(a: String):    String         = a
   val order = Ordering.String
 }
 
-final case class NodeCriterionMatcherInt(extractor: NodeFact => Chunk[Int]) extends NodeCriterionOrderedValueMatcher[Int] {
+final case class NodeCriterionMatcherInt(extractor: CoreNodeFact => Chunk[Int]) extends NodeCriterionOrderedValueMatcher[Int] {
   override def parseNum(value: String): Option[Int] = try { Some(Integer.parseInt(value)) }
   catch { case ex: NumberFormatException => None }
   override def serialise(a: Int):       String      = a.toString
   val order = Ordering.Int
 }
 
-final case class NodeCriterionMatcherLong(extractor: NodeFact => Chunk[Long]) extends NodeCriterionOrderedValueMatcher[Long] {
+final case class NodeCriterionMatcherLong(extractor: CoreNodeFact => Chunk[Long]) extends NodeCriterionOrderedValueMatcher[Long] {
   override def parseNum(value: String): Option[Long] = try { Some(java.lang.Long.parseLong(value)) }
   catch { case ex: NumberFormatException => None }
   override def serialise(a: Long):      String       = a.toString
   val order = Ordering.Long
 }
 
-final case class NodeCriterionMatcherFloat(extractor: NodeFact => Chunk[Float]) extends NodeCriterionOrderedValueMatcher[Float] {
+final case class NodeCriterionMatcherFloat(extractor: CoreNodeFact => Chunk[Float])
+    extends NodeCriterionOrderedValueMatcher[Float] {
   override def parseNum(value: String): Option[Float] = try { Some(java.lang.Float.parseFloat(value)) }
   catch { case ex: NumberFormatException => None }
   override def serialise(a: Float):     String        = a.toString
   val order = Ordering.Float.TotalOrdering
 }
 
-final case class NodeCriterionMatcherDouble(extractor: NodeFact => Chunk[Double])
+final case class NodeCriterionMatcherDouble(extractor: CoreNodeFact => Chunk[Double])
     extends NodeCriterionOrderedValueMatcher[Double] {
   override def parseNum(value: String): Option[Double] = try { Some(java.lang.Double.parseDouble(value)) }
   catch { case ex: NumberFormatException => None }
@@ -557,16 +549,16 @@ final case class NodeCriterionMatcherDouble(extractor: NodeFact => Chunk[Double]
   val order = Ordering.Double.TotalOrdering
 }
 
-final case class NodeCriterionMatcherDate(extractorNode: NodeFact => Chunk[DateTime])
+final case class NodeCriterionMatcherDate(extractorNode: CoreNodeFact => Chunk[DateTime])
     extends NodeCriterionOrderedValueMatcher[DateTime] {
   val parseDate = (s: String) =>
     DateFormaterService.parseDate(s).toOption.orElse(Try(DateTimeFormat.forPattern("dd/MM/YYYY").parseDateTime(s)).toOption)
   // we need to accept both ISO format and old dd/MM/YYYY format for compatibility
   // also, we discard the time, only keep date
 
-  override def extractor:               NodeFact => Chunk[DateTime] = (n: NodeFact) => extractorNode(n).map(_.withTimeAtStartOfDay())
-  override def parseNum(value: String): Option[DateTime]            = parseDate(value).map(_.withTimeAtStartOfDay())
-  override def serialise(a: DateTime):  String                      = DateFormaterService.serialize(a)
+  override def extractor:               CoreNodeFact => Chunk[DateTime] = (n: CoreNodeFact) => extractorNode(n).map(_.withTimeAtStartOfDay())
+  override def parseNum(value: String): Option[DateTime]                = parseDate(value).map(_.withTimeAtStartOfDay())
+  override def serialise(a: DateTime):  String                          = DateFormaterService.serialize(a)
   val order = Ordering.by(_.getMillis)
 }
 
@@ -574,7 +566,7 @@ final case class NodeCriterionMatcherDate(extractorNode: NodeFact => Chunk[DateT
  * Agent matcher is very special with some magic case like "any cfengine"
  */
 object AgentMatcher extends NodeCriterionMatcher {
-  override def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
+  override def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
 
     implicit val serializer = (a: AgentType) => a.id
     // this is magic: we equals on agent ID and in addition we have the magic value "cfengine" that matches
@@ -609,14 +601,14 @@ object AgentMatcher extends NodeCriterionMatcher {
  * The getValue method is for the value part, used in jsonSelect.
  */
 trait NodeCriterionKeyValueMatcher[A] extends NodeCriterionMatcher {
-  def extractor: NodeFact => Chunk[A]
+  def extractor: CoreNodeFact => Chunk[A]
   def serialise(a: A): String
   def getKey(a:    A): String
   def getValue(a:  A): String
   // ordering on key, alternative could be done on values
   def order: Ordering[String] = Ordering.String
 
-  def matches(n: NodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
+  def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
     implicit val ser = serialise _
 
     // for Key/Value comparator, we have an expected format for the value for some operator:
@@ -723,20 +715,19 @@ trait NodeCriterionKeyValueMatcher[A] extends NodeCriterionMatcher {
   }
 }
 
-object EnvironmentVariableMatcher extends NodeCriterionKeyValueMatcher[(String, String)] {
-  override def extractor:                      NodeFact => Chunk[(String, String)] = { (n: NodeFact) => n.environmentVariables }
-  override def serialise(a: (String, String)): String                              = s"""${a._1}=${a._2}"""
-  override def getKey(a: (String, String)):    String                              = a._1
-  override def getValue(a: (String, String)):  String                              = a._2
-}
+//object EnvironmentVariableMatcher extends NodeCriterionKeyValueMatcher[(String, String)] {
+//  override def extractor:                      NodeFact => Chunk[(String, String)] = { (n: NodeFact) => n.environmentVariables }
+//  override def serialise(a: (String, String)): String                              = s"""${a._1}=${a._2}"""
+//  override def getKey(a: (String, String)):    String                              = a._1
+//  override def getValue(a: (String, String)):  String                              = a._2
+//}
 
 object NodePropertiesMatcher extends NodeCriterionKeyValueMatcher[NodeProperty] {
   /*
    * Node properties search are done on both node properties and inventory custom properties
    */
-  override def extractor:                  NodeFact => Chunk[NodeProperty] = { (n: NodeFact) => n.properties }
-  override def serialise(a: NodeProperty): String                          = s"""${a.name}=${a.valueAsString}"""
-  override def getKey(a: NodeProperty):    String                          = a.name
-  override def getValue(a: NodeProperty):  String                          = a.valueAsString
+  override def extractor:                  CoreNodeFact => Chunk[NodeProperty] = { (n: NodeFact) => n.properties }
+  override def serialise(a: NodeProperty): String                              = s"""${a.name}=${a.valueAsString}"""
+  override def getKey(a: NodeProperty):    String                              = a.name
+  override def getValue(a: NodeProperty):  String                              = a.valueAsString
 }
-
