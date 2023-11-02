@@ -42,14 +42,16 @@ import com.normation.errors.IOResult
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.NodeId
+import com.normation.inventory.domain.PendingInventory
+import com.normation.inventory.domain.RemovedInventory
 import com.normation.rudder.domain.logger.FactQueryProcessorPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.CoreNodeFact
-import com.normation.rudder.facts.nodes.NodeFactGetter
 import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.SelectNodeStatus
 import net.liftweb.common.Box
 import zio._
 import zio.stream.ZSink
@@ -115,21 +117,28 @@ class NodeFactQueryProcessor(
     groupRepo:     SubGroupComparatorRepository,
     ldapQueryProc: InternalLDAPQueryProcessor,
     status:        InventoryStatus = AcceptedInventory
-)(implicit g:      NodeFactGetter[CoreNodeFact])
-    extends QueryProcessor with QueryChecker {
+) extends QueryProcessor with QueryChecker {
 
   def process(query: Query):       Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
   def processOnlyId(query: Query): Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
 
   def check(query: Query, nodeIds: Option[Seq[NodeId]]): IOResult[Set[NodeId]]         = { ??? }
   def processPure(query: Query):                         IOResult[Chunk[CoreNodeFact]] = {
-    for {
-      m   <- analyzeQuery(query)
-      res <- nodeFactRepo
-               .getAllOn(status)
-               .filterZIO(node => FactQueryProcessorPure.debug(m.debugString) *> processOne(m, node))
-               .run(ZSink.collectAll)
-    } yield res
+    def process(s: SelectNodeStatus) = {
+      for {
+        m   <- analyzeQuery(query)
+        res <- nodeFactRepo
+                 .getAll()(s)
+                 .filterZIO(node => FactQueryProcessorPure.debug(m.debugString) *> processOne(m, node))
+                 .run(ZSink.collectAll)
+      } yield res
+    }
+
+    status match {
+      case AcceptedInventory => process(SelectNodeStatus.Accepted)
+      case PendingInventory  => process(SelectNodeStatus.Pending)
+      case RemovedInventory  => Chunk.empty.succeed
+    }
   }
 
   /*

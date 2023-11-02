@@ -53,21 +53,16 @@ import com.normation.rudder.domain.policies.TagValue
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.MinimalNodeFactInterface
-import com.normation.rudder.facts.nodes.NodeFactGetter
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.json.DataExtractor.CompleteJson
-
 import com.unboundid.ldap.sdk.Attribute
 import com.unboundid.ldap.sdk.Filter
-
 import java.util.regex.Pattern
 import net.liftweb.common.Box
 import net.liftweb.common.Full
 import net.liftweb.common.Loggable
-
 import scala.util.control.NonFatal
-
 import zio.stream.ZSink
 
 /**
@@ -101,7 +96,7 @@ object QSNodeFactBackend extends Loggable {
   /**
    * Lookup directives
    */
-  def search(query: Query)(implicit repo: NodeFactRepository, g: NodeFactGetter[CoreNodeFact]): Box[Seq[QuickSearchResult]] = {
+  def search(query: Query)(implicit repo: NodeFactRepository): Box[Seq[QuickSearchResult]] = {
 
     // only search if query is on Directives and attributes contains
     // DirectiveId, DirectiveVarName, DirectiveVarValue, TechniqueName, TechniqueVersion
@@ -111,7 +106,7 @@ object QSNodeFactBackend extends Loggable {
     if (query.objectClass.contains(QSNode) && attributes.nonEmpty) {
 
       repo
-        .getAllAccepted()
+        .getAll()
         .mapConcat((n: CoreNodeFact) => attributes.flatMap(a => a.find(n, query.userToken)))
         .run(ZSink.collectAll)
         .toBox

@@ -726,7 +726,7 @@ object NodePropertiesMatcher extends NodeCriterionKeyValueMatcher[NodeProperty] 
   /*
    * Node properties search are done on both node properties and inventory custom properties
    */
-  override def extractor:                  CoreNodeFact => Chunk[NodeProperty] = { (n: NodeFact) => n.properties }
+  override def extractor:                  CoreNodeFact => Chunk[NodeProperty] = { (n: CoreNodeFact) => n.properties }
   override def serialise(a: NodeProperty): String                              = s"""${a.name}=${a.valueAsString}"""
   override def getKey(a: NodeProperty):    String                              = a.name
   override def getValue(a: NodeProperty):  String                              = a.valueAsString

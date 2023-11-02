@@ -116,7 +116,7 @@ class PostCommitInventoryHooks[A](
 }
 
 class FactRepositoryPostCommit[A](
-    nodeFactsRepository: NodeFactStorage[NodeFact],
+    nodeFactsRepository: NodeFactStorage,
     nodeInfoService:     NodeInfoService
 ) extends PostCommit[A] {
   override def name: String = "commit node in fact-repository"

@@ -270,19 +270,6 @@ class FullInventoryRepositoryImpl(
     }
   }.chainError(s"Error when getting machine with ID '${id.value}' and status '${inventoryStatus.name}'")
 
-  override def getAllNodeInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, NodeInventory]] = {
-    (for {
-      con       <- ldap
-      nodeTrees <- con.getTree(inventoryDitService.getDit(inventoryStatus).NODES.dn)
-      nodes     <- nodeTrees match {
-                     case Some(root) => ZIO.foreach(root.children.values)(tree => mapper.nodeFromTree(tree))
-                     case None       => Seq().succeed
-                   }
-    } yield {
-      nodes.map(n => (n.main.id, n)).toMap
-    })
-  }.chainError(s"Error when getting all node inventories")
-
   // utility methods to get node/machine from ldap entries from the base dn
   private[core] def machinesFromOuMachines(machinesTree: LDAPTree): IOResult[Iterable[Option[MachineInventory]]] = {
     ZIO.foreach(machinesTree.children.values) { tree =>
@@ -311,42 +298,6 @@ class FullInventoryRepositoryImpl(
         )
     }
   }
-
-  override def getAllInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, FullInventory]] = {
-
-    for {
-      con  <- ldap
-      dit   = inventoryDitService.getDit(inventoryStatus)
-      // Get base tree, we will go into each subtree after
-      tree <- con.getTree(dit.BASE_DN)
-
-      // Get into Nodes subtree
-      nodesTree <- tree.flatMap(_.children.get(dit.NODES.rdn)) match {
-                     case None       => LDAPRudderError.Consistancy(s"Could not find node inventories in ${dit.BASE_DN.toString}").fail
-                     case Some(tree) => tree.succeed
-                   }
-      // we don't want that one error somewhere breaks everything
-      nodes     <- nodesFromOuNodes(nodesTree)
-
-      // Get into Machines subtree
-      machinesTree <- tree.flatMap(_.children.get(dit.MACHINES.rdn)) match {
-                        case None       =>
-                          LDAPRudderError.Consistancy(s"Could not find machine inventories in ${dit.BASE_DN.toString}").fail
-                        case Some(tree) => tree.succeed
-                      }
-      machines     <- machinesFromOuMachines(machinesTree)
-
-    } yield {
-      val machineMap = machines.flatten.map(m => (m.id, m)).toMap
-      nodes.flatten
-        .map(node => {
-          val machine   = node.machineId.flatMap(mid => machineMap.get(mid._1))
-          val inventory = FullInventory(node, machine)
-          node.main.id -> inventory
-        })
-        .toMap
-    }
-  }.chainError(s"Error when getting all node inventories for status '${inventoryStatus.name}'")
 
   def getInventories(inventoryStatus: InventoryStatus, nodeIds: Set[NodeId]): IOResult[Map[NodeId, FullInventory]] = {
     /*

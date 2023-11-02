@@ -37,7 +37,6 @@
 
 package com.normation.rudder.facts.nodes
 
-import com.normation.errors.IOResult
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
@@ -430,6 +429,41 @@ object NodeFact {
   }
 
   implicit class ToCompat(node: NodeFact) {
+    def mask[A](s: SelectMode[A]) = {
+      s match {
+        case SelectMode.Retrieve(_, _, _) => node
+        case SelectMode.Ignore(_, mod, z) => mod.setTo(z)(node)
+      }
+    }
+
+    def maskWith(attrs: SelectFacts): NodeFact = {
+      node
+        .mask(attrs.swap)
+        .mask(attrs.accounts)
+        .mask(attrs.bios)
+        .mask(attrs.controllers)
+        .mask(attrs.environmentVariables)
+        .mask(attrs.inputs)
+        .mask(attrs.fileSystems)
+        .mask(attrs.localGroups)
+        .mask(attrs.localUsers)
+        .mask(attrs.logicalVolumes)
+        .mask(attrs.memories)
+        .mask(attrs.networks)
+        .mask(attrs.ports)
+        .mask(attrs.physicalVolumes)
+        .mask(attrs.processes)
+        .mask(attrs.processors)
+        .mask(attrs.slots)
+        .mask(attrs.software)
+        .mask(attrs.softwareUpdate)
+        .mask(attrs.sounds)
+        .mask(attrs.storages)
+        .mask(attrs.videos)
+        .mask(attrs.vms)
+    }
+
+    def toCore: CoreNodeFact = CoreNodeFact.fromMininal(node)
 
     def toNode: Node = MinimalNodeFactInterface.toNode(node)
 
@@ -826,7 +860,6 @@ object CoreNodeFact {
       .setTo(n.policyMode)
   }
 
-
   def fromMininal(a: MinimalNodeFactInterface): CoreNodeFact = {
     a match {
       case c: CoreNodeFact => c
@@ -866,6 +899,171 @@ object CoreNodeFact {
     def toSrv: Srv = MinimalNodeFactInterface.toSrv(node)
 
     def toNodeSummary: NodeSummary = MinimalNodeFactInterface.toNodeSummary(node)
+  }
+}
+
+sealed trait SelectMode[A] {
+  def selector: NodeFact => A
+  def modify:   PathLazyModify[NodeFact, A]
+  // copy helper for fluent api
+  def ignore:   SelectMode[A]
+  def retrieve: SelectMode[A]
+  def zero:     A
+}
+object SelectMode          {
+  case class Retrieve[A](selector: NodeFact => A, modify: PathLazyModify[NodeFact, A], zero: A) extends SelectMode[A] {
+    def ignore   = Ignore(selector, modify, zero)
+    def retrieve = this
+  }
+  case class Ignore[A](selector: NodeFact => A, modify: PathLazyModify[NodeFact, A], zero: A)   extends SelectMode[A] {
+    def ignore   = this
+    def retrieve = Retrieve(selector, modify, zero)
+  }
+//  case object Default  extends SelectMode
+}
+
+case class SelectFacts(
+    swap:                 SelectMode[Option[MemorySize]],
+    accounts:             SelectMode[Chunk[String]],
+    bios:                 SelectMode[Chunk[Bios]],
+    controllers:          SelectMode[Chunk[Controller]],
+    environmentVariables: SelectMode[Chunk[(String, String)]],
+    fileSystems:          SelectMode[Chunk[FileSystem]],
+    inputs:               SelectMode[Chunk[InputDevice]],
+    localGroups:          SelectMode[Chunk[LocalGroup]],
+    localUsers:           SelectMode[Chunk[LocalUser]],
+    logicalVolumes:       SelectMode[Chunk[LogicalVolume]],
+    memories:             SelectMode[Chunk[MemorySlot]],
+    networks:             SelectMode[Chunk[Network]],
+    physicalVolumes:      SelectMode[Chunk[PhysicalVolume]],
+    ports:                SelectMode[Chunk[Port]],
+    processes:            SelectMode[Chunk[Process]],
+    processors:           SelectMode[Chunk[Processor]],
+    slots:                SelectMode[Chunk[Slot]],
+    software:             SelectMode[Chunk[SoftwareFact]],
+    softwareUpdate:       SelectMode[Chunk[SoftwareUpdate]],
+    sounds:               SelectMode[Chunk[Sound]],
+    storages:             SelectMode[Chunk[Storage]],
+    videos:               SelectMode[Chunk[Video]],
+    vms:                  SelectMode[Chunk[VirtualMachine]]
+)
+
+sealed trait SelectNodeStatus { def name: String }
+object SelectNodeStatus       {
+  object Pending  extends SelectNodeStatus { val name = PendingInventory.name  }
+  object Accepted extends SelectNodeStatus { val name = AcceptedInventory.name }
+  object Any      extends SelectNodeStatus { val name = "any"                  }
+}
+
+object SelectFacts {
+  import SelectMode._
+
+  // format: off
+
+  // there's perhaps a better way to do that, but `shrug` don't know about it
+  val none = SelectFacts(
+    SelectMode.Ignore(_.swap, modifyLens[NodeFact](_.swap), None),
+    SelectMode.Ignore(_.accounts, modifyLens[NodeFact](_.accounts), Chunk.empty),
+    SelectMode.Ignore(_.bios, modifyLens[NodeFact](_.bios), Chunk.empty),
+    SelectMode.Ignore(_.controllers, modifyLens[NodeFact](_.controllers), Chunk.empty),
+    SelectMode.Ignore(_.environmentVariables, modifyLens[NodeFact](_.environmentVariables), Chunk.empty),
+    SelectMode.Ignore(_.fileSystems, modifyLens[NodeFact](_.fileSystems), Chunk.empty),
+    SelectMode.Ignore(_.inputs, modifyLens[NodeFact](_.inputs), Chunk.empty),
+    SelectMode.Ignore(_.localGroups, modifyLens[NodeFact](_.localGroups), Chunk.empty),
+    SelectMode.Ignore(_.localUsers, modifyLens[NodeFact](_.localUsers), Chunk.empty),
+    SelectMode.Ignore(_.logicalVolumes, modifyLens[NodeFact](_.logicalVolumes), Chunk.empty),
+    SelectMode.Ignore(_.memories, modifyLens[NodeFact](_.memories), Chunk.empty),
+    SelectMode.Ignore(_.networks, modifyLens[NodeFact](_.networks), Chunk.empty),
+    SelectMode.Ignore(_.physicalVolumes, modifyLens[NodeFact](_.physicalVolumes), Chunk.empty),
+    SelectMode.Ignore(_.ports, modifyLens[NodeFact](_.ports), Chunk.empty),
+    SelectMode.Ignore(_.processes, modifyLens[NodeFact](_.processes), Chunk.empty),
+    SelectMode.Ignore(_.processors, modifyLens[NodeFact](_.processors), Chunk.empty),
+    SelectMode.Ignore(_.slots, modifyLens[NodeFact](_.slots), Chunk.empty),
+    SelectMode.Ignore(_.software, modifyLens[NodeFact](_.software), Chunk.empty),
+    SelectMode.Ignore(_.softwareUpdate, modifyLens[NodeFact](_.softwareUpdate), Chunk.empty),
+    SelectMode.Ignore(_.sounds, modifyLens[NodeFact](_.sounds), Chunk.empty),
+    SelectMode.Ignore(_.storages, modifyLens[NodeFact](_.storages), Chunk.empty),
+    SelectMode.Ignore(_.videos, modifyLens[NodeFact](_.videos), Chunk.empty),
+    SelectMode.Ignore(_.vms, modifyLens[NodeFact](_.vms), Chunk.empty)
+  )
+
+  val all = SelectFacts(
+    none.swap.retrieve,
+    none.accounts.retrieve,
+    none.bios.retrieve,
+    none.controllers.retrieve,
+    none.environmentVariables.retrieve,
+    none.fileSystems.retrieve,
+    none.inputs.retrieve,
+    none.localGroups.retrieve,
+    none.localUsers.retrieve,
+    none.logicalVolumes.retrieve,
+    none.memories.retrieve,
+    none.networks.retrieve,
+    none.physicalVolumes.retrieve,
+    none.ports.retrieve,
+    none.processes.retrieve,
+    none.processors.retrieve,
+    none.slots.retrieve,
+    none.software.retrieve,
+    none.softwareUpdate.retrieve,
+    none.sounds.retrieve,
+    none.storages.retrieve,
+    none.videos.retrieve,
+    none.vms.retrieve
+  )
+  // format: on
+
+  val noSoftware = all.copy(software = all.software.ignore)
+  val default    = all.copy(processes = all.processes.ignore, software = all.software.ignore)
+
+  // semantic: having a new node fact, keep old fact info if the select mode says "ignore"
+  // and keep new fact if it says "retrieve"
+  def merge(newFact: NodeFact, existing: Option[NodeFact])(implicit attrs: SelectFacts): NodeFact = {
+    implicit class NodeFactMerge(newFact: NodeFact) {
+
+      // keep newFact
+      def update[A](selector: SelectMode[A])(implicit oldFact: NodeFact) = {
+        selector match {
+          case Retrieve(_, _, _)   => // keep new fact
+            newFact
+          case Ignore(sel, mod, _) => // get info from old fact
+            mod.setTo(sel(oldFact))(newFact)
+        }
+      }
+    }
+
+    existing match {
+      case None     => newFact
+      // we assume that all the properties not in SelectFacts are up-to-date, so we start with newFact and only update
+      case Some(of) =>
+        implicit val oldFact = of
+
+        newFact
+          .update(attrs.swap)
+          .update(attrs.accounts)
+          .update(attrs.bios)
+          .update(attrs.controllers)
+          .update(attrs.environmentVariables)
+          .update(attrs.inputs)
+          .update(attrs.fileSystems)
+          .update(attrs.localGroups)
+          .update(attrs.localUsers)
+          .update(attrs.logicalVolumes)
+          .update(attrs.memories)
+          .update(attrs.networks)
+          .update(attrs.ports)
+          .update(attrs.physicalVolumes)
+          .update(attrs.processes)
+          .update(attrs.processors)
+          .update(attrs.slots)
+          .update(attrs.software)
+          .update(attrs.softwareUpdate)
+          .update(attrs.sounds)
+          .update(attrs.storages)
+          .update(attrs.videos)
+          .update(attrs.vms)
+    }
   }
 }
 
@@ -964,32 +1162,32 @@ sealed trait NodeFactChangeEvent[+A <: MinimalNodeFactInterface] {
 }
 
 object NodeFactChangeEvent {
-  final case class NewPending[A <: MinimalNodeFactInterface](node: A)     extends NodeFactChangeEvent[A]       {
+  final case class NewPending[A <: MinimalNodeFactInterface](node: A)                    extends NodeFactChangeEvent[A]       {
     override val name:        String = "newPending"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class UpdatedPending[A <: MinimalNodeFactInterface](node: A) extends NodeFactChangeEvent[A]       {
+  final case class UpdatedPending[A <: MinimalNodeFactInterface](oldNode: A, newNode: A) extends NodeFactChangeEvent[A]       {
     override val name: String = "updatedPending"
 
-    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+    override def debugString: String = s"[${name}] node '${newNode.fqdn}' (${newNode.id.value})"
   }
-  final case class Accepted[A <: MinimalNodeFactInterface](node: A)       extends NodeFactChangeEvent[A]       {
+  final case class Accepted[A <: MinimalNodeFactInterface](node: A)                      extends NodeFactChangeEvent[A]       {
     override val name:        String = "accepted"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Refused[A <: MinimalNodeFactInterface](node: A)        extends NodeFactChangeEvent[A]       {
+  final case class Refused[A <: MinimalNodeFactInterface](node: A)                       extends NodeFactChangeEvent[A]       {
     override val name:        String = "refused"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Updated[A <: MinimalNodeFactInterface](node: A)        extends NodeFactChangeEvent[A]       {
+  final case class Updated[A <: MinimalNodeFactInterface](oldNode: A, newNode: A)        extends NodeFactChangeEvent[A]       {
     override val name:        String = "updatedAccepted"
-    override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
+    override def debugString: String = s"[${name}] node '${newNode.fqdn}' (${newNode.id.value})"
   }
-  final case class Deleted[A <: MinimalNodeFactInterface](node: A)        extends NodeFactChangeEvent[A]       {
+  final case class Deleted[A <: MinimalNodeFactInterface](node: A)                       extends NodeFactChangeEvent[A]       {
     override val name:        String = "deleted"
     override def debugString: String = s"[${name}] node '${node.fqdn}' (${node.id.value})"
   }
-  final case class Noop(nodeId: NodeId)                                   extends NodeFactChangeEvent[Nothing] {
+  final case class Noop(nodeId: NodeId)                                                  extends NodeFactChangeEvent[Nothing] {
     override val name:        String = "noop"
     override def debugString: String = s"[${name}] node '${nodeId.value}' "
   }
@@ -1005,11 +1203,6 @@ object ChangeContext {
 final case class NodeFactChangeEventCC[+A <: MinimalNodeFactInterface](
     event: NodeFactChangeEvent[A],
     cc:    ChangeContext
-)
-
-final case class NodeFactChangeEventCallback[A <: MinimalNodeFactInterface](
-    name: String,
-    run:  NodeFactChangeEventCC[A] => IOResult[Unit]
 )
 
 object NodeFactSerialisation {
