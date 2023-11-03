@@ -349,6 +349,18 @@ class InMemoryUserRepository(userBase: Ref[Map[String, UserInfo]], sessionBase: 
     }
   }
 
+  private def predicateDeletedSince(u: UserInfo, date: Option[DateTime]) = {
+    u.statusHistory match { // only deleted get purged with that filter
+      case StatusHistory(UserStatus.Deleted, EventTrace(_, d, _)) :: _ =>
+        date match {
+          case None        => false
+          case Some(limit) => d.isBefore(limit)
+        }
+      case _                                                           =>
+        false
+    }
+  }
+
   // this one is inverted
   private def predicateNotOrigin(u: UserInfo, origin: List[String]) = !origin.contains(u.managedBy)
 
@@ -427,7 +439,7 @@ class InMemoryUserRepository(userBase: Ref[Map[String, UserInfo]], sessionBase: 
       val initIds = users.keySet
       val m       = users.filterNot {
         case (_, u) =>
-          (predicateUser(u, userIds) || predicateLogDate(u, deletedSince)) && predicateNotOrigin(u, excludeFromOrigin)
+          (predicateUser(u, userIds) || predicateDeletedSince(u, deletedSince)) && predicateNotOrigin(u, excludeFromOrigin)
       }
       ((initIds -- m.keySet).toList, m)
     }
