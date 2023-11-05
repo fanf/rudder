@@ -45,6 +45,7 @@ import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.logger.TimingDebugLogger
 import com.normation.rudder.domain.servers.Srv
+import com.normation.rudder.facts.nodes.SelectNodeStatus
 import com.normation.rudder.web.ChooseTemplate
 import com.normation.rudder.web.components.popup.ExpectedPolicyPopup
 import com.normation.rudder.web.services.CurrentUser
@@ -237,7 +238,7 @@ class AcceptNode extends Loggable {
       "#server_os *" #> srv.osFullName)(serverLine)
     }
 
-    nodeFactRepository.getAllPending().collect { case n if(listNode.contains(n.id)) => n.toSrv}.run(ZSink.collectAll).toBox match {
+    nodeFactRepository.getAll()(SelectNodeStatus.Pending).collect { case n if(listNode.contains(n.id)) => n.toSrv}.run(ZSink.collectAll).toBox match {
       case Full(servers) =>
         val lines: NodeSeq = servers.flatMap(displayServerLine)
         ("#server_lines" #> lines).apply(

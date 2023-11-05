@@ -44,7 +44,6 @@ import com.normation.errors.IOResult
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core.FullInventoryRepositoryImpl
 import com.normation.inventory.ldap.core.InventoryDitService
-import com.normation.inventory.ldap.core.InventoryMapper
 import com.normation.inventory.ldap.core.LDAPConstants._
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.inventory.services.provisioning.SoftwareDNFinderAction
@@ -55,15 +54,16 @@ import com.normation.ldap.sdk.One
 import com.normation.ldap.sdk.RwLDAPConnection
 import com.normation.rudder.domain.NodeDit
 import com.normation.rudder.domain.logger.NodeLogger
+import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.facts.nodes.LdapNodeFactStorage.needsSoftware
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
-import com.normation.rudder.repository.EventLogRepository
 import com.normation.rudder.repository.ldap.LDAPEntityMapper
 import com.normation.rudder.repository.ldap.ScalaReadWriteLock
 import com.normation.rudder.services.nodes.NodeInfoService
+import com.normation.zio._
 import com.softwaremill.quicklens._
 import com.unboundid.ldap.sdk.DN
 import java.nio.charset.StandardCharsets
@@ -632,6 +632,11 @@ class LdapNodeFactStorage(
     }
 
     for {
+      t0      <- currentTimeMillis
+      _       <-
+        NodeLoggerPure.debug(
+          s"Getting node '${nodeId.value}' with inventory: ${attrs != SelectFacts.none}; software: ${attrs.software.mode == SelectMode.Retrieve}"
+        )
       con     <- ldap
       optNode <- getNodeEntry(con, nodeId)
       res     <- optNode match {
@@ -643,6 +648,8 @@ class LdapNodeFactStorage(
                        getFromLdapInfo(con, nodeId, nodeEntry, status, needsSoftware(attrs))
                      }
                  }
+      t1      <- currentTimeMillis
+      _       <- NodeLoggerPure.Metrics.debug(s"node '${nodeId.value}' retrieved in ${t1 - t0} ms")
     } yield res
   }
 
@@ -666,6 +673,7 @@ class LdapNodeFactStorage(
   private[nodes] def getAllNodeFacts(baseDN: DN, getOne: NodeId => IOResult[Option[NodeFact]]): IOStream[NodeFact] = {
     ZStream
       .fromZIO(getNodeIds(baseDN))
+      .tap(ids => NodeLoggerPure.Metrics.debug(s"Getting ${ids.size} nodes}"))
       .flatMap(ids => ZStream.fromIterable(ids))
       .mapZIO(getOne)
       .flatMap(ZStream.fromIterable(_))

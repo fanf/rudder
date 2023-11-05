@@ -50,7 +50,6 @@ import com.normation.eventlog.EventLogFilter
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain.FullInventory
 import com.normation.inventory.domain.NodeId
-import com.normation.inventory.domain.NodeInventory
 import com.normation.rudder._
 import com.normation.rudder.api.{ApiAuthorization => ApiAuthz}
 import com.normation.rudder.api.ApiVersion
@@ -288,7 +287,6 @@ class RestTestSetUp {
     override def getDirectiveLibrary(ids: Set[DirectiveId]):                                   Box[FullActiveTechniqueCategory]        = ???
     override def getGroupLibrary():                                                            Box[FullNodeGroupCategory]              = ???
     override def getAllGlobalParameters:                                                       Box[Seq[GlobalParameter]]               = ???
-    override def getAllInventories():                                                          Box[Map[NodeId, NodeInventory]]         = ???
     override def getGlobalComplianceMode():                                                    Box[GlobalComplianceMode]               = ???
     override def getGlobalAgentRun():                                                          Box[AgentRunInterval]                   = ???
     override def getScriptEngineEnabled:                                                       () => Box[FeatureSwitch]                = ???

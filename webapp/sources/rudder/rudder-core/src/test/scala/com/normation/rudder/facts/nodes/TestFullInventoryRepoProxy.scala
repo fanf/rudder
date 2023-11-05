@@ -49,7 +49,6 @@ import org.specs2.mutable._
 import org.specs2.runner._
 import zio._
 import zio.concurrent.ReentrantLock
-import zio.stream.ZStream
 import zio.syntax._
 
 final case class SystemError(cause: Throwable) extends RudderError {
@@ -93,13 +92,7 @@ class TestInventory extends Specification {
   def resetLog = callbackLog.set(Chunk.empty).runNow
 
   def getLogName = callbackLog.get.map(_.map(_.name)).runNow
-  object NoopFactStorage extends NodeFactStorage {
-    override def save(nodeFact: NodeFact):                              IOResult[Unit]     = ZIO.unit
-    override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]     = ZIO.unit
-    override def delete(nodeId: NodeId):                                IOResult[Unit]     = ZIO.unit
-    override def getAllPending():                                       IOStream[NodeFact] = ZStream.empty
-    override def getAllAccepted():                                      IOStream[NodeFact] = ZStream.empty
-  }
+
 
   val pendingRef  = (Ref.make(Map[NodeId, CoreNodeFact]())).runNow
   val acceptedRef = (Ref.make(Map[NodeId, CoreNodeFact]())).runNow
@@ -117,7 +110,7 @@ class TestInventory extends Specification {
 
   object trailCallBack extends NodeFactChangeEventCallback[MinimalNodeFactInterface] {
     override def name:                                                    String         = "trail"
-    override def run(e: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = { 
+    override def run(e: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = {
       callbackLog.update(_.appended(e.event))
     }
   }

@@ -1985,12 +1985,6 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
       getGenericOne(id, inventoryStatus, n => n.mInv.map(x => (x.id, x.status)))
     }
 
-    override def getAllInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, FullInventory]] =
-      getGenericAll(inventoryStatus, _fullInventory)
-
-    override def getAllNodeInventories(inventoryStatus: InventoryStatus): IOResult[Map[NodeId, NodeInventory]] =
-      getGenericAll(inventoryStatus, _fullInventory(_).map(_.node))
-
     override def save(serverAndMachine: FullInventory): IOResult[Seq[LDIFChangeRecord]] = {
 
       // logic is in LDAPEntityMapper#inventoryEntriesToNodeInfos
@@ -2136,7 +2130,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
 
     override def getSoftwareByNode(nodeIds: Set[NodeId], status: InventoryStatus): IOResult[Map[NodeId, Seq[Software]]] = {
       for {
-        inventories <- nodeInfoService.getAllInventories(status)
+        inventories <- nodeInfoService.getGenericAll(status, n => Some(n.nInv))
         softwares   <- softRef.get
       } yield {
         inventories.collect {
@@ -2144,7 +2138,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
             (
               id,
               softwares.collect {
-                case (k, s) if (inv.node.softwareIds.contains(k)) => s
+                case (k, s) if (inv.softwareIds.contains(k)) => s
               }.toList
             )
         }
@@ -2154,19 +2148,19 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     override def getAllSoftwareIds(): IOResult[Set[SoftwareUuid]] = softRef.get.map(_.keySet)
 
     override def getSoftwaresForAllNodes(): IOResult[Set[SoftwareUuid]] = {
-      nodeInfoService.getAllInventories(AcceptedInventory).map(_.flatMap(_._2.node.softwareIds).toSet)
+      nodeInfoService.getGenericAll(AcceptedInventory, n => Some(n.nInv)).map(_.flatMap(_._2.softwareIds).toSet)
     }
 
     def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]] = {
       for {
-        inventories <- nodeInfoService.getAllInventories(AcceptedInventory)
+        inventories <- nodeInfoService.getGenericAll(AcceptedInventory, n => Some(n.nInv))
         softwares   <- softRef.get
       } yield {
 
         inventories.toList.flatMap {
           case (id, inv) =>
             softwares.collect {
-              case (k, s) if (s.name.exists(_ == softName) && inv.node.softwareIds.contains(k)) => (id, s)
+              case (k, s) if (s.name.exists(_ == softName) && inv.softwareIds.contains(k)) => (id, s)
             }
 
         }

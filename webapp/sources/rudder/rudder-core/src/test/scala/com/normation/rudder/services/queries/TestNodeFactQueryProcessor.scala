@@ -38,7 +38,6 @@
 package com.normation.rudder.services.queries
 
 import com.normation.NamedZioLogger
-
 import com.normation.errors._
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.AgentType.CfeCommunity
@@ -49,7 +48,6 @@ import com.normation.inventory.domain.Bios
 import com.normation.inventory.domain.Certificate
 import com.normation.inventory.domain.CertifiedKey
 import com.normation.inventory.domain.FileSystem
-import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.Linux
 import com.normation.inventory.domain.MachineUuid
 import com.normation.inventory.domain.MemorySize
@@ -77,12 +75,11 @@ import com.normation.rudder.facts.nodes.GetNodesbySofwareName
 import com.normation.rudder.facts.nodes.IpAddress
 import com.normation.rudder.facts.nodes.LocalUser
 import com.normation.rudder.facts.nodes.NodeFact
-import com.normation.rudder.facts.nodes.NodeFactStorage
+import com.normation.rudder.facts.nodes.NoopFactStorage
 import com.normation.rudder.facts.nodes.RudderAgent
 import com.normation.rudder.facts.nodes.SoftwareFact
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.utils.DateFormaterService
-
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import net.liftweb.common._
@@ -91,12 +88,9 @@ import org.junit._
 import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
-
 import scala.annotation.nowarn
 import scala.util.Try
-
 import zio._
-import zio.stream.ZStream
 import zio.syntax._
 
 /*
@@ -499,20 +493,25 @@ class TestNodeFactQueryProcessor {
         )
       ).map(n => (n.id, n)).toMap
     }
-    object NoopStorage extends NodeFactStorage {
-      override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
-      override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
-      override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
-      override def getAllPending(): IOStream[NodeFact] = ZStream.empty
-      override def getAllAccepted(): IOStream[NodeFact] = ZStream.empty
-    }
+
     object NoopNodeBySoftware extends GetNodesbySofwareName {
       override def apply(softName: String): IOResult[List[(NodeId, Software)]] = Nil.succeed
     }
-    CoreNodeFactRepository.make(NoopStorage, NoopNodeBySoftware, Map(), allAcceptedNodes, Chunk.empty).runNow
+    CoreNodeFactRepository
+      .make(
+        NoopFactStorage,
+        NoopNodeBySoftware,
+        Map(),
+        allAcceptedNodes.map {
+          case (id, n) =>
+            (id, n.toCore)
+        },
+        Chunk.empty
+      )
+      .runNow
   }
 
-  val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo)
+  val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo, null)
 
   val parser = new CmdbQueryParser with DefaultStringQueryParser with JsonQueryLexer {
     override val criterionObjects = queryData.criteriaMap.toMap

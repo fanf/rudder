@@ -50,21 +50,6 @@ import zio.stream.ZStream
 import zio.syntax._
 
 /*
- * NodeFact repo must be extensible at call site, so we have some type class around
- */
-// do we want to constraint A <: MinimalNodeFactApi ?
-// Perhaps not, because we're likely to want to `getAccepted(nodeId): IOResult[Option[Chunck[Software]]`
-// OK, the constraint seems to be in the input in fact
-trait NodeFactGetter[A] {
-  def access(node: MinimalNodeFactInterface): IOResult[A]
-}
-
-// not sure about that one
-trait NodeFactSaver[A] {
-  def persist(nodeId: NodeId, info: A): IOResult[Unit]
-}
-
-/*
  * NodeFactRepository is the main interface between Rudder user space and nodes. It manages
  * the whole persistence and consistency, efficient access to a (core) set of information on
  * nodes, and access permissions.
