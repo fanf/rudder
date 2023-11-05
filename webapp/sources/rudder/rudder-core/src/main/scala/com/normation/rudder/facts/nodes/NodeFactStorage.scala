@@ -42,12 +42,34 @@ import better.files.File
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
+import com.normation.inventory.ldap.core.FullInventoryRepositoryImpl
+import com.normation.inventory.ldap.core.InventoryDitService
+import com.normation.inventory.ldap.core.InventoryMapper
+import com.normation.inventory.ldap.core.LDAPConstants._
+import com.normation.inventory.services.core.ReadOnlySoftwareDAO
+import com.normation.inventory.services.provisioning.SoftwareDNFinderAction
+import com.normation.ldap.sdk.BuildFilter._
+import com.normation.ldap.sdk.LDAPConnectionProvider
+import com.normation.ldap.sdk.LDAPEntry
+import com.normation.ldap.sdk.One
+import com.normation.ldap.sdk.RwLDAPConnection
+import com.normation.rudder.domain.NodeDit
 import com.normation.rudder.domain.logger.NodeLogger
+import com.normation.rudder.domain.nodes.MachineInfo
+import com.normation.rudder.domain.nodes.NodeInfo
+import com.normation.rudder.facts.nodes.LdapNodeFactStorage.needsSoftware
 import com.normation.rudder.git.GitItemRepository
 import com.normation.rudder.git.GitRepositoryProvider
+import com.normation.rudder.repository.EventLogRepository
+import com.normation.rudder.repository.ldap.LDAPEntityMapper
+import com.normation.rudder.repository.ldap.ScalaReadWriteLock
+import com.normation.rudder.services.nodes.NodeInfoService
 import com.softwaremill.quicklens._
+import com.unboundid.ldap.sdk.DN
 import java.nio.charset.StandardCharsets
 import org.eclipse.jgit.lib.PersonIdent
+import org.joda.time.DateTime
+import scala.annotation.nowarn
 import zio._
 import zio.json._
 import zio.stream.ZStream
@@ -156,7 +178,9 @@ object NoopFactStorage extends NodeFactStorage {
   override def save(nodeFact: NodeFact)(implicit attrs: SelectFacts = SelectFacts.default): IOResult[Unit]             = ZIO.unit
   override def changeStatus(nodeId: NodeId, status: InventoryStatus):                       IOResult[Unit]             = ZIO.unit
   override def delete(nodeId: NodeId):                                                      IOResult[Unit]             = ZIO.unit
+  @nowarn("msg=parameter attrs in method getAllPending is never used")
   override def getAllPending()(implicit attrs: SelectFacts = SelectFacts.default):          IOStream[NodeFact]         = ZStream.empty
+  @nowarn("msg=parameter attrs in method getAllAccepted is never used")
   override def getAllAccepted()(implicit attrs: SelectFacts = SelectFacts.default):         IOStream[NodeFact]         = ZStream.empty
   override def getPending(nodeId: NodeId)(implicit attrs: SelectFacts):                     IOResult[Option[NodeFact]] = None.succeed
   override def getAccepted(nodeId: NodeId)(implicit attrs: SelectFacts):                    IOResult[Option[NodeFact]] = None.succeed
@@ -413,43 +437,245 @@ class GitNodeFactStorageImpl(
  * It takes most of its code from old FullLdapInventory/NodeInfoService
  */
 
-class LdapNodeFactStorage(
-    nodeDit:             NodeDit,
-    acceptedDit:         InventoryDit,
-    inventoryDitService: InventoryDitService,
-    nodeMapper:          LDAPEntityMapper,
-    inventoryMapper:     InventoryMapper,
-    ldap:                LDAPConnectionProvider[RwLDAPConnection],
-    actionLogger:        EventLogRepository,
-    nodeLibMutex:        ScalaReadWriteLock // that's a scala-level mutex to have some kind of consistency with LDAP
+object LdapNodeFactStorage {
 
+  /*
+   * We have 3 main places where facts can be stored:
+   * - in ou=Nodes,cn=rudder-configuration
+   *     for settings, properties, state, etc
+   * - in ou=[Nodes, Machines],ou=[Accepted|Pengin] Inventories,ou=Inventories,cn=rudder-configuration
+   *     (and sub entries) for os, ram, swap, machine type, CPU, etc
+   *     The mapping is very complicated, and we just want to reuse inventory repository for that
+   * - in ou=Software, ou=Inventories,cn=rudder-configuration
+   *     For software.
+   *
+   * So we need for each element of SelectFact to know what part of entries it need
+   */
+
+  def needsSoftware(selectFacts: SelectFacts): Boolean = {
+    selectFacts.software.mode == SelectMode.Retrieve
+  }
+
+  def inventoryFacts(s: SelectFacts) = {
+    List(
+      s.swap,
+      s.accounts,
+      s.bios,
+      s.controllers,
+      s.environmentVariables,
+      s.fileSystems,
+      s.inputs,
+      s.localGroups,
+      s.localUsers,
+      s.logicalVolumes,
+      s.memories,
+      s.networks,
+      s.physicalVolumes,
+      s.ports,
+      s.processes,
+      s.processors,
+      s.slots,
+      s.softwareUpdate,
+      s.sounds,
+      s.storages,
+      s.videos,
+      s.vms
+    )
+  }
+
+  def needsInventory(selectFacts: SelectFacts): Boolean = {
+    inventoryFacts(selectFacts).exists(_.mode == SelectMode.Retrieve)
+  }
+
+}
+
+class LdapNodeFactStorage(
+    ldap:                    LDAPConnectionProvider[RwLDAPConnection],
+    nodeDit:                 NodeDit,
+    inventoryDitService:     InventoryDitService,
+    nodeMapper:              LDAPEntityMapper,
+    nodeLibMutex:            ScalaReadWriteLock, // that's a scala-level mutex to have some kind of consistency with LDAP
+    fullInventoryRepository: FullInventoryRepositoryImpl,
+    softwareGet:             ReadOnlySoftwareDAO,
+    softwareSave:            SoftwareDNFinderAction
 ) extends NodeFactStorage {
+
+  // for save, we always store the full node. Since we don't know how to restrict attributes to save
+  // for the inventory part (node part is always complete), we do retrieve then merge, avoiding software if possible
   override def save(nodeFact: NodeFact)(implicit attrs: SelectFacts): IOResult[Unit] = {
-    val entry = mapper.nodeToEntry(node)
     nodeLibMutex.writeLock(for {
-      con <- ldap
-      _   <- con.save(entry).chainError(s"Cannot save node with id '${node.id.value}' in LDAP")
+      con        <- ldap
+      _          <-
+        con.save(nodeMapper.nodeToEntry(nodeFact.toNode)).chainError(s"Cannot save node with id '${nodeFact.id.value}' in LDAP")
+      sids       <- if (LdapNodeFactStorage.needsSoftware(attrs)) {
+                      softwareSave
+                        .tryWith(nodeFact.software.map(_.toSoftware).toSet)
+                        .map(m => Some(m.newSoftware.toSeq.map(_.id) ++ m.alreadySavedSoftware.map(_.id)))
+                    } else None.succeed
+      optCurrent <- nodeFact.rudderSettings.status match {
+                      case PendingInventory => getPending(nodeFact.id)(SelectFacts.noSoftware)
+                      case _                => getAccepted(nodeFact.id)(SelectFacts.noSoftware)
+                    }
+      inv         = SelectFacts
+                      .merge(nodeFact, optCurrent)(SelectFacts.noSoftware)
+                      .toFullInventory
+                      .modify(_.node.softwareIds)
+                      .setToIfDefined(sids)
+      _          <- fullInventoryRepository.save(inv)
     } yield ())
   }
 
-  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ???
-
-  override def delete(nodeId: NodeId): IOResult[Unit] = {
-    val entry = mapper.nodeToEntry(node)
-    nodeLibMutex.writeLock(for {
-      con <- ldap
-      _   <- con.delete(entry.dn).chainError(s"Error when trying to delete node '${node.id.value}'")
-    } yield {
-      node
-    })
-
+  override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = {
+    for {
+      s <- fullInventoryRepository.getStatus(nodeId).notOptional(s"Error: node with ID '${nodeId.value}' was not found'")
+      _ <- if (s == status) ZIO.unit
+           else if (s == RemovedInventory) {
+             Inconsistency(
+               s"Error: node with ID '${nodeId.value}' is deleted, can not change its status to '${status.name}''"
+             ).fail
+           } else fullInventoryRepository.move(nodeId, s, status)
+    } yield ()
   }
 
-  override def getPending(nodeId: NodeId)(implicit attrs: SelectFacts): IOResult[Option[NodeFact]] = ???
+  override def delete(nodeId: NodeId): IOResult[Unit] = {
+    for {
+      con <- ldap
+      _   <- nodeLibMutex.writeLock(
+               con.delete(nodeDit.NODES.NODE.dn(nodeId.value)).chainError(s"Error when trying to delete node '${nodeId.value}'")
+             )
+      s   <- fullInventoryRepository.getStatus(nodeId)
+      _   <- s match {
+               case Some(status) => fullInventoryRepository.delete(nodeId, status)
+               case None         => ZIO.unit
+             }
+    } yield ()
+  }
 
-  override def getAccepted(nodeId: NodeId)(implicit attrs: SelectFacts): IOResult[Option[NodeFact]] = ???
+  /*
+   * Get node fact with trying to make the minimum data retieval from ldap (the granularity is coarse: we only check if
+   * we need full inventory or just node info, and software or not)
+   */
+  private[nodes] def getNodeFact(nodeId: NodeId, status: InventoryStatus, attrs: SelectFacts): IOResult[Option[NodeFact]] = {
 
-  override def getAllPending()(implicit attrs: SelectFacts): IOStream[NodeFact] = ???
+    def getNodeEntry(con: RwLDAPConnection, id: NodeId): IOResult[Option[LDAPEntry]] = {
+      con.get(nodeDit.NODES.NODE.dn(nodeId.value), NodeInfoService.nodeInfoAttributes: _*)
+    }
+    def getSoftware(
+        con:          RwLDAPConnection,
+        ids:          Seq[SoftwareUuid],
+        needSoftware: Boolean
+    ): IOResult[Seq[Software]] = {
+      if (needSoftware && ids.nonEmpty) {
+        softwareGet.getSoftware(ids)
+      } else Seq().succeed
+    }
+    def getFromFullInventory(
+        con:          RwLDAPConnection,
+        nodeId:       NodeId,
+        nodeEntry:    LDAPEntry,
+        needSoftware: Boolean
+    ): IOResult[Option[NodeFact]] = {
+      for {
+        node    <- nodeMapper.entryToNode(nodeEntry).toIO
+        optInvS <- fullInventoryRepository.getWithSoftware(nodeId, status, needSoftware)
+        softs   <- getSoftware(con, optInvS.map(_._2).getOrElse(Seq()), needSoftware)
+      } yield {
+        optInvS.map {
+          case (inv, _) =>
+            val info = NodeInfo(
+              node,
+              inv.node.main.hostname,
+              inv.machine.map(m => MachineInfo(m.id, m.machineType, m.systemSerialNumber, m.manufacturer)),
+              inv.node.main.osDetails,
+              inv.node.serverIps.toList,
+              inv.node.inventoryDate.getOrElse(DateTime.now),
+              inv.node.main.keyStatus,
+              inv.node.agents,
+              inv.node.main.policyServerId,
+              inv.node.main.rootUser,
+              inv.node.archDescription,
+              inv.node.ram,
+              inv.node.timezone
+            )
+            NodeFact.fromCompat(info, Right(inv), softs)
+        }
+      }
+    }
 
-  override def getAllAccepted()(implicit attrs: SelectFacts): IOStream[NodeFact] = ???
+    def getFromLdapInfo(
+        con:          RwLDAPConnection,
+        nodeId:       NodeId,
+        nodeEntry:    LDAPEntry,
+        status:       InventoryStatus,
+        needSoftware: Boolean
+    ): IOResult[Option[NodeFact]] = {
+      // mostly copied from com.normation.rudder.services.nodes.NodeInfoServiceCachedImpl # getBackendLdapNodeInfo
+      val ldapAttrs = (if (needSoftware) Seq(A_SOFTWARE_UUID) else Seq()) ++ NodeInfoService.nodeInfoAttributes
+
+      con.get(inventoryDitService.getDit(status).NODES.NODE.dn(nodeId.value), ldapAttrs: _*).flatMap {
+        case None      => // end of game, no node here
+          None.succeed
+        case Some(inv) =>
+          for {
+            optM <- inv(A_CONTAINER_DN) match {
+                      case None    => None.succeed
+                      case Some(m) =>
+                        con.get(
+                          inventoryDitService.getDit(status).MACHINES.MACHINE.dn(MachineUuid(m)),
+                          NodeInfoService.nodeInfoAttributes: _*
+                        )
+                    }
+            info <- nodeMapper.convertEntriesToNodeInfos(nodeEntry, inv, optM)
+            soft <- getSoftware(con, fullInventoryRepository.getSoftwareUuids(inv), needSoftware)
+          } yield Some(NodeFact.fromCompat(info, Left(status), soft))
+      }
+    }
+
+    for {
+      con     <- ldap
+      optNode <- getNodeEntry(con, nodeId)
+      res     <- optNode match {
+                   case None            => None.succeed
+                   case Some(nodeEntry) =>
+                     if (LdapNodeFactStorage.needsInventory(attrs)) {
+                       getFromFullInventory(con, nodeId, nodeEntry, needsSoftware(attrs))
+                     } else {
+                       getFromLdapInfo(con, nodeId, nodeEntry, status, needsSoftware(attrs))
+                     }
+                 }
+    } yield res
+  }
+
+  override def getPending(nodeId: NodeId)(implicit attrs: SelectFacts): IOResult[Option[NodeFact]] = {
+    getNodeFact(nodeId, PendingInventory, attrs)
+  }
+
+  override def getAccepted(nodeId: NodeId)(implicit attrs: SelectFacts): IOResult[Option[NodeFact]] = {
+    getNodeFact(nodeId, AcceptedInventory, attrs)
+  }
+
+  private[nodes] def getNodeIds(baseDN: DN): IOResult[Seq[NodeId]] = {
+    for {
+      con         <- ldap
+      nodeEntries <- con.search(baseDN, One, ALL, "1.1")
+    } yield {
+      nodeEntries.flatMap(e => e(A_NODE_UUID).map(NodeId(_)))
+    }
+  }
+
+  private[nodes] def getAllNodeFacts(baseDN: DN, getOne: NodeId => IOResult[Option[NodeFact]]): IOStream[NodeFact] = {
+    ZStream
+      .fromZIO(getNodeIds(baseDN))
+      .flatMap(ids => ZStream.fromIterable(ids))
+      .mapZIO(getOne)
+      .flatMap(ZStream.fromIterable(_))
+  }
+
+  override def getAllPending()(implicit attrs: SelectFacts): IOStream[NodeFact] = {
+    getAllNodeFacts(inventoryDitService.getDit(PendingInventory).NODES.dn, getPending(_))
+  }
+
+  override def getAllAccepted()(implicit attrs: SelectFacts): IOStream[NodeFact] = {
+    getAllNodeFacts(nodeDit.NODES.dn, getAccepted)
+  }
 }

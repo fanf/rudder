@@ -58,6 +58,7 @@ import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.PhysicalMachineType
 import com.normation.inventory.domain.Process
 import com.normation.inventory.domain.PublicKey
+import com.normation.inventory.domain.Software
 import com.normation.inventory.domain.SoftwareEditor
 import com.normation.inventory.domain.Ubuntu
 import com.normation.inventory.domain.Version
@@ -72,6 +73,7 @@ import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
+import com.normation.rudder.facts.nodes.GetNodesbySofwareName
 import com.normation.rudder.facts.nodes.IpAddress
 import com.normation.rudder.facts.nodes.LocalUser
 import com.normation.rudder.facts.nodes.NodeFact
@@ -504,7 +506,10 @@ class TestNodeFactQueryProcessor {
       override def getAllPending(): IOStream[NodeFact] = ZStream.empty
       override def getAllAccepted(): IOStream[NodeFact] = ZStream.empty
     }
-    CoreNodeFactRepository.make(NoopStorage, Map(), allAcceptedNodes, Chunk.empty).runNow
+    object NoopNodeBySoftware extends GetNodesbySofwareName {
+      override def apply(softName: String): IOResult[List[(NodeId, Software)]] = Nil.succeed
+    }
+    CoreNodeFactRepository.make(NoopStorage, NoopNodeBySoftware, Map(), allAcceptedNodes, Chunk.empty).runNow
   }
 
   val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo)

@@ -38,7 +38,6 @@
 package com.normation.rudder.facts.nodes
 
 import better.files._
-
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.provisioning._
@@ -57,12 +56,10 @@ import com.normation.rudder.inventory.InventoryProcessor
 import com.normation.rudder.inventory.InventoryProcessStatus.Saved
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
 import cron4s.Cron
-
 import java.security.Security
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -71,11 +68,10 @@ import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.specs2.specification.BeforeAfterAll
-
 import scala.annotation.nowarn
-
 import zio._
 import zio.concurrent.ReentrantLock
+import zio.syntax._
 
 /**
  *
@@ -157,18 +153,32 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
   gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
   // TODO WARNING POC: this can't work on a machine with lots of node
-  val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent]).runNow
+  val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent[MinimalNodeFactInterface]]).runNow
   def resetLog    = callbackLog.set(Chunk.empty).runNow
   def getLogName  = callbackLog.get.map(_.map(_.name)).runNow
 
+  object noopNodeBySoftwareName extends GetNodesbySofwareName {
+    override def apply(softName: String): IOResult[List[(NodeId, Software)]] = {
+      Nil.succeed
+    }
+  }
+
+  object trailCallBack extends NodeFactChangeEventCallback[MinimalNodeFactInterface] {
+    override def name: String = "trail"
+
+    override def run(e: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = {
+      callbackLog.update(_.appended(e.event))
+    }
+  }
+
   val factRepo = {
     for {
-      pending   <- Ref.make(Map[NodeId, NodeFact]())
-      accepted  <- Ref.make(Map[NodeId, NodeFact]())
-      callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
+      pending   <- Ref.make(Map[NodeId, CoreNodeFact]())
+      accepted  <- Ref.make(Map[NodeId, CoreNodeFact]())
+      callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback[MinimalNodeFactInterface]])
       lock      <- ReentrantLock.make()
-      r          = new CoreNodeFactRepository(gitFactRepo, pending, accepted, callbacks, lock)
-      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e.event))))
+      r          = new CoreNodeFactRepository(gitFactRepo, noopNodeBySoftwareName, pending, accepted, callbacks, lock)
+      _         <- r.registerChangeCallbackAction(trailCallBack)
 //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
       r
@@ -212,7 +222,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       pipelinedInventoryParser,
       inventorySaver,
       4,
-      new InventoryDigestServiceV1(id => factRepo.lookup(id).map(_.map(_.toFullInventory))),
+      new InventoryDigestServiceV1(id => factRepo.get(id).map(_.map(cnf => NodeFact.fromMinimal(cnf).toFullInventory))),
       () => ZIO.unit
     )
   }
@@ -255,19 +265,20 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       )) and
       (receivedInventoryFile(node2name).exists must beTrue) and
       (pendingNodeGitFile(node2id).exists must beTrue) and
-      (factRepo.getPending(node2id).runNow must beSome()) and
+      (factRepo.get(node2id)(SelectNodeStatus.Pending).runNow must beSome()) and
       (getLogName === Chunk("newPending"))
     }
 
     "change in node by repos are reflected in file" in {
+      implicit val attrs = SelectFacts.none
       resetLog
       val e = (for {
-        n <- factRepo.getPending(node2id).notOptional("node2 should be there for the test")
-        e <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
+        n <- factRepo.get(node2id)(SelectNodeStatus.Pending).notOptional("node2 should be there for the test")
+        e <- factRepo.save(NodeFact.fromMinimal(n).modify(_.fqdn).setTo(newfqdn))
       } yield e).runNow
 
       (pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
-      (e.event must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending[MinimalNodeFactInterface]]) and
       (getLogName === Chunk("updatedPending"))
 
     }
@@ -280,7 +291,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       (inventoryProcessor.saveInventoryBlocking(InventoryPair(n2, n2sign)).runNow must beEqualTo(
         Saved(node2name, node2id)
       )) and
-      (factRepo.getPending(node2id).testRunGet.fqdn must beEqualTo(fqdn)) and
+      (factRepo.get(node2id)(SelectNodeStatus.Pending).testRunGet.fqdn must beEqualTo(fqdn)) and
       (pendingNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue) and
       (getLogName === Chunk("updatedPending"))
     }
@@ -291,21 +302,21 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     "correctly update status and move file around" in {
       resetLog
       val e = factRepo.changeStatus(node2id, AcceptedInventory).runNow
-      (e.event must beAnInstanceOf[NodeFactChangeEvent.Accepted]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.Accepted[MinimalNodeFactInterface]]) and
       (acceptedNodeGitFile(node2id).exists must beTrue) and
-      (factRepo.getAccepted(node2id).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
+      (factRepo.get(node2id)(SelectNodeStatus.Accepted).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
       (getLogName === Chunk("accepted"))
     }
     "change in node by repos are reflected in file" in {
       resetLog
       val e = (
         for {
-          n <- factRepo.getAccepted(node2id).notOptional("node2 should be there for the test")
-          e <- factRepo.save(n.modify(_.fqdn).setTo(newfqdn))
+          n <- factRepo.get(node2id)(SelectNodeStatus.Accepted).notOptional("node2 should be there for the test")
+          e <- factRepo.save(NodeFact.fromMinimal(n).modify(_.fqdn).setTo(newfqdn))
         } yield e
       ).runNow
 
-      (e.event must beAnInstanceOf[NodeFactChangeEvent.Updated]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.Updated[MinimalNodeFactInterface]]) and
       (acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
       (getLogName === Chunk("updatedAccepted"))
     }
@@ -320,7 +331,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
           Saved(node2name, node2id)
         )
       ) and
-      (factRepo.getAccepted(node2id).testRunGet.fqdn must beEqualTo(fqdn)) and
+      (factRepo.get(node2id)(SelectNodeStatus.Accepted).testRunGet.fqdn must beEqualTo(fqdn)) and
       (acceptedNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue) and
       (getLogName === Chunk("updatedAccepted"))
     }
@@ -332,10 +343,10 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       resetLog
       val e = factRepo.changeStatus(node2id, RemovedInventory).runNow
 
-      (e.event must beAnInstanceOf[NodeFactChangeEvent.Deleted]) and
+      (e.event must beAnInstanceOf[NodeFactChangeEvent.Deleted[MinimalNodeFactInterface]]) and
       (pendingNodeGitFile(node2id).exists must beFalse) and
       (acceptedNodeGitFile(node2id).exists must beFalse) and
-      (factRepo.lookup(node2id).runNow must beNone) and
+      (factRepo.get(node2id)(SelectNodeStatus.Any).runNow must beNone) and
       (getLogName === Chunk("deleted"))
     }
   }

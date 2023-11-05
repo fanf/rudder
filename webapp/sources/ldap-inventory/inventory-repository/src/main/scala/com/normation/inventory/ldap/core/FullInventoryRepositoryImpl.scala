@@ -120,6 +120,13 @@ class FullInventoryRepositoryImpl(
     }
   }
 
+  def getStatus(nodeId: NodeId): IOResult[Option[InventoryStatus]] = {
+    for {
+      con <- ldap
+      res <- findDnForId[NodeId](con, nodeId, dn)
+    } yield res.map(_._2)
+  }
+
   /**
    * Get a machine by its ID
    */
@@ -351,32 +358,49 @@ class FullInventoryRepositoryImpl(
   }
 
   override def get(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[FullInventory]] = {
-    for {
-      con        <- ldap
-      tree       <- con.getTree(dn(id, inventoryStatus))
-      server     <- tree match {
-                      case Some(t) => mapper.nodeFromTree(t).map(Some(_))
-                      case None    => None.succeed
-                    }
-      // now, try to add a machine
-      optMachine <- {
-        server.flatMap(_.machineId) match {
-          case None                      => None.succeed
-          case Some((machineId, status)) =>
-            // here, we want to actually use the provided DN to:
-            // 1/ not make 3 existence tests each time we get a node,
-            // 2/ make the thing more debuggable. If we don't use the DN and display
-            //    information taken elsewhere, future debugging will leads people to madness
-            con.getTree(dnMachine(machineId, status)).flatMap {
-              case None    => None.succeed
-              case Some(x) => mapper.machineFromTree(x).map(Some(_))
-            }
+    getWithSoftware(id, inventoryStatus, false).map(_.map(_._1))
+  }
+
+  // if getSoftware is true, return the seq of software UUIDs, else an empty seq in addition to inventory.
+  def getWithSoftware(id: NodeId, inventoryStatus: InventoryStatus, getSoftware: Boolean): IOResult[Option[(FullInventory, Seq[SoftwareUuid])]] = {
+    (
+      for {
+        con <- ldap
+        tree <- con.getTree(dn(id, inventoryStatus))
+        server <- tree match {
+          case Some(t) => mapper.nodeFromTree(t).map(Some(_))
+          case None    => None.succeed
         }
+        // now, try to add a machine
+        optMachine <- {
+          server.flatMap(_.machineId) match {
+            case None                      => None.succeed
+            case Some((machineId, status)) =>
+              // here, we want to actually use the provided DN to:
+              // 1/ not make 3 existence tests each time we get a node,
+              // 2/ make the thing more debuggable. If we don't use the DN and display
+              //    information taken elsewhere, future debugging will leads people to madness
+              con.getTree(dnMachine(machineId, status)).flatMap {
+                case None    => None.succeed
+                case Some(x) => mapper.machineFromTree(x).map(Some(_))
+              }
+          }
+        }
+      } yield {
+        server.map(s =>
+          (FullInventory(s, optMachine),
+            if (getSoftware) {
+              tree.map(t => getSoftwareUuids(t.root)).getOrElse(Seq())
+            } else Seq()
+          )
+        )
       }
-    } yield {
-      server.map(s => FullInventory(s, optMachine))
-    }
-  }.chainError(s"Error when getting node with ID '${id.value}' and status ${inventoryStatus.name}")
+      ).chainError(s"Error when getting node with ID '${id.value}' and status ${inventoryStatus.name}")
+  }
+
+  def getSoftwareUuids(e: LDAPEntry): Chunk[SoftwareUuid] = {
+    e.valuesForChunk(LDAPConstants.A_SOFTWARE_UUID).map(SoftwareUuid(_))
+  }
 
   override def get(id: NodeId): IOResult[Option[FullInventory]] = {
     for {

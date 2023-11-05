@@ -1857,10 +1857,9 @@ object RudderConfigInit {
       .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
     lazy val gitFactRepoGC       = new GitGC(gitFactRepoProvider, RUDDER_GIT_GC)
     gitFactRepoGC.start()
-    lazy val gitFactRepo         = new GitNodeFactStorageImpl(gitFactRepoProvider, RUDDER_GROUP_OWNER_CONFIG_REPO, true)
-    gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
 
     // TODO WARNING POC: this can't work on a machine with lots of node
+    lazy val ldapNodeFactStorage = new LdapNodeFactStorage()
     lazy val nodeFactRepository = {
       println(s"****** init node fact repo")
 

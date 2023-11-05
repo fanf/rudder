@@ -114,6 +114,26 @@ trait NodeFactRepository {
    */
   def get(nodeId: NodeId)(implicit status: SelectNodeStatus = SelectNodeStatus.Any): IOResult[Option[CoreNodeFact]]
 
+  def compatStatus[A](status: InventoryStatus, f: SelectNodeStatus => IOResult[A]): IOResult[A] = {
+    status match {
+      case AcceptedInventory => f(SelectNodeStatus.Accepted)
+      case PendingInventory  => f(SelectNodeStatus.Pending)
+      case RemovedInventory  => Inconsistency("You can not query deleted nodes").fail
+    }
+  }
+
+  def compatStatusStream[A](status: InventoryStatus, f: SelectNodeStatus => IOStream[A]): IOStream[A] = {
+    status match {
+      case AcceptedInventory => f(SelectNodeStatus.Accepted)
+      case PendingInventory  => f(SelectNodeStatus.Pending)
+      case RemovedInventory  => ZStream.fromZIO(Inconsistency("You can not query deleted nodes").fail)
+    }
+  }
+
+  def getCompat(nodeId: NodeId, status: InventoryStatus): IOResult[Option[CoreNodeFact]] = {
+    compatStatus(status, get(nodeId)(_))
+  }
+
   /*
    * Return the node fact corresponding to the given node id with
    * the fields from select mode "ignored" set to empty.
@@ -123,6 +143,10 @@ trait NodeFactRepository {
       attrs:          SelectFacts = SelectFacts.default
   ): IOResult[Option[NodeFact]]
 
+  def slowGetCompat(nodeId: NodeId, status: InventoryStatus, attrs: SelectFacts): IOResult[Option[NodeFact]] = {
+    compatStatus(status, slowGet(nodeId)(_, attrs))
+  }
+
   def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]]
 
   /*
@@ -131,10 +155,24 @@ trait NodeFactRepository {
    */
   def getAll()(implicit status: SelectNodeStatus = SelectNodeStatus.Accepted): IOStream[CoreNodeFact]
 
+  def getAllCompat(status: InventoryStatus, attrs: SelectFacts): IOStream[CoreNodeFact] = {
+    compatStatusStream(status, getAll()(_))
+  }
+
+  /*
+   * A version of getAll that allows to retrieve attributes out of CoreNodeFact at the
+   * price of a round trip to the cold storage.
+   * Implementation must be smart and ensure that if attrs == SelectFacts.none,
+   * then it reverts back to the quick version.
+   */
   def slowGetAll()(implicit
       status: SelectNodeStatus = SelectNodeStatus.Accepted,
       attrs:  SelectFacts = SelectFacts.default
   ): IOStream[NodeFact]
+
+  def slowGetAllCompat(status: InventoryStatus, attrs: SelectFacts): IOStream[NodeFact] = {
+    compatStatusStream(status, slowGetAll()(_, attrs))
+  }
 
   ///// changes /////
 
@@ -195,22 +233,33 @@ private object InternalChangeEvent {
 }
 
 /*
- * An In memory implementation of the NodeFactRepository that persist (for cold storage)
+ * A partial in memory implementation of the NodeFactRepository that persist (for cold storage)
  * it's information in given backend.
- * The following operation are persisted and will be blocking:
+ *
+ * NodeFacts are split in two parts:
+ * - CoreNodeFacts are kept in memory which allows for fast lookup and search on main attributes
+ * - full NodeFacts are retrieved from cold storage on demand.
+ *
+ * The following operation are always persisted in cold storage and will be blocking:
  * - create a new node fact
  * - update an existing one
  * - change status of a node
  * - delete a node.
  *
- * once initialized, that repository IS the truth. No change done by
- * an other mean in the cold storage will be visible from Rudder.
+ * Core node facts info are always saved.
+ * To be more precise on what is retrieved or saved for non-core nodeFact, you can use the `SelectFacts`
+ * parametrization which will restraint get/save only the specified info.
  *
- * For change, that repos try to ensure that the backend does commit the
- * change before having it done in memory. That arch does not scale to
- * many backend, since once there is more than one, compensation strategy
- * must be put into action to compensate for errors (see zio-workflow for
- * that kind of things).
+ * Once initialized, that repository IS the truth for CoreNodeFact info. No change done by
+ * an other mean in the cold storage will be visible from Rudder without an explicit
+ * `fetchAndSync` call.
+ * Moreover, that repository is in charge to ensure consistency of states for nodes.
+ * Consequently, any change in a nodes must go through that repository, from inventory updates to
+ * node acceptation or properties setting.
+ *
+ * For change, that repos try to ensure that the backend does commit the change before having it done
+ * in memory. That arch does not scale to many backend, since once there is more than one, compensation
+ * strategy must be put into action to compensate for errors (see zio-workflow for that kind of things).
  *
  */
 object CoreNodeFactRepository {
@@ -219,7 +268,7 @@ object CoreNodeFactRepository {
       softByName: GetNodesbySofwareName,
       pending:    Map[NodeId, CoreNodeFact],
       accepted:   Map[NodeId, CoreNodeFact],
-      callbacks:  Chunk[NodeFactChangeEventCallback[_ <: MinimalNodeFactInterface]]
+      callbacks:  Chunk[NodeFactChangeEventCallback[MinimalNodeFactInterface]]
   ) = for {
     p    <- Ref.make(pending)
     a    <- Ref.make(accepted)
@@ -228,6 +277,7 @@ object CoreNodeFactRepository {
   } yield {
     new CoreNodeFactRepository(storage, softByName, p, a, cbs, lock)
   }
+
 }
 
 // we have some specialized services / materialized view for complex queries. Implementation can manage cache and
@@ -252,7 +302,7 @@ class CoreNodeFactRepository(
     softwareByName: GetNodesbySofwareName,
     pendingNodes:   Ref[Map[NodeId, CoreNodeFact]],
     acceptedNodes:  Ref[Map[NodeId, CoreNodeFact]],
-    callbacks:      Ref[Chunk[NodeFactChangeEventCallback[_ <: MinimalNodeFactInterface]]],
+    callbacks:      Ref[Chunk[NodeFactChangeEventCallback[MinimalNodeFactInterface]]],
     lock:           ReentrantLock,
     cbTimeout:      zio.Duration = 5.seconds
 ) extends NodeFactRepository {
@@ -269,18 +319,6 @@ class CoreNodeFactRepository(
       callback: NodeFactChangeEventCallback[MinimalNodeFactInterface]
   ): IOResult[Unit] = {
     callbacks.update(_.appended(callback))
-  }
-
-  override def getStatus(id: NodeId): IOResult[InventoryStatus] = {
-    pendingNodes.get.flatMap { p =>
-      if (p.keySet.contains(id)) PendingInventory.succeed
-      else {
-        acceptedNodes.get.flatMap(a => {
-          if (a.keySet.contains(id)) AcceptedInventory.succeed
-          else RemovedInventory.succeed
-        })
-      }
-    }
   }
 
   /*
@@ -302,8 +340,28 @@ class CoreNodeFactRepository(
     } yield ()
   }
 
+  override def getStatus(id: NodeId): IOResult[InventoryStatus] = {
+    pendingNodes.get.flatMap { p =>
+      if (p.keySet.contains(id)) PendingInventory.succeed
+      else {
+        acceptedNodes.get.flatMap(a => {
+          if (a.keySet.contains(id)) AcceptedInventory.succeed
+          else RemovedInventory.succeed
+        })
+      }
+    }
+  }
+
   private[nodes] def getOnRef(ref: Ref[Map[NodeId, CoreNodeFact]], nodeId: NodeId): IOResult[Option[CoreNodeFact]] = {
     ref.get.map(_.get(nodeId))
+  }
+
+  /*
+   * Require to re-sync from cold storage cache info.
+   * It will lead to a diff and subsequent callbacks for any changes
+   */
+  def fetchAndSync(nodeId: NodeId): IOResult[NodeFactChangeEventCC[CoreNodeFact]] = {
+    ???
   }
 
   override def get(nodeId: NodeId)(implicit status: SelectNodeStatus = SelectNodeStatus.Any): IOResult[Option[CoreNodeFact]] = {
@@ -318,26 +376,18 @@ class CoreNodeFactRepository(
   }
 
   override def slowGet(nodeId: NodeId)(implicit status: SelectNodeStatus, attrs: SelectFacts): IOResult[Option[NodeFact]] = {
-    status match {
-      case SelectNodeStatus.Pending  => storage.getPending(nodeId)(attrs)
-      case SelectNodeStatus.Accepted => storage.getAccepted(nodeId)(attrs)
-      case SelectNodeStatus.Any      =>
-        storage.getAccepted(nodeId)(attrs).flatMap {
-          case Some(x) => Some(x).succeed
-          case None    => storage.getPending(nodeId)(attrs)
-        }
-    }
-  }
-
-  override def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]] = {
-    softwareByName(softName)
-  }
-
-  override def slowGetAll()(implicit status: SelectNodeStatus, attrs: SelectFacts): IOStream[NodeFact] = {
-    status match {
-      case SelectNodeStatus.Pending  => storage.getAllPending()(attrs)
-      case SelectNodeStatus.Accepted => storage.getAllAccepted()(attrs)
-      case SelectNodeStatus.Any      => storage.getAllPending()(attrs) ++ storage.getAllAccepted()(attrs)
+    if (attrs == SelectFacts.none) {
+      get(nodeId)(status).map(_.map(cnf => NodeFact.fromMinimal(cnf)))
+    } else {
+      status match {
+        case SelectNodeStatus.Pending  => storage.getPending(nodeId)(attrs)
+        case SelectNodeStatus.Accepted => storage.getAccepted(nodeId)(attrs)
+        case SelectNodeStatus.Any      =>
+          storage.getAccepted(nodeId)(attrs).flatMap {
+            case Some(x) => Some(x).succeed
+            case None    => storage.getPending(nodeId)(attrs)
+          }
+      }
     }
   }
 
@@ -353,6 +403,22 @@ class CoreNodeFactRepository(
     }
   }
 
+  override def slowGetAll()(implicit status: SelectNodeStatus, attrs: SelectFacts): IOStream[NodeFact] = {
+    if (attrs == SelectFacts.none) {
+      getAll()(status).map(cnf => NodeFact.fromMinimal(cnf))
+    } else {
+      status match {
+        case SelectNodeStatus.Pending  => storage.getAllPending()(attrs)
+        case SelectNodeStatus.Accepted => storage.getAllAccepted()(attrs)
+        case SelectNodeStatus.Any      => storage.getAllPending()(attrs) ++ storage.getAllAccepted()(attrs)
+      }
+    }
+  }
+
+  override def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]] = {
+    softwareByName(softName)
+  }
+
   /*
    *
    */
@@ -363,7 +429,7 @@ class CoreNodeFactRepository(
         old.get(nodeFact.id) match {
           case Some(n) =>
             if (CoreNodeFact.same(n, nodeFact)) InternalChangeEvent.Noop(nodeFact.id)
-            else InternalChangeEvent.Update(old, nodeFact)
+            else InternalChangeEvent.Update(n, nodeFact)
           case None    => InternalChangeEvent.Create(nodeFact)
         }
       }
@@ -407,7 +473,7 @@ class CoreNodeFactRepository(
       // transform a validation result to a Full | Failure
       implicit def toIOResult(validation: ValidationResult): IOResult[Unit] = {
         validation.fold(
-          nel => nel.toList.mkString("; ").fail,
+          nel => Inconsistency(nel.toList.mkString("; ")).fail,
           _ => ZIO.unit
         )
       }
@@ -415,13 +481,13 @@ class CoreNodeFactRepository(
       List(rootIsEnabled(node), rootIsPolicyServer(node), rootIsSystem(node)).sequence.map(_ => ())
     }
 
-    ZIO.when(node.id == Constants.ROOT_POLICY_SERVER_ID)(validateRoot(newNode)).unit
+    ZIO.when(node.id == Constants.ROOT_POLICY_SERVER_ID)(validateRoot(node)).unit
   }
 
   def save(
       nodeFact:  NodeFact
   )(implicit cc: ChangeContext, attrs: SelectFacts = SelectFacts.all): IOResult[NodeFactChangeEventCC[CoreNodeFact]] = {
-    checkRootProperties(nodeFact) >>
+    checkRootProperties(nodeFact) *>
     ZIO.scoped(
       for {
         _ <- lock.withLock
@@ -458,7 +524,7 @@ class CoreNodeFactRepository(
   override def changeStatus(nodeId: NodeId, into: InventoryStatus)(implicit
       cc:                           ChangeContext
   ): IOResult[NodeFactChangeEventCC[CoreNodeFact]] = {
-    if (nodeId == root && InventoryStatus != AcceptedInventory) {
+    if (nodeId == Constants.ROOT_POLICY_SERVER_ID && into != AcceptedInventory) {
       Inconsistency(s"Rudder server (id='root' must be accepted").fail
     } else {
       ZIO.scoped(

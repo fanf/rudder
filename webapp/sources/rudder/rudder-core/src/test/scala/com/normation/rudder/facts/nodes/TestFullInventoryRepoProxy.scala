@@ -40,7 +40,6 @@ package com.normation.rudder.facts.nodes
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.services.core.FullInventoryRepository
-
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
@@ -48,10 +47,10 @@ import org.joda.time.DateTime
 import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
-
 import zio._
 import zio.concurrent.ReentrantLock
 import zio.stream.ZStream
+import zio.syntax._
 
 final case class SystemError(cause: Throwable) extends RudderError {
   def msg = "Error in test"
@@ -89,38 +88,46 @@ class TestInventory extends Specification {
   }
 
   // TODO WARNING POC: this can't work on a machine with lots of node
-  val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent]).runNow
+  val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent[MinimalNodeFactInterface]]).runNow
 
   def resetLog = callbackLog.set(Chunk.empty).runNow
 
   def getLogName = callbackLog.get.map(_.map(_.name)).runNow
   object NoopFactStorage extends NodeFactStorage {
-    override def save(nodeFact: NodeFact):                              IOResult[Unit] = ZIO.unit
-    override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit] = ZIO.unit
-    override def delete(nodeId: NodeId):                                IOResult[Unit] = ZIO.unit
-    override def getAllPending(): IOStream[NodeFact] = ZStream.empty
-    override def getAllAccepted(): IOStream[NodeFact] = ZStream.empty
+    override def save(nodeFact: NodeFact):                              IOResult[Unit]     = ZIO.unit
+    override def changeStatus(nodeId: NodeId, status: InventoryStatus): IOResult[Unit]     = ZIO.unit
+    override def delete(nodeId: NodeId):                                IOResult[Unit]     = ZIO.unit
+    override def getAllPending():                                       IOStream[NodeFact] = ZStream.empty
+    override def getAllAccepted():                                      IOStream[NodeFact] = ZStream.empty
   }
 
-  val pendingRef  = (Ref.make(Map[NodeId, NodeFact]())).runNow
-  val acceptedRef = (Ref.make(Map[NodeId, NodeFact]())).runNow
+  val pendingRef  = (Ref.make(Map[NodeId, CoreNodeFact]())).runNow
+  val acceptedRef = (Ref.make(Map[NodeId, CoreNodeFact]())).runNow
 
   def resetStorage = (for {
     _ <- pendingRef.set(Map())
     _ <- acceptedRef.set(Map())
   } yield ()).runNow
 
+  object noopNodeBySoftwareName extends GetNodesbySofwareName {
+    override def apply(softName: String): IOResult[List[(NodeId, Software)]] = {
+      Nil.succeed
+    }
+  }
+
+  object trailCallBack extends NodeFactChangeEventCallback[MinimalNodeFactInterface] {
+    override def name:                                                    String         = "trail"
+    override def run(e: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = { 
+      callbackLog.update(_.appended(e.event))
+    }
+  }
+
   val factRepo = {
     for {
-      callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback])
+      callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback[MinimalNodeFactInterface]])
       lock      <- ReentrantLock.make()
-      r          = new CoreNodeFactRepository(NoopFactStorage, pendingRef, acceptedRef, callbacks, lock)
-      _         <- r.registerChangeCallbackAction(
-                     new NodeFactChangeEventCallback(
-                       "trail",
-                       e => callbackLog.update(_.appended(e.event))
-                     )
-                   )
+      r          = new CoreNodeFactRepository(NoopFactStorage, noopNodeBySoftwareName, pendingRef, acceptedRef, callbacks, lock)
+      _         <- r.registerChangeCallbackAction(trailCallBack)
       //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
       r
@@ -331,7 +338,7 @@ class TestInventory extends Specification {
 
       repo.save(FullInventory(node, None)).isOK and {
         val FullInventory(n, m) = repo.get(nodeId, AcceptedInventory).testRunGet
-        n === node.modify(_.machineId).setTo(Some((MachineUuid("machine-windows-2012"),AcceptedInventory)))
+        n === node.modify(_.machineId).setTo(Some((MachineUuid("machine-windows-2012"), AcceptedInventory)))
       }
     }
 

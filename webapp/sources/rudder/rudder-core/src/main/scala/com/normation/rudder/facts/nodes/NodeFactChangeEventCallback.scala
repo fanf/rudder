@@ -38,43 +38,13 @@
 package com.normation.rudder.facts.nodes
 
 import com.normation.errors.IOResult
-import com.normation.eventlog.EventActor
-import com.normation.eventlog.ModificationId
-import com.normation.inventory.domain._
-import com.normation.inventory.domain.{Version => SVersion}
-import com.normation.rudder.domain.eventlog
-import com.normation.rudder.domain.nodes.MachineInfo
-import com.normation.rudder.domain.nodes.Node
-import com.normation.rudder.domain.nodes.NodeInfo
-import com.normation.rudder.domain.nodes.NodeKind
-import com.normation.rudder.domain.nodes.NodeState
-import com.normation.rudder.domain.policies.PolicyMode
-import com.normation.rudder.domain.properties.GenericProperty
-import com.normation.rudder.domain.properties.InheritMode
-import com.normation.rudder.domain.properties.NodeProperty
-import com.normation.rudder.domain.properties.PropertyProvider
-import com.normation.rudder.domain.servers.Srv
+import com.normation.rudder.domain.nodes.ModifyNodeDiff
 import com.normation.rudder.facts.nodes.MinimalNodeFactInterface.toNode
-import com.normation.rudder.reports._
 import com.normation.rudder.repository.EventLogRepository
 import com.normation.rudder.services.reports.CacheComplianceQueueAction
 import com.normation.rudder.services.reports.CacheExpectedReportAction
-import com.normation.utils.ParseVersion
-import com.normation.utils.Version
-import com.softwaremill.quicklens._
-import com.typesafe.config.ConfigRenderOptions
-import com.typesafe.config.ConfigValue
-import java.net.InetAddress
-import net.liftweb.json.JsonAST
-import net.liftweb.json.JsonAST._
-import net.liftweb.json.JsonAST.JValue
-import org.joda.time.DateTime
-import zio.Chunk
+import com.normation.rudder.services.reports.InvalidateCache
 import zio.ZIO
-import zio.json._
-import zio.json.ast.Json
-import zio.json.ast.Json._
-import zio.json.internal.Write
 
 /*
  * This file store callbacks for node events.
@@ -95,17 +65,23 @@ class EventLogsNodeFactChangeEventCallback(
   override def name: String = "node-fact-cec: register even log"
 
   override def run(change: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = {
-    change.event match {
-      case NodeFactChangeEvent.NewPending(node)          => ???
-      case NodeFactChangeEvent.UpdatedPending(old, next) =>
-        val diff = ModifyNodeDiff(toNode(old), toNode(next))
-        actionLogger.saveModifyNode(modId, actor, diff, reason)
+    def modifyEventLog(
+        cc:   ChangeContext,
+        old:  MinimalNodeFactInterface,
+        next: MinimalNodeFactInterface
+    ): IOResult[Unit] = {
+      val diff = ModifyNodeDiff(toNode(old), toNode(next))
+      actionLogger.saveModifyNode(cc.modId, cc.actor, diff, cc.message).unit
+    }
 
-      case NodeFactChangeEvent.Accepted(node) => ???
-      case NodeFactChangeEvent.Refused(node)  => ???
-      case NodeFactChangeEvent.Updated(node)  => ???
-      case NodeFactChangeEvent.Deleted(node)  => ???
-      case NodeFactChangeEvent.Noop(nodeId)   => ZIO.unit
+    change.event match {
+      case NodeFactChangeEvent.UpdatedPending(old, next) => modifyEventLog(change.cc, old, next)
+      case NodeFactChangeEvent.Updated(old, next)        => modifyEventLog(change.cc, old, next)
+      case NodeFactChangeEvent.NewPending(node)          => ???
+      case NodeFactChangeEvent.Accepted(node)            => ???
+      case NodeFactChangeEvent.Refused(node)             => ???
+      case NodeFactChangeEvent.Deleted(node)             => ???
+      case NodeFactChangeEvent.Noop(nodeId)              => ZIO.unit
     }
   }
 }
@@ -126,8 +102,8 @@ class CacheInvalidateNodeFactEventCallback(
       case NodeFactChangeEvent.Accepted(node)                   =>
         val a = CacheExpectedReportAction.InsertNodeInCache(node.id)
         for {
-          _   <- cacheConfiguration.invalidateWithAction(Seq((node.id, CacheComplianceQueueAction.ExpectedReportAction(a))))
-          _   <- cacheExpectedReports.invalidateWithAction(Seq((node.id, a)))
+          _ <- cacheConfiguration.invalidateWithAction(Seq((node.id, CacheComplianceQueueAction.ExpectedReportAction(a))))
+          _ <- cacheExpectedReports.invalidateWithAction(Seq((node.id, a)))
         } yield ()
       case NodeFactChangeEvent.Refused(node)                    => ???
       case NodeFactChangeEvent.Updated(oldNode, newNode)        => ???
@@ -138,7 +114,7 @@ class CacheInvalidateNodeFactEventCallback(
           _ <- cacheExpectedReports.invalidateWithAction(Seq((node.id, a)))
         } yield ()
 
-      case NodeFactChangeEvent.Noop(nodeId)                     => ZIO.unit
+      case NodeFactChangeEvent.Noop(nodeId) => ZIO.unit
     }
   }
 }

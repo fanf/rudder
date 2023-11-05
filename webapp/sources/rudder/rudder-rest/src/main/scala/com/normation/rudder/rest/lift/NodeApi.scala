@@ -74,6 +74,7 @@ import com.normation.rudder.domain.reports.ComplianceLevel
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepository
 import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.SelectFacts
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.rudder.reports.execution.AgentRunWithNodeConfig
 import com.normation.rudder.reports.execution.RoReportsExecutionRepository
@@ -1214,7 +1215,7 @@ class NodeApiService(
       state:       InventoryStatus
   ): IOResult[Option[JValue]] = {
     for {
-      optNodeInfo <- nodeFactRepository.getOn(nodeId, state)
+      optNodeInfo <- nodeFactRepository.slowGetCompat(nodeId, state, SelectFacts.fromNodeDetailLevel(detailLevel))
       nodeInfo    <- optNodeInfo match {
                        case None    => None.succeed
                        case Some(x) =>
@@ -1307,20 +1308,23 @@ class NodeApiService(
     }
 
     (for {
-      nodeInfos  <-
-        nodeFactRepository.getAllOn(state).filter(predicate).run(ZSink.collectAllToMap[NodeFact, NodeId](_.id)((a, b) => a))
-      nodeIds     = nodeInfos.keySet
+      nodeFacts  <-
+        nodeFactRepository
+          .slowGetAllCompat(state, SelectFacts.fromNodeDetailLevel(detailLevel))
+          .filter(predicate)
+          .run(ZSink.collectAllToMap[NodeFact, NodeId](_.id)((a, b) => a))
+      nodeIds     = nodeFacts.keySet
       runs       <- reportsExecutionRepository.getNodesLastRun(nodeIds)
-      inventories = nodeInfos.map { case (k, v) => (k, v.toFullInventory) }
-      software    = nodeInfos.map { case (k, v) => (k, v.software.map(_.toSoftware)) }
+      inventories = nodeFacts.map { case (k, v) => (k, v.toFullInventory) }
+      software    = nodeFacts.map { case (k, v) => (k, v.software.map(_.toSoftware)) }
     } yield {
       for {
         nodeId   <- nodeIds
-        nodeInfo <- nodeInfos.get(nodeId)
+        nodeFact <- nodeFacts.get(nodeId)
       } yield {
         val runDate = runs.get(nodeId).flatMap(_.map(_.agentRunId.date))
         serializeInventory(
-          nodeInfo.toNodeInfo,
+          nodeFact.toNodeInfo,
           state,
           runDate,
           inventories.get(nodeId),

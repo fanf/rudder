@@ -41,6 +41,7 @@ import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
 import com.normation.inventory.domain.{Version => SVersion}
+import com.normation.rudder.apidata.NodeDetailLevel
 import com.normation.rudder.domain.eventlog
 import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.Node
@@ -56,14 +57,17 @@ import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.reports._
 import com.normation.utils.ParseVersion
 import com.normation.utils.Version
+
 import com.softwaremill.quicklens._
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
+
 import java.net.InetAddress
 import net.liftweb.json.JsonAST
 import net.liftweb.json.JsonAST._
 import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
+
 import zio.Chunk
 import zio.json._
 import zio.json.ast.Json
@@ -429,10 +433,10 @@ object NodeFact {
   }
 
   implicit class ToCompat(node: NodeFact) {
-    def mask[A](s: SelectMode[A]) = {
-      s match {
-        case SelectMode.Retrieve(_, _, _) => node
-        case SelectMode.Ignore(_, mod, z) => mod.setTo(z)(node)
+    def mask[A](s: SelectFactConfig[A]) = {
+      s.mode match {
+        case SelectMode.Retrieve => node
+        case SelectMode.Ignore => s.modify.setTo(s.zero)(node)
       }
     }
 
@@ -902,50 +906,47 @@ object CoreNodeFact {
   }
 }
 
-sealed trait SelectMode[A] {
-  def selector: NodeFact => A
-  def modify:   PathLazyModify[NodeFact, A]
-  // copy helper for fluent api
-  def ignore:   SelectMode[A]
-  def retrieve: SelectMode[A]
-  def zero:     A
+sealed trait SelectMode
+object SelectMode {
+  case object Ignore   extends SelectMode
+  case object Retrieve extends SelectMode
 }
-object SelectMode          {
-  case class Retrieve[A](selector: NodeFact => A, modify: PathLazyModify[NodeFact, A], zero: A) extends SelectMode[A] {
-    def ignore   = Ignore(selector, modify, zero)
-    def retrieve = this
-  }
-  case class Ignore[A](selector: NodeFact => A, modify: PathLazyModify[NodeFact, A], zero: A)   extends SelectMode[A] {
-    def ignore   = this
-    def retrieve = Retrieve(selector, modify, zero)
-  }
-//  case object Default  extends SelectMode
+
+case class SelectFactConfig[A](
+    mode:     SelectMode,
+    selector: NodeFact => A,
+    modify:   PathLazyModify[NodeFact, A],
+    zero:     A
+) {
+  // copy helper for fluent api
+  def toIgnore:   SelectFactConfig[A] = this.copy(mode = SelectMode.Ignore)
+  def toRetrieve: SelectFactConfig[A] = this.copy(mode = SelectMode.Retrieve)
 }
 
 case class SelectFacts(
-    swap:                 SelectMode[Option[MemorySize]],
-    accounts:             SelectMode[Chunk[String]],
-    bios:                 SelectMode[Chunk[Bios]],
-    controllers:          SelectMode[Chunk[Controller]],
-    environmentVariables: SelectMode[Chunk[(String, String)]],
-    fileSystems:          SelectMode[Chunk[FileSystem]],
-    inputs:               SelectMode[Chunk[InputDevice]],
-    localGroups:          SelectMode[Chunk[LocalGroup]],
-    localUsers:           SelectMode[Chunk[LocalUser]],
-    logicalVolumes:       SelectMode[Chunk[LogicalVolume]],
-    memories:             SelectMode[Chunk[MemorySlot]],
-    networks:             SelectMode[Chunk[Network]],
-    physicalVolumes:      SelectMode[Chunk[PhysicalVolume]],
-    ports:                SelectMode[Chunk[Port]],
-    processes:            SelectMode[Chunk[Process]],
-    processors:           SelectMode[Chunk[Processor]],
-    slots:                SelectMode[Chunk[Slot]],
-    software:             SelectMode[Chunk[SoftwareFact]],
-    softwareUpdate:       SelectMode[Chunk[SoftwareUpdate]],
-    sounds:               SelectMode[Chunk[Sound]],
-    storages:             SelectMode[Chunk[Storage]],
-    videos:               SelectMode[Chunk[Video]],
-    vms:                  SelectMode[Chunk[VirtualMachine]]
+    swap:                 SelectFactConfig[Option[MemorySize]],
+    accounts:             SelectFactConfig[Chunk[String]],
+    bios:                 SelectFactConfig[Chunk[Bios]],
+    controllers:          SelectFactConfig[Chunk[Controller]],
+    environmentVariables: SelectFactConfig[Chunk[(String, String)]],
+    fileSystems:          SelectFactConfig[Chunk[FileSystem]],
+    inputs:               SelectFactConfig[Chunk[InputDevice]],
+    localGroups:          SelectFactConfig[Chunk[LocalGroup]],
+    localUsers:           SelectFactConfig[Chunk[LocalUser]],
+    logicalVolumes:       SelectFactConfig[Chunk[LogicalVolume]],
+    memories:             SelectFactConfig[Chunk[MemorySlot]],
+    networks:             SelectFactConfig[Chunk[Network]],
+    physicalVolumes:      SelectFactConfig[Chunk[PhysicalVolume]],
+    ports:                SelectFactConfig[Chunk[Port]],
+    processes:            SelectFactConfig[Chunk[Process]],
+    processors:           SelectFactConfig[Chunk[Processor]],
+    slots:                SelectFactConfig[Chunk[Slot]],
+    software:             SelectFactConfig[Chunk[SoftwareFact]],
+    softwareUpdate:       SelectFactConfig[Chunk[SoftwareUpdate]],
+    sounds:               SelectFactConfig[Chunk[Sound]],
+    storages:             SelectFactConfig[Chunk[Storage]],
+    videos:               SelectFactConfig[Chunk[Video]],
+    vms:                  SelectFactConfig[Chunk[VirtualMachine]]
 )
 
 sealed trait SelectNodeStatus { def name: String }
@@ -956,66 +957,97 @@ object SelectNodeStatus       {
 }
 
 object SelectFacts {
-  import SelectMode._
-
   // format: off
-
   // there's perhaps a better way to do that, but `shrug` don't know about it
   val none = SelectFacts(
-    SelectMode.Ignore(_.swap, modifyLens[NodeFact](_.swap), None),
-    SelectMode.Ignore(_.accounts, modifyLens[NodeFact](_.accounts), Chunk.empty),
-    SelectMode.Ignore(_.bios, modifyLens[NodeFact](_.bios), Chunk.empty),
-    SelectMode.Ignore(_.controllers, modifyLens[NodeFact](_.controllers), Chunk.empty),
-    SelectMode.Ignore(_.environmentVariables, modifyLens[NodeFact](_.environmentVariables), Chunk.empty),
-    SelectMode.Ignore(_.fileSystems, modifyLens[NodeFact](_.fileSystems), Chunk.empty),
-    SelectMode.Ignore(_.inputs, modifyLens[NodeFact](_.inputs), Chunk.empty),
-    SelectMode.Ignore(_.localGroups, modifyLens[NodeFact](_.localGroups), Chunk.empty),
-    SelectMode.Ignore(_.localUsers, modifyLens[NodeFact](_.localUsers), Chunk.empty),
-    SelectMode.Ignore(_.logicalVolumes, modifyLens[NodeFact](_.logicalVolumes), Chunk.empty),
-    SelectMode.Ignore(_.memories, modifyLens[NodeFact](_.memories), Chunk.empty),
-    SelectMode.Ignore(_.networks, modifyLens[NodeFact](_.networks), Chunk.empty),
-    SelectMode.Ignore(_.physicalVolumes, modifyLens[NodeFact](_.physicalVolumes), Chunk.empty),
-    SelectMode.Ignore(_.ports, modifyLens[NodeFact](_.ports), Chunk.empty),
-    SelectMode.Ignore(_.processes, modifyLens[NodeFact](_.processes), Chunk.empty),
-    SelectMode.Ignore(_.processors, modifyLens[NodeFact](_.processors), Chunk.empty),
-    SelectMode.Ignore(_.slots, modifyLens[NodeFact](_.slots), Chunk.empty),
-    SelectMode.Ignore(_.software, modifyLens[NodeFact](_.software), Chunk.empty),
-    SelectMode.Ignore(_.softwareUpdate, modifyLens[NodeFact](_.softwareUpdate), Chunk.empty),
-    SelectMode.Ignore(_.sounds, modifyLens[NodeFact](_.sounds), Chunk.empty),
-    SelectMode.Ignore(_.storages, modifyLens[NodeFact](_.storages), Chunk.empty),
-    SelectMode.Ignore(_.videos, modifyLens[NodeFact](_.videos), Chunk.empty),
-    SelectMode.Ignore(_.vms, modifyLens[NodeFact](_.vms), Chunk.empty)
+    SelectFactConfig(SelectMode.Ignore,_.swap, modifyLens[NodeFact](_.swap), None),
+    SelectFactConfig(SelectMode.Ignore,_.accounts, modifyLens[NodeFact](_.accounts), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.bios, modifyLens[NodeFact](_.bios), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.controllers, modifyLens[NodeFact](_.controllers), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.environmentVariables, modifyLens[NodeFact](_.environmentVariables), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.fileSystems, modifyLens[NodeFact](_.fileSystems), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.inputs, modifyLens[NodeFact](_.inputs), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.localGroups, modifyLens[NodeFact](_.localGroups), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.localUsers, modifyLens[NodeFact](_.localUsers), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.logicalVolumes, modifyLens[NodeFact](_.logicalVolumes), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.memories, modifyLens[NodeFact](_.memories), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.networks, modifyLens[NodeFact](_.networks), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.physicalVolumes, modifyLens[NodeFact](_.physicalVolumes), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.ports, modifyLens[NodeFact](_.ports), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.processes, modifyLens[NodeFact](_.processes), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.processors, modifyLens[NodeFact](_.processors), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.slots, modifyLens[NodeFact](_.slots), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.software, modifyLens[NodeFact](_.software), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.softwareUpdate, modifyLens[NodeFact](_.softwareUpdate), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.sounds, modifyLens[NodeFact](_.sounds), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.storages, modifyLens[NodeFact](_.storages), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.videos, modifyLens[NodeFact](_.videos), Chunk.empty),
+    SelectFactConfig(SelectMode.Ignore,_.vms, modifyLens[NodeFact](_.vms), Chunk.empty)
   )
 
   val all = SelectFacts(
-    none.swap.retrieve,
-    none.accounts.retrieve,
-    none.bios.retrieve,
-    none.controllers.retrieve,
-    none.environmentVariables.retrieve,
-    none.fileSystems.retrieve,
-    none.inputs.retrieve,
-    none.localGroups.retrieve,
-    none.localUsers.retrieve,
-    none.logicalVolumes.retrieve,
-    none.memories.retrieve,
-    none.networks.retrieve,
-    none.physicalVolumes.retrieve,
-    none.ports.retrieve,
-    none.processes.retrieve,
-    none.processors.retrieve,
-    none.slots.retrieve,
-    none.software.retrieve,
-    none.softwareUpdate.retrieve,
-    none.sounds.retrieve,
-    none.storages.retrieve,
-    none.videos.retrieve,
-    none.vms.retrieve
+    none.swap.toRetrieve,
+    none.accounts.toRetrieve,
+    none.bios.toRetrieve,
+    none.controllers.toRetrieve,
+    none.environmentVariables.toRetrieve,
+    none.fileSystems.toRetrieve,
+    none.inputs.toRetrieve,
+    none.localGroups.toRetrieve,
+    none.localUsers.toRetrieve,
+    none.logicalVolumes.toRetrieve,
+    none.memories.toRetrieve,
+    none.networks.toRetrieve,
+    none.physicalVolumes.toRetrieve,
+    none.ports.toRetrieve,
+    none.processes.toRetrieve,
+    none.processors.toRetrieve,
+    none.slots.toRetrieve,
+    none.software.toRetrieve,
+    none.softwareUpdate.toRetrieve,
+    none.sounds.toRetrieve,
+    none.storages.toRetrieve,
+    none.videos.toRetrieve,
+    none.vms.toRetrieve
   )
   // format: on
 
-  val noSoftware = all.copy(software = all.software.ignore)
-  val default    = all.copy(processes = all.processes.ignore, software = all.software.ignore)
+  val noSoftware = all.copy(software = all.software.toIgnore)
+  val default    = all.copy(processes = all.processes.toIgnore, software = all.software.toIgnore)
+
+
+  def fromNodeDetailLevel(level: NodeDetailLevel): SelectFacts = {
+    // change from none to get
+    def toGet[A](s: SelectFactConfig[A], switch: Boolean): SelectFactConfig[A] = {
+      if(switch) s.toRetrieve
+      else s
+    }
+    SelectFacts(
+      toGet(none.swap,level.fields.contains("")), // no swap ?
+      toGet(none.accounts,level.fields.contains("accounts")),
+      toGet(none.bios,level.fields.contains("bios")),
+      toGet(none.controllers,level.fields.contains("controllers")),
+      toGet(none.environmentVariables,level.fields.contains("environmentVariables")),
+      toGet(none.fileSystems,level.fields.contains("fileSystems")),
+      none.inputs,
+      none.localGroups,
+      none.localUsers,
+      none.logicalVolumes,
+      toGet(none.memories,level.fields.contains("memories")),
+      toGet(none.networks,level.fields.contains("networkInterfaces")),
+      none.physicalVolumes,
+      toGet(none.ports,level.fields.contains("ports")),
+      toGet(none.processes,level.fields.contains("processes")),
+      toGet(none.processors,level.fields.contains("processors")),
+      toGet(none.slots,level.fields.contains("slots")),
+      toGet(none.software,level.fields.contains("software")),
+      toGet(none.softwareUpdate,level.fields.contains("softwareUpdate")),
+      toGet(none.sounds,level.fields.contains("sounds")),
+      toGet(none.storages,level.fields.contains("storages")),
+      toGet(none.videos,level.fields.contains("videos")),
+      toGet(none.vms,level.fields.contains("virtualMachines"))
+    )
+  }
 
   // semantic: having a new node fact, keep old fact info if the select mode says "ignore"
   // and keep new fact if it says "retrieve"
@@ -1023,12 +1055,12 @@ object SelectFacts {
     implicit class NodeFactMerge(newFact: NodeFact) {
 
       // keep newFact
-      def update[A](selector: SelectMode[A])(implicit oldFact: NodeFact) = {
-        selector match {
-          case Retrieve(_, _, _)   => // keep new fact
+      def update[A](config: SelectFactConfig[A])(implicit oldFact: NodeFact) = {
+        config.mode match {
+          case SelectMode.Retrieve   => // keep new fact
             newFact
-          case Ignore(sel, mod, _) => // get info from old fact
-            mod.setTo(sel(oldFact))(newFact)
+          case SelectMode.Ignore => // get info from old fact
+            config.modify.setTo(config.selector(oldFact))(newFact)
         }
       }
     }
