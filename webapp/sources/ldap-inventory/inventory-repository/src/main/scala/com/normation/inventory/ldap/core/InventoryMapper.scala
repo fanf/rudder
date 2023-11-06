@@ -460,7 +460,6 @@ class InventoryMapper(
   // def machineType2Filter(mt : MachineType) : Filter = BuildFilter.IS(machineType2ObjectClass(mt).name)
 
   private[this] def machineType2ObjectClass(mt: MachineType): LDAPObjectClass = {
-    // these classes must exists
     mt match {
       case VirtualMachineType(UnknownVmType) => OC_OC_VM
       case VirtualMachineType(VirtualBox)    => OC_OC_VM_VIRTUALBOX
@@ -508,10 +507,10 @@ class InventoryMapper(
     val dit  = ditService.getDit(machine.status)
     val root = dit.MACHINES.MACHINE.model(machine.id)
     root.setOpt(machine.mbUuid, A_MB_UUID, (x: MotherBoardUuid) => x.value)
-    root.addValues(A_OC, machineType2ObjectClass(machine.machineType).name)
+    root.addValues(A_OC, OC.objectClassNames(machineType2ObjectClass(machine.machineType).name):_*)
     root.setOpt(machine.inventoryDate, A_INVENTORY_DATE, (x: DateTime) => GeneralizedTime(x).toString)
     root.setOpt(machine.receiveDate, A_RECEIVE_DATE, (x: DateTime) => GeneralizedTime(x).toString)
-    root.setOpt(Some(machine.id), A_NAME, (x: MachineUuid) => x.value)
+    root.setOpt(machine.name.orElse(Some(machine.id.value)), A_NAME, (x: String) => x)
     root.setOpt(machine.manufacturer, A_MANUFACTURER, (x: Manufacturer) => x.name)
     root.setOpt(machine.systemSerialNumber, A_SERIAL_NUMBER, (x: String) => x)
 

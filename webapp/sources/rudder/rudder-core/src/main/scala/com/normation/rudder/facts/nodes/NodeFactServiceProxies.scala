@@ -66,11 +66,9 @@ import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.repository.WoNodeRepository
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.servers.NodeSummaryService
-
 import com.softwaremill.quicklens._
 import net.liftweb.common.Box
 import net.liftweb.common.Full
-
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
@@ -170,14 +168,7 @@ class NodeFactFullInventoryRepository(backend: NodeFactRepository)
     extends FullInventoryRepository[Unit] with ReadOnlySoftwareNameDAO {
 
   override def get(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[FullInventory]] = {
-    def get(s: SelectNodeStatus) = {
-      backend.slowGet(id)(SelectNodeStatus.Accepted, SelectFacts.noSoftware).map(_.map(_.toFullInventory))
-    }
-    inventoryStatus match {
-      case AcceptedInventory => get(SelectNodeStatus.Accepted)
-      case PendingInventory  => get(SelectNodeStatus.Pending)
-      case RemovedInventory  => None.succeed
-    }
+    backend.slowGetCompat(id, inventoryStatus, SelectFacts.noSoftware).map(_.map(_.toFullInventory))
   }
 
   override def get(id: NodeId): IOResult[Option[FullInventory]] = {

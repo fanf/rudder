@@ -93,7 +93,6 @@ class TestInventory extends Specification {
 
   def getLogName = callbackLog.get.map(_.map(_.name)).runNow
 
-
   val pendingRef  = (Ref.make(Map[NodeId, CoreNodeFact]())).runNow
   val acceptedRef = (Ref.make(Map[NodeId, CoreNodeFact]())).runNow
 
@@ -182,7 +181,7 @@ class TestInventory extends Specification {
 
   "Saving, finding and moving node" should {
 
-    "find node for machine, whatever the presence or status of the machine" in {
+    "Save node for machine, whatever the presence or status of the machine" in {
       resetStorage
       val mid = MachineUuid("foo")
 
@@ -199,8 +198,9 @@ class TestInventory extends Specification {
 
     "find back the machine after a move with a normalized id to `machine-nodeid`" in {
       resetStorage
-      val m = machine("findBackMachine", PendingInventory)
-      val n = node("findBackNode", PendingInventory, (m.id, m.status))
+      val m   = machine("findBackMachine", PendingInventory)
+      val n   = node("findBackNode", PendingInventory, (m.id, m.status))
+
 
       (
         repo.save(full(n, m)).isOK
@@ -272,7 +272,7 @@ class TestInventory extends Specification {
           val FullInventory(node0, m0) = repo.get(n0.main.id, AcceptedInventory).testRunGet
           val FullInventory(node1, m1) = repo.get(n1.main.id, PendingInventory).testRunGet
           val FullInventory(node2, m2) = repo.get(n2.main.id, AcceptedInventory).testRunGet
-          val node3                    = repo.get(n3.main.id, RemovedInventory).runNow
+          val node3                    = repo.get(n3.main.id, RemovedInventory).either.runNow
 
           // expected machine value
           val n0now                     = n0.modify(_.main.status).setTo(AcceptedInventory)
@@ -293,7 +293,7 @@ class TestInventory extends Specification {
             node0 === n0_
             and node1 === n1_
             and node2 === n2_
-            and node3 === None // no move to delete
+            and (node3 isLeft )// no move to delete
           )
         }
       )

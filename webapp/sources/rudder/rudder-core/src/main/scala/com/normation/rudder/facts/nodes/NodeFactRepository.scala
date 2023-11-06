@@ -41,6 +41,7 @@ import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
 import com.normation.rudder.domain.Constants
+import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.nodes.NodeState
 import com.softwaremill.quicklens._
 import scala.annotation.nowarn
@@ -361,19 +362,41 @@ class CoreNodeFactRepository(
   }
 
   override def slowGet(nodeId: NodeId)(implicit status: SelectNodeStatus, attrs: SelectFacts): IOResult[Option[NodeFact]] = {
-    if (attrs == SelectFacts.none) {
-      get(nodeId)(status).map(_.map(cnf => NodeFact.fromMinimal(cnf)))
-    } else {
-      status match {
-        case SelectNodeStatus.Pending  => storage.getPending(nodeId)(attrs)
-        case SelectNodeStatus.Accepted => storage.getAccepted(nodeId)(attrs)
-        case SelectNodeStatus.Any      =>
-          storage.getAccepted(nodeId)(attrs).flatMap {
-            case Some(x) => Some(x).succeed
-            case None    => storage.getPending(nodeId)(attrs)
-          }
-      }
-    }
+    for {
+      optCNF <- get(nodeId)(status)
+      res    <- optCNF match {
+                  case None    => None.succeed
+                  case Some(v) =>
+                    val fact = NodeFact.fromMinimal(v)
+                    if (attrs == SelectFacts.none) {
+                      Some(fact).succeed
+                    } else {
+                      (status match {
+                        case SelectNodeStatus.Pending  => storage.getPending(nodeId)(attrs)
+                        case SelectNodeStatus.Accepted => storage.getAccepted(nodeId)(attrs)
+                        case SelectNodeStatus.Any      =>
+                          storage.getAccepted(nodeId)(attrs).flatMap {
+                            case Some(x) => Some(x).succeed
+                            case None    => storage.getPending(nodeId)(attrs)
+                          }
+                      }).flatMap {
+                        case None    =>
+                          // here, we have the value in cache but not in cold storage.
+                          // This is an inconsistency and likely going to pause problem latter on
+                          // perhaps we should compensate, CoreNodeFactRepo should be the reference.
+                          // At least log.
+                          NodeLoggerPure.warn(
+                            s"Inconsistency: node '${fact.fqdn}' [${fact.id.value}] was found in Rudder memory base but not in cold storage. " +
+                            s"This is not supposed to be, perhaps cold storage was modified not through Rudder. This is likely to lead to consistency problem. " +
+                            s"You should use Rudder API."
+                          ) *> // in that case still return core fact
+                          Some(fact).succeed
+                        case Some(b) =>
+                          Some(SelectFacts.merge(fact, Some(b))(attrs)).succeed
+                      }
+                    }
+                }
+    } yield res
   }
 
   private[nodes] def getAllOnRef[A](ref: Ref[Map[NodeId, CoreNodeFact]]): IOStream[CoreNodeFact] = {

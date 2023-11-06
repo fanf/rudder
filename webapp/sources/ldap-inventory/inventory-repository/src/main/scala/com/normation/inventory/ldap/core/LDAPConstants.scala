@@ -421,10 +421,10 @@ object LDAPConstants {
   OC.createObjectClass(OC_WINDOWS_NODE, sup = OC(OC_NODE), may = Set(A_WIN_USER_DOMAIN, A_WIN_COMPANY, A_WIN_KEY, A_WIN_ID))
 
   OC.createObjectClass(OC_LE, must = Set(), may = Set(A_NAME, A_DESCRIPTION))
-  OC.createObjectClass(OC_FS, must = Set(A_MOUNT_POINT), may = Set(A_FILE_COUNT, A_FREE_SPACE, A_TOTAL_SPACE))
+  OC.createObjectClass(OC_FS,  sup = OC(OC_LE), must = Set(A_MOUNT_POINT), may = Set(A_FILE_COUNT, A_FREE_SPACE, A_TOTAL_SPACE))
   OC.createObjectClass(
     OC_NET_IF,
-    sup = OC(OC_TOP),
+    sup = OC(OC_LE),
     must = Set(A_NETWORK_NAME),
     may = Set(
       A_SPEED,
@@ -440,6 +440,7 @@ object LDAPConstants {
   )
   OC.createObjectClass(
     OC_VM_INFO,
+    sup = OC(OC_LE),
     must = Set(A_VM_ID),
     may = Set(A_VM_CPU, A_VM_MEMORY, A_VM_NAME, A_VM_OWNER, A_VM_STATUS, A_VM_SUBSYSTEM, A_VM_TYPE)
   )
