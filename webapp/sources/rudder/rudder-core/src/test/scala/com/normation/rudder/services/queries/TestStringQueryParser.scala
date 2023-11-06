@@ -54,8 +54,6 @@ class TestStringQueryParser {
   /*
    * our data store:
    * two criteria
-   *
-   *
    */
   val c1 = Criterion("name", BareComparator(Exists, Greater), NodeCriterionMatcherString(_ => Chunk("something")))
   val c2 = Criterion("id", BareComparator(Equals), NodeCriterionMatcherString(_ => Chunk("something")))

@@ -252,10 +252,22 @@ object CoreNodeFactRepository {
   def make(
       storage:    NodeFactStorage,
       softByName: GetNodesbySofwareName,
+      callbacks:  Chunk[NodeFactChangeEventCallback[MinimalNodeFactInterface]]
+  ): IOResult[CoreNodeFactRepository] = for {
+    pending  <- storage.getAllPending()(SelectFacts.none).map(f => (f.id, f.toCore)).runCollect.map(_.toMap)
+    accepted <- storage.getAllAccepted()(SelectFacts.none).map(f => (f.id, f.toCore)).runCollect.map(_.toMap)
+    repo     <- make(storage, softByName, pending, accepted, callbacks)
+  } yield {
+    repo
+  }
+
+  def make(
+      storage:    NodeFactStorage,
+      softByName: GetNodesbySofwareName,
       pending:    Map[NodeId, CoreNodeFact],
       accepted:   Map[NodeId, CoreNodeFact],
       callbacks:  Chunk[NodeFactChangeEventCallback[MinimalNodeFactInterface]]
-  ) = for {
+  ): UIO[CoreNodeFactRepository] = for {
     p    <- Ref.make(pending)
     a    <- Ref.make(accepted)
     lock <- ReentrantLock.make()

@@ -143,8 +143,7 @@ class TestQueryProcessor extends Loggable {
   case class TestQuery(name: String, query: Query, awaited: Seq[NodeId])
 
   // when one need to debug search, you can just uncomment that to set log-level to trace
-  // val l: ch.qos.logback.classic.Logger = org.slf4j.LoggerFactory.getLogger("com.normation.rudder.services.queries").asInstanceOf[ch.qos.logback.classic.Logger]
-  // l.setLevel(ch.qos.logback.classic.Level.TRACE)
+  // org.slf4j.LoggerFactory.getLogger("com.normation.rudder.services.queries").asInstanceOf[ch.qos.logback.classic.Logger].setLevel(ch.qos.logback.classic.Level.TRACE)
 
   val s = Seq(
     new NodeId("node0"),
@@ -934,32 +933,33 @@ class TestQueryProcessor extends Loggable {
     def q(name: String, comp: String, day: Int, expects: Seq[NodeId]) = TestQuery(
       name,
       parser("""
-          {  "select":"node", "where":[
+          {  "select":"nodeAndPolicyServer", "where":[
             { "objectType":"node", "attribute":"inventoryDate", "comparator":"%s"   , "value":"%s/05/2013" }
           ] }
           """.format(comp, day)).openOrThrowException("For tests"),
       expects
     )
 
-    def query(name: String, comp: String, day: Int, valid: Boolean) = q(name, comp, day, if (valid) s(0) :: Nil else Nil)
+    // nodes are going year by year [root=2012-05-15, s0=2013-05-15 <- select date, s1=2014-05-15 etc]
+    def query(name: String, comp: String, day: Int, nodes: Seq[NodeId]) = q(name, comp, day, nodes)
 
-    val q12 = q("q12", "notEq", 15, s.filterNot(_ == s(0)))
-    val q13 = q("q13", "notEq", 14, s)
-    val q14 = q("q14", "notEq", 16, s)
-
+    // root is not part of 's", no need to filter it out
+    // the number 14, 15 etc is the day in 2013-05-dd !
     testQueries(
-      query("q1", "eq", 15, valid = true)
-      :: query("q2", "eq", 14, valid = false)
-      :: query("q3", "eq", 16, valid = false)
-      :: query("q4", "gteq", 15, valid = true)
-      :: query("q5", "gteq", 16, valid = false)
-      :: query("q6", "lteq", 15, valid = true)
-      :: query("q7", "lteq", 14, valid = false)
-      :: query("q8", "lt", 15, valid = false)
-      :: query("q9", "lt", 16, valid = true)
-      :: query("q10", "gt", 15, valid = false)
-      :: query("q11", "gt", 14, valid = true)
-      :: q12 :: q13 :: q14
+      query("q1", "eq", 15, s(0) :: Nil)
+      :: query("q2", "eq", 14, Nil)
+      :: query("q3", "eq", 16, Nil)
+      :: query("q4", "gteq", 15, s)
+      :: query("q5", "gteq", 16, s.filterNot(x => x == s(0)))
+      :: query("q6", "lteq", 15, root :: s(0) :: Nil)
+      :: query("q7", "lteq", 14, root :: Nil)
+      :: query("q8", "lt", 15, root :: Nil)
+      :: query("q9", "lt", 16, root :: s(0) :: Nil)
+      :: query("q10", "gt", 15, s.filterNot(x => x == s(0)))
+      :: query("q11", "gt", 14, s)
+      :: q("q12", "notEq", 15, root +: s.filterNot(_ == s(0)))
+      :: q("q13", "notEq", 14, root +: s)
+      :: q("q14", "notEq", 16, root +: s)
       :: Nil,
       true
     )

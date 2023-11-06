@@ -45,7 +45,7 @@ import com.normation.inventory.ldap.core.LDAPConstants.A_PROCESS
 import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_GROUP_UUID
 import com.normation.rudder.domain.RudderLDAPConstants.A_NODE_PROPERTY
 import com.normation.rudder.domain.RudderLDAPConstants.A_STATE
-import com.normation.rudder.domain.logger.FactQueryProcessorPure
+import com.normation.rudder.domain.logger.FactQueryProcessorLoggerPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries.{KeyValueComparator => KVC}
@@ -411,7 +411,7 @@ final case class MatchHolderZio[A](debug: DebugInfo, values: Chunk[A], matcher: 
 ) {
   def matches = for {
     res <- matcher(values)
-    _   <- FactQueryProcessorPure.trace(debug.debugMsg(values, res))
+    _   <- FactQueryProcessorLoggerPure.trace(debug.debugMsg(values, res))
   } yield res
 }
 
@@ -433,14 +433,14 @@ trait FullNodeCriterionMatcher {
 
 case class AlwaysFalse(reason: String) extends NodeCriterionMatcher {
   override def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
-    FactQueryProcessorPure.trace(s"    [false] for AlwaysFalse: ${reason} ") *>
+    FactQueryProcessorLoggerPure.trace(s"    [false] for AlwaysFalse: ${reason} ") *>
     false.succeed
   }
 }
 
 case object UnsupportedByNodeMinimalApi extends NodeCriterionMatcher {
   override def matches(n: CoreNodeFact, comparator: CriterionComparator, value: String): IOResult[Boolean] = {
-    FactQueryProcessorPure.trace(
+    FactQueryProcessorLoggerPure.trace(
       s"    [false] ${comparator.id} is not supported by minimal node API, it must be handled by a special operator "
     ) *>
     false.succeed
@@ -461,7 +461,7 @@ trait NodeCriterionOrderedValueMatcher[A] extends NodeCriterionMatcher {
     parseNum(value) match {
       case Some(a) => matches(a).matches
       case None    =>
-        FactQueryProcessorPure.trace(s"    - '${value}' can not be parsed into correct type: false'") *>
+        FactQueryProcessorLoggerPure.trace(s"    - '${value}' can not be parsed into correct type: false'") *>
         false.succeed
     }
   }

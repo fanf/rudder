@@ -424,7 +424,7 @@ class InternalLDAPQueryProcessor(
       timefetch     <- currentTimeMillis
       _             <-
         logPure.debug(
-          s"LDAP result: fetching if necessary all nodesInfos  (${allNodesInfos.size} entries) in nodes obtained in ${timefetch - timeStart} ms for query ${query.toString}."
+          s"[${debugId}] LDAP result: fetching if necessary all nodesInfos  (${allNodesInfos.size} entries) in nodes obtained in ${timefetch - timeStart} ms for query ${query.toString}."
         )
 
       // If dnMapSets returns a None, then it means that we are ANDing composition with an empty value
@@ -436,16 +436,20 @@ class InternalLDAPQueryProcessor(
                          case None                                   =>
                            Seq[NodeInfo]().succeed
                          case Some(dms)                              =>
-                           executeLdapQueries(dms, nq, select, debugId).map(ids =>
-                             allNodesInfos.filter(nodeInfo => ids.contains(nodeInfo.node.id.value))
-                           )
+                           for {
+                             ids <- executeLdapQueries(dms, nq, select, debugId)
+                             _   <- logPure.trace(s"[${debugId}] Found ${ids.size} entries ; filtering with ${allNodesInfos.size} accepted nodes")
+                           } yield {
+                             allNodesInfos.filter(nodeInfo => ids.contains(nodeInfo.node.id))
+                           }
                        }
       // No more LDAP query is required here
       // Do the filtering about non LDAP data here
       timeldap      <- currentTimeMillis
-      _             <- logPure.debug(
-                         s"LDAP result: ${results.size} entries in nodes obtained in ${timeldap - timeStart} ms for query ${query.toString}"
-                       )
+      _             <-
+        logPure.debug(
+          s"[${debugId}] LDAP result: ${results.size} entries in nodes obtained in ${timeldap - timeStart} ms for query ${query.toString}"
+        )
 
       nodeIdFiltered = query.composition match {
                          case And if results.isEmpty =>

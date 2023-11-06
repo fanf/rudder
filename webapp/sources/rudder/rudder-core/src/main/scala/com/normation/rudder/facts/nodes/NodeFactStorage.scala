@@ -619,11 +619,7 @@ class LdapNodeFactStorage(
           for {
             optM <- inv(A_CONTAINER_DN) match {
                       case None    => None.succeed
-                      case Some(m) =>
-                        con.get(
-                          inventoryDitService.getDit(status).MACHINES.MACHINE.dn(MachineUuid(m)),
-                          NodeInfoService.nodeInfoAttributes: _*
-                        )
+                      case Some(m) => con.get(new DN(m), ldapAttrs: _* )
                     }
             info <- nodeMapper.convertEntriesToNodeInfos(nodeEntry, inv, optM)
             soft <- getSoftware(con, fullInventoryRepository.getSoftwareUuids(inv), needSoftware)

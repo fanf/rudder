@@ -57,17 +57,14 @@ import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.reports._
 import com.normation.utils.ParseVersion
 import com.normation.utils.Version
-
 import com.softwaremill.quicklens._
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
-
 import java.net.InetAddress
 import net.liftweb.json.JsonAST
 import net.liftweb.json.JsonAST._
 import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
-
 import zio.Chunk
 import zio.json._
 import zio.json.ast.Json
@@ -385,7 +382,7 @@ object NodeFact {
       .using(_.sortBy(_.name))
   }
 
-  def toMachineId(nodeId: NodeId) = MachineUuid("machine-" + nodeId.value)
+  def toMachineId(nodeId: NodeId) = MachineUuid("machine-for-" + nodeId.value)
 
   implicit class IterableToChunk[A](it: Iterable[A]) {
     def toChunk: Chunk[A] = Chunk.fromIterable(it)
@@ -436,7 +433,7 @@ object NodeFact {
     def mask[A](s: SelectFactConfig[A]) = {
       s.mode match {
         case SelectMode.Retrieve => node
-        case SelectMode.Ignore => s.modify.setTo(s.zero)(node)
+        case SelectMode.Ignore   => s.modify.setTo(s.zero)(node)
       }
     }
 
@@ -540,7 +537,12 @@ object NodeFact {
       },
       nodeInfo.hostname,
       nodeInfo.osDetails,
-      nodeInfo.machine.getOrElse(MachineInfo(NodeFact.toMachineId(nodeInfo.id), UnknownMachineType, None, None)),
+      nodeInfo.machine.getOrElse(inventory match {
+        case Right(FullInventory(_, Some(m))) =>
+          MachineInfo(m.id, m.machineType, m.systemSerialNumber, m.manufacturer)
+        case _                                => // in that case, we just don't have any info on the matchine, derive a false id from node id
+          MachineInfo(NodeFact.toMachineId(nodeInfo.id), UnknownMachineType, None, None)
+      }),
       RudderSettings(
         nodeInfo.keyStatus,
         nodeInfo.nodeReportingConfiguration,
@@ -565,8 +567,8 @@ object NodeFact {
       nodeInfo.ips.map(IpAddress(_)).toChunk,
       nodeInfo.timezone,
       nodeInfo.archDescription,
-      inventory.toOption.flatMap(_.node.swap),
       nodeInfo.ram,
+      inventory.toOption.flatMap(_.node.swap),
       inventory.toChunk.flatMap(_.node.accounts),
       inventory.toChunk.flatMap(_.machine.chunk(_.bios)),
       inventory.toChunk.flatMap(_.machine.chunk(_.controllers)),
@@ -622,7 +624,7 @@ object NodeFact {
       inventory.node.main.hostname,
       inventory.node.main.osDetails,
       MachineInfo(
-        NodeFact.toMachineId(inventory.node.main.id),
+        inventory.machine.map(_.id).getOrElse(NodeFact.toMachineId(inventory.node.main.id)),
         inventory.machine.map(_.machineType).getOrElse(UnknownMachineType),
         inventory.machine.flatMap(_.systemSerialNumber),
         inventory.machine.flatMap(_.manufacturer)
@@ -708,7 +710,7 @@ object NodeFact {
     // now machine are mandatory so if we don't have it inventory, don't update
     val machine = inventory.machine.map { m =>
       MachineInfo(
-        NodeFact.toMachineId(inventory.node.main.id),
+        m.id,
         m.machineType,
         m.systemSerialNumber,
         m.manufacturer
@@ -1015,37 +1017,36 @@ object SelectFacts {
   val noSoftware = all.copy(software = all.software.toIgnore)
   val default    = all.copy(processes = all.processes.toIgnore, software = all.software.toIgnore)
 
-
   def fromNodeDetailLevel(level: NodeDetailLevel): SelectFacts = {
     // change from none to get
     def toGet[A](s: SelectFactConfig[A], switch: Boolean): SelectFactConfig[A] = {
-      if(switch) s.toRetrieve
+      if (switch) s.toRetrieve
       else s
     }
     SelectFacts(
-      toGet(none.swap,level.fields.contains("")), // no swap ?
-      toGet(none.accounts,level.fields.contains("accounts")),
-      toGet(none.bios,level.fields.contains("bios")),
-      toGet(none.controllers,level.fields.contains("controllers")),
-      toGet(none.environmentVariables,level.fields.contains("environmentVariables")),
-      toGet(none.fileSystems,level.fields.contains("fileSystems")),
+      toGet(none.swap, level.fields.contains("")), // no swap ?
+      toGet(none.accounts, level.fields.contains("accounts")),
+      toGet(none.bios, level.fields.contains("bios")),
+      toGet(none.controllers, level.fields.contains("controllers")),
+      toGet(none.environmentVariables, level.fields.contains("environmentVariables")),
+      toGet(none.fileSystems, level.fields.contains("fileSystems")),
       none.inputs,
       none.localGroups,
       none.localUsers,
       none.logicalVolumes,
-      toGet(none.memories,level.fields.contains("memories")),
-      toGet(none.networks,level.fields.contains("networkInterfaces")),
+      toGet(none.memories, level.fields.contains("memories")),
+      toGet(none.networks, level.fields.contains("networkInterfaces")),
       none.physicalVolumes,
-      toGet(none.ports,level.fields.contains("ports")),
-      toGet(none.processes,level.fields.contains("processes")),
-      toGet(none.processors,level.fields.contains("processors")),
-      toGet(none.slots,level.fields.contains("slots")),
-      toGet(none.software,level.fields.contains("software")),
-      toGet(none.softwareUpdate,level.fields.contains("softwareUpdate")),
-      toGet(none.sounds,level.fields.contains("sounds")),
-      toGet(none.storages,level.fields.contains("storages")),
-      toGet(none.videos,level.fields.contains("videos")),
-      toGet(none.vms,level.fields.contains("virtualMachines"))
+      toGet(none.ports, level.fields.contains("ports")),
+      toGet(none.processes, level.fields.contains("processes")),
+      toGet(none.processors, level.fields.contains("processors")),
+      toGet(none.slots, level.fields.contains("slots")),
+      toGet(none.software, level.fields.contains("software")),
+      toGet(none.softwareUpdate, level.fields.contains("softwareUpdate")),
+      toGet(none.sounds, level.fields.contains("sounds")),
+      toGet(none.storages, level.fields.contains("storages")),
+      toGet(none.videos, level.fields.contains("videos")),
+      toGet(none.vms, level.fields.contains("virtualMachines"))
     )
   }
 
@@ -1057,9 +1058,9 @@ object SelectFacts {
       // keep newFact
       def update[A](config: SelectFactConfig[A])(implicit oldFact: NodeFact) = {
         config.mode match {
-          case SelectMode.Retrieve   => // keep new fact
+          case SelectMode.Retrieve => // keep new fact
             newFact
-          case SelectMode.Ignore => // get info from old fact
+          case SelectMode.Ignore   => // get info from old fact
             config.modify.setTo(config.selector(oldFact))(newFact)
         }
       }
@@ -1151,8 +1152,7 @@ final case class NodeFact(
     videos:               Chunk[Video] = Chunk.empty,
     vms:                  Chunk[VirtualMachine] = Chunk.empty
 ) extends MinimalNodeFactInterface {
-  // we don't have a machine id anymore, by convention it's the node id prefixed by "machine-"
-  def machineId = NodeFact.toMachineId(id)
+  def machineId = machine.id
 
   def isPolicyServer: Boolean = rudderSettings.kind != NodeKind.Node
   def isSystem:       Boolean = isPolicyServer

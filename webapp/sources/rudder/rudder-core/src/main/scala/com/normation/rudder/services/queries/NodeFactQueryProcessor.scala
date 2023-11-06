@@ -44,7 +44,7 @@ import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.PendingInventory
 import com.normation.inventory.domain.RemovedInventory
-import com.normation.rudder.domain.logger.FactQueryProcessorPure
+import com.normation.rudder.domain.logger.FactQueryProcessorLoggerPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
 import com.normation.rudder.domain.nodes.NodeKind
@@ -56,6 +56,7 @@ import net.liftweb.common.Box
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
+import com.normation.zio._
 
 /*
  * A NodeFactMatcher is the transformation of a query into a method that is able to
@@ -76,7 +77,7 @@ object NodeFactMatcher {
       (n: CoreNodeFact) => {
         for {
           res <- (n.rudderSettings.kind != NodeKind.Root).succeed
-          _   <- FactQueryProcessorPure.trace(s"    [${res}] for $s on '${n.rudderSettings.kind}'")
+          _   <- FactQueryProcessorLoggerPure.trace(s"    [${res}] for $s on '${n.rudderSettings.kind}'")
         } yield res
       }
     )
@@ -126,11 +127,18 @@ class NodeFactQueryProcessor(
   def processPure(query: Query):                         IOResult[Chunk[CoreNodeFact]] = {
     def process(s: SelectNodeStatus) = {
       for {
+        t0 <- currentTimeMillis
         m   <- analyzeQuery(query)
+        t1 <- currentTimeMillis
+        _ <- FactQueryProcessorLoggerPure.Metrics.debug(s"Analyse query in ${t1-t0} ms")
         res <- nodeFactRepo
                  .getAll()(s)
-                 .filterZIO(node => FactQueryProcessorPure.debug(m.debugString) *> processOne(m, node))
+                 .filterZIO(node => FactQueryProcessorLoggerPure.debug(m.debugString) *> processOne(m, node))
                  .run(ZSink.collectAll)
+        t2 <- currentTimeMillis
+        _ <- FactQueryProcessorLoggerPure.Metrics.debug(s"Run query in ${t2-t1} ms")
+        _ <- FactQueryProcessorLoggerPure.debug(s"Found ${res.size} results")
+        _ <- FactQueryProcessorLoggerPure.trace(s"Matching nodes: '${res.map(_.id.value).mkString("', '")}'")
       } yield res
     }
 
@@ -231,9 +239,9 @@ class NodeFactQueryProcessor(
 
   def processOne(matcher: NodeFactMatcher, n: CoreNodeFact): IOResult[Boolean] = {
     for {
-      _   <- FactQueryProcessorPure.debug(s"  --'${n.fqdn}' (${n.id.value})--")
+      _   <- FactQueryProcessorLoggerPure.debug(s"  --'${n.fqdn}' (${n.id.value})--")
       res <- matcher.matches(n)
-      _   <- FactQueryProcessorPure.debug(s"  = [${res}] on '${n.fqdn}' (${n.id.value})")
+      _   <- FactQueryProcessorLoggerPure.debug(s"  = [${res}] on '${n.fqdn}' (${n.id.value})")
     } yield res
   }
 
