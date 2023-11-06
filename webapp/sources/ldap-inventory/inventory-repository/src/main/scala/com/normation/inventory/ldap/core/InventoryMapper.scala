@@ -460,21 +460,22 @@ class InventoryMapper(
   // def machineType2Filter(mt : MachineType) : Filter = BuildFilter.IS(machineType2ObjectClass(mt).name)
 
   private[this] def machineType2ObjectClass(mt: MachineType): LDAPObjectClass = {
+    // these classes must exists
     mt match {
-      case VirtualMachineType(UnknownVmType) => OC(OC_VM)
-      case VirtualMachineType(VirtualBox)    => OC(OC_VM_VIRTUALBOX)
-      case VirtualMachineType(Xen)           => OC(OC_VM_XEN)
-      case VirtualMachineType(VMWare)        => OC(OC_VM_VMWARE)
-      case VirtualMachineType(SolarisZone)   => OC(OC_VM_SOLARIS_ZONE)
-      case VirtualMachineType(QEmu)          => OC(OC_VM_QEMU)
-      case VirtualMachineType(AixLPAR)       => OC(OC_VM_AIX_LPAR)
-      case VirtualMachineType(HyperV)        => OC(OC_VM_HYPERV)
-      case VirtualMachineType(BSDJail)       => OC(OC_VM_BSDJAIL)
-      case VirtualMachineType(OpenVZ)        => OC(OC_VM_OPENVZ)
-      case VirtualMachineType(Virtuozzo)     => OC(OC_VM_VIRTUOZZO)
-      case VirtualMachineType(LXC)           => OC(OC_VM_LXC)
-      case PhysicalMachineType               => OC(OC_PM)
-      case UnknownMachineType                => OC(OC_PM) // we didn't had unknown in that time and physical was the default
+      case VirtualMachineType(UnknownVmType) => OC_OC_VM
+      case VirtualMachineType(VirtualBox)    => OC_OC_VM_VIRTUALBOX
+      case VirtualMachineType(Xen)           => OC_OC_VM_XEN
+      case VirtualMachineType(VMWare)        => OC_OC_VM_VMWARE
+      case VirtualMachineType(SolarisZone)   => OC_OC_VM_SOLARIS_ZONE
+      case VirtualMachineType(QEmu)          => OC_OC_VM_QEMU
+      case VirtualMachineType(AixLPAR)       => OC_OC_VM_AIX_LPAR
+      case VirtualMachineType(HyperV)        => OC_OC_VM_HYPERV
+      case VirtualMachineType(BSDJail)       => OC_OC_VM_BSDJAIL
+      case VirtualMachineType(OpenVZ)        => OC_OC_VM_OPENVZ
+      case VirtualMachineType(Virtuozzo)     => OC_OC_VM_VIRTUOZZO
+      case VirtualMachineType(LXC)           => OC_OC_VM_LXC
+      case PhysicalMachineType               => OC_OC_PM
+      case UnknownMachineType                => OC_OC_PM // we didn't had unknown in that time and physical was the default
     }
   }
 
@@ -510,7 +511,7 @@ class InventoryMapper(
     root.addValues(A_OC, machineType2ObjectClass(machine.machineType).name)
     root.setOpt(machine.inventoryDate, A_INVENTORY_DATE, (x: DateTime) => GeneralizedTime(x).toString)
     root.setOpt(machine.receiveDate, A_RECEIVE_DATE, (x: DateTime) => GeneralizedTime(x).toString)
-    root.setOpt(machine.name, A_NAME, (x: String) => x)
+    root.setOpt(Some(machine.id), A_NAME, (x: MachineUuid) => x.value)
     root.setOpt(machine.manufacturer, A_MANUFACTURER, (x: Manufacturer) => x.name)
     root.setOpt(machine.systemSerialNumber, A_SERIAL_NUMBER, (x: String) => x)
 

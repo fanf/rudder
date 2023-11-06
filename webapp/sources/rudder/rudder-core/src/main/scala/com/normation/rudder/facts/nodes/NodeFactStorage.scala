@@ -288,15 +288,15 @@ class GitNodeFactStorageImpl(
     NodeFactArchive(entity, fileFormat, node).toJsonPretty.succeed
   }
 
-  // we don't want to wite the codec to "not unserialize" given SelectFacts right now, so we are
+  // we don't want to write the codec to "not unserialize" given SelectFacts right now, so we are
   // just masking
   private[nodes] def fileToNode(f: File)(implicit attrs: SelectFacts): IOResult[NodeFact] = {
-    f
-      .contentAsString(StandardCharsets.UTF_8)
-      .fromJson[NodeFact]
-      .toIO
-      .chainError(s"Error when decoding ${f.pathAsString}")
-      .map(_.maskWith(attrs))
+    for {
+      c <- IOResult.attempt(s"Error reading file: ${f.pathAsString}")(f.contentAsString(StandardCharsets.UTF_8))
+      j <- c.fromJson[NodeFact].toIO.chainError(s"Error when decoding ${f.pathAsString}")
+    } yield {
+      j.maskWith(attrs)
+    }
   }
 
   private[nodes] def get(nodeId: NodeId, status: InventoryStatus)(implicit attrs: SelectFacts): IOResult[Option[NodeFact]] = {

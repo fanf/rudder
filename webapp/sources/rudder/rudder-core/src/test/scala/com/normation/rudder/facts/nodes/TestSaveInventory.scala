@@ -38,8 +38,10 @@
 package com.normation.rudder.facts.nodes
 
 import better.files._
+
 import com.normation.errors._
 import com.normation.inventory.domain._
+import com.normation.inventory.ldap.core.InventoryDit
 import com.normation.inventory.ldap.provisioning._
 import com.normation.inventory.provisioning.fusion.FusionInventoryParser
 import com.normation.inventory.provisioning.fusion.PreInventoryParserCheckConsistency
@@ -56,10 +58,12 @@ import com.normation.rudder.inventory.InventoryProcessor
 import com.normation.rudder.inventory.InventoryProcessStatus.Saved
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
 import cron4s.Cron
+
 import java.security.Security
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -68,7 +72,9 @@ import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.specs2.specification.BeforeAfterAll
+
 import scala.annotation.nowarn
+
 import zio._
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -83,9 +89,65 @@ import zio.syntax._
  *
  * That test does not check for the file observer, only save logic.
  */
-@nowarn("msg=a type was inferred to be `\\w+`; this may indicate a programming error.")
 @RunWith(classOf[JUnitRunner])
-class TestSaveInventory extends Specification with BeforeAfterAll {
+class TestSaveInventoryGit extends TestSaveInventory {
+
+  val GIT_PENDING = basePath + "/fact-repo/nodes/pending"
+
+  def pendingNodeGitFile(id: String) = File(GIT_PENDING + "/" + id + ".json")
+
+  val GIT_ACCEPTED = basePath + "/fact-repo/nodes/accepted"
+
+  def acceptedNodeGitFile(id: String) = File(GIT_ACCEPTED + "/" + id + ".json")
+
+  override def checkPendingNodeExists(id: String):  Boolean = pendingNodeGitFile(id).exists
+  override def getPendingNodeAsString(id: String):  String  = pendingNodeGitFile(id).contentAsString
+  override def checkAcceptedNodeExists(id: String): Boolean = acceptedNodeGitFile(id).exists
+  override def getAcceptedNodeAsString(id: String): String  = acceptedNodeGitFile(id).contentAsString
+  override lazy val factStorage = {
+    val cronSchedule        = Cron.parse("0 42 3 * * ?").toOption
+    val gitFactRepoProvider = GitRepositoryProviderImpl
+      .make(basePath + "/fact-repo")
+      .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
+    val gitFactRepoGC       = new GitGC(gitFactRepoProvider, cronSchedule)
+    gitFactRepoGC.start()
+    val storage             = new GitNodeFactStorageImpl(gitFactRepoProvider, "rudder", true)
+    storage.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
+
+    storage
+  }
+
+}
+
+
+@RunWith(classOf[JUnitRunner])
+class TestSaveInventoryLdap extends TestSaveInventory {
+  def nodeExists(id: String, dit: InventoryDit): Boolean = {
+    MockLdapFactStorage.ldap.server.entryExists(dit.NODES.NODE.dn(id).toString)
+  }
+
+  def nodeAsString(id: String, dit: InventoryDit): String = {
+    val sb = new java.lang.StringBuilder()
+    MockLdapFactStorage.ldap.server.getEntry(dit.NODES.NODE.dn(id).toString).toString(sb)
+    sb.toString()
+  }
+
+  override def checkPendingNodeExists(id: String):  Boolean = nodeExists(id, MockLdapFactStorage.pendingDIT)
+  override def getPendingNodeAsString(id: String):  String  = nodeAsString(id, MockLdapFactStorage.pendingDIT)
+  override def checkAcceptedNodeExists(id: String): Boolean = nodeExists(id, MockLdapFactStorage.acceptedDIT)
+  override def getAcceptedNodeAsString(id: String): String  = nodeAsString(id, MockLdapFactStorage.acceptedDIT)
+  override lazy val factStorage = MockLdapFactStorage.nodeFactStorage
+
+}
+
+@nowarn("msg=a type was inferred to be `\\w+`; this may indicate a programming error.")
+trait TestSaveInventory extends Specification with BeforeAfterAll {
+
+  // methods that need to be implemented by children
+  def checkPendingNodeExists(id:  String): Boolean
+  def getPendingNodeAsString(id:  String): String
+  def checkAcceptedNodeExists(id: String): Boolean
+  def getAcceptedNodeAsString(id: String): String
 
   // load bouncyCastle
   Security.addProvider(new BouncyCastleProvider())
@@ -116,18 +178,17 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
 
   val basePath = s"/tmp/test-rudder-inventory/${DateFormaterService.gitTagFormat.print(DateTime.now())}"
 
-  val GIT_PENDING                     = basePath + "/fact-repo/nodes/pending"
-  def pendingNodeGitFile(id: String)  = File(GIT_PENDING + "/" + id + ".json")
-  val GIT_ACCEPTED                    = basePath + "/fact-repo/nodes/accepted"
-  def acceptedNodeGitFile(id: String) = File(GIT_ACCEPTED + "/" + id + ".json")
+  val INVENTORY_ROOT_DIR     = basePath + "/inventories"
+  val INVENTORY_DIR_INCOMING = INVENTORY_ROOT_DIR + "/incoming"
 
-  val INVENTORY_ROOT_DIR                  = basePath + "/inventories"
-  val INVENTORY_DIR_INCOMING              = INVENTORY_ROOT_DIR + "/incoming"
   def incomingInventoryFile(name: String) = File(INVENTORY_DIR_INCOMING + "/" + name)
-  val INVENTORY_DIR_FAILED                = INVENTORY_ROOT_DIR + "/failed"
-  val INVENTORY_DIR_RECEIVED              = INVENTORY_ROOT_DIR + "/received"
+
+  val INVENTORY_DIR_FAILED   = INVENTORY_ROOT_DIR + "/failed"
+  val INVENTORY_DIR_RECEIVED = INVENTORY_ROOT_DIR + "/received"
+
   def receivedInventoryFile(name: String) = File(INVENTORY_DIR_RECEIVED + "/" + name)
-  val INVENTORY_DIR_UPDATE                = INVENTORY_ROOT_DIR + "/accepted-nodes-updates"
+
+  val INVENTORY_DIR_UPDATE = INVENTORY_ROOT_DIR + "/accepted-nodes-updates"
 
   override def beforeAll(): Unit = {
     List(basePath, INVENTORY_DIR_INCOMING, INVENTORY_DIR_FAILED, INVENTORY_DIR_RECEIVED, INVENTORY_DIR_UPDATE).foreach(f =>
@@ -142,15 +203,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     }
   }
 
-  val cronSchedule        = Cron.parse("0 42 3 * * ?").toOption
-  val gitFactRepoProvider = GitRepositoryProviderImpl
-    .make(basePath + "/fact-repo")
-    .runOrDie(err => new RuntimeException(s"Error when initializing git configuration repository: " + err.fullMsg))
-  val gitFactRepoGC       = new GitGC(gitFactRepoProvider, cronSchedule)
-  gitFactRepoGC.start()
-
-  val gitFactRepo = new GitNodeFactStorageImpl(gitFactRepoProvider, "rudder", true)
-  gitFactRepo.checkInit().runOrDie(err => new RuntimeException(s"Error when checking fact repository init: " + err.fullMsg))
+  def factStorage: NodeFactStorage
 
   // TODO WARNING POC: this can't work on a machine with lots of node
   val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent[MinimalNodeFactInterface]]).runNow
@@ -177,7 +230,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       accepted  <- Ref.make(Map[NodeId, CoreNodeFact]())
       callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback[MinimalNodeFactInterface]])
       lock      <- ReentrantLock.make()
-      r          = new CoreNodeFactRepository(gitFactRepo, noopNodeBySoftwareName, pending, accepted, callbacks, lock)
+      r          = new CoreNodeFactRepository(factStorage, noopNodeBySoftwareName, pending, accepted, callbacks, lock)
       _         <- r.registerChangeCallbackAction(trailCallBack)
 //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
@@ -264,7 +317,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
         Saved(node2name, node2id)
       )) and
       (receivedInventoryFile(node2name).exists must beTrue) and
-      (pendingNodeGitFile(node2id).exists must beTrue) and
+      (checkPendingNodeExists(node2id) must beTrue) and
       (factRepo.get(node2id)(SelectNodeStatus.Pending).runNow must beSome()) and
       (getLogName === Chunk("newPending"))
     }
@@ -272,12 +325,12 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
     "change in node by repos are reflected in file" in {
       implicit val attrs = SelectFacts.none
       resetLog
-      val e = (for {
+      val e              = (for {
         n <- factRepo.get(node2id)(SelectNodeStatus.Pending).notOptional("node2 should be there for the test")
         e <- factRepo.save(NodeFact.fromMinimal(n).modify(_.fqdn).setTo(newfqdn))
       } yield e).runNow
 
-      (pendingNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
+      (getPendingNodeAsString(node2id).contains(newfqdn) must beTrue) and
       (e.event must beAnInstanceOf[NodeFactChangeEvent.UpdatedPending[MinimalNodeFactInterface]]) and
       (getLogName === Chunk("updatedPending"))
 
@@ -292,7 +345,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
         Saved(node2name, node2id)
       )) and
       (factRepo.get(node2id)(SelectNodeStatus.Pending).testRunGet.fqdn must beEqualTo(fqdn)) and
-      (pendingNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue) and
+      (getPendingNodeAsString(node2id).contains(fqdn) must beTrue) and
       (getLogName === Chunk("updatedPending"))
     }
   }
@@ -303,7 +356,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       resetLog
       val e = factRepo.changeStatus(node2id, AcceptedInventory).runNow
       (e.event must beAnInstanceOf[NodeFactChangeEvent.Accepted[MinimalNodeFactInterface]]) and
-      (acceptedNodeGitFile(node2id).exists must beTrue) and
+      (checkAcceptedNodeExists(node2id) must beTrue) and
       (factRepo.get(node2id)(SelectNodeStatus.Accepted).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
       (getLogName === Chunk("accepted"))
     }
@@ -317,7 +370,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       ).runNow
 
       (e.event must beAnInstanceOf[NodeFactChangeEvent.Updated[MinimalNodeFactInterface]]) and
-      (acceptedNodeGitFile(node2id).contentAsString.contains(newfqdn) must beTrue) and
+      (getAcceptedNodeAsString(node2id).contains(newfqdn) must beTrue) and
       (getLogName === Chunk("updatedAccepted"))
     }
 
@@ -332,7 +385,7 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
         )
       ) and
       (factRepo.get(node2id)(SelectNodeStatus.Accepted).testRunGet.fqdn must beEqualTo(fqdn)) and
-      (acceptedNodeGitFile(node2id).contentAsString.contains(fqdn) must beTrue) and
+      (getAcceptedNodeAsString(node2id).contains(fqdn) must beTrue) and
       (getLogName === Chunk("updatedAccepted"))
     }
   }
@@ -344,8 +397,8 @@ class TestSaveInventory extends Specification with BeforeAfterAll {
       val e = factRepo.changeStatus(node2id, RemovedInventory).runNow
 
       (e.event must beAnInstanceOf[NodeFactChangeEvent.Deleted[MinimalNodeFactInterface]]) and
-      (pendingNodeGitFile(node2id).exists must beFalse) and
-      (acceptedNodeGitFile(node2id).exists must beFalse) and
+      (checkPendingNodeExists(node2id) must beFalse) and
+      (checkAcceptedNodeExists(node2id) must beFalse) and
       (factRepo.get(node2id)(SelectNodeStatus.Any).runNow must beNone) and
       (getLogName === Chunk("deleted"))
     }
