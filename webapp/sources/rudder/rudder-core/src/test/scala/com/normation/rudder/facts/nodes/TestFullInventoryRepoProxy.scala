@@ -196,7 +196,7 @@ class TestInventory extends Specification {
       )
     }
 
-    "find back the machine after a move with a normalized id to `machine-nodeid`" in {
+    "find back the machine after a move" in {
       resetStorage
       val m   = machine("findBackMachine", PendingInventory)
       val n   = node("findBackNode", PendingInventory, (m.id, m.status))
@@ -207,14 +207,13 @@ class TestInventory extends Specification {
         and repo.move(n.main.id, PendingInventory, AcceptedInventory).isOK
         and {
           val FullInventory(node, machine) = repo.get(n.main.id, AcceptedInventory).testRunGet
-          val machineId                    = MachineUuid(s"machine-${n.main.id.value}")
           (
-            machine === Some(m.copy(status = AcceptedInventory, id = machineId)) and
+            machine === Some(m.copy(status = AcceptedInventory)) and
             node === n
               .modify(_.main.status)
               .setTo(AcceptedInventory)
               .modify(_.machineId)
-              .setTo(Some((machineId, AcceptedInventory)))
+              .setTo(Some((m.id, AcceptedInventory)))
           )
         }
       )
@@ -228,11 +227,9 @@ class TestInventory extends Specification {
         repo.save(full(n, m)).isOK
         and {
           val FullInventory(node, machine) = repo.get(n.main.id, PendingInventory).testRunGet
-          val machineId                    = MachineUuid(s"machine-${n.main.id.value}")
-
           (
-            (node === n.modify(_.machineId).setTo(Some((machineId, PendingInventory)))) and
-            (machine === Some(m.modify(_.id).setTo(machineId).modify(_.status).setTo(PendingInventory)))
+            (node === n.modify(_.machineId).setTo(Some((m.id, PendingInventory)))) and
+            (machine === Some(m.modify(_.status).setTo(PendingInventory)))
           )
         }
       )
@@ -246,11 +243,10 @@ class TestInventory extends Specification {
         repo.save(full(n, m)).isOK
         and {
           val FullInventory(node, machine) = repo.get(n.main.id, PendingInventory).testRunGet
-          val generatedMachineId           = MachineUuid(s"machine-${n.main.id.value}")
 
           (
-            node === n.modify(_.machineId).setTo(Some((generatedMachineId, PendingInventory)))
-            and machine === Some(m.modify(_.id).setTo(generatedMachineId).modify(_.status).setTo(PendingInventory))
+            node === n.modify(_.machineId).setTo(Some((m.id, PendingInventory)))
+            and machine === Some(m.modify(_.status).setTo(PendingInventory))
           )
         }
       )
@@ -279,8 +275,8 @@ class TestInventory extends Specification {
           // update node's machine info to what is normalized
           def updated(n: NodeInventory) = {
             (
-              n.modify(_.machineId).setTo(Some((MachineUuid(s"machine-${n.main.id.value}"), n.main.status))),
-              m.modify(_.id).setTo(MachineUuid(s"machine-${n.main.id.value}")).modify(_.status).setTo(n.main.status)
+              n.modify(_.machineId).setTo(Some((m.id, n.main.status))),
+              m.modify(_.status).setTo(n.main.status)
             )
           }
 
@@ -331,7 +327,8 @@ class TestInventory extends Specification {
 
       repo.save(FullInventory(node, None)).isOK and {
         val FullInventory(n, m) = repo.get(nodeId, AcceptedInventory).testRunGet
-        n === node.modify(_.machineId).setTo(Some((MachineUuid("machine-windows-2012"), AcceptedInventory)))
+        // here since we don't have a machine, one is generated with the uuid pattern "machine-for-${nodeId}"
+        n === node.modify(_.machineId).setTo(Some((MachineUuid("machine-for-windows-2012"), AcceptedInventory)))
       }
     }
 
