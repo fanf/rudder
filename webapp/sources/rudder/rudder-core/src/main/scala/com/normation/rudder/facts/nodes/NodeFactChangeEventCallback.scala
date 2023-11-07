@@ -56,6 +56,15 @@ trait NodeFactChangeEventCallback[A <: MinimalNodeFactInterface] {
   def run(change: NodeFactChangeEventCC[A]): IOResult[Unit]
 }
 
+case class CoreNodeFactChangeEventCallback(
+    name: String,
+    exec: NodeFactChangeEventCC[MinimalNodeFactInterface] => IOResult[Unit]
+) extends NodeFactChangeEventCallback[MinimalNodeFactInterface] {
+  override def run(change: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = {
+    exec(change)
+  }
+}
+
 /*
  * Manage event logs related to nodes: register a change in properties, a node acceptation, etc
  */

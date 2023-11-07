@@ -923,6 +923,8 @@ case class SelectFactConfig[A](
   // copy helper for fluent api
   def toIgnore:   SelectFactConfig[A] = this.copy(mode = SelectMode.Ignore)
   def toRetrieve: SelectFactConfig[A] = this.copy(mode = SelectMode.Retrieve)
+
+  override def toString = this.mode.toString
 }
 
 case class SelectFacts(
@@ -949,7 +951,9 @@ case class SelectFacts(
     storages:             SelectFactConfig[Chunk[Storage]],
     videos:               SelectFactConfig[Chunk[Video]],
     vms:                  SelectFactConfig[Chunk[VirtualMachine]]
-)
+) {
+  def debugString = this.productElementNames.zip(this.productIterator).map { case (a, b) => s"${a}: ${b.toString}"}.mkString(", ")
+}
 
 sealed trait SelectNodeStatus { def name: String }
 object SelectNodeStatus       {
@@ -1014,8 +1018,14 @@ object SelectFacts {
   )
   // format: on
 
+  val softwareOnly = none.copy(software = none.software.toRetrieve)
   val noSoftware = all.copy(software = all.software.toIgnore)
   val default    = all.copy(processes = all.processes.toIgnore, software = all.software.toIgnore)
+
+  // inventory elements, not carring for software
+  def retrieveInventory(attrs: SelectFacts): Boolean = {
+    !(attrs.copy(software = SelectFacts.none.software) == SelectFacts.none)
+  }
 
   def fromNodeDetailLevel(level: NodeDetailLevel): SelectFacts = {
     // change from none to get

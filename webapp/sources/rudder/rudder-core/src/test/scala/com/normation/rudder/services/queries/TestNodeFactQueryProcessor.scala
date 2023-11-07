@@ -39,60 +39,20 @@ package com.normation.rudder.services.queries
 
 import com.normation.NamedZioLogger
 import com.normation.errors._
-import com.normation.inventory.domain.AcceptedInventory
-import com.normation.inventory.domain.AgentType.CfeCommunity
-import com.normation.inventory.domain.AgentType.CfeEnterprise
-import com.normation.inventory.domain.AgentType.Dsc
-import com.normation.inventory.domain.AgentVersion
-import com.normation.inventory.domain.Bios
-import com.normation.inventory.domain.Certificate
-import com.normation.inventory.domain.CertifiedKey
-import com.normation.inventory.domain.FileSystem
-import com.normation.inventory.domain.Linux
-import com.normation.inventory.domain.MachineUuid
-import com.normation.inventory.domain.MemorySize
-import com.normation.inventory.domain.Network
 import com.normation.inventory.domain.NodeId
-import com.normation.inventory.domain.PhysicalMachineType
-import com.normation.inventory.domain.Process
-import com.normation.inventory.domain.PublicKey
 import com.normation.inventory.domain.Software
-import com.normation.inventory.domain.SoftwareEditor
-import com.normation.inventory.domain.Ubuntu
-import com.normation.inventory.domain.Version
-import com.normation.inventory.domain.VirtualMachine
-import com.normation.inventory.domain.VirtualMachineType
-import com.normation.inventory.domain.VmType.VirtualBox
 import com.normation.rudder.domain.RudderDit
-import com.normation.rudder.domain.nodes.MachineInfo
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.nodes.NodeGroupUid
-import com.normation.rudder.domain.nodes.NodeKind
-import com.normation.rudder.domain.nodes.NodeState
-import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.queries._
-import com.normation.rudder.facts.nodes.CoreNodeFactRepository
-import com.normation.rudder.facts.nodes.GetNodesbySofwareName
-import com.normation.rudder.facts.nodes.IpAddress
-import com.normation.rudder.facts.nodes.LocalUser
-import com.normation.rudder.facts.nodes.MockLdapFactStorage
-import com.normation.rudder.facts.nodes.NodeFact
-import com.normation.rudder.facts.nodes.NoopFactStorage
-import com.normation.rudder.facts.nodes.RudderAgent
-import com.normation.rudder.facts.nodes.SoftwareFact
-import com.normation.rudder.reports.ReportingConfiguration
-import com.normation.utils.DateFormaterService
+import com.normation.rudder.facts.nodes._
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import com.unboundid.ldap.sdk.DN
-import net.liftweb.common._
-import org.joda.time.format.DateTimeFormat
+import net.liftweb.common.Failure
 import org.junit._
-import org.junit.Assert._
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
-import scala.annotation.nowarn
-import scala.util.Try
 import zio._
 import zio.syntax._
 
@@ -144,19 +104,11 @@ class TestNodeFactQueryProcessor {
 //  }
 
   // when one need to debug search, you can just uncomment that to set log-level to trace
-  org.slf4j.LoggerFactory
-    .getLogger("com.normation.rudder.services.queries")
-    .asInstanceOf[ch.qos.logback.classic.Logger]
-    .setLevel(ch.qos.logback.classic.Level.TRACE)
+  // format: off
+  //org.slf4j.LoggerFactory.getLogger("com.normation.rudder.services.queries").asInstanceOf[ch.qos.logback.classic.Logger].setLevel(ch.qos.logback.classic.Level.TRACE)
+  // format: on
 
   val nodeRepository = {
-
-    implicit def StringToNodeProp(s: String): NodeProperty = {
-      NodeProperty.unserializeLdapNodeProperty(s) match {
-        case Left(err)    => throw new IllegalArgumentException(s"Error in test init node property: ${err}")
-        case Right(value) => value
-      }
-    }
 
     object NoopNodeBySoftware extends GetNodesbySofwareName {
       override def apply(softName: String): IOResult[List[(NodeId, Software)]] = Nil.succeed
@@ -1355,7 +1307,7 @@ class TestNodeFactQueryProcessor {
 
     val results = failingRegexRequests.map(q => (q, queryProcessor.process(forceParse(q))))
     results.foreach { r =>
-      assertTrue(s"Regex Query with wrong data for node properties should fail: ${r._1}", r._2.isInstanceOf[Failure])
+      Assert.assertTrue(s"Regex Query with wrong data for node properties should fail: ${r._1}", r._2.isInstanceOf[Failure])
     }
   }
 
@@ -1389,17 +1341,17 @@ class TestNodeFactQueryProcessor {
     // also test with requiring only the expected node to check consistency
     // (that should not change anything)
 
-    assertEquals(
+    Assert.assertEquals(
       s"[$name] Duplicate entries in result: $found",
       found.size.toLong,
       found.distinct.size.toLong
     )
-    assertEquals(
+    Assert.assertEquals(
       s"[$name] Size differs between expected and found entries (process method)\n Found: $found \n Expected: ${ids}",
       ids.size.toLong,
       found.size.toLong
     )
-    assertTrue(
+    Assert.assertTrue(
       s"[$name] Nodes found are different from expected Nodes (process method)\n Found: ${found}\n Expected: ${ids}",
       found.forall(f => ids.exists(f == _))
     )

@@ -43,6 +43,7 @@ import com.normation.cfclerk.domain.VariableSpec
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.cfclerk.services.TechniquesLibraryUpdateNotification
 import com.normation.cfclerk.services.UpdateTechniqueLibrary
+
 import com.normation.errors.IOResult
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.EventLog
@@ -78,6 +79,12 @@ import com.normation.rudder.domain.reports.NodeExpectedReports
 import com.normation.rudder.domain.reports.NodeModeConfig
 import com.normation.rudder.domain.secret.Secret
 import com.normation.rudder.domain.workflows.ChangeRequestId
+import com.normation.rudder.facts.nodes.CoreNodeFactChangeEventCallback
+import com.normation.rudder.facts.nodes.CoreNodeFactRepository
+import com.normation.rudder.facts.nodes.MockLdapFactStorage
+import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepository
+import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
+import com.normation.rudder.facts.nodes.WoFactNodeRepositoryProxy
 import com.normation.rudder.git.GitArchiveId
 import com.normation.rudder.git.GitCommitId
 import com.normation.rudder.git.GitPath
@@ -137,6 +144,7 @@ import com.normation.rudder.web.services.Section2FieldService
 import com.normation.rudder.web.services.StatelessUserPropertyService
 import com.normation.rudder.web.services.Translator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import java.nio.charset.StandardCharsets
 import net.liftweb.common.Box
@@ -161,11 +169,14 @@ import org.apache.commons.io.output.ByteArrayOutputStream
 import org.eclipse.jgit.lib.PersonIdent
 import org.joda.time.DateTime
 import org.specs2.matcher.MatchResult
+
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 import scala.xml.Elem
+
 import zio._
 import zio.syntax._
+import com.normation.errors.effectUioUnit
 
 /*
  * This file provides all the necessary plumbing to allow test REST API.
@@ -729,7 +740,12 @@ class RestTestSetUp {
   val authzToken       = AuthzToken(EventActor("fakeToken"))
   val systemStatusPath = "api" + systemApi.Status.schema.path
 
-  val nodeInfo                     = mockNodes.nodeInfoService
+  val nodeFactRepo = CoreNodeFactRepository.make(
+    MockLdapFactStorage.nodeFactStorage,
+    null, // GetNodesbySofwareName
+    Chunk(CoreNodeFactChangeEventCallback("logprint", cc => effectUioUnit(println(s"***** ${cc}"))))
+  ).runNow
+
   val softDao                      = mockNodes.softwareDao
   val roReportsExecutionRepository = new RoReportsExecutionRepository {
     override def getNodesLastRun(nodeIds: Set[NodeId]): IOResult[Map[NodeId, Option[AgentRunWithNodeConfig]]] =
@@ -742,18 +758,18 @@ class RestTestSetUp {
 
   val nodeApiService  = new NodeApiService(
     null,
-    null, //nodeInfo,
-    null, //softDao,
+    nodeFactRepo,
+    new NodeFactFullInventoryRepository(nodeFactRepo),
     null,
     null,
     roReportsExecutionRepository,
-    nodeInfo,
+    new WoFactNodeRepositoryProxy(nodeFactRepo),
     null,
     uuidGen,
     null,
     null,
     null,
-    nodeInfo,
+    new NodeInfoServiceProxy(nodeFactRepo),
     mockNodes.newNodeManager,
     null,
     restExtractorService,
@@ -930,7 +946,7 @@ class RestTestSetUp {
       asyncDeploymentAgent,
       uuidGen,
       settingsService.policyServerManagementService,
-      nodeInfo
+      mockNodes.nodeInfoService
     ),
     archiveAPIModule.api,
     campaignApiModule.api

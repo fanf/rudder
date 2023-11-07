@@ -243,7 +243,7 @@ class FactNodeSummaryService(backend: NodeFactRepository) extends NodeSummarySer
   }
 }
 
-class WoFactNodeRepository(backend: NodeFactRepository) extends WoNodeRepository {
+class WoFactNodeRepositoryProxy(backend: NodeFactRepository) extends WoNodeRepository {
   override def updateNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = {
     for {
       opt  <- backend.get(node.id)(SelectNodeStatus.Any)

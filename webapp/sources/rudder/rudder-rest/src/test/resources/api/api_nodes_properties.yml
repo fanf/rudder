@@ -13,9 +13,27 @@ response:
         "nodes":[
           {
             "id":"node1",
-            "hostname":"node1.localhost",
+            "hostname":"hasAttributes.normation.com",
             "status":"accepted",
-            "properties":[]
+            "properties":[
+                          {
+                            "name":"datacenter",
+                            "value":"Paris",
+                            "provider":"inventory"
+                          },
+                          {
+                            "name":"foo",
+                            "value":"bar"
+                          },
+                          {
+                            "name":"from_inv",
+                            "value":{
+                              "key1":"custompropvalue",
+                              "key2":"somemorejson"
+                            },
+                            "provider":"inventory"
+                          }
+            ]
           }
         ]
       }
@@ -52,6 +70,9 @@ response:
       "data":{
         "id":"node1",
         "properties":[
+          { "name":"datacenter", "value":"Paris",  "provider":"inventory" },
+          { "name":"foo", "value":"bar" },
+          { "name":"from_inv", "value":{ "key1":"custompropvalue", "key2":"somemorejson" }, "provider":"inventory"},
           { "name":"jsonArray"            , "value": [ "one", 2, true]   },
           { "name":"jsonProp"             , "value": {"jsonObject":"ok"} },
           { "name":"stringArray"          , "value": "[array]"           },
@@ -62,7 +83,7 @@ response:
           { "name":"stringQuoted"         , "value": "\"quotedString\""  },
           { "name":"stringSimple"         , "value": "simple string"     }
         ],
-        "policyMode":"enforce","state":"enabled"
+        "policyMode":"default","state":"enabled"
       }
     }
 ---
@@ -80,9 +101,12 @@ response:
         "nodes":[
           {
             "id":"node1",
-            "hostname":"node1.localhost",
+            "hostname":"hasAttributes.normation.com",
             "status":"accepted",
             "properties":[
+              { "name":"datacenter", "value":"Paris",  "provider":"inventory" },
+              { "name":"foo", "value":"bar" },
+              { "name":"from_inv", "value":{ "key1":"custompropvalue", "key2":"somemorejson" }, "provider":"inventory"},
               { "name":"jsonArray"            , "value": [ "one", 2, true]   },
               { "name":"jsonProp"             , "value": {"jsonObject":"ok"} },
               { "name":"stringArray"          , "value": "[array]"           },
@@ -126,7 +150,11 @@ response:
       "result":"success",
       "data":{
         "id":"node1",
-        "properties":[],
-        "policyMode":"enforce","state":"enabled"
+        "properties":[
+          { "name":"datacenter", "value":"Paris",  "provider":"inventory" },
+          { "name":"foo", "value":"bar" },
+          { "name":"from_inv", "value":{ "key1":"custompropvalue", "key2":"somemorejson" }, "provider":"inventory"},
+        ],
+        "policyMode":"default","state":"enabled"
       }
     }

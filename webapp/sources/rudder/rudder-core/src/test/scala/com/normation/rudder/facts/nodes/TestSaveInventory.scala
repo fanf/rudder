@@ -38,7 +38,6 @@
 package com.normation.rudder.facts.nodes
 
 import better.files._
-
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core.InventoryDit
@@ -58,12 +57,10 @@ import com.normation.rudder.inventory.InventoryProcessor
 import com.normation.rudder.inventory.InventoryProcessStatus.Saved
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import com.normation.zio.ZioRuntime
 import com.softwaremill.quicklens._
 import cron4s.Cron
-
 import java.security.Security
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -72,9 +69,7 @@ import org.junit.runner._
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.specs2.specification.BeforeAfterAll
-
 import scala.annotation.nowarn
-
 import zio._
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -118,7 +113,6 @@ class TestSaveInventoryGit extends TestSaveInventory {
   }
 
 }
-
 
 @RunWith(classOf[JUnitRunner])
 class TestSaveInventoryLdap extends TestSaveInventory {
@@ -216,14 +210,6 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
     }
   }
 
-  object trailCallBack extends NodeFactChangeEventCallback[MinimalNodeFactInterface] {
-    override def name: String = "trail"
-
-    override def run(e: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = {
-      callbackLog.update(_.appended(e.event))
-    }
-  }
-
   val factRepo = {
     for {
       pending   <- Ref.make(Map[NodeId, CoreNodeFact]())
@@ -231,7 +217,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
       callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback[MinimalNodeFactInterface]])
       lock      <- ReentrantLock.make()
       r          = new CoreNodeFactRepository(factStorage, noopNodeBySoftwareName, pending, accepted, callbacks, lock)
-      _         <- r.registerChangeCallbackAction(trailCallBack)
+      _         <- r.registerChangeCallbackAction(CoreNodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e.event))))
 //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
       r

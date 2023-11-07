@@ -54,12 +54,15 @@ import bootstrap.liftweb.checks.migration.MigrateNodeAcceptationInventories
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
+
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
+import com.normation.eventlog.ModificationId
+
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.inventory.domain._
@@ -107,21 +110,24 @@ import com.normation.rudder.db.Doobie
 import com.normation.rudder.domain._
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.logger.NodeConfigurationLoggerImpl
+import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
 import com.normation.rudder.domain.nodes.NodeGroupId
 import com.normation.rudder.domain.queries._
+import com.normation.rudder.facts.nodes.CoreNodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.facts.nodes.FactNodeSummaryService
 import com.normation.rudder.facts.nodes.GetNodesbySofwareName
 import com.normation.rudder.facts.nodes.LdapNodeFactStorage
 import com.normation.rudder.facts.nodes.MinimalNodeFactInterface
+import com.normation.rudder.facts.nodes.NodeFactChangeEvent
 import com.normation.rudder.facts.nodes.NodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepository
 import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
 import com.normation.rudder.facts.nodes.SelectFacts
-import com.normation.rudder.facts.nodes.WoFactNodeRepository
+import com.normation.rudder.facts.nodes.WoFactNodeRepositoryProxy
 import com.normation.rudder.git.GitRepositoryProvider
 import com.normation.rudder.git.GitRepositoryProviderImpl
 import com.normation.rudder.git.GitRevisionProvider
@@ -204,6 +210,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -211,6 +218,7 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -220,8 +228,10 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
+
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
+
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -1123,7 +1133,6 @@ object RudderConfig extends Loggable {
   val changeRequestChangesSerialisation:   ChangeRequestChangesSerialisation          = rci.changeRequestChangesSerialisation
   val changeRequestChangesUnserialisation: ChangeRequestChangesUnserialisation        = rci.changeRequestChangesUnserialisation
   val changeRequestEventLogService:        ChangeRequestEventLogService               = rci.changeRequestEventLogService
-  val checkInventoryUpdate:                CheckInventoryUpdate                       = rci.checkInventoryUpdate
   val checkTechniqueLibrary:               CheckTechniqueLibrary                      = rci.checkTechniqueLibrary
   val clearCacheService:                   ClearCacheService                          = rci.clearCacheService
   val cmdbQueryParser:                     CmdbQueryParser                            = rci.cmdbQueryParser
@@ -1297,7 +1306,6 @@ case class RudderServiceApi(
     policyServerManagementService:       PolicyServerManagementService,
     updateDynamicGroupsService:          DynGroupUpdaterService,
     updateDynamicGroups:                 UpdateDynamicGroups,
-    checkInventoryUpdate:                CheckInventoryUpdate,
     purgeDeletedInventories:             PurgeDeletedInventories,
     purgeUnreferencedSoftwares:          PurgeUnreferencedSoftwares,
     databaseManager:                     DatabaseManager,
@@ -1555,7 +1563,7 @@ object RudderConfigInit {
 
     lazy val yamlTechniqueSerializer = new YamlTechniqueSerializer(resourceFileService)
 
-    lazy val linkUtil           = new LinkUtil(roRuleRepository, roNodeGroupRepository, roDirectiveRepository, nodeInfoServiceImpl)
+    lazy val linkUtil           = new LinkUtil(roRuleRepository, roNodeGroupRepository, roDirectiveRepository, nodeFactInfoService)
     // REST API
     lazy val restApiAccounts    = new RestApiAccounts(
       roApiAccountRepository,
@@ -1872,9 +1880,30 @@ object RudderConfigInit {
     }
 
     lazy val nodeFactRepository = {
+
+      def startGeneration(nodeId: NodeId): IOResult[Unit] = {
+        NodeLoggerPure.info(s"Update in node '${nodeId.value}' inventories main information detected: triggering a policy generation") *>
+          IOResult.attempt(asyncDeploymentAgent ! AutomaticStartDeployment(
+            ModificationId(uuidGen.newUuid),
+            com.normation.rudder.domain.eventlog.RudderEventActor
+          )
+          )
+      }
+
+      val generationOnChange = CoreNodeFactChangeEventCallback("start-generation-on-change", (e => e.event match {
+        case NodeFactChangeEvent.NewPending(node)                 => ZIO.unit
+        case NodeFactChangeEvent.UpdatedPending(oldNode, newNode) => ZIO.unit
+        case NodeFactChangeEvent.Accepted(node)                   => startGeneration(node.id)
+        case NodeFactChangeEvent.Refused(node)                    => ZIO.unit
+        case NodeFactChangeEvent.Updated(oldNode, newNode)        => startGeneration(newNode.id)
+        case NodeFactChangeEvent.Deleted(node)                    => startGeneration(node.id)
+        case NodeFactChangeEvent.Noop(nodeId)                     => ZIO.unit
+      }))
+
       println(s"****** init node fact repo")
 
       val app = for {
+        // here we do the same thing that in the shorten version of make so that we can log
         _             <- InventoryDataLogger.debug("===== ********* =========")
         _             <- InventoryDataLogger.debug("Getting pending node info for node fact repos")
         pendingFacts  <- ldapNodeFactStorage.getAllPending()(SelectFacts.none).map(n => (n.id, n.toCore)).runCollect
@@ -1884,7 +1913,7 @@ object RudderConfigInit {
         acceptedFacts <- ldapNodeFactStorage.getAllAccepted()(SelectFacts.none).map(n => (n.id, n.toCore)).runCollect
         accepted      <- Ref.make(acceptedFacts.toMap)
         lock          <- ReentrantLock.make()
-        callbacks     <- Ref.make(Chunk.empty[NodeFactChangeEventCallback[MinimalNodeFactInterface]])
+        callbacks     <- Ref.make(Chunk[NodeFactChangeEventCallback[MinimalNodeFactInterface]](generationOnChange))
         _             <- InventoryDataLogger.debug("Creating node fact repos")
       } yield {
         new CoreNodeFactRepository(ldapNodeFactStorage, getNodeBySoftwareName, pending, accepted, callbacks, lock)
@@ -2693,7 +2722,7 @@ object RudderConfigInit {
     )
     lazy val woRuleRepository = woLdapRuleRepository
 
-    lazy val woFactNodeRepository: WoNodeRepository = new WoFactNodeRepository(nodeFactRepository)
+    lazy val woFactNodeRepository: WoNodeRepository = new WoFactNodeRepositoryProxy(nodeFactRepository)
 
     lazy val roLdapNodeGroupRepository = new RoLDAPNodeGroupRepository(
       rudderDitImpl,
@@ -3078,16 +3107,7 @@ object RudderConfigInit {
       ruleCatReadWriteMutex
     )
     lazy val eventLogDeploymentServiceImpl = new EventLogDeploymentService(logRepository, eventLogDetailsServiceImpl)
-    lazy val nodeInfoServiceImpl           = new NodeInfoServiceCachedImpl(
-      roLdap,
-      nodeDitImpl,
-      acceptedNodesDitImpl,
-      removedNodesDitImpl,
-      pendingNodesDitImpl,
-      ldapEntityMapper,
-      inventoryMapper,
-      FiniteDuration(LDAP_CACHE_NODE_INFO_MIN_INTERVAL.toMillis, "millis")
-    )
+
     lazy val nodeFactInfoService           = new NodeInfoServiceProxy(nodeFactRepository)
     lazy val dependencyAndDeletionService: DependencyAndDeletionService = new DependencyAndDeletionServiceImpl(
       new FindDependenciesImpl(roLdap, rudderDitImpl, ldapEntityMapper),
@@ -3445,12 +3465,13 @@ object RudderConfigInit {
       _         <- cron.start
     } yield ()
 
-    lazy val checkInventoryUpdate = new CheckInventoryUpdate(
-      nodeInfoServiceImpl,
-      asyncDeploymentAgent,
-      uuidGen,
-      RUDDER_BATCH_CHECK_NODE_CACHE_INTERVAL
-    )
+// provided as a callback on node fact repo
+//    lazy val checkInventoryUpdate = new CheckInventoryUpdate(
+//      nodeFactInfoService,
+//      asyncDeploymentAgent,
+//      uuidGen,
+//      RUDDER_BATCH_CHECK_NODE_CACHE_INTERVAL
+//    )
 
     lazy val asynComplianceService = new AsyncComplianceService(reportingService)
 
@@ -3619,12 +3640,12 @@ object RudderConfigInit {
         ldapSoftwareSave
       )
 
-      lazy val checkInventoryUpdate = new CheckInventoryUpdate(
-        ldapNodeInfoServiceImpl,
-        asyncDeploymentAgent,
-        stringUuidGenerator,
-        RUDDER_BATCH_CHECK_NODE_CACHE_INTERVAL
-      )
+//      lazy val checkInventoryUpdate = new CheckInventoryUpdate(
+//        ldapNodeInfoServiceImpl,
+//        asyncDeploymentAgent,
+//        stringUuidGenerator,
+//        RUDDER_BATCH_CHECK_NODE_CACHE_INTERVAL
+//      )
 
       lazy val internalAcceptedQueryProcessor =
         new InternalLDAPQueryProcessor(roLdap, acceptedNodesDitImpl, nodeDit, ditQueryDataImpl, ldapEntityMapper)
@@ -3714,7 +3735,6 @@ object RudderConfigInit {
       policyServerManagementService,
       dynGroupUpdaterService,
       dyngroupUpdaterBatch,
-      checkInventoryUpdate,
       deprecated.purgeDeletedInventories,
       deprecated.purgeUnreferencedSoftwares,
       databaseManagerImpl,
@@ -3722,7 +3742,7 @@ object RudderConfigInit {
       techniqueLibraryUpdater,
       autoReportLogger,
       removeNodeServiceImpl,
-      nodeInfoServiceImpl,
+      nodeFactInfoService,
       reportDisplayerImpl,
       dependencyAndDeletionService,
       itemArchiveManagerImpl,

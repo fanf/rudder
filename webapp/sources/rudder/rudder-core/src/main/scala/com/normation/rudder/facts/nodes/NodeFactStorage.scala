@@ -610,7 +610,7 @@ class LdapNodeFactStorage(
         needSoftware: Boolean
     ): IOResult[Option[NodeFact]] = {
       // mostly copied from com.normation.rudder.services.nodes.NodeInfoServiceCachedImpl # getBackendLdapNodeInfo
-      val ldapAttrs = (if (needSoftware) Seq(A_SOFTWARE_UUID) else Seq()) ++ NodeInfoService.nodeInfoAttributes
+      val ldapAttrs = (if (needSoftware) Seq(A_SOFTWARE_DN) else Seq()) ++ NodeInfoService.nodeInfoAttributes
 
       con.get(inventoryDitService.getDit(status).NODES.NODE.dn(nodeId.value), ldapAttrs: _*).flatMap {
         case None      => // end of game, no node here
@@ -619,7 +619,7 @@ class LdapNodeFactStorage(
           for {
             optM <- inv(A_CONTAINER_DN) match {
                       case None    => None.succeed
-                      case Some(m) => con.get(new DN(m), ldapAttrs: _* )
+                      case Some(m) => con.get(new DN(m), ldapAttrs: _*)
                     }
             info <- nodeMapper.convertEntriesToNodeInfos(nodeEntry, inv, optM)
             soft <- getSoftware(con, fullInventoryRepository.getSoftwareUuids(inv), needSoftware)
@@ -631,7 +631,8 @@ class LdapNodeFactStorage(
       t0      <- currentTimeMillis
       _       <-
         NodeLoggerPure.debug(
-          s"Getting node '${nodeId.value}' with inventory: ${attrs != SelectFacts.none}; software: ${attrs.software.mode == SelectMode.Retrieve}"
+          s"Getting node '${nodeId.value}' with inventory: ${SelectFacts
+              .retrieveInventory(attrs)}; software: ${attrs.software.mode == SelectMode.Retrieve}"
         )
       con     <- ldap
       optNode <- getNodeEntry(con, nodeId)
@@ -646,6 +647,7 @@ class LdapNodeFactStorage(
                  }
       t1      <- currentTimeMillis
       _       <- NodeLoggerPure.Metrics.debug(s"node '${nodeId.value}' retrieved in ${t1 - t0} ms")
+      _       <- NodeLoggerPure.trace(s"result: ${res}")
     } yield res
   }
 

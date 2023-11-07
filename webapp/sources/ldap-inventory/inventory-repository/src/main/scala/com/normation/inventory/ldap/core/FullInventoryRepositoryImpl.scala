@@ -362,15 +362,19 @@ class FullInventoryRepositoryImpl(
   }
 
   // if getSoftware is true, return the seq of software UUIDs, else an empty seq in addition to inventory.
-  def getWithSoftware(id: NodeId, inventoryStatus: InventoryStatus, getSoftware: Boolean): IOResult[Option[(FullInventory, Seq[SoftwareUuid])]] = {
+  def getWithSoftware(
+      id:              NodeId,
+      inventoryStatus: InventoryStatus,
+      getSoftware:     Boolean
+  ): IOResult[Option[(FullInventory, Seq[SoftwareUuid])]] = {
     (
       for {
-        con <- ldap
-        tree <- con.getTree(dn(id, inventoryStatus))
-        server <- tree match {
-          case Some(t) => mapper.nodeFromTree(t).map(Some(_))
-          case None    => None.succeed
-        }
+        con        <- ldap
+        tree       <- con.getTree(dn(id, inventoryStatus))
+        server     <- tree match {
+                        case Some(t) => mapper.nodeFromTree(t).map(Some(_))
+                        case None    => None.succeed
+                      }
         // now, try to add a machine
         optMachine <- {
           server.flatMap(_.machineId) match {
@@ -387,19 +391,22 @@ class FullInventoryRepositoryImpl(
           }
         }
       } yield {
-        server.map(s =>
-          (FullInventory(s, optMachine),
+        server.map(s => {
+          (
+            FullInventory(s, optMachine),
             if (getSoftware) {
               tree.map(t => getSoftwareUuids(t.root)).getOrElse(Seq())
             } else Seq()
           )
-        )
+        })
       }
-      ).chainError(s"Error when getting node with ID '${id.value}' and status ${inventoryStatus.name}")
+    ).chainError(s"Error when getting node with ID '${id.value}' and status ${inventoryStatus.name}")
   }
 
   def getSoftwareUuids(e: LDAPEntry): Chunk[SoftwareUuid] = {
-    e.valuesForChunk(LDAPConstants.A_SOFTWARE_UUID).map(SoftwareUuid(_))
+    // it's faster to get all software in one go than doing N requests, one for each DN
+    e.valuesForChunk(LDAPConstants.A_SOFTWARE_DN)
+      .map(dn => SoftwareUuid(new DN(dn).getRDN.getAttributeValues()(0))) // RDN has at least one value
   }
 
   override def get(id: NodeId): IOResult[Option[FullInventory]] = {

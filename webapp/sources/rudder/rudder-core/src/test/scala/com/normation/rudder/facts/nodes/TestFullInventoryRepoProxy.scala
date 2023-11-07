@@ -107,19 +107,12 @@ class TestInventory extends Specification {
     }
   }
 
-  object trailCallBack extends NodeFactChangeEventCallback[MinimalNodeFactInterface] {
-    override def name:                                                    String         = "trail"
-    override def run(e: NodeFactChangeEventCC[MinimalNodeFactInterface]): IOResult[Unit] = {
-      callbackLog.update(_.appended(e.event))
-    }
-  }
-
   val factRepo = {
     for {
       callbacks <- Ref.make(Chunk.empty[NodeFactChangeEventCallback[MinimalNodeFactInterface]])
       lock      <- ReentrantLock.make()
       r          = new CoreNodeFactRepository(NoopFactStorage, noopNodeBySoftwareName, pendingRef, acceptedRef, callbacks, lock)
-      _         <- r.registerChangeCallbackAction(trailCallBack)
+      _         <- r.registerChangeCallbackAction(CoreNodeFactChangeEventCallback("trail", e => callbackLog.update(_.appended(e.event))))
       //      _         <- r.registerChangeCallbackAction(new NodeFactChangeEventCallback("log", e => effectUioUnit(println(s"**** ${e.name}"))))
     } yield {
       r
@@ -198,9 +191,8 @@ class TestInventory extends Specification {
 
     "find back the machine after a move" in {
       resetStorage
-      val m   = machine("findBackMachine", PendingInventory)
-      val n   = node("findBackNode", PendingInventory, (m.id, m.status))
-
+      val m = machine("findBackMachine", PendingInventory)
+      val n = node("findBackNode", PendingInventory, (m.id, m.status))
 
       (
         repo.save(full(n, m)).isOK
@@ -289,7 +281,7 @@ class TestInventory extends Specification {
             node0 === n0_
             and node1 === n1_
             and node2 === n2_
-            and (node3 isLeft )// no move to delete
+            and (node3 isLeft) // no move to delete
           )
         }
       )
