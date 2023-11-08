@@ -263,8 +263,8 @@ trait RuddercService {
  * notice: https://issues.rudder.io/issues/23053 => mv from target to parent at the end of compilation
  */
 class RuddercServiceImpl(
-    val ruddercCmd:      String,
-    killTimeout:         Duration
+    val ruddercCmd: String,
+    killTimeout:    Duration
 ) extends RuddercService {
 
   def compilationOutputDir(techniqueDir: File): File = techniqueDir / "target"

@@ -57,7 +57,6 @@ import com.normation.rudder.domain.queries.Or
 import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.queries.ResultTransformation._
 import com.normation.rudder.domain.queries.StringComparator
-
 import net.liftweb.common.Box
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Full
@@ -65,7 +64,6 @@ import org.joda.time.DateTime
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
-
 import zio.Chunk
 import zio.syntax._
 

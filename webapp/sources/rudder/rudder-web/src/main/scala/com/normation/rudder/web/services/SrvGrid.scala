@@ -38,7 +38,6 @@
 package com.normation.rudder.web.services
 
 import com.normation.appconfig.ReadConfigService
-
 import com.normation.box._
 import com.normation.inventory.domain.PhysicalMachineType
 import com.normation.inventory.domain.UnknownMachineType
@@ -53,7 +52,6 @@ import com.normation.rudder.repository.RoRuleRepository
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.utils.DateFormaterService
 import com.normation.utils.Utils.isEmpty
-
 import com.normation.zio._
 import net.liftweb.common._
 import net.liftweb.http._
@@ -62,9 +60,7 @@ import net.liftweb.http.js._
 import net.liftweb.http.js.JE._
 import net.liftweb.http.js.JsCmds._
 import org.slf4j.LoggerFactory
-
 import scala.xml._
-
 import zio._
 
 /**

@@ -41,12 +41,9 @@ import com.normation.errors.Chained
 import com.normation.rudder.domain.logger.ScheduledJobLogger
 import com.normation.rudder.domain.logger.ScheduledJobLoggerPure
 import com.normation.rudder.services.servers.PurgeDeletedNodes
-
 import com.normation.zio.ZioRuntime
 import org.joda.time.DateTime
-
 import scala.concurrent.duration.FiniteDuration
-
 import zio._
 
 /**

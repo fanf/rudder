@@ -46,7 +46,7 @@ import net.liftweb.json.JsonDSL._
 import org.joda.time.DateTime
 
 sealed trait NodeDetailLevel {
-  
+
   def fields: Set[String]
 
   /**

@@ -39,9 +39,9 @@ package com.normation.rudder.web
 package services
 
 import bootstrap.liftweb.RudderConfig
-
 import com.normation.box._
 import com.normation.cfclerk.domain.HashAlgoConstraint.SHA1
+import com.normation.errors._
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
 import com.normation.rudder.batch.AutomaticStartDeployment
@@ -63,7 +63,6 @@ import com.normation.rudder.web.services.CurrentUser
 import com.normation.rudder.web.snippet.RegisterToasts
 import com.normation.rudder.web.snippet.ToastNotification
 import com.normation.utils.DateFormaterService
-
 import com.normation.zio._
 import net.liftweb.common._
 import net.liftweb.http._
@@ -77,7 +76,6 @@ import net.liftweb.json.JsonDSL._
 import net.liftweb.util._
 import net.liftweb.util.Helpers._
 import org.joda.time.DateTime
-
 import scala.xml._
 import scala.xml.Utility.escape
 
@@ -300,6 +298,9 @@ object DisplayNode extends Loggable {
   }
 
   def showInventoryVerticalMenu(sm: FullInventory, optNode: Option[NodeInfo], salt: String = ""): NodeSeq = {
+
+    println(s"***** view: ${sm}")
+
     val jsId = JsNodeId(sm.node.main.id, salt)
     val mainTabDeclaration: List[NodeSeq] = {
       <li><a href={htmlId_#(jsId, "sd_os_")}>Operating system</a></li> ::

@@ -109,7 +109,7 @@ class NodeGroupForm(
   private[this] val nodeGroupForm         = new LocalSnippet[NodeGroupForm]
   private[this] val searchNodeComponent   = new LocalSnippet[SearchNodeComponent]
 
-  private[this] var query:   Option[Query]   = nodeGroup.toOption.flatMap(_.query)
+  private[this] var query:   Option[Query]      = nodeGroup.toOption.flatMap(_.query)
   private[this] var srvList: Box[Seq[NodeInfo]] = getNodeList(nodeGroup)
 
   private def setSearchNodeComponent: Unit = {

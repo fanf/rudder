@@ -647,7 +647,7 @@ class LdapNodeFactStorage(
                  }
       t1      <- currentTimeMillis
       _       <- NodeLoggerPure.Metrics.debug(s"node '${nodeId.value}' retrieved in ${t1 - t0} ms")
-      _       <- NodeLoggerPure.trace(s"result: ${res}")
+      _       <- NodeLoggerPure.trace(s"node '${nodeId.value}' fetched details: ${res}")
     } yield res
   }
 

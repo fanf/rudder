@@ -83,12 +83,10 @@ import com.normation.rudder.services.reports.CachedNodeConfigurationService
 import com.normation.rudder.services.reports.CacheExpectedReportAction.RemoveNodeInCache
 import com.normation.rudder.services.servers.DeletionResult._
 import com.normation.utils.StringUuidGenerator
-
 import com.normation.zio._
 import com.unboundid.ldap.sdk.Modification
 import com.unboundid.ldap.sdk.ModificationType
 import com.unboundid.ldif.LDIFChangeRecord
-
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -97,7 +95,6 @@ import java.util.function.BiPredicate
 import java.util.function.Consumer
 import net.liftweb.common.Box
 import org.joda.time.DateTime
-
 import zio.{System => _, _}
 import zio.stream._
 import zio.syntax._
@@ -188,7 +185,12 @@ class FactRemoveNodeBackend(backend: NodeFactRepository) extends RemoveNodeBacke
     backend.getStatus(nodeId).map(x => Set(x))
   }
 
-  override def commitDeleteAccepted(nodeInfo: NodeInfo, mode: DeleteMode, modId: ModificationId, actor: EventActor): IOResult[Unit] = {
+  override def commitDeleteAccepted(
+      nodeInfo: NodeInfo,
+      mode:     DeleteMode,
+      modId:    ModificationId,
+      actor:    EventActor
+  ): IOResult[Unit] = {
     backend.delete(nodeInfo.id)(ChangeContext(modId, actor, None)).unit
   }
 
@@ -533,11 +535,11 @@ class RemoveNodeFromGroups(
     uuidGen:               StringUuidGenerator
 ) extends PostNodeDeleteAction {
   override def run(
-    nodeId: NodeId,
-    mode  : DeleteMode,
-    info  : Option[NodeInfo],
-    status: Set[InventoryStatus],
-    actor : EventActor
+      nodeId: NodeId,
+      mode:   DeleteMode,
+      info:   Option[NodeInfo],
+      status: Set[InventoryStatus],
+      actor:  EventActor
   ): UIO[Unit] = {
     (for {
       _            <- NodeLoggerPure.Delete.debug(s"  - remove node ${nodeId.value} from his groups")

@@ -403,11 +403,9 @@ class CoreNodeFactRepository(
                             s"This is not supposed to be, perhaps cold storage was modified not through Rudder. This is likely to lead to consistency problem. " +
                             s"You should use Rudder API."
                           ) *> // in that case still return core fact
-                          effectUioUnit(s"****** not found in backend") *>
                           Some(fact).succeed
                         case Some(b) =>
-                          effectUioUnit(s"****** found backend") *>
-                          Some(SelectFacts.merge(fact, Some(b))(attrs)).succeed
+                          Some(SelectFacts.mergeCore(v, b)(attrs)).succeed
                       }
                     }
                 }

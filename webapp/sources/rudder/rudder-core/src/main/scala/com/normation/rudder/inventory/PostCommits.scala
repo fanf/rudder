@@ -52,7 +52,6 @@ import com.normation.rudder.hooks.PureHooksLogger
 import com.normation.rudder.hooks.RunHooks
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.utils.StringUuidGenerator
-
 import com.normation.zio.currentTimeMillis
 import zio._
 import zio.syntax._

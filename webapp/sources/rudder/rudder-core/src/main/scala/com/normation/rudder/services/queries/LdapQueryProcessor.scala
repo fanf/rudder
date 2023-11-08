@@ -438,7 +438,9 @@ class InternalLDAPQueryProcessor(
                          case Some(dms)                              =>
                            for {
                              ids <- executeLdapQueries(dms, nq, select, debugId)
-                             _   <- logPure.trace(s"[${debugId}] Found ${ids.size} entries ; filtering with ${allNodesInfos.size} accepted nodes")
+                             _   <- logPure.trace(
+                                      s"[${debugId}] Found ${ids.size} entries ; filtering with ${allNodesInfos.size} accepted nodes"
+                                    )
                            } yield {
                              allNodesInfos.filter(nodeInfo => ids.contains(nodeInfo.node.id))
                            }

@@ -624,6 +624,7 @@ object NodeFact {
       inventory.node.main.hostname,
       inventory.node.main.osDetails,
       MachineInfo(
+        // we should have the machine in a new full inventory, else generate an uuid for the unknown one
         inventory.machine.map(_.id).getOrElse(NodeFact.toMachineId(inventory.node.main.id)),
         inventory.machine.map(_.machineType).getOrElse(UnknownMachineType),
         inventory.machine.flatMap(_.systemSerialNumber),
@@ -923,6 +924,7 @@ case class SelectFactConfig[A](
   // copy helper for fluent api
   def toIgnore:   SelectFactConfig[A] = this.copy(mode = SelectMode.Ignore)
   def toRetrieve: SelectFactConfig[A] = this.copy(mode = SelectMode.Retrieve)
+  def invertMode: SelectFactConfig[A] = if (this.mode == SelectMode.Ignore) toRetrieve else toIgnore
 
   override def toString = this.mode.toString
 }
@@ -952,7 +954,8 @@ case class SelectFacts(
     videos:               SelectFactConfig[Chunk[Video]],
     vms:                  SelectFactConfig[Chunk[VirtualMachine]]
 ) {
-  def debugString = this.productElementNames.zip(this.productIterator).map { case (a, b) => s"${a}: ${b.toString}"}.mkString(", ")
+  def debugString =
+    this.productElementNames.zip(this.productIterator).map { case (a, b) => s"${a}: ${b.toString}" }.mkString(", ")
 }
 
 sealed trait SelectNodeStatus { def name: String }
@@ -963,6 +966,37 @@ object SelectNodeStatus       {
 }
 
 object SelectFacts {
+
+  implicit class Invert(c: SelectFacts) {
+    def invert: SelectFacts = {
+      SelectFacts(
+        c.swap.invertMode,
+        c.accounts.invertMode,
+        c.bios.invertMode,
+        c.controllers.invertMode,
+        c.environmentVariables.invertMode,
+        c.fileSystems.invertMode,
+        c.inputs.invertMode,
+        c.localGroups.invertMode,
+        c.localUsers.invertMode,
+        c.logicalVolumes.invertMode,
+        c.memories.invertMode,
+        c.networks.invertMode,
+        c.physicalVolumes.invertMode,
+        c.ports.invertMode,
+        c.processes.invertMode,
+        c.processors.invertMode,
+        c.slots.invertMode,
+        c.software.invertMode,
+        c.softwareUpdate.invertMode,
+        c.sounds.invertMode,
+        c.storages.invertMode,
+        c.videos.invertMode,
+        c.vms.invertMode
+      )
+    }
+  }
+
   // format: off
   // there's perhaps a better way to do that, but `shrug` don't know about it
   val none = SelectFacts(
@@ -1019,8 +1053,8 @@ object SelectFacts {
   // format: on
 
   val softwareOnly = none.copy(software = none.software.toRetrieve)
-  val noSoftware = all.copy(software = all.software.toIgnore)
-  val default    = all.copy(processes = all.processes.toIgnore, software = all.software.toIgnore)
+  val noSoftware   = all.copy(software = all.software.toIgnore)
+  val default      = all.copy(processes = all.processes.toIgnore, software = all.software.toIgnore)
 
   // inventory elements, not carring for software
   def retrieveInventory(attrs: SelectFacts): Boolean = {
@@ -1107,6 +1141,12 @@ object SelectFacts {
           .update(attrs.videos)
           .update(attrs.vms)
     }
+  }
+
+  // given a core node fact, add attributes from an other fact based on what attrs says
+  def mergeCore(cnf: CoreNodeFact, fact: NodeFact)(implicit attrs: SelectFacts): NodeFact = {
+    // from a implementation point of view, it's the opposite of merge WRT SelectFacts
+    merge(NodeFact.fromMinimal(cnf), Some(fact))(attrs.invert)
   }
 }
 

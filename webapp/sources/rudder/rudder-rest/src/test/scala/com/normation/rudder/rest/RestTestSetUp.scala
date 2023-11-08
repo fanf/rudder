@@ -43,8 +43,8 @@ import com.normation.cfclerk.domain.VariableSpec
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.cfclerk.services.TechniquesLibraryUpdateNotification
 import com.normation.cfclerk.services.UpdateTechniqueLibrary
-
 import com.normation.errors.IOResult
+import com.normation.errors.effectUioUnit
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.EventLog
 import com.normation.eventlog.EventLogFilter
@@ -144,7 +144,6 @@ import com.normation.rudder.web.services.Section2FieldService
 import com.normation.rudder.web.services.StatelessUserPropertyService
 import com.normation.rudder.web.services.Translator
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import java.nio.charset.StandardCharsets
 import net.liftweb.common.Box
@@ -169,14 +168,11 @@ import org.apache.commons.io.output.ByteArrayOutputStream
 import org.eclipse.jgit.lib.PersonIdent
 import org.joda.time.DateTime
 import org.specs2.matcher.MatchResult
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 import scala.xml.Elem
-
 import zio._
 import zio.syntax._
-import com.normation.errors.effectUioUnit
 
 /*
  * This file provides all the necessary plumbing to allow test REST API.
@@ -740,11 +736,13 @@ class RestTestSetUp {
   val authzToken       = AuthzToken(EventActor("fakeToken"))
   val systemStatusPath = "api" + systemApi.Status.schema.path
 
-  val nodeFactRepo = CoreNodeFactRepository.make(
-    MockLdapFactStorage.nodeFactStorage,
-    null, // GetNodesbySofwareName
-    Chunk(CoreNodeFactChangeEventCallback("logprint", cc => effectUioUnit(println(s"***** ${cc}"))))
-  ).runNow
+  val nodeFactRepo = CoreNodeFactRepository
+    .make(
+      MockLdapFactStorage.nodeFactStorage,
+      null, // GetNodesbySofwareName
+      Chunk(CoreNodeFactChangeEventCallback("logprint", cc => effectUioUnit(println(s"***** ${cc}"))))
+    )
+    .runNow
 
   val softDao                      = mockNodes.softwareDao
   val roReportsExecutionRepository = new RoReportsExecutionRepository {
@@ -756,7 +754,7 @@ class RestTestSetUp {
     def getUnprocessedRuns(): IOResult[Seq[AgentRunWithoutCompliance]] = ???
   }
 
-  val nodeApiService  = new NodeApiService(
+  val nodeApiService = new NodeApiService(
     null,
     nodeFactRepo,
     new NodeFactFullInventoryRepository(nodeFactRepo),
@@ -781,7 +779,7 @@ class RestTestSetUp {
     userService,
     () => Full(GlobalPolicyMode(Audit, PolicyModeOverrides.Always)),
     "relay"
-) {
+  ) {
 
     override def checkUuid(nodeId: NodeId): IO[Creation.CreationError, Unit] = {
       mockNodes.nodeInfoService

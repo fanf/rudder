@@ -38,7 +38,6 @@
 package com.normation.rudder.web.services
 
 import com.normation.appconfig.ReadConfigService
-
 import com.normation.box._
 import com.normation.inventory.domain.InventoryStatus
 import com.normation.inventory.domain.NodeId
@@ -47,7 +46,6 @@ import com.normation.rudder.domain.servers.Srv
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.web.ChooseTemplate
 import com.normation.utils.Utils.isEmpty
-
 import net.liftweb.common._
 import net.liftweb.http._
 import net.liftweb.http.js._
@@ -56,9 +54,7 @@ import net.liftweb.http.js.JsCmds._
 import net.liftweb.json._
 import net.liftweb.util.Helpers._
 import org.slf4j.LoggerFactory
-
 import scala.xml._
-
 import zio.syntax._
 
 object NodeGrid {

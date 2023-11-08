@@ -460,7 +460,7 @@ final case class RestDataSerializerImpl(
     def serializeNodeGroupDiff(diff: ModifyNodeGroupDiff, initialState: NodeGroup): JValue = {
       implicit def convert[T](value: GroupProperty): JValue = value.toJson
       def convertNodeList(nl: Set[NodeId]):          JValue = nl.map(_.value).toList
-      def convertQuery(q: Option[Query]):       JValue = q.map(_.toString)
+      def convertQuery(q: Option[Query]):            JValue = q.map(_.toString)
 
       val name:        JValue = diff.modName.map(displaySimpleDiff(_)).getOrElse(initialState.name)
       val description: JValue = diff.modDescription.map(displaySimpleDiff(_)).getOrElse(initialState.description)

@@ -1088,7 +1088,7 @@ class UpdateFactRepoOnChoice(
   def acceptOne(sm: FullInventory, modId: ModificationId, actor: EventActor): Box[FullInventory] = {
     // in 7.0, we don't fail on historization problem, only log
     factRepo
-      .changeStatus(sm.node.main.id, PendingInventory)(ChangeContext(modId, actor, None))
+      .changeStatus(sm.node.main.id, AcceptedInventory)(ChangeContext(modId, actor, None))
       .catchAll(err => {
         NodeLoggerPure.info(
           s"Error when trying to update facts historization when accepting node '${sm.node.main.hostname}' (${sm.node.main.id.value})"

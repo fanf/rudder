@@ -507,7 +507,7 @@ class InventoryMapper(
     val dit  = ditService.getDit(machine.status)
     val root = dit.MACHINES.MACHINE.model(machine.id)
     root.setOpt(machine.mbUuid, A_MB_UUID, (x: MotherBoardUuid) => x.value)
-    root.addValues(A_OC, OC.objectClassNames(machineType2ObjectClass(machine.machineType).name):_*)
+    root.addValues(A_OC, OC.objectClassNames(machineType2ObjectClass(machine.machineType).name): _*)
     root.setOpt(machine.inventoryDate, A_INVENTORY_DATE, (x: DateTime) => GeneralizedTime(x).toString)
     root.setOpt(machine.receiveDate, A_RECEIVE_DATE, (x: DateTime) => GeneralizedTime(x).toString)
     root.setOpt(machine.name.orElse(Some(machine.id.value)), A_NAME, (x: String) => x)

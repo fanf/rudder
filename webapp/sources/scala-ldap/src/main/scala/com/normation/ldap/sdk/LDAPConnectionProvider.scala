@@ -72,7 +72,7 @@ trait LDAPConnectionProvider[LDAP <: RoLDAPConnection] {
    * return type is Unit.
    */
   def foreach(f: LDAP => Unit): IOResult[Unit] = {
-    withConLdap[Unit] { con => LDAPIOResult.attempt(f(con)).unit }
+    withConLdap[Unit](con => LDAPIOResult.attempt(f(con)).unit)
   }
 
   /**

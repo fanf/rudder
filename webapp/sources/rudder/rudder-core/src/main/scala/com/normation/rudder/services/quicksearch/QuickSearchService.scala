@@ -64,7 +64,7 @@ class FullQuickSearchService(implicit
     val inventoryDit:   InventoryDit,
     val rudderDit:      RudderDit,
     val directiveRepo:  RoDirectiveRepository,
-    val nodeInfos:      NodeFactRepository,
+    val nodeInfos:      NodeFactRepository
 ) extends Loggable {
 
   import QuickSearchService._
@@ -111,7 +111,7 @@ object QuickSearchService {
       inventoryDit:               InventoryDit,
       nodeDit:                    NodeDit,
       rudderDit:                  RudderDit,
-      nodeFactRepo:               NodeFactRepository,
+      nodeFactRepo:               NodeFactRepository
   ) {
 
     import QSBackend._

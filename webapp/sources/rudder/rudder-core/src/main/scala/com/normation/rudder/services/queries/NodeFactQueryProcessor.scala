@@ -52,11 +52,11 @@ import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.SelectNodeStatus
+import com.normation.zio._
 import net.liftweb.common.Box
 import zio._
 import zio.stream.ZSink
 import zio.syntax._
-import com.normation.zio._
 
 /*
  * A NodeFactMatcher is the transformation of a query into a method that is able to
@@ -127,18 +127,18 @@ class NodeFactQueryProcessor(
   def processPure(query: Query):                         IOResult[Chunk[CoreNodeFact]] = {
     def process(s: SelectNodeStatus) = {
       for {
-        t0 <- currentTimeMillis
+        t0  <- currentTimeMillis
         m   <- analyzeQuery(query)
-        t1 <- currentTimeMillis
-        _ <- FactQueryProcessorLoggerPure.Metrics.debug(s"Analyse query in ${t1-t0} ms")
+        t1  <- currentTimeMillis
+        _   <- FactQueryProcessorLoggerPure.Metrics.debug(s"Analyse query in ${t1 - t0} ms")
         res <- nodeFactRepo
                  .getAll()(s)
                  .filterZIO(node => FactQueryProcessorLoggerPure.debug(m.debugString) *> processOne(m, node))
                  .run(ZSink.collectAll)
-        t2 <- currentTimeMillis
-        _ <- FactQueryProcessorLoggerPure.Metrics.debug(s"Run query in ${t2-t1} ms")
-        _ <- FactQueryProcessorLoggerPure.debug(s"Found ${res.size} results")
-        _ <- FactQueryProcessorLoggerPure.trace(s"Matching nodes: '${res.map(_.id.value).mkString("', '")}'")
+        t2  <- currentTimeMillis
+        _   <- FactQueryProcessorLoggerPure.Metrics.debug(s"Run query in ${t2 - t1} ms")
+        _   <- FactQueryProcessorLoggerPure.debug(s"Found ${res.size} results")
+        _   <- FactQueryProcessorLoggerPure.trace(s"Matching nodes: '${res.map(_.id.value).mkString("', '")}'")
       } yield res
     }
 

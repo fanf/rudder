@@ -189,7 +189,7 @@ trait TraitTestApiFromYamlFiles extends Specification {
       }
     }
 
-    // the list anyref here is Yaml objects 
+    // the list anyref here is Yaml objects
     def loadYamls(input: IOManaged[InputStream]): IOResult[List[AnyRef]] = {
       for {
         tool  <- IOResult.attempt(new Yaml())
