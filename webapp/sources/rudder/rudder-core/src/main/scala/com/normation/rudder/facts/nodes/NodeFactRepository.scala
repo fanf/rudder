@@ -40,11 +40,15 @@ package com.normation.rudder.facts.nodes
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.inventory.domain._
+import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.rudder.domain.Constants
 import com.normation.rudder.domain.logger.NodeLoggerPure
 import com.normation.rudder.domain.nodes.NodeState
+
 import com.softwaremill.quicklens._
+
 import scala.annotation.nowarn
+
 import zio._
 import zio.concurrent.ReentrantLock
 import zio.stream.ZStream
@@ -283,6 +287,14 @@ object CoreNodeFactRepository {
 trait GetNodesbySofwareName {
   def apply(softName: String): IOResult[List[(NodeId, Software)]]
 }
+
+// default implementation is just a proxy on top of software dao
+class SoftDaoGetNodesbySofwareName(val softwareDao: ReadOnlySoftwareDAO) extends GetNodesbySofwareName {
+  override def apply(softName: String): IOResult[List[(NodeId, Software)]] = {
+    softwareDao.getNodesbySofwareName(softName)
+  }
+}
+
 
 /*
  * The core node fact repository save:

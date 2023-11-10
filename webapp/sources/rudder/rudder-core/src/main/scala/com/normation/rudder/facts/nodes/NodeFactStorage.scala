@@ -44,6 +44,7 @@ import com.normation.errors.IOResult
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core.FullInventoryRepositoryImpl
 import com.normation.inventory.ldap.core.InventoryDitService
+import com.normation.inventory.ldap.core.InventoryMapper
 import com.normation.inventory.ldap.core.LDAPConstants._
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.inventory.services.provisioning.SoftwareDNFinderAction
@@ -494,6 +495,7 @@ class LdapNodeFactStorage(
     nodeDit:                 NodeDit,
     inventoryDitService:     InventoryDitService,
     nodeMapper:              LDAPEntityMapper,
+    inventoryMapper:         InventoryMapper,
     nodeLibMutex:            ScalaReadWriteLock, // that's a scala-level mutex to have some kind of consistency with LDAP
     fullInventoryRepository: FullInventoryRepositoryImpl,
     softwareGet:             ReadOnlySoftwareDAO,
@@ -508,16 +510,18 @@ class LdapNodeFactStorage(
       _          <-
         con.save(nodeMapper.nodeToEntry(nodeFact.toNode)).chainError(s"Cannot save node with id '${nodeFact.id.value}' in LDAP")
       sids       <- if (LdapNodeFactStorage.needsSoftware(attrs)) {
-                      softwareSave
-                        .tryWith(nodeFact.software.map(_.toSoftware).toSet)
-                        .map(m => Some(m.newSoftware.toSeq.map(_.id) ++ m.alreadySavedSoftware.map(_.id)))
+                      for {
+                        merged <- softwareSave.tryWith(nodeFact.software.map(_.toSoftware).toSet)
+                        newSoft = merged.newSoftware.toSeq
+                        _      <- ZIO.foreach(newSoft)(x => con.save(inventoryMapper.entryFromSoftware(x)))
+                      } yield Some(newSoft.map(_.id) ++ merged.alreadySavedSoftware.map(_.id))
                     } else None.succeed
       optCurrent <- nodeFact.rudderSettings.status match {
                       case PendingInventory => getPending(nodeFact.id)(SelectFacts.noSoftware)
                       case _                => getAccepted(nodeFact.id)(SelectFacts.noSoftware)
                     }
       inv         = SelectFacts
-                      .merge(nodeFact, optCurrent)(SelectFacts.noSoftware)
+                      .merge(nodeFact, optCurrent)(attrs)
                       .toFullInventory
                       .modify(_.node.softwareIds)
                       .setToIfDefined(sids)

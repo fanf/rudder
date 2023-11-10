@@ -41,7 +41,6 @@ package services
 import bootstrap.liftweb.RudderConfig
 import com.normation.box._
 import com.normation.cfclerk.domain.HashAlgoConstraint.SHA1
-import com.normation.errors._
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain._
 import com.normation.rudder.batch.AutomaticStartDeployment

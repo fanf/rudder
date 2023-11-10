@@ -54,12 +54,14 @@ import bootstrap.liftweb.checks.migration.MigrateNodeAcceptationInventories
 import bootstrap.liftweb.checks.onetimeinit.CheckInitUserTemplateLibrary
 import bootstrap.liftweb.checks.onetimeinit.CheckInitXmlExport
 import com.normation.appconfig._
+
 import com.normation.box._
 import com.normation.cfclerk.services._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers._
 import com.normation.cfclerk.xmlwriters.SectionSpecWriter
 import com.normation.cfclerk.xmlwriters.SectionSpecWriterImpl
+
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.eventlog.ModificationId
@@ -115,7 +117,6 @@ import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.CoreNodeFactChangeEventCallback
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.facts.nodes.FactNodeSummaryService
-import com.normation.rudder.facts.nodes.GetNodesbySofwareName
 import com.normation.rudder.facts.nodes.LdapNodeFactStorage
 import com.normation.rudder.facts.nodes.MinimalNodeFactInterface
 import com.normation.rudder.facts.nodes.NodeFactChangeEvent
@@ -125,6 +126,7 @@ import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
 import com.normation.rudder.facts.nodes.SelectFacts
+import com.normation.rudder.facts.nodes.SoftDaoGetNodesbySofwareName
 import com.normation.rudder.facts.nodes.WoFactNodeRepositoryProxy
 import com.normation.rudder.git.GitRepositoryProvider
 import com.normation.rudder.git.GitRepositoryProviderImpl
@@ -208,6 +210,7 @@ import com.normation.templates.FillTemplatesService
 import com.normation.utils.CronParser._
 import com.normation.utils.StringUuidGenerator
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
@@ -215,6 +218,7 @@ import com.typesafe.config.ConfigFactory
 import com.unboundid.ldap.sdk.DN
 import com.unboundid.ldap.sdk.RDN
 import com.unboundid.ldif.LDIFChangeRecord
+
 import java.io.File
 import java.nio.file.attribute.PosixFilePermission
 import java.security.Security
@@ -224,8 +228,10 @@ import net.liftweb.common.Loggable
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.joda.time.DateTimeZone
+
 import scala.collection.mutable.Buffer
 import scala.concurrent.duration.FiniteDuration
+
 import zio.{Scheduler => _, System => _, _}
 import zio.concurrent.ReentrantLock
 import zio.syntax._
@@ -1861,17 +1867,14 @@ object RudderConfigInit {
       nodeDit,
       inventoryDitService,
       ldapEntityMapper,
+      inventoryMapper,
       nodeReadWriteMutex,
       deprecated.ldapFullInventoryRepository,
       deprecated.softwareInventoryDAO,
       deprecated.ldapSoftwareSave
     )
 
-    lazy val getNodeBySoftwareName = new GetNodesbySofwareName {
-      override def apply(softName: String): IOResult[List[(NodeId, Software)]] = {
-        deprecated.softwareInventoryDAO.getNodesbySofwareName(softName)
-      }
-    }
+    lazy val getNodeBySoftwareName = new SoftDaoGetNodesbySofwareName(deprecated.softwareInventoryDAO)
 
     lazy val nodeFactRepository = {
 

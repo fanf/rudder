@@ -82,6 +82,10 @@ object MockLdapFactStorage {
     bootstrapLDIFPaths = bootstrapLDIFs,
     ldifLogger
   )
+
+  // for easier access in tests
+  def testServer = ldap.server
+
   // close your eyes for next line
   val ldapRo         = ldap.asInstanceOf[LDAPConnectionProvider[RoLDAPConnection]]
 
@@ -115,6 +119,7 @@ object MockLdapFactStorage {
     nodeDit,
     inventoryDitService,
     ldapMapper,
+    inventoryMapper,
     new ZioTReentrantLock("node-lock"),
     ldapFullInventoryRepository,
     softwareGet,

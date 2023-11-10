@@ -37,19 +37,9 @@
 
 package com.normation.rudder.rest
 
-import com.normation.GitVersion
 import com.normation.GitVersion.Revision
-import com.normation.eventlog.EventActor
-import com.normation.eventlog.ModificationId
-import com.normation.inventory.domain.AcceptedInventory
-import com.normation.inventory.domain.FullInventory
-import com.normation.inventory.domain.NodeInventory
-import com.normation.inventory.domain.NodeSummary
-import com.normation.rudder.NodeDetails
 import com.normation.rudder.domain.policies.RuleId
 import com.normation.rudder.domain.policies.RuleUid
-import com.normation.rudder.facts.nodes.ChangeContext
-import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.zio._
 import net.liftweb.common.Full
 import net.liftweb.http.InMemoryResponse
@@ -58,7 +48,6 @@ import org.junit.runner.RunWith
 import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
 import org.specs2.specification.BeforeAfterAll
-import zio.syntax._
 
 // test that the "+" in path is correctly kept as a "+", not changed into " "
 // See: https://issues.rudder.io/issues/20943
