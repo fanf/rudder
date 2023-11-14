@@ -51,7 +51,6 @@ import org.joda.time.DateTime
 import zio._
 import zio.interop.catz._
 import zio.json.ast._
-import zio.syntax._
 
 /*
  * Repository that deals with users and sessions
