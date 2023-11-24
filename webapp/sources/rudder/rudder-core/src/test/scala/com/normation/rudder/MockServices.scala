@@ -1737,7 +1737,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     DateTime.parse("2021-01-30T01:20+01:00"),
     emptyNodeReportingConfiguration,
     Nil,
-    Some(PolicyMode.Enforce)
+    Some(PolicyMode.Enforce),None
   )
   val root     = NodeInfo(
     rootNode,
@@ -1813,7 +1813,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     DateTime.parse("2021-01-30T01:20+01:00"),
     emptyNodeReportingConfiguration,
     Nil,
-    Some(PolicyMode.Enforce)
+    Some(PolicyMode.Enforce),None
   )
 
   val node1 = NodeInfo(
@@ -1914,7 +1914,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     DateTime.parse("2021-01-30T01:20+01:00"),
     emptyNodeReportingConfiguration,
     Nil,
-    None
+    None,None
   )
 
   val dscNode1 = NodeInfo(
@@ -2023,7 +2023,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
   ).toSet
 
   def newNode(id: NodeId) =
-    Node(id, "", "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None)
+    Node(id, "", "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None,None)
 
   val nodes = (
     Set(root, node1, node2) ++ nodeIds.map { id =>

@@ -55,6 +55,7 @@ import com.normation.rudder.domain.queries.ResultTransformation
 import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SelectNodeStatus
 import com.normation.rudder.hooks.HookEnvPairs
 import com.normation.rudder.hooks.HooksLogger
@@ -236,7 +237,7 @@ trait ListNewNode {
 
 class FactListNewNodes(backend: NodeFactRepository) extends ListNewNode {
   override def listNewNodes: IOResult[Seq[CoreNodeFact]] = {
-    backend.getAll()(SelectNodeStatus.Pending).run(ZSink.collectAll)
+    backend.getAll()(QueryContext.testQC, SelectNodeStatus.Pending).run(ZSink.collectAll)
   }
 }
 
@@ -292,7 +293,9 @@ class ComposedNewNodeManager[A](
   def refuse(id: NodeId)(implicit cc: ChangeContext): IOResult[CoreNodeFact] = {
     for {
       cnf <-
-        nodeFactRepo.get(id)(SelectNodeStatus.Pending).notOptional(s"Node with id '${id.value}' was not found in pending nodes")
+        nodeFactRepo
+          .get(id)(QueryContext.testQC, SelectNodeStatus.Pending)
+          .notOptional(s"Node with id '${id.value}' was not found in pending nodes")
       _   <- refuseOne(cnf)
       _   <- nodeFactRepo.delete(id)
     } yield cnf
@@ -326,7 +329,9 @@ class ComposedNewNodeManager[A](
 
     for {
       // Get inventory og the node
-      cnf       <- nodeFactRepo.get(id)(SelectNodeStatus.Pending).notOptional(s"Missing inventory for node with ID: '${id.value}'")
+      cnf       <- nodeFactRepo
+                     .get(id)(QueryContext.testQC, SelectNodeStatus.Pending)
+                     .notOptional(s"Missing inventory for node with ID: '${id.value}'")
       // Pre accept it
       preAccept <- passPreAccept(cnf)
       // Accept it

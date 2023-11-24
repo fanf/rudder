@@ -75,6 +75,7 @@ import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepositoryProxy
 import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SelectFacts
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.rudder.reports.execution.AgentRunWithNodeConfig
@@ -773,7 +774,16 @@ class NodeApiService(
     template match {
       case AcceptedNodeTemplate(_, properties, policyMode, state) =>
         newNodeManager
-          .accept(id)(ChangeContext(ModificationId(uuidGen.newUuid), eventActor, DateTime.now(), None, Some(actorIp)))
+          .accept(id)(
+            ChangeContext(
+              ModificationId(uuidGen.newUuid),
+              eventActor,
+              DateTime.now(),
+              None,
+              Some(actorIp),
+              QueryContext.testQC.nodePerms
+            )
+          )
           .mapError(err => CreationError.OnAcceptation((s"Can not accept node '${id.value}': ${err.fullMsg}"))) *>
         NodeSetup(properties, policyMode, state).succeed
       case PendingNodeTemplate(_, properties)                     =>
@@ -809,7 +819,7 @@ class NodeApiService(
   def saveRudderNode(id: NodeId, setup: NodeSetup): IO[CreationError, NodeId] = {
     // a default Node
     def default() =
-      Node(id, id.value, "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None)
+      Node(id, id.value, "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None,None)
 
     (for {
       ldap    <- ldapConnection
@@ -1191,7 +1201,7 @@ class NodeApiService(
         nodeStatusAction match {
           case Full(nodeStatusAction) =>
             modifyStatusFromAction(ids, nodeStatusAction)(
-              ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp))
+              ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp), QueryContext.testQC.nodePerms)
             ) match {
               case Full(result) =>
                 toJsonResponse(None, ("nodes" -> JArray(result)))
@@ -1584,7 +1594,9 @@ class NodeApiService(
     implicit val action = "deleteNode"
     val modId           = ModificationId(uuidGen.newUuid)
 
-    removeNodeService.removeNodePure(id, mode)(ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp))).toBox match {
+    removeNodeService
+      .removeNodePure(id, mode)(ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp), QueryContext.testQC.nodePerms))
+      .toBox match {
       case Full(info) =>
         toJsonResponse(None, ("nodes" -> JArray(restSerializer.serializeNodeInfo(info, "deleted") :: Nil)))
 

@@ -103,6 +103,10 @@ final case class RudderAgent(
   def toAgentInfo = AgentInfo(agentType, Some(version), securityToken, capabilities.toSet)
 }
 
+// A security token for now is just a a list of tags denoting tenants
+// That security tag is not exposed in proxy service
+final case class SecurityTag(tenants: Chunk[String])
+
 // rudder settings for that node
 final case class RudderSettings(
     keyStatus:              KeyStatus,
@@ -111,7 +115,8 @@ final case class RudderSettings(
     status:                 InventoryStatus,
     state:                  NodeState,
     policyMode:             Option[PolicyMode],
-    policyServerId:         NodeId
+    policyServerId:         NodeId,
+    security:               Option[SecurityTag] // optional for backward compat. None means "no tenant"
 )
 
 final case class InputDevice(caption: String, description: String, @jsonField("type") tpe: String)
@@ -232,7 +237,8 @@ object MinimalNodeFactInterface {
     node.creationDate,
     node.rudderSettings.reportingConfiguration,
     node.properties.toList,
-    node.rudderSettings.policyMode
+    node.rudderSettings.policyMode,
+    node.rudderSettings.security
   )
 
   def toNodeInfo(node: MinimalNodeFactInterface, ram: Option[MemorySize], archDescription: Option[String]): NodeInfo = NodeInfo(
@@ -559,7 +565,8 @@ object NodeFact {
         inventory.fold(identity, _.node.main.status),
         nodeInfo.state,
         nodeInfo.policyMode,
-        nodeInfo.policyServerId
+        nodeInfo.policyServerId,
+        nodeInfo.node.securityTag
       ),
       RudderAgent(
         nodeInfo.agentsName(0).agentType,
@@ -617,7 +624,8 @@ object NodeFact {
       status,
       NodeState.Enabled,
       None,
-      NodeId("root")
+      NodeId("root"),
+      None
     )
   }
 
@@ -1289,17 +1297,95 @@ object NodeFactChangeEvent {
   }
 }
 
+/*
+ * A change context groups together information needed to track a change: who, when, why
+ */
 final case class ChangeContext(
     modId:     ModificationId,
     actor:     EventActor,
     eventDate: DateTime,
     message:   Option[String],
-    actorIp:   Option[String]
+    actorIp:   Option[String],
+    nodePerms: NodeSecurityContext
 )
 
 object ChangeContext {
-  def newForRudder(msg: Option[String] = None, actorIp: Option[String] = None) =
-    ChangeContext(ModificationId(java.util.UUID.randomUUID.toString), eventlog.RudderEventActor, DateTime.now(), msg, actorIp)
+  implicit class ChangeContextImpl(cc: ChangeContext) {
+    def toQuery: QueryContext = QueryContext(cc.actor, cc.nodePerms)
+  }
+
+  def newForRudder(msg: Option[String] = None, actorIp: Option[String] = None) = {
+    ChangeContext(
+      ModificationId(java.util.UUID.randomUUID.toString),
+      eventlog.RudderEventActor,
+      DateTime.now(),
+      msg,
+      actorIp,
+      NodeSecurityContext.All
+    )
+  }
+}
+
+/*
+ * A query context groups together information that are needed to either filter out
+ * some result regarding a security context, or to enhance query efficiency by limiting
+ * the item to retrieve. It's granularity is at the item level, not attribute level. For that
+ * latter need, by-item solution need to be used (see for ex: SelectFacts for nodes)
+ */
+final case class QueryContext(
+    actor:     EventActor,
+    nodePerms: NodeSecurityContext
+)
+
+object QueryContext {
+  // for test
+  implicit val testQC: QueryContext = QueryContext(eventlog.RudderEventActor, NodeSecurityContext.All)
+}
+
+sealed trait NodeSecurityContext { def value: String }
+object NodeSecurityContext       {
+
+  // a context that can see all nodes whatever their security tags
+  case object All                              extends NodeSecurityContext { override val value = "all"  }
+  // a security context that can't see any node. Very good for performance.
+  case object None                             extends NodeSecurityContext { override val value = "none" }
+  // a security context associated with a list of tags. If the node share at least one of the
+  // tags, if can be seen. Be careful, it's really just non-empty interesting (so that adding
+  // more tag here leads to more nodes, not less).
+  // tags should be \ascii\num_-
+  final case class ByTags(tags: Chunk[String]) extends NodeSecurityContext {
+    override val value = s"tags:[${tags.mkString(", ")}]"
+  }
+
+  /*
+   * check if the given security context allows to access items marked with
+   * that tag
+   */
+  implicit class CheckPermission(val nsc: NodeSecurityContext) extends AnyVal {
+    def isNone: Boolean = {
+      nsc == None
+    }
+
+    def canSee(nodeTag: SecurityTag): Boolean = {
+      nsc match {
+        case All          => true
+        case None         => false
+        case ByTags(tags) => tags.exists(s => nodeTag.tenants.exists(_ == s))
+      }
+    }
+
+    def canSee(optTag: Option[SecurityTag]): Boolean = {
+      optTag match {
+        case Some(t)    => canSee(t)
+        case scala.None => true
+      }
+    }
+
+    def canSee(n: MinimalNodeFactInterface): Boolean = {
+      canSee(n.rudderSettings.security)
+    }
+  }
+
 }
 
 final case class NodeFactChangeEventCC(
@@ -1428,6 +1514,7 @@ object NodeFactSerialisation {
       _.name
     )
 
+    implicit val codecSecurityTag:    JsonCodec[SecurityTag]    = DeriveJsonCodec.gen
     implicit val codecNodeState:      JsonCodec[NodeState]      = JsonCodec.string.transformOrFail[NodeState](NodeState.parse, _.name)
     implicit val codecRudderSettings: JsonCodec[RudderSettings] = DeriveJsonCodec.gen
     implicit val codecAgentType:      JsonCodec[AgentType]      =

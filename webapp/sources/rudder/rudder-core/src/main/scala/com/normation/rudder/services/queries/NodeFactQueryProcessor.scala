@@ -51,6 +51,7 @@ import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.domain.queries._
 import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SelectNodeStatus
 import com.normation.zio._
 import net.liftweb.common.Box
@@ -132,7 +133,7 @@ class NodeFactQueryProcessor(
         t1  <- currentTimeMillis
         _   <- FactQueryProcessorLoggerPure.Metrics.debug(s"Analyse query in ${t1 - t0} ms")
         res <- nodeFactRepo
-                 .getAll()(s)
+                 .getAll()(QueryContext.testQC, s)
                  .filterZIO(node => FactQueryProcessorLoggerPure.debug(m.debugString) *> processOne(m, node))
                  .run(ZSink.collectAll)
         t2  <- currentTimeMillis

@@ -298,8 +298,10 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
   val fqdn         = "node2.rudder.local"
 
   implicit val cc: ChangeContext = ChangeContext.newForRudder()
+  import QueryContext.testQC
 
   "Saving a new, unknown inventory" should {
+    implicit val status = SelectNodeStatus.Pending
 
     "correctly save the node in pending" in {
       resetLog
@@ -313,7 +315,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
       )) and
       (receivedInventoryFile(nodeName).exists must beTrue) and
       (checkPendingNodeExists(nodeId) must beTrue) and
-      (factRepo.get(nodeId)(SelectNodeStatus.Pending).runNow must beSome()) and
+      (factRepo.get(nodeId).runNow must beSome()) and
       (getLogName must beEqualTo(Chunk("newPending")).eventually(2, 100.millis.asScala))
     }
 
@@ -321,7 +323,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
       implicit val attrs = SelectFacts.none
       resetLog
       val e              = (for {
-        n <- factRepo.get(nodeId)(SelectNodeStatus.Pending).notOptional("node2 should be there for the test")
+        n <- factRepo.get(nodeId).notOptional("node2 should be there for the test")
         e <- factRepo.save(NodeFact.fromMinimal(n).modify(_.fqdn).setTo(newfqdn))
       } yield e).runNow
 
@@ -339,7 +341,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
       (inventoryProcessor.saveInventoryBlocking(InventoryPair(n2, n2sign)).runNow must beEqualTo(
         Saved(nodeName, nodeId)
       )) and
-      (factRepo.get(nodeId)(SelectNodeStatus.Pending).testRunGet.fqdn must beEqualTo(fqdn)) and
+      (factRepo.get(nodeId).testRunGet.fqdn must beEqualTo(fqdn)) and
       (getPendingNodeAsString(nodeId).contains(fqdn) must beTrue) and
       (getLogName must beEqualTo(Chunk("updatedPending")).eventually(2, 100.millis.asScala))
     }
@@ -348,7 +350,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
       val prop           = NodeProperty("test-prop-name", ConfigValueFactory.fromAnyRef("test-prop-value"), None, None)
       implicit val attrs = SelectFacts.none
       val n              = (for {
-        cnf   <- factRepo.get(nodeId)(SelectNodeStatus.Pending).notOptional(s"for test - the node was added earlier")
+        cnf   <- factRepo.get(nodeId).notOptional(s"for test - the node was added earlier")
         up     = cnf
                    .modify(_.rudderSettings.state)
                    .setTo(NodeState.Initializing)
@@ -357,7 +359,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
                    .modify(_.properties)
                    .using(_.appended(prop))
         _     <- factRepo.save(NodeFact.fromMinimal(up))
-        check <- factRepo.get(nodeId)(SelectNodeStatus.Pending).notOptional(s"for test - update node must be here")
+        check <- factRepo.get(nodeId).notOptional(s"for test - update node must be here")
       } yield check).runNow
 
       val entries = getPendingNodeAsString(nodeId)
@@ -377,20 +379,22 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
   }
 
   "Accepting a new, unknown inventory" should {
+    implicit val status = SelectNodeStatus.Accepted
+
 
     "correctly update status and move file around" in {
       resetLog
       val e = factRepo.changeStatus(nodeId, AcceptedInventory).runNow
       (e.event must beAnInstanceOf[NodeFactChangeEvent.Accepted]) and
       (checkAcceptedNodeExists(nodeId) must beTrue) and
-      (factRepo.get(nodeId)(SelectNodeStatus.Accepted).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
+      (factRepo.get(nodeId).testRunGet.rudderSettings.status must beEqualTo(AcceptedInventory)) and
       (getLogName must beEqualTo(Chunk("accepted")).eventually(2, 100.millis.asScala))
     }
     "change in node by repos are reflected in file" in {
       resetLog
       val e = (
         for {
-          n <- factRepo.get(nodeId)(SelectNodeStatus.Accepted).notOptional("node2 should be there for the test")
+          n <- factRepo.get(nodeId).notOptional("node2 should be there for the test")
           e <- factRepo.save(NodeFact.fromMinimal(n).modify(_.fqdn).setTo(newfqdn))
         } yield e
       ).runNow
@@ -410,13 +414,14 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
           Saved(nodeName, nodeId)
         )
       ) and
-      (factRepo.get(nodeId)(SelectNodeStatus.Accepted).testRunGet.fqdn must beEqualTo(fqdn)) and
+      (factRepo.get(nodeId).testRunGet.fqdn must beEqualTo(fqdn)) and
       (getAcceptedNodeAsString(nodeId).contains(fqdn) must beTrue) and
       (getLogName must beEqualTo(Chunk("updatedAccepted")).eventually(2, 100.millis.asScala))
     }
   }
 
   "Changing status to deleted" should {
+    implicit val status = SelectNodeStatus.Any
 
     "correctly delete node and value in repos" in {
       resetLog
@@ -425,7 +430,7 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
       (e.event must beAnInstanceOf[NodeFactChangeEvent.Deleted]) and
       (checkPendingNodeExists(nodeId) must beFalse) and
       (checkAcceptedNodeExists(nodeId) must beFalse) and
-      (factRepo.get(nodeId)(SelectNodeStatus.Any).runNow must beNone) and
+      (factRepo.get(nodeId).runNow must beNone) and
       (getLogName must beEqualTo(Chunk("deleted")).eventually(2, 100.millis.asScala))
     }
   }

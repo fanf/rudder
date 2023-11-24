@@ -73,6 +73,7 @@ import com.normation.rudder.domain.properties.GroupProperty
 import com.normation.rudder.domain.properties.InheritMode
 import com.normation.rudder.domain.properties.NodeProperty
 import com.normation.rudder.domain.properties.PropertyProvider
+import com.normation.rudder.facts.nodes.SecurityTag
 import com.normation.rudder.reports._
 import com.normation.rudder.repository.json.DataExtractor.CompleteJson
 import com.normation.rudder.rule.category.RuleCategory
@@ -202,6 +203,7 @@ class LDAPEntityMapper(
                                     case Some(value) => PolicyMode.parse(value).map(Some(_))
                                   }
         properties             <- e.valuesFor(A_NODE_PROPERTY).toList.traverse(NodeProperty.unserializeLdapNodeProperty)
+        securityTags            = e.valuesForChunk(A_SECURITY_TAG)
       } yield {
         val hostname = e(A_NAME).getOrElse("")
         Node(
@@ -224,7 +226,8 @@ class LDAPEntityMapper(
             agentReportingProtocol
           ),
           properties,
-          policyMode
+          policyMode,
+          if (securityTags.isEmpty) None else Some(SecurityTag(securityTags))
         )
       }
     } else {
@@ -288,6 +291,7 @@ class LDAPEntityMapper(
 
                     Nil, // we forgot node properties
 
+                    None,
                     None
                   )
       nodeInfo <- inventoryEntriesToNodeInfos(node, inventoryEntry, machineEntry)
