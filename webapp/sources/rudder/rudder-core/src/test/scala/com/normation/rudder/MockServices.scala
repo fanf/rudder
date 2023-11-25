@@ -39,12 +39,14 @@ package com.normation.rudder
 
 import better.files._
 import com.normation.GitVersion
+
 import com.normation.box._
 import com.normation.cfclerk.domain._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers.SectionSpecParser
 import com.normation.cfclerk.xmlparsers.TechniqueParser
 import com.normation.cfclerk.xmlparsers.VariableSpecParser
+
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.eventlog.EventActor
@@ -105,6 +107,7 @@ import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepositoryProxy
 import com.normation.rudder.facts.nodes.NodeFactStorage
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SelectFacts
 import com.normation.rudder.facts.nodes.SoftDaoGetNodesbySofwareName
 import com.normation.rudder.facts.nodes.StorageChangeEventDelete
@@ -143,6 +146,7 @@ import com.normation.rudder.services.servers.PolicyServersUpdateCommand
 import com.normation.rudder.services.servers.RelaySynchronizationMethod.Classic
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
+
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import com.unboundid.ldap.sdk.DN
@@ -154,10 +158,12 @@ import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.lib.ObjectId
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
+
 import scala.annotation.tailrec
 import scala.collection.immutable.{SortedMap => ISortedMap}
 import scala.util.control.NonFatal
 import scala.xml.Elem
+
 import zio.{System => _, Tag => _, _}
 import zio.json.jsonDiscriminator
 import zio.json.jsonHint
@@ -2125,6 +2131,8 @@ class MockNodes() {
   }
 
   object softwareDao extends ReadOnlySoftwareDAO {
+    implicit val qc: QueryContext = QueryContext.todoQC
+
     val softRef = Ref.Synchronized.make(MockNodes.softwares.map(s => (s.id, s)).toMap).runNow
 
     override def getSoftware(ids: Seq[SoftwareUuid]): IOResult[Seq[Software]] = {
@@ -2271,6 +2279,8 @@ class MockNodes() {
   val woNodeRepository        = new WoFactNodeRepositoryProxy(nodeFactRepo)
 
   object newNodeManager extends NewNodeManager {
+    implicit val qc: QueryContext = QueryContext.todoQC
+
     val list = new FactListNewNodes(nodeFactRepo)
 
     override def listNewNodes: IOResult[Seq[CoreNodeFact]] = list.listNewNodes

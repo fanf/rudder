@@ -85,52 +85,52 @@ class NodeFactInventorySaver(
  * Proxy for node fact to full inventory / node inventory / machine inventory / node info and their repositories
  */
 class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService {
-  import QueryContext.testQC
+  import QueryContext.todoQC
 
   override def getNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
-    backend.get(nodeId)(testQC, SelectNodeStatus.Accepted).map(_.map(_.toNodeInfo))
+    backend.get(nodeId)(todoQC, SelectNodeStatus.Accepted).map(_.map(_.toNodeInfo))
   }
 
   override def getNodeInfos(nodeIds: Set[NodeId]): IOResult[Set[NodeInfo]] = {
     backend
-      .getAll()(testQC, SelectNodeStatus.Accepted)
+      .getAll()(todoQC, SelectNodeStatus.Accepted)
       .collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }
       .run(ZSink.collectAllToSet)
   }
 
   override def getNodeInfosSeq(nodeIds: Seq[NodeId]): IOResult[Seq[NodeInfo]] = {
     backend
-      .getAll()(testQC, SelectNodeStatus.Accepted)
+      .getAll()(todoQC, SelectNodeStatus.Accepted)
       .collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }
       .run(ZSink.collectAll)
       .map(_.toSeq)
   }
 
   override def getNumberOfManagedNodes: IOResult[Int] = {
-    backend.getAll()(testQC, SelectNodeStatus.Accepted).run(ZSink.count).map(_.toInt)
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).run(ZSink.count).map(_.toInt)
   }
 
   override def getAll(): IOResult[Map[NodeId, NodeInfo]] = {
-    backend.getAll()(testQC, SelectNodeStatus.Accepted).map(_.toNodeInfo) run (ZSink.collectAllToMap[NodeInfo, NodeId](_.node.id)(
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNodeInfo) run (ZSink.collectAllToMap[NodeInfo, NodeId](_.node.id)(
       (a, b) => b
     ))
   }
 
   override def getAllNodesIds(): IOResult[Set[NodeId]] = {
-    backend.getAll()(testQC, SelectNodeStatus.Accepted).map(_.id).run(ZSink.collectAllToSet)
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.id).run(ZSink.collectAllToSet)
   }
 
   override def getAllNodes(): IOResult[Map[NodeId, Node]] = {
-    backend.getAll()(testQC, SelectNodeStatus.Accepted).map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
   }
 
   override def getAllNodeInfos(): IOResult[Seq[NodeInfo]] = {
-    backend.getAll()(testQC, SelectNodeStatus.Accepted).map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
   }
 
   override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = {
     backend
-      .getAll()(testQC, SelectNodeStatus.Accepted)
+      .getAll()(todoQC, SelectNodeStatus.Accepted)
       .collect { case n if (n.rudderSettings.kind != NodeKind.Node) => n.id }
       .run(ZSink.collectAll)
       .map(_.toSeq)
@@ -138,13 +138,13 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
 
   override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
     backend
-      .getAll()(testQC, SelectNodeStatus.Pending)
+      .getAll()(todoQC, SelectNodeStatus.Pending)
       .map(_.toNodeInfo)
       .run(ZSink.collectAllToMap[NodeInfo, NodeId](_.id)((a, b) => b))
   }
 
   override def getPendingNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
-    backend.get(nodeId)(testQC, SelectNodeStatus.Pending).map(_.map(_.toNodeInfo))
+    backend.get(nodeId)(todoQC, SelectNodeStatus.Pending).map(_.map(_.toNodeInfo))
   }
 
   // not supported anymore
@@ -166,7 +166,7 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
  */
 class NodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
     extends FullInventoryRepository[Unit] with ReadOnlySoftwareNameDAO {
-  import QueryContext.testQC
+  import QueryContext.todoQC
 
   override def get(id: NodeId, inventoryStatus: InventoryStatus): IOResult[Option[FullInventory]] = {
     backend.slowGetCompat(id, inventoryStatus, SelectFacts.noSoftware).map(_.map(_.toFullInventory))
@@ -213,7 +213,7 @@ class NodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
       ZIO
         .foreach(nodeIds.toList) {
           case id =>
-            backend.slowGet(id)(testQC, s, attrs).map(_.map(n => (n.id, n.software.map(_.toSoftware))))
+            backend.slowGet(id)(todoQC, s, attrs).map(_.map(n => (n.id, n.software.map(_.toSoftware))))
         }
         .map(_.flatten.toMap)
     }
@@ -231,17 +231,17 @@ class NodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
 }
 
 class WoFactNodeRepositoryProxy(backend: NodeFactRepository) extends WoNodeRepository {
-  import QueryContext.testQC
+  import QueryContext.todoQC
 
   override def updateNode(node: Node, modId: ModificationId, actor: EventActor, reason: Option[String]): IOResult[Node] = {
     for {
-      opt  <- backend.get(node.id)(testQC, SelectNodeStatus.Any)
+      opt  <- backend.get(node.id)(todoQC, SelectNodeStatus.Any)
       fact <- opt match {
                 case None       => Inconsistency(s"Node with id '${node.id.value}' was not found").fail
                 case Some(fact) => CoreNodeFact.updateNode(fact, node).succeed
               }
       _    <- backend.save(NodeFact.fromMinimal(fact))(
-                ChangeContext(modId, actor, DateTime.now(), reason, None, testQC.nodePerms),
+                ChangeContext(modId, actor, DateTime.now(), reason, None, todoQC.nodePerms),
                 SelectFacts.none
               )
     } yield fact.toNode
@@ -274,7 +274,7 @@ class WoFactNodeRepositoryProxy(backend: NodeFactRepository) extends WoNodeRepos
                     .setToIfDefined(agentKeyStatus)
         _      <-
           backend.save(NodeFact.fromMinimal(newNode))(
-            ChangeContext(modId, actor, DateTime.now(), reason, None, testQC.nodePerms),
+            ChangeContext(modId, actor, DateTime.now(), reason, None, todoQC.nodePerms),
             SelectFacts.none
           )
       } yield ()

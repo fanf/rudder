@@ -1340,6 +1340,9 @@ final case class QueryContext(
 object QueryContext {
   // for test
   implicit val testQC: QueryContext = QueryContext(eventlog.RudderEventActor, NodeSecurityContext.All)
+
+  // for place that didn't get a real node security context yet
+  implicit val todoQC: QueryContext = QueryContext(eventlog.RudderEventActor, NodeSecurityContext.All)
 }
 
 sealed trait NodeSecurityContext { def value: String }

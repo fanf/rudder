@@ -208,6 +208,9 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
 
   def factStorage: NodeFactStorage
 
+  implicit val cc: ChangeContext = ChangeContext.newForRudder()
+  import QueryContext.testQC
+
   // TODO WARNING POC: this can't work on a machine with lots of node
   val callbackLog = Ref.make(Chunk.empty[NodeFactChangeEvent]).runNow
   def resetLog    = callbackLog.set(Chunk.empty).runNow
@@ -297,8 +300,6 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
   val newfqdn      = "node42.fqdn"
   val fqdn         = "node2.rudder.local"
 
-  implicit val cc: ChangeContext = ChangeContext.newForRudder()
-  import QueryContext.testQC
 
   "Saving a new, unknown inventory" should {
     implicit val status = SelectNodeStatus.Pending

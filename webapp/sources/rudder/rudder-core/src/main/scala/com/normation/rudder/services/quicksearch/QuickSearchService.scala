@@ -44,8 +44,10 @@ import com.normation.ldap.sdk.RoLDAPConnection
 import com.normation.rudder.domain.NodeDit
 import com.normation.rudder.domain.RudderDit
 import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.utils.Control._
+
 import net.liftweb.common.Box
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Full
@@ -75,7 +77,7 @@ class FullQuickSearchService(implicit
    * The results are raw: they are not sorted, and may be not unique for
    * a given id (i.e, we can have to answer for the node id "root").
    */
-  def search(token: String): Box[Set[QuickSearchResult]] = {
+  def search(token: String)(implicit qc: QueryContext): Box[Set[QuickSearchResult]] = {
     for {
       query   <- token.parse()
       _        = logger.debug(
@@ -116,7 +118,7 @@ object QuickSearchService {
 
     import QSBackend._
 
-    def search(query: Query): Box[Seq[QuickSearchResult]] = b match {
+    def search(query: Query)(implicit qc: QueryContext): Box[Seq[QuickSearchResult]] = b match {
       case LdapBackend      => QSLdapBackend.search(query)
       case DirectiveBackend => QSDirectiveBackend.search(query)
       case NodeFactBackend  => QSNodeFactBackend.search(query)

@@ -47,8 +47,10 @@ import com.normation.rudder.api._
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.logger.ApplicationLoggerPure
 import com.normation.rudder.domain.logger.PluginLogger
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.rest.RoleApiMapping
 import com.normation.rudder.web.services.RudderUserDetail
+
 import com.normation.zio._
 import java.io.File
 import java.io.FileInputStream
@@ -60,9 +62,11 @@ import java.util.Collection
 import org.bouncycastle.util.encoders.Hex
 import org.springframework.security.core.GrantedAuthority
 import org.xml.sax.SAXParseException
+
 import scala.collection.immutable.SortedMap
 import scala.jdk.CollectionConverters._
 import scala.xml.Elem
+
 import zio._
 import zio.syntax._
 
@@ -245,7 +249,7 @@ object ValidatedUserList {
               seq.sortBy(_.path)(AclPath.orderingaAclPath).sortBy(_.path.parts.head.value)
           }
           .toList
-        RudderUserDetail(user, roles.toSet, ApiAuthorization.ACL(acls))
+        RudderUserDetail(user, roles.toSet, ApiAuthorization.ACL(acls), QueryContext.todoQC.nodePerms)
     }
     val filteredUsers = filterByCaseSensitivity(userDetails.toList, accountConfig.isCaseSensitive)
     ValidatedUserList(accountConfig.encoder, accountConfig.isCaseSensitive, accountConfig.customRoles, filteredUsers)

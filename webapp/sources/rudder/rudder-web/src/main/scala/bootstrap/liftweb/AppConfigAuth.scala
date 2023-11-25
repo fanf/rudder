@@ -42,11 +42,15 @@ import com.normation.rudder.Role
 import com.normation.rudder.RudderAccount
 import com.normation.rudder.api._
 import com.normation.rudder.domain.logger.ApplicationLogger
+import com.normation.rudder.facts.nodes.NodeSecurityContext
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.web.services.RudderUserDetail
 import com.normation.rudder.web.services.UserSessionLogEvent
+
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
+
 import java.util.Collection
 import javax.servlet.Filter
 import javax.servlet.FilterChain
@@ -82,6 +86,7 @@ import org.springframework.security.ldap.userdetails.UserDetailsContextMapper
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler
+
 import scala.annotation.nowarn
 
 /**
@@ -251,7 +256,8 @@ class AppConfigAuth extends ApplicationContextAware {
                 password
               ),
               Set(Role.Administrator),
-              SYSTEM_API_ACL
+              SYSTEM_API_ACL,
+              NodeSecurityContext.All
             )
           )
         )
@@ -379,7 +385,10 @@ class RudderXmlUserDetailsContextMapper(authConfigProvider: UserDetailListProvid
       authorities: Collection[_ <: GrantedAuthority]
   ): UserDetails = {
     authConfigProvider.authConfig.users
-      .getOrElse(username, RudderUserDetail(RudderAccount.User(username, ""), Set(Role.NoRights), ApiAuthorization.None))
+      .getOrElse(
+        username,
+        RudderUserDetail(RudderAccount.User(username, ""), Set(Role.NoRights), ApiAuthorization.None, NodeSecurityContext.None)
+      )
   }
 }
 
@@ -586,7 +595,8 @@ class RestAuthenticationFilter(
                 RudderUserDetail(
                   RudderAccount.Api(apiV1Account),
                   RudderAuthType.Api.apiRudderRole,
-                  ApiAuthorization.None // un-authenticated APIv1 token certainly doesn't get any authz on v2 API
+                  ApiAuthorization.None, // un-authenticated APIv1 token certainly doesn't get any authz on v2 API
+                  NodeSecurityContext.None // ApiV1 should not have to deal with nodes
                 )
               )
               chain.doFilter(request, response)
@@ -607,8 +617,8 @@ class RestAuthenticationFilter(
                 RudderUserDetail(
                   RudderAccount.Api(systemAccount),
                   Set(Role.Administrator), // this token has "admin rights - use with care
-
-                  systemApiAcl
+                  systemApiAcl,
+                  NodeSecurityContext.All
                 )
               )
 
@@ -642,7 +652,8 @@ class RestAuthenticationFilter(
                             val user = RudderUserDetail(
                               RudderAccount.Api(principal),
                               RudderAuthType.Api.apiRudderRole,
-                              authz
+                              authz,
+                              QueryContext.todoQC.nodePerms
                             )
                             // cool, build an authentication token from it
                             authenticate(user)
@@ -665,7 +676,8 @@ class RestAuthenticationFilter(
                               RudderUserDetail(
                                 RudderAccount.Api(principal),
                                 u.roles,
-                                u.apiAuthz
+                                u.apiAuthz,
+                                u.nodePerms
                               )
                             )
                             chain.doFilter(request, response)

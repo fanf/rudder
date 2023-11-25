@@ -47,11 +47,14 @@ import com.normation.rudder.services.quicksearch.FullQuickSearchService
 import com.normation.rudder.services.quicksearch.QSObject
 import com.normation.rudder.services.quicksearch.QuickSearchResult
 import com.normation.rudder.web.model.LinkUtil
+import com.normation.rudder.web.services.CurrentUser
+
 import net.liftweb.common._
 import net.liftweb.http.rest.RestHelper
 import net.liftweb.json.JArray
 import net.liftweb.json.JsonAST._
 import net.liftweb.json.JsonDSL._
+
 import scala.collection.Seq
 
 /**
@@ -94,7 +97,7 @@ class RestQuicksearch(
           // Should not happen, but for now make one token from it, maybe we should only take head ?
           case Some(values)       => values.mkString("")
         }
-        quicksearch.search(token) match {
+        quicksearch.search(token)(CurrentUser.queryContext) match {
           case eb: EmptyBox =>
             val e = eb ?~! s"Error when looking for object containing ${token}"
             toJsonError(None, e.messageChain)

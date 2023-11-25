@@ -152,7 +152,7 @@ class AcceptNode extends Loggable {
           DateTime.now(),
           None,
           S.request.map(_.remoteAddr).toOption,
-          QueryContext.testQC.nodePerms
+          QueryContext.todoQC.nodePerms
         )
       }
       val now    = System.currentTimeMillis
@@ -191,7 +191,7 @@ class AcceptNode extends Loggable {
             DateTime.now(),
             None,
             S.request.map(_.remoteAddr).toOption,
-            QueryContext.testQC.nodePerms
+            QueryContext.todoQC.nodePerms
           )
         )
         .toBox match {
@@ -260,7 +260,7 @@ class AcceptNode extends Loggable {
     }
 
     nodeFactRepository
-      .getAll()(QueryContext.testQC, SelectNodeStatus.Pending)
+      .getAll()(QueryContext.todoQC, SelectNodeStatus.Pending)
       .collect { case n if (listNode.contains(n.id)) => n.toSrv }
       .run(ZSink.collectAll)
       .toBox match {

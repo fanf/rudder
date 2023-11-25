@@ -422,6 +422,7 @@ class NodeApi(
     val restExtractor = restExtractorService
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       implicit val prettify = params.prettify
+      implicit val qc = QueryContext(authzToken.actor, QueryContext.todoQC.nodePerms)
       restExtractor.extractNodeDetailLevel(req.params) match {
         case Full(level) =>
           restExtractor.extractQuery(req.params) match {
@@ -446,6 +447,7 @@ class NodeApi(
     val restExtractor = restExtractorService
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       implicit val prettify = params.prettify
+      implicit val qc = QueryContext(authzToken.actor, QueryContext.todoQC.nodePerms)
       restExtractor.extractNodeDetailLevel(req.params) match {
         case Full(level) =>
           restExtractor.extractQuery(req.params) match {
@@ -781,7 +783,7 @@ class NodeApiService(
               DateTime.now(),
               None,
               Some(actorIp),
-              QueryContext.testQC.nodePerms
+              QueryContext.todoQC.nodePerms
             )
           )
           .mapError(err => CreationError.OnAcceptation((s"Can not accept node '${id.value}': ${err.fullMsg}"))) *>
@@ -818,8 +820,21 @@ class NodeApiService(
    */
   def saveRudderNode(id: NodeId, setup: NodeSetup): IO[CreationError, NodeId] = {
     // a default Node
-    def default() =
-      Node(id, id.value, "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None,None)
+    def default() = {
+      Node(
+        id,
+        id.value,
+        "",
+        NodeState.Enabled,
+        false,
+        false,
+        DateTime.now,
+        ReportingConfiguration(None, None, None),
+        Nil,
+        None,
+        None
+      )
+    }
 
     (for {
       ldap    <- ldapConnection
@@ -1201,7 +1216,7 @@ class NodeApiService(
         nodeStatusAction match {
           case Full(nodeStatusAction) =>
             modifyStatusFromAction(ids, nodeStatusAction)(
-              ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp), QueryContext.testQC.nodePerms)
+              ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp), QueryContext.todoQC.nodePerms)
             ) match {
               case Full(result) =>
                 toJsonResponse(None, ("nodes" -> JArray(result)))
@@ -1227,7 +1242,7 @@ class NodeApiService(
       nodeId:      NodeId,
       detailLevel: NodeDetailLevel,
       state:       InventoryStatus
-  ): IOResult[Option[JValue]] = {
+  )(implicit qc: QueryContext): IOResult[Option[JValue]] = {
     for {
       optNodeInfo <- nodeFactRepository.slowGetCompat(nodeId, state, SelectFacts.fromNodeDetailLevel(detailLevel))
       nodeInfo    <- optNodeInfo match {
@@ -1258,6 +1273,7 @@ class NodeApiService(
       req:         Req
   ) = {
     implicit val prettify = restExtractor.extractPrettify(req.params)
+    implicit val qc = QueryContext.todoQC
     implicit val action   = s"${state.name}NodeDetails"
     getNodeDetails(nodeId, detailLevel, state).either.runNow match {
       case Right(Some(inventory)) =>
@@ -1278,6 +1294,7 @@ class NodeApiService(
 
   def nodeDetailsGeneric(nodeId: NodeId, detailLevel: NodeDetailLevel, version: ApiVersion, req: Req) = {
     implicit val prettify = restExtractor.extractPrettify(req.params)
+    implicit val qc = QueryContext.todoQC
     implicit val action   = "nodeDetails"
     (for {
       accepted  <- getNodeDetails(nodeId, detailLevel, AcceptedInventory)
@@ -1310,8 +1327,10 @@ class NodeApiService(
     }
   }
 
-  def listNodes(state:   InventoryStatus, detailLevel: NodeDetailLevel, nodeFilter: Option[Seq[NodeId]], version: ApiVersion)(
-      implicit prettify: Boolean
+  def listNodes(state: InventoryStatus, detailLevel: NodeDetailLevel, nodeFilter: Option[Seq[NodeId]], version: ApiVersion)(
+      implicit
+      prettify:        Boolean,
+      qc:              QueryContext
   ) = {
     implicit val action = s"list${state.name.capitalize}Nodes"
     val predicate       = (n: NodeFact) => {
@@ -1358,7 +1377,8 @@ class NodeApiService(
   }
 
   def queryNodes(query: Query, state: InventoryStatus, detailLevel: NodeDetailLevel, version: ApiVersion)(implicit
-      prettify:         Boolean
+      prettify:         Boolean,
+      qc:               QueryContext
   ) = {
     implicit val action = s"list${state.name.capitalize}Nodes"
     (for {
@@ -1595,7 +1615,7 @@ class NodeApiService(
     val modId           = ModificationId(uuidGen.newUuid)
 
     removeNodeService
-      .removeNodePure(id, mode)(ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp), QueryContext.testQC.nodePerms))
+      .removeNodePure(id, mode)(ChangeContext(modId, actor, DateTime.now(), None, Some(actorIp), QueryContext.todoQC.nodePerms))
       .toBox match {
       case Full(info) =>
         toJsonResponse(None, ("nodes" -> JArray(restSerializer.serializeNodeInfo(info, "deleted") :: Nil)))

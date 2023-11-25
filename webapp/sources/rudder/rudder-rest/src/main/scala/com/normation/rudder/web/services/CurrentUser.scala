@@ -42,6 +42,9 @@ import com.normation.rudder.Rights
 import com.normation.rudder.RudderAccount
 import com.normation.rudder.User
 import com.normation.rudder.api.ApiAuthorization
+import com.normation.rudder.facts.nodes.NodeSecurityContext
+import com.normation.rudder.facts.nodes.QueryContext
+
 import net.liftweb.http.SessionVar
 import org.springframework.security.core.context.SecurityContextHolder
 
@@ -90,4 +93,11 @@ object CurrentUser extends SessionVar[Option[RudderUserDetail]]({
       case Some(u) => u.apiAuthz
     }
   }
+
+  def nodePerms: NodeSecurityContext = this.get match {
+    case Some(u) => u.nodePerms
+    case None    => NodeSecurityContext.None
+  }
+
+  def queryContext: QueryContext = QueryContext(actor, nodePerms)
 }

@@ -153,6 +153,7 @@ object DisplayNode extends Loggable {
 
   private def loadSoftware(jsId: JsNodeId)(nodeId: String): JsCmd = {
     implicit val attrs = SelectFacts.none.copy(software = SelectFacts.none.software.toRetrieve)
+    implicit val qc = CurrentUser.queryContext
     (for {
       seq       <- nodeFactRepository.slowGet(NodeId(nodeId)).map(_.toList.flatMap(_.software.map(_.toSoftware)))
       gridDataId = htmlId(jsId, "soft_grid_data_")
@@ -1158,7 +1159,7 @@ object DisplayNode extends Loggable {
       DateTime.now(),
       None,
       S.request.map(_.remoteAddr).toOption,
-      QueryContext.testQC.nodePerms
+      QueryContext.todoQC.nodePerms
     )
 
     // only erase for Rudder 8.0
