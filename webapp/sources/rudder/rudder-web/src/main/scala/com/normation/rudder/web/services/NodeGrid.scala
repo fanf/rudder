@@ -277,7 +277,7 @@ final class NodeGrid(
       case Full((nodeId, sm, jsid, status, nodeAndGlobalMode)) =>
         // Node may not be available, so we look for it outside the for comprehension
         SetHtml(jsid, DisplayNode.showPannedContent(nodeAndGlobalMode, sm, status)) &
-        DisplayNode.jsInit(sm.node.main.id, sm.node.softwareIds, "")
+        DisplayNode.jsInit(sm.node.main.id, "")
       case e: EmptyBox =>
         logger.debug((e ?~! "error").messageChain)
         Alert("Called id is not valid: %s".format(jsonArg))

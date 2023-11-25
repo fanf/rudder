@@ -264,7 +264,7 @@ class ShowNodeDetailsFromNode(
             configService.rudder_global_policy_mode().toBox match {
               case Full(globalMode) =>
                 bindNode(node, sm, withinPopup, globalMode) ++ Script(
-                  DisplayNode.jsInit(node.id, sm.node.softwareIds, "") &
+                  DisplayNode.jsInit(node.id, "") &
                   JsRaw(s"""
                     $$('#nodeHostname').html("${xml.Utility.escape(sm.node.main.hostname)}");
                     $$( "#${detailsId}" ).tabs({ active : ${tab} } );

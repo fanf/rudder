@@ -2858,7 +2858,6 @@ object RudderConfigInit {
         ruleApplicationStatusImpl,
         roParameterServiceImpl,
         interpolationCompiler,
-        factFullInventoryRepo,
         globalComplianceModeService,
         globalAgentRunService,
         reportingServiceImpl,
