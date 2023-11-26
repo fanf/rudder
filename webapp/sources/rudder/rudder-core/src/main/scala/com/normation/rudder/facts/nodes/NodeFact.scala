@@ -105,7 +105,12 @@ final case class RudderAgent(
 
 // A security token for now is just a a list of tags denoting tenants
 // That security tag is not exposed in proxy service
-final case class SecurityTag(tenants: Chunk[String])
+final case class SecurityTag(tenants: Chunk[Tenant])
+
+// default serialization for security tag. Be careful, changing that impacts external APIs.
+object SecurityTag {
+  implicit val codecSecurityTag: JsonCodec[SecurityTag] = DeriveJsonCodec.gen
+}
 
 // rudder settings for that node
 final case class RudderSettings(
@@ -1345,35 +1350,58 @@ object QueryContext {
   implicit val todoQC: QueryContext = QueryContext(eventlog.RudderEventActor, NodeSecurityContext.All)
 }
 
+/*
+ * A node can belong to one (or technically more, but we will limit that for now) `tenant`.
+ * A `tenant` is a segregation limit defining an isolated zone.
+ * Tenants should be \ascii\num_-
+ */
+final case class Tenant(value: String) extends AnyVal {
+  def debugString = value
+}
+
+object Tenant {
+
+  implicit val codecTenant: JsonCodec[Tenant] = new JsonCodec[Tenant](
+    JsonEncoder.string.contramap(_.value),
+    JsonDecoder.string.map(Tenant(_))
+  )
+
+}
+
+/*
+ * People can access nodes based on a security context.
+ * For now, there is only three cases:
+ * - access all or none nodes, whatever properties the node has
+ * - access nodes only if they belongs to one of the listed tenants.
+ */
 sealed trait NodeSecurityContext { def value: String }
 object NodeSecurityContext       {
 
   // a context that can see all nodes whatever their security tags
-  case object All                              extends NodeSecurityContext { override val value = "all"  }
+  case object All                                    extends NodeSecurityContext { override val value = "all"  }
   // a security context that can't see any node. Very good for performance.
-  case object None                             extends NodeSecurityContext { override val value = "none" }
-  // a security context associated with a list of tags. If the node share at least one of the
-  // tags, if can be seen. Be careful, it's really just non-empty interesting (so that adding
+  case object None                                   extends NodeSecurityContext { override val value = "none" }
+  // a security context associated with a list of tenants. If the node share at least one of the
+  // tenants, if can be seen. Be careful, it's really just non-empty interesting (so that adding
   // more tag here leads to more nodes, not less).
-  // tags should be \ascii\num_-
-  final case class ByTags(tags: Chunk[String]) extends NodeSecurityContext {
-    override val value = s"tags:[${tags.mkString(", ")}]"
+  final case class ByTenants(tenants: Chunk[Tenant]) extends NodeSecurityContext {
+    override val value = s"tags:[${tenants.mkString(", ")}]"
   }
 
   /*
    * check if the given security context allows to access items marked with
    * that tag
    */
-  implicit class CheckPermission(val nsc: NodeSecurityContext) extends AnyVal {
+  implicit class NodeSecurityContextExt(val nsc: NodeSecurityContext) extends AnyVal {
     def isNone: Boolean = {
       nsc == None
     }
 
     def canSee(nodeTag: SecurityTag): Boolean = {
       nsc match {
-        case All          => true
-        case None         => false
-        case ByTags(tags) => tags.exists(s => nodeTag.tenants.exists(_ == s))
+        case All           => true
+        case None          => false
+        case ByTenants(ts) => ts.exists(s => nodeTag.tenants.exists(_ == s))
       }
     }
 
@@ -1386,6 +1414,17 @@ object NodeSecurityContext       {
 
     def canSee(n: MinimalNodeFactInterface): Boolean = {
       canSee(n.rudderSettings.security)
+    }
+
+    // NodeSecurityContext is a lattice
+    def plus(nsc2: NodeSecurityContext): NodeSecurityContext = {
+      (nsc, nsc2) match {
+        case (None, _)                      => None
+        case (_, None)                      => None
+        case (All, _)                       => All
+        case (_, All)                       => All
+        case (ByTenants(c1), ByTenants(c2)) => ByTenants((c1 ++ c2).distinctBy(_.value))
+      }
     }
   }
 

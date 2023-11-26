@@ -238,7 +238,7 @@ class TestCoreNodeFactInventory extends Specification with BeforeAfterAll {
 
   implicit val testChangeContext: ChangeContext =
     ChangeContext(ModificationId("test-mod-id"), EventActor("test"), DateTime.now(), None, None, QueryContext.testQC.nodePerms)
-  implicit val qc: QueryContext = QueryContext.todoQC
+  implicit val qc:                QueryContext  = QueryContext.todoQC
 
   "query action" should {
 
@@ -348,7 +348,7 @@ class TestCoreNodeFactInventory extends Specification with BeforeAfterAll {
     "allow to get only nodes with one security tag" in {
       val nodes = factRepo
         .getAll()(
-          QueryContext.testQC.modify(_.nodePerms).setTo(NodeSecurityContext.ByTags(Chunk("zoneA"))),
+          QueryContext.testQC.modify(_.nodePerms).setTo(NodeSecurityContext.ByTenants(Chunk(Tenant("zoneA")))),
           SelectNodeStatus.Accepted
         )
         .runCollect
@@ -360,7 +360,7 @@ class TestCoreNodeFactInventory extends Specification with BeforeAfterAll {
     "have cumulative rights" in {
       val nodes = factRepo
         .getAll()(
-          QueryContext.testQC.modify(_.nodePerms).setTo(NodeSecurityContext.ByTags(Chunk("zoneA", "zoneB"))),
+          QueryContext.testQC.modify(_.nodePerms).setTo(NodeSecurityContext.ByTenants(Chunk(Tenant("zoneA"), Tenant("zoneB")))),
           SelectNodeStatus.Accepted
         )
         .runCollect
