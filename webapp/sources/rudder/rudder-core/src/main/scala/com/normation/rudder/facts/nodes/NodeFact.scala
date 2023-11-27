@@ -1348,6 +1348,9 @@ object QueryContext {
 
   // for place that didn't get a real node security context yet
   implicit val todoQC: QueryContext = QueryContext(eventlog.RudderEventActor, NodeSecurityContext.All)
+
+  // for system queries (when rudder needs to look-up things)
+  implicit val systemQC: QueryContext = QueryContext(eventlog.RudderEventActor, NodeSecurityContext.All)
 }
 
 /*

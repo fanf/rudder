@@ -457,9 +457,7 @@ class CoreNodeFactRepository(
     } else {
       (ZStream
         .fromZIO(ref.get)
-        .flatMap(x =>
-          ZStream.fromIterable(x.collect { case (_, n) if (qc.nodePerms.canSee(n)) => n })
-        )): IOStream[CoreNodeFact]
+        .flatMap(x => ZStream.fromIterable(x.collect { case (_, n) if (qc.nodePerms.canSee(n)) => n }))): IOStream[CoreNodeFact]
     }
   }
 

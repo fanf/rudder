@@ -46,11 +46,9 @@ import com.normation.rudder.facts.nodes.NodeSecurityContext
 import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.web.services.RudderUserDetail
 import com.normation.rudder.web.services.UserSessionLogEvent
-
 import com.normation.zio._
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
-
 import java.util.Collection
 import javax.servlet.Filter
 import javax.servlet.FilterChain
@@ -86,7 +84,6 @@ import org.springframework.security.ldap.userdetails.UserDetailsContextMapper
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler
-
 import scala.annotation.nowarn
 
 /**
@@ -595,7 +592,7 @@ class RestAuthenticationFilter(
                 RudderUserDetail(
                   RudderAccount.Api(apiV1Account),
                   RudderAuthType.Api.apiRudderRole,
-                  ApiAuthorization.None, // un-authenticated APIv1 token certainly doesn't get any authz on v2 API
+                  ApiAuthorization.None,   // un-authenticated APIv1 token certainly doesn't get any authz on v2 API
                   NodeSecurityContext.None // ApiV1 should not have to deal with nodes
                 )
               )

@@ -111,11 +111,11 @@ import com.normation.rudder.facts.nodes.GitNodeFactStorageImpl
 import com.normation.rudder.facts.nodes.HistorizeNodeState
 import com.normation.rudder.facts.nodes.LdapNodeFactStorage
 import com.normation.rudder.facts.nodes.NodeFactChangeEventCallback
-import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepositoryProxy
 import com.normation.rudder.facts.nodes.NodeFactInventorySaver
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
 import com.normation.rudder.facts.nodes.NoopFactStorage
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SoftDaoGetNodesbySofwareName
 import com.normation.rudder.facts.nodes.WoFactNodeRepositoryProxy
 import com.normation.rudder.git.GitRepositoryProvider
@@ -1130,7 +1130,6 @@ object RudderConfig extends Loggable {
   val eventLogDetailsService:              EventLogDetailsService                     = rci.eventLogDetailsService
   val eventLogRepository:                  EventLogRepository                         = rci.eventLogRepository
   val findExpectedReportRepository:        FindExpectedReportRepository               = rci.findExpectedReportRepository
-  val fullInventoryRepository:             FullInventoryRepository[Unit]              = rci.fullInventoryRepository
   val gitRevisionProvider:                 GitRevisionProvider                        = rci.gitRevisionProvider
   val healthcheckNotificationService:      HealthcheckNotificationService             = rci.healthcheckNotificationService
   val historizeNodeCountBatch:             IOResult[Unit]                             = rci.historizeNodeCountBatch
@@ -1293,7 +1292,6 @@ case class RudderServiceApi(
     personIdentService:                  PersonIdentService,
     gitRevisionProvider:                 GitRevisionProvider,
     logDisplayer:                        LogDisplayer,
-    fullInventoryRepository:             FullInventoryRepository[Unit],
     acceptedNodeQueryProcessor:          QueryProcessor,
     categoryHierarchyDisplayer:          CategoryHierarchyDisplayer,
     dynGroupService:                     DynGroupService,
@@ -1686,7 +1684,6 @@ object RudderConfigInit {
     lazy val nodeApiService = new NodeApiService(
       rwLdap,
       nodeFactRepository,
-      factFullInventoryRepo,
       roNodeGroupRepository,
       roLDAPParameterRepository,
       roAgentRunsRepository,
@@ -1932,7 +1929,8 @@ object RudderConfigInit {
         pipelinedInventoryParser,
         inventorySaver,
         maxParallel,
-        new InventoryDigestServiceV1((id: NodeId) => factFullInventoryRepo.get(id)),
+        // it's always rudder doing these checking queries
+        new InventoryDigestServiceV1((id: NodeId) => nodeFactRepository.get(id)(QueryContext.systemQC)),
         checkLdapAlive
       )
     }
@@ -1971,8 +1969,6 @@ object RudderConfigInit {
         KEEP_DELETED_NODE_FACT_DURATION
       )
     }
-
-    lazy val factFullInventoryRepo = new NodeFactFullInventoryRepositoryProxy(nodeFactRepository)
 
     lazy val archiveApi = {
       val archiveBuilderService =
@@ -2500,7 +2496,7 @@ object RudderConfigInit {
       )
     }
 
-    lazy val nodeGridImpl = new NodeGrid(factFullInventoryRepo, nodeFactInfoService, configService)
+    lazy val nodeGridImpl = new NodeGrid(nodeFactRepository, nodeFactInfoService, configService)
 
     lazy val modificationService      =
       new ModificationService(logRepository, gitModificationRepository, itemArchiveManagerImpl, uuidGen)
@@ -3535,7 +3531,6 @@ object RudderConfigInit {
       personIdentServiceImpl,
       gitRevisionProviderImpl,
       logDisplayerImpl,
-      factFullInventoryRepo,
       queryProcessor,
       categoryHierarchyDisplayerImpl,
       dynGroupServiceImpl,

@@ -96,7 +96,6 @@ class ShowNodeDetailsFromNode(
   private[this] val configService        = RudderConfig.configService
   private[this] val boxNodeInfo          = nodeInfoService.getNodeInfo(nodeId).toBox
 
-
   def agentPolicyModeEditForm = new AgentPolicyModeEditForm()
 
   def agentScheduleEditForm(nodeInfo: NodeInfo) = new AgentScheduleEditForm(

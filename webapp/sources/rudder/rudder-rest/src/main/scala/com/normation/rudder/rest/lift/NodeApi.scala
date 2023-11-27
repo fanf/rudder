@@ -73,7 +73,6 @@ import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.reports.ComplianceLevel
 import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.NodeFact
-import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepositoryProxy
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SelectFacts
@@ -422,7 +421,7 @@ class NodeApi(
     val restExtractor = restExtractorService
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       implicit val prettify = params.prettify
-      implicit val qc = QueryContext(authzToken.actor, QueryContext.todoQC.nodePerms)
+      implicit val qc       = QueryContext(authzToken.actor, QueryContext.todoQC.nodePerms)
       restExtractor.extractNodeDetailLevel(req.params) match {
         case Full(level) =>
           restExtractor.extractQuery(req.params) match {
@@ -447,7 +446,7 @@ class NodeApi(
     val restExtractor = restExtractorService
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       implicit val prettify = params.prettify
-      implicit val qc = QueryContext(authzToken.actor, QueryContext.todoQC.nodePerms)
+      implicit val qc       = QueryContext(authzToken.actor, QueryContext.todoQC.nodePerms)
       restExtractor.extractNodeDetailLevel(req.params) match {
         case Full(level) =>
           restExtractor.extractQuery(req.params) match {
@@ -678,7 +677,6 @@ class NodeApiInheritedProperties(
 class NodeApiService(
     ldapConnection:             LDAPConnectionProvider[RwLDAPConnection],
     nodeFactRepository:         NodeFactRepository,
-    inventoryRepository:        NodeFactFullInventoryRepositoryProxy,
     groupRepo:                  RoNodeGroupRepository,
     paramRepo:                  RoParameterRepository,
     reportsExecutionRepository: RoReportsExecutionRepository,
@@ -719,11 +717,20 @@ class NodeApiService(
       }
     }
 
+    implicit val cc: ChangeContext = ChangeContext(
+      ModificationId(uuidGen.newUuid),
+      eventActor,
+      new DateTime(),
+      None,
+      Some(actorIp),
+      QueryContext.todoQC.nodePerms
+    )
+
     for {
       validated <- toCreationError(Validation.toNodeTemplate(nodeDetails))
       _         <- checkUuid(validated.inventory.node.main.id)
       created   <- saveInventory(validated.inventory)
-      nodeSetup <- accept(validated, eventActor, actorIp)
+      nodeSetup <- accept(validated)
       nodeId    <- saveRudderNode(validated.inventory.node.main.id, nodeSetup)
     } yield {
       nodeId
@@ -762,30 +769,21 @@ class NodeApiService(
    * Save the inventory part. Always save in "pending", acceptation
    * is done afterward if needed.
    */
-  def saveInventory(inventory: FullInventory): IO[CreationError, NodeId] = {
-    inventoryRepository
-      .save(inventory)
+  def saveInventory(inventory: FullInventory)(implicit cc: ChangeContext): IO[CreationError, NodeId] = {
+    nodeFactRepository
+      .updateInventory(inventory, software = None)
       .map(_ => inventory.node.main.id)
       .mapError(err => CreationError.OnSaveInventory(s"Error during node creation: ${err.fullMsg}"))
   }
 
-  def accept(template: NodeTemplate, eventActor: EventActor, actorIp: String): IO[CreationError, NodeSetup] = {
+  def accept(template: NodeTemplate)(implicit cc: ChangeContext): IO[CreationError, NodeSetup] = {
     val id = template.inventory.node.main.id
 
     // only nodes with status "accepted" need to be accepted
     template match {
       case AcceptedNodeTemplate(_, properties, policyMode, state) =>
         newNodeManager
-          .accept(id)(
-            ChangeContext(
-              ModificationId(uuidGen.newUuid),
-              eventActor,
-              DateTime.now(),
-              None,
-              Some(actorIp),
-              QueryContext.todoQC.nodePerms
-            )
-          )
+          .accept(id)
           .mapError(err => CreationError.OnAcceptation((s"Can not accept node '${id.value}': ${err.fullMsg}"))) *>
         NodeSetup(properties, policyMode, state).succeed
       case PendingNodeTemplate(_, properties)                     =>
@@ -997,7 +995,7 @@ class NodeApiService(
       _                                     = TimingDebugLoggerPure.logEffect.trace(s"Getting global mode: ${n5 - n4}ms")
       softToLookAfter                      <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "software").map(_.getOrElse(Nil)))
       softs                                <- ZIO
-                                                .foreach(softToLookAfter)(soft => inventoryRepository.getNodesbySofwareName(soft))
+                                                .foreach(softToLookAfter)(soft => nodeFactRepository.getNodesbySofwareName(soft))
                                                 .toBox
                                                 .map(_.flatten.groupMap(_._1)(_._2))
       n6                                    = System.currentTimeMillis
@@ -1067,7 +1065,7 @@ class NodeApiService(
                  case None          => nodeInfoService.getAll().toBox
                  case Some(nodeIds) => nodeInfoService.getNodeInfosSeq(nodeIds).map(_.map(n => (n.id, n)).toMap).toBox
                }
-      softs <- inventoryRepository.getNodesbySofwareName(software).toBox.map(_.toMap)
+      softs <- nodeFactRepository.getNodesbySofwareName(software).toBox.map(_.toMap)
     } yield {
       JsonResponse(
         JObject(nodes.keySet.toList.flatMap(id => softs.get(id).flatMap(_.version.map(v => JField(id.value, JString(v.value))))))
@@ -1242,7 +1240,7 @@ class NodeApiService(
       nodeId:      NodeId,
       detailLevel: NodeDetailLevel,
       state:       InventoryStatus
-  )(implicit qc: QueryContext): IOResult[Option[JValue]] = {
+  )(implicit qc:   QueryContext): IOResult[Option[JValue]] = {
     for {
       optNodeInfo <- nodeFactRepository.slowGetCompat(nodeId, state, SelectFacts.fromNodeDetailLevel(detailLevel))
       nodeInfo    <- optNodeInfo match {
@@ -1273,7 +1271,7 @@ class NodeApiService(
       req:         Req
   ) = {
     implicit val prettify = restExtractor.extractPrettify(req.params)
-    implicit val qc = QueryContext.todoQC
+    implicit val qc       = QueryContext.todoQC
     implicit val action   = s"${state.name}NodeDetails"
     getNodeDetails(nodeId, detailLevel, state).either.runNow match {
       case Right(Some(inventory)) =>
@@ -1294,7 +1292,7 @@ class NodeApiService(
 
   def nodeDetailsGeneric(nodeId: NodeId, detailLevel: NodeDetailLevel, version: ApiVersion, req: Req) = {
     implicit val prettify = restExtractor.extractPrettify(req.params)
-    implicit val qc = QueryContext.todoQC
+    implicit val qc       = QueryContext.todoQC
     implicit val action   = "nodeDetails"
     (for {
       accepted  <- getNodeDetails(nodeId, detailLevel, AcceptedInventory)

@@ -39,14 +39,12 @@ package com.normation.rudder
 
 import better.files._
 import com.normation.GitVersion
-
 import com.normation.box._
 import com.normation.cfclerk.domain._
 import com.normation.cfclerk.services.impl._
 import com.normation.cfclerk.xmlparsers.SectionSpecParser
 import com.normation.cfclerk.xmlparsers.TechniqueParser
 import com.normation.cfclerk.xmlparsers.VariableSpecParser
-
 import com.normation.errors._
 import com.normation.errors.IOResult
 import com.normation.eventlog.EventActor
@@ -104,7 +102,7 @@ import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.facts.nodes.NodeFact
-import com.normation.rudder.facts.nodes.NodeFactFullInventoryRepositoryProxy
+import com.normation.rudder.facts.nodes.MockNodeFactFullInventoryRepositoryProxy
 import com.normation.rudder.facts.nodes.NodeFactStorage
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
 import com.normation.rudder.facts.nodes.QueryContext
@@ -146,7 +144,6 @@ import com.normation.rudder.services.servers.PolicyServersUpdateCommand
 import com.normation.rudder.services.servers.RelaySynchronizationMethod.Classic
 import com.normation.utils.DateFormaterService
 import com.normation.utils.StringUuidGeneratorImpl
-
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import com.unboundid.ldap.sdk.DN
@@ -158,12 +155,10 @@ import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.lib.ObjectId
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
-
 import scala.annotation.tailrec
 import scala.collection.immutable.{SortedMap => ISortedMap}
 import scala.util.control.NonFatal
 import scala.xml.Elem
-
 import zio.{System => _, Tag => _, _}
 import zio.json.jsonDiscriminator
 import zio.json.jsonHint
@@ -1743,7 +1738,8 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     DateTime.parse("2021-01-30T01:20+01:00"),
     emptyNodeReportingConfiguration,
     Nil,
-    Some(PolicyMode.Enforce),None
+    Some(PolicyMode.Enforce),
+    None
   )
   val root     = NodeInfo(
     rootNode,
@@ -1819,7 +1815,8 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     DateTime.parse("2021-01-30T01:20+01:00"),
     emptyNodeReportingConfiguration,
     Nil,
-    Some(PolicyMode.Enforce),None
+    Some(PolicyMode.Enforce),
+    None
   )
 
   val node1 = NodeInfo(
@@ -1920,7 +1917,8 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
     DateTime.parse("2021-01-30T01:20+01:00"),
     emptyNodeReportingConfiguration,
     Nil,
-    None,None
+    None,
+    None
   )
 
   val dscNode1 = NodeInfo(
@@ -2029,7 +2027,7 @@ z5VEb9yx2KikbWyChM1Akp82AV5BzqE80QIBIw==
   ).toSet
 
   def newNode(id: NodeId) =
-    Node(id, "", "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None,None)
+    Node(id, "", "", NodeState.Enabled, false, false, DateTime.now, ReportingConfiguration(None, None, None), Nil, None, None)
 
   val nodes = (
     Set(root, node1, node2) ++ nodeIds.map { id =>
@@ -2275,7 +2273,7 @@ class MockNodes() {
   }
 
   val nodeInfoService         = new NodeInfoServiceProxy(nodeFactRepo)
-  val fullInventoryRepository = new NodeFactFullInventoryRepositoryProxy(nodeFactRepo)
+  val fullInventoryRepository = new MockNodeFactFullInventoryRepositoryProxy(nodeFactRepo)
   val woNodeRepository        = new WoFactNodeRepositoryProxy(nodeFactRepo)
 
   object newNodeManager extends NewNodeManager {

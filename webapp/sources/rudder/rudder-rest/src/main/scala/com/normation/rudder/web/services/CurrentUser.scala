@@ -44,7 +44,6 @@ import com.normation.rudder.User
 import com.normation.rudder.api.ApiAuthorization
 import com.normation.rudder.facts.nodes.NodeSecurityContext
 import com.normation.rudder.facts.nodes.QueryContext
-
 import net.liftweb.http.SessionVar
 import org.springframework.security.core.context.SecurityContextHolder
 

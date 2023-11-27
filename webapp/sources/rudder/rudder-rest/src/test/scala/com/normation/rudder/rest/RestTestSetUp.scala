@@ -737,7 +737,6 @@ class RestTestSetUp {
   val nodeApiService = new NodeApiService(
     null,
     mockNodes.nodeFactRepo,
-    mockNodes.fullInventoryRepository,
     null,
     null,
     roReportsExecutionRepository,
@@ -780,9 +779,9 @@ class RestTestSetUp {
         .unit
     }
 
-    override def saveInventory(inventory: FullInventory): IO[Creation.CreationError, NodeId] = {
+    override def saveInventory(inventory: FullInventory)(implicit cc: ChangeContext): IO[Creation.CreationError, NodeId] = {
       mockNodes.nodeFactRepo
-        .updateInventory(inventory, None)
+        .updateInventory(inventory, None)(cc)
         .mapBoth(
           err => CreationError.OnSaveInventory(s"Error when saving node: ${err.fullMsg}"),
           _ => inventory.node.main.id

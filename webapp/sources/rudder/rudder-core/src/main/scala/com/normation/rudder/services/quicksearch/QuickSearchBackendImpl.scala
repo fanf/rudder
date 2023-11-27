@@ -57,17 +57,13 @@ import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.json.DataExtractor.CompleteJson
-
 import com.unboundid.ldap.sdk.Attribute
 import com.unboundid.ldap.sdk.Filter
-
 import java.util.regex.Pattern
 import net.liftweb.common.Box
 import net.liftweb.common.Full
 import net.liftweb.common.Loggable
-
 import scala.util.control.NonFatal
-
 import zio.stream.ZSink
 
 /**

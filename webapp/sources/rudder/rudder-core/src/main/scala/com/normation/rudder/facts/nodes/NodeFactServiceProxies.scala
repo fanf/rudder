@@ -69,6 +69,10 @@ import zio._
 import zio.stream.ZSink
 import zio.syntax._
 
+/*
+ * This service is only used in InventoryProcessor. It is not so much a proxy than an actual implementation,
+ * but it is a major port/change from 8.0 and feels right here.
+ */
 class NodeFactInventorySaver(
     backend:                NodeFactRepository,
     val preCommitPipeline:  Seq[PreCommit],
@@ -82,7 +86,7 @@ class NodeFactInventorySaver(
 }
 
 /*
- * Proxy for node fact to full inventory / node inventory / machine inventory / node info and their repositories
+ * Proxy for node fact to full inventory / node inventory / machine inventory / node info and their repositories.
  */
 class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService {
   import QueryContext.todoQC
@@ -160,11 +164,13 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
 
 /*
  * Proxy for full node inventory.
+ * It is only used in mock and for testing compatibility with old data structures.
+ * 
  * We willfully chose to not implement machine repo because it doesn't make any sense with fact.
  * There is also a limit with software, since now they are directly in the node and they don't
  * have specific IDs. So they will need to be retrieved by node id.
  */
-class NodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
+class MockNodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
     extends FullInventoryRepository[Unit] with ReadOnlySoftwareNameDAO {
   import QueryContext.todoQC
 
