@@ -526,15 +526,13 @@ object UserFileProcessing {
 
       // roles are comma-separated list of non-empty string. Several `roles` attribute should be avoid, but are ok and are merged.
       // List is gotten as is (no dedup, no sanity check, no sorting, no "roleToRight", etc)
-      def getRoleRoles(node: scala.xml.Node): PureResult[List[String]] = {
-        node.attribute("permissions") match {
-          case None | Some(Nil)  => Right(List.empty)
-          case Some(permissions) =>
-            Right(
-              permissions.toList
-                .flatMap(permlist => permlist.text.split(",").map(_.strip()).collect { case r if (r.nonEmpty) => r }.toList)
-            )
-        }
+      def getCommaSeparatiedList(attrName: String, node: scala.xml.Node): Option[List[String]] = {
+        node
+          .attribute(attrName)
+          .map(
+            _.toList
+              .flatMap(permlist => permlist.text.split(",").map(_.strip()).collect { case r if (r.nonEmpty) => r }.toList)
+          )
       }
 
       val customRoles: UIO[List[UncheckedCustomRole]] = (ZIO
@@ -544,7 +542,7 @@ object UserFileProcessing {
 
           (for {
             n <- getRoleName(node)
-            r <- getRoleRoles(node)
+            r  = getCommaSeparatiedList("permissions", node).getOrElse(Nil)
           } yield {
             UncheckedCustomRole(n, r)
           }) match {
@@ -572,7 +570,7 @@ object UserFileProcessing {
               node.attribute("password").map(_.toList.map(_.text)),
               // accept both "role" and "roles"
               userRoles(node.attribute("role")) ++ userRoles(node.attribute("permissions")),
-              node.attribute("tenants").map(_.toList.map(_.text))
+              getCommaSeparatiedList("tenants", node)
             ) match {
               case (Some(name :: Nil), pwd, permissions, tenants) if (name.size > 0) =>
                 // password can be optional when an other authentication backend is used.
@@ -652,7 +650,7 @@ object UserFileProcessing {
    * None means "all" for compat
    */
   def resolveTenants(tenants: Option[List[String]]): UIO[NodeSecurityContext] = {
-    val regex = """^\p{Alnum}[\p{Alnum}-_]*$""".r
+    val regex = """^(\p{Alnum}[\p{Alnum}-_]*)$""".r
 
     tenants match {
       case None     => NodeSecurityContext.All.succeed // for compatibility with previous versions
@@ -661,14 +659,14 @@ object UserFileProcessing {
           .foldLeft(ts)(NodeSecurityContext.ByTenants(Chunk.empty): NodeSecurityContext) {
             case (t1, t2) =>
               t2 match {
-                case "*"      => NodeSecurityContext.All.succeed
+                case "*"      => t1.plus(NodeSecurityContext.All).succeed
                 case "-"      => NodeSecurityContext.None.succeed
                 case regex(v) => t1.plus(NodeSecurityContext.ByTenants(Chunk(Tenant(v)))).succeed
                 case x        =>
                   ApplicationLoggerPure.Authz.warn(
                     s"Value '${x}' is not a valid tenant identifier. It must contains only alpha-num  ascii chars or " +
                     s"'-' and '_' (not in the first) place; or exactly '*' (all tenants) or '-' (none tenants)"
-                  ) *> NodeSecurityContext.ByTenants(Chunk.empty).succeed
+                  ) *> t1.plus(NodeSecurityContext.ByTenants(Chunk.empty)).succeed
               }
           })
           .map {
@@ -691,7 +689,7 @@ object UserFileProcessing {
                  case NodeSecurityContext.ByTenants(_) if (!extendedAuthz) =>
                    ApplicationLoggerPure.Authz.warn(
                      s"Tenants definition are only available with the corresponding plugin. To prevent unwanted right escalation, " +
-                       s"user '${name}' will be restricted to no tenants"
+                     s"user '${name}' will be restricted to no tenants"
                    ) *> NodeSecurityContext.None.succeed
                  case x                                                    => x.succeed
                }
