@@ -124,11 +124,10 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
     backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.map(_._2.toNodeInfo).toSeq)
   }
 
-  // plugins: only use in tests
-  // rudder: 2 usages
   override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = {
+    // for this one, it seems OK to use `systemQC`
     backend
-      .getAll()(todoQC, SelectNodeStatus.Accepted)
+      .getAll()(QueryContext.systemQC, SelectNodeStatus.Accepted)
       .map(_.collect { case (_, n) if (n.rudderSettings.kind != NodeKind.Node) => n.id }.toSeq)
   }
 

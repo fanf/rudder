@@ -76,7 +76,7 @@ class ReportDisplayer(
     logDisplayer:        LogDisplayer
 ) extends Loggable {
 
-  private[this] val getAllNodeInfos = RudderConfig.nodeInfoService.getAll _
+  private[this] val nodeFactRepo = RudderConfig.nodeFactRepository
 
   def reportByNodeTemplate = ChooseTemplate(List("templates-hidden", "reports_server"), "batches-list")
   def directiveDetails     = ChooseTemplate(List("templates-hidden", "reports_server"), "directive:foreach")
@@ -561,14 +561,14 @@ class ReportDisplayer(
   ): Box[JsTableData[RuleComplianceLine]] = {
     for {
       directiveLib <- directiveRepository.getFullDirectiveLibrary().toBox
-      allNodeInfos <- getAllNodeInfos().toBox
+      allNodeInfos <- nodeFactRepo.getAll()(CurrentUser.queryContext).toBox
       rules        <- ruleRepository.getAll(true).toBox
       globalMode   <- configService.rudder_global_policy_mode().toBox
     } yield {
       ComplianceData.getNodeByRuleComplianceDetails(
         nodeId,
         reportStatus,
-        allNodeInfos,
+        allNodeInfos.mapValues(_.toNodeInfo).toMap,
         directiveLib,
         rules,
         globalMode,
