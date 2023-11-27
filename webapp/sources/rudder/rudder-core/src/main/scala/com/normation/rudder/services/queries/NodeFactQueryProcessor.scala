@@ -56,7 +56,6 @@ import com.normation.rudder.facts.nodes.SelectNodeStatus
 import com.normation.zio._
 import net.liftweb.common.Box
 import zio._
-import zio.stream.ZSink
 import zio.syntax._
 
 /*
@@ -134,8 +133,10 @@ class NodeFactQueryProcessor(
         _   <- FactQueryProcessorLoggerPure.Metrics.debug(s"Analyse query in ${t1 - t0} ms")
         res <- nodeFactRepo
                  .getAll()(QueryContext.todoQC, s)
-                 .filterZIO(node => FactQueryProcessorLoggerPure.debug(m.debugString) *> processOne(m, node))
-                 .run(ZSink.collectAll)
+                 .flatMap(all =>
+                   ZIO.filter(all.values)(node => FactQueryProcessorLoggerPure.debug(m.debugString) *> processOne(m, node))
+                 )
+                 .map(Chunk.fromIterable)
         t2  <- currentTimeMillis
         _   <- FactQueryProcessorLoggerPure.Metrics.debug(s"Run query in ${t2 - t1} ms")
         _   <- FactQueryProcessorLoggerPure.debug(s"Found ${res.size} results")

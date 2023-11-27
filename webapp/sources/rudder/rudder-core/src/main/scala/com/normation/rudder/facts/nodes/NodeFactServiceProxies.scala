@@ -65,7 +65,6 @@ import com.normation.rudder.services.nodes.NodeInfoService
 import com.softwaremill.quicklens._
 import org.joda.time.DateTime
 import zio._
-import zio.stream.ZSink
 import zio.syntax._
 
 /*
@@ -97,36 +96,32 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
   override def getNodeInfosSeq(nodeIds: Seq[NodeId]): IOResult[Seq[NodeInfo]] = {
     backend
       .getAll()(todoQC, SelectNodeStatus.Accepted)
-      .collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }
-      .run(ZSink.collectAll)
-      .map(_.toSeq)
+      .map(_.collect { case (id, n) if (nodeIds.contains(id)) => n.toNodeInfo }.toSeq)
   }
 
   // used in all plugins for checking license
   override def getNumberOfManagedNodes: IOResult[Int] = {
-    backend.getAll()(QueryContext.systemQC, SelectNodeStatus.Accepted).run(ZSink.count).map(_.toInt)
+    backend.getAll()(QueryContext.systemQC, SelectNodeStatus.Accepted).map(_.size)
   }
 
   override def getAll(): IOResult[Map[NodeId, NodeInfo]] = {
-    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNodeInfo) run (ZSink.collectAllToMap[NodeInfo, NodeId](_.node.id)(
-      (a, b) => b
-    ))
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.mapValues(_.toNodeInfo).toMap)
   }
 
   // plugins: only use in tests
   // 4 usages in rudder
   override def getAllNodesIds(): IOResult[Set[NodeId]] = {
-    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.id).run(ZSink.collectAllToSet)
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.keySet.toSet)
   }
 
   // only used in plugin: rudder-plugins/datasources/src/main/scala/com/normation/plugins/datasources/api/DataSourceApiImpl.scala l214
   override def getAllNodes(): IOResult[Map[NodeId, Node]] = {
-    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.mapValues(_.toNode).toMap)
   }
 
   // only use in tests in plugins
   override def getAllNodeInfos(): IOResult[Seq[NodeInfo]] = {
-    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
+    backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.map(_._2.toNodeInfo).toSeq)
   }
 
   // plugins: only use in tests
@@ -134,18 +129,13 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
   override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = {
     backend
       .getAll()(todoQC, SelectNodeStatus.Accepted)
-      .collect { case n if (n.rudderSettings.kind != NodeKind.Node) => n.id }
-      .run(ZSink.collectAll)
-      .map(_.toSeq)
+      .map(_.collect { case (_, n) if (n.rudderSettings.kind != NodeKind.Node) => n.id }.toSeq)
   }
 
   // plugins: only use in test
   // rudder: 3 usages
   override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
-    backend
-      .getAll()(todoQC, SelectNodeStatus.Pending)
-      .map(_.toNodeInfo)
-      .run(ZSink.collectAllToMap[NodeInfo, NodeId](_.id)((a, b) => b))
+    backend.getAll()(todoQC, SelectNodeStatus.Pending).map(_.mapValues(_.toNodeInfo).toMap)
   }
 
   // plugins: only use in tests

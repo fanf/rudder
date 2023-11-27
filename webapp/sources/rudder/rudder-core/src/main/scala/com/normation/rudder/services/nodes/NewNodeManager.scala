@@ -66,7 +66,6 @@ import com.normation.rudder.services.queries.QueryProcessor
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import zio.{System => _, _}
-import zio.stream.ZSink
 import zio.syntax._
 
 /**
@@ -237,7 +236,7 @@ trait ListNewNode {
 
 class FactListNewNodes(backend: NodeFactRepository) extends ListNewNode {
   override def listNewNodes: IOResult[Seq[CoreNodeFact]] = {
-    backend.getAll()(QueryContext.todoQC, SelectNodeStatus.Pending).run(ZSink.collectAll)
+    backend.getAll()(QueryContext.todoQC, SelectNodeStatus.Pending).map(_.values.toSeq)
   }
 }
 
@@ -455,8 +454,7 @@ class AcceptHostnameAndIp(
                          // get the hostname from nodeInfoService
                          nodeFactRepo
                            .getAll()
-                           .collect { case n if (duplicatesH.contains(n.id)) => n.fqdn }
-                           .runCollect
+                           .map(_.collect { case (_, n) if (duplicatesH.contains(n.id)) => n.fqdn }.toSeq)
                            .flatMap(failure(_, "Hostname"))
                        }
     } yield ()
