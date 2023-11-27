@@ -740,7 +740,6 @@ class RestTestSetUp {
     null,
     null,
     roReportsExecutionRepository,
-    mockNodes.woNodeRepository,
     null,
     uuidGen,
     null,
@@ -754,8 +753,6 @@ class RestTestSetUp {
     null,
     mockNodes.queryProcessor,
     null,
-    asyncDeploymentAgent,
-    userService,
     () => Full(GlobalPolicyMode(Audit, PolicyModeOverrides.Always)),
     "relay"
   ) {
@@ -912,6 +909,7 @@ class RestTestSetUp {
       restDataSerializer,
       nodeApiService,
       null,
+      uuidGen,
       DeleteMode.Erase
     ),
     new GroupsApi(

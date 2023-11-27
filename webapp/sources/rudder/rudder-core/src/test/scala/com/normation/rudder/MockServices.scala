@@ -101,8 +101,8 @@ import com.normation.rudder.domain.reports.NodeModeConfig
 import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.CoreNodeFactRepository
-import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.MockNodeFactFullInventoryRepositoryProxy
+import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactStorage
 import com.normation.rudder.facts.nodes.NodeInfoServiceProxy
 import com.normation.rudder.facts.nodes.QueryContext

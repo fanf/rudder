@@ -41,7 +41,6 @@ import com.normation.errors.IOResult
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain.AcceptedInventory
-import com.normation.inventory.domain.Certificate
 import com.normation.inventory.domain.FullInventory
 import com.normation.inventory.domain.Inventory
 import com.normation.inventory.domain.InventoryError.Inconsistency
@@ -165,7 +164,7 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
 /*
  * Proxy for full node inventory.
  * It is only used in mock and for testing compatibility with old data structures.
- * 
+ *
  * We willfully chose to not implement machine repo because it doesn't make any sense with fact.
  * There is also a limit with software, since now they are directly in the node and they don't
  * have specific IDs. So they will need to be retrieved by node id.
@@ -268,21 +267,16 @@ class WoFactNodeRepositoryProxy(backend: NodeFactRepository) extends WoNodeRepos
     if (agentKey.isEmpty && agentKeyStatus.isEmpty) ZIO.unit
     else {
       for {
-        _      <- agentKey match {
-                    case Some(Certificate(value)) => SecurityToken.checkCertificateForNode(nodeId, Certificate(value))
-                    case _                        => ZIO.unit
-                  }
         node   <- backend.get(nodeId).notOptional(s"Cannot update node with id ${nodeId.value}: there is no node with that id")
         newNode = node
                     .modify(_.rudderAgent.securityToken)
                     .setToIfDefined(agentKey)
                     .modify(_.rudderSettings.keyStatus)
                     .setToIfDefined(agentKeyStatus)
-        _      <-
-          backend.save(NodeFact.fromMinimal(newNode))(
-            ChangeContext(modId, actor, DateTime.now(), reason, None, todoQC.nodePerms),
-            SelectFacts.none
-          )
+        _      <- backend.save(NodeFact.fromMinimal(newNode))(
+                    ChangeContext(modId, actor, DateTime.now(), reason, None, todoQC.nodePerms),
+                    SelectFacts.none
+                  )
       } yield ()
     }
   }

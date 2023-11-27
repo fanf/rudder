@@ -1687,7 +1687,6 @@ object RudderConfigInit {
       roNodeGroupRepository,
       roLDAPParameterRepository,
       roAgentRunsRepository,
-      woFactNodeRepository,
       ldapEntityMapper,
       stringUuidGenerator,
       nodeDit,
@@ -1701,8 +1700,6 @@ object RudderConfigInit {
       reportingServiceImpl,
       queryProcessor,
       inventoryQueryChecker,
-      asyncDeploymentAgent,
-      userService,
       () => configService.rudder_global_policy_mode().toBox,
       RUDDER_RELAY_API
     )
@@ -2060,6 +2057,7 @@ object RudderConfigInit {
           restDataSerializer,
           nodeApiService,
           nodeInheritedProperties,
+          uuidGen,
           DeleteMode.Erase // only supported mode for Rudder 8.0
         ),
         new ParameterApi(restExtractorService, zioJsonExtractor, parameterApiService2, parameterApiService14),

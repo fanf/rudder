@@ -49,13 +49,10 @@ import com.normation.inventory.domain.NodeId
 import com.normation.inventory.ldap.core.InventoryDit
 import com.normation.ldap.sdk.LDAPConnectionProvider
 import com.normation.ldap.sdk.RwLDAPConnection
-import com.normation.rudder.UserService
 import com.normation.rudder.api.ApiVersion
 import com.normation.rudder.apidata.NodeDetailLevel
 import com.normation.rudder.apidata.RenderInheritedProperties
 import com.normation.rudder.apidata.RestDataSerializer
-import com.normation.rudder.batch.AsyncDeploymentActor
-import com.normation.rudder.batch.AutomaticStartDeployment
 import com.normation.rudder.domain.NodeDit
 import com.normation.rudder.domain.logger.NodeLogger
 import com.normation.rudder.domain.logger.NodeLoggerPure
@@ -72,6 +69,7 @@ import com.normation.rudder.domain.properties.NodePropertyHierarchy
 import com.normation.rudder.domain.queries.Query
 import com.normation.rudder.domain.reports.ComplianceLevel
 import com.normation.rudder.facts.nodes.ChangeContext
+import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.NodeFact
 import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.QueryContext
@@ -81,7 +79,6 @@ import com.normation.rudder.reports.execution.AgentRunWithNodeConfig
 import com.normation.rudder.reports.execution.RoReportsExecutionRepository
 import com.normation.rudder.repository.RoNodeGroupRepository
 import com.normation.rudder.repository.RoParameterRepository
-import com.normation.rudder.repository.WoNodeRepository
 import com.normation.rudder.repository.json.DataExtractor.CompleteJson
 import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
 import com.normation.rudder.repository.ldap.LDAPEntityMapper
@@ -161,6 +158,7 @@ class NodeApi(
     serializer:           RestDataSerializer,
     nodeApiService:       NodeApiService,
     inheritedProperties:  NodeApiInheritedProperties,
+    uuidGen:              StringUuidGenerator,
     deleteDefaultMode:    DeleteMode
 ) extends LiftApiModuleProvider[API] {
 
@@ -352,6 +350,14 @@ class NodeApi(
     ): LiftResponse = {
       implicit val prettify = params.prettify
       implicit val action   = "updateNode"
+      implicit val cc       = ChangeContext(
+        ModificationId(uuidGen.newUuid),
+        authzToken.actor,
+        new DateTime(),
+        params.reason,
+        Some(req.remoteAddr),
+        QueryContext.todoQC.nodePerms
+      )
 
       (for {
         restNode <- if (req.json_?) {
@@ -360,9 +366,9 @@ class NodeApi(
                       restExtractor.extractNode(req.params)
                     }
         reason   <- restExtractor.extractReason(req)
-        result   <- nodeApiService.updateRestNode(NodeId(id), restNode, authzToken.actor, reason).toBox
+        result   <- nodeApiService.updateRestNode(NodeId(id), restNode).toBox
       } yield {
-        toJsonResponse(Some(id), serializer.serializeNode(result))
+        toJsonResponse(Some(id), serializer.serializeNode(result.toNode))
       }) match {
         case Full(response) =>
           response
@@ -680,7 +686,6 @@ class NodeApiService(
     groupRepo:                  RoNodeGroupRepository,
     paramRepo:                  RoParameterRepository,
     reportsExecutionRepository: RoReportsExecutionRepository,
-    nodeRepository:             WoNodeRepository,
     ldapEntityMapper:           LDAPEntityMapper,
     uuidGen:                    StringUuidGenerator,
     nodeDit:                    NodeDit,
@@ -694,8 +699,6 @@ class NodeApiService(
     reportingService:           ReportingService,
     acceptedNodeQueryProcessor: QueryProcessor,
     pendingNodeQueryProcessor:  QueryChecker,
-    asyncRegenerate:            AsyncDeploymentActor,
-    userService:                UserService,
     getGlobalMode:              () => Box[GlobalPolicyMode],
     relayApiEndpoint:           String
 ) {
@@ -1401,9 +1404,7 @@ class NodeApiService(
     }
   }
 
-  def updateRestNode(nodeId: NodeId, restNode: RestNode, actor: EventActor, reason: Option[String]): IOResult[Node] = {
-
-    val modId = ModificationId(uuidGen.newUuid)
+  def updateRestNode(nodeId: NodeId, restNode: RestNode)(implicit cc: ChangeContext): IOResult[CoreNodeFact] = {
 
     def getKeyInfo(restNode: RestNode): (Option[SecurityToken], Option[KeyStatus]) = {
 
@@ -1418,34 +1419,40 @@ class NodeApiService(
       }
     }
 
-    def updateNode(node: Node, restNode: RestNode, newProperties: List[NodeProperty]): Node = {
+    def updateNode(
+        node:          CoreNodeFact,
+        restNode:      RestNode,
+        newProperties: List[NodeProperty],
+        newKey:        Option[SecurityToken],
+        newKeyStatus:  Option[KeyStatus]
+    ): CoreNodeFact = {
       import com.softwaremill.quicklens._
 
-      (node
+      node
         .modify(_.properties)
-        .setTo(newProperties)
-        .modify(_.policyMode)
+        .setTo(Chunk.fromIterable(newProperties))
+        .modify(_.rudderSettings.policyMode)
         .using(current => restNode.policyMode.getOrElse(current))
-        .modify(_.state)
-        .using(current => restNode.state.getOrElse(current)))
+        .modify(_.rudderSettings.state)
+        .using(current => restNode.state.getOrElse(current))
+        .modify(_.rudderAgent.securityToken)
+        .setToIfDefined(newKey)
+        .modify(_.rudderSettings.keyStatus)
+        .setToIfDefined(newKeyStatus)
     }
 
+    implicit val qc    = cc.toQuery
+    implicit val attrs = SelectFacts.none
+
     for {
-      node          <- nodeInfoService.getNodeInfo(nodeId).map(_.map(_.node)).notOptional(s"node with id '${nodeId.value}' was not found")
-      newProperties <- CompareProperties.updateProperties(node.properties, restNode.properties).toIO
-      updated        = updateNode(node, restNode, newProperties)
+      nodeFact      <- nodeFactRepository.get(nodeId).notOptional(s"node with id '${nodeId.value}' was not found")
+      newProperties <- CompareProperties.updateProperties(nodeFact.properties.toList, restNode.properties).toIO
       keyInfo        = getKeyInfo(restNode)
-      saved         <- if (updated == node) node.succeed
-                       else nodeRepository.updateNode(updated, modId, actor, reason)
-      keyChanged     = keyInfo._1.isDefined || keyInfo._2.isDefined
-      keys          <- if (keyChanged) {
-                         nodeRepository.updateNodeKeyInfo(node.id, keyInfo._1, keyInfo._2, modId, actor, reason)
-                       } else ZIO.unit
+      updated        = updateNode(nodeFact, restNode, newProperties, keyInfo._1, keyInfo._2)
+      _             <- if (CoreNodeFact.same(updated, nodeFact)) ZIO.unit
+                       else nodeFactRepository.save(NodeFact.fromMinimal(updated)).unit
     } yield {
-      if (node != updated || keyChanged) {
-        asyncRegenerate ! AutomaticStartDeployment(ModificationId(uuidGen.newUuid), userService.getCurrentUser.actor)
-      }
-      saved
+      updated
     }
   }
 
