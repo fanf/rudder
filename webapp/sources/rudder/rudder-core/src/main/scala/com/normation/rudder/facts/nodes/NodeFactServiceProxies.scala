@@ -235,6 +235,10 @@ class MockNodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
   }
 }
 
+/*
+ * This one is only used in plugins, so we are not exposing QueryContext for now.
+ * We removed its usage in rudder-rest NodeAPI and replaced it by bar NodeFactRepository
+ */
 class WoFactNodeRepositoryProxy(backend: NodeFactRepository) extends WoNodeRepository {
   import QueryContext.todoQC
 
