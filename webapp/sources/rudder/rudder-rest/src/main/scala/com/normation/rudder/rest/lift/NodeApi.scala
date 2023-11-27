@@ -547,15 +547,12 @@ class NodeApi(
                       .map(_.map(_.toList).getOrElse(Nil)) ?~! "Error: 'ids' parameter not found"
         accepted <- nodeApiService.nodeInfoService.getAllNodesIds().map(_.map(_.value)).toBox ?~! errorMsg(ids)
         pending  <- nodeApiService.nodeInfoService.getPendingNodeInfos().map(_.keySet.map(_.value)).toBox ?~! errorMsg(ids)
-        deleted  <- nodeApiService.nodeInfoService.getDeletedNodeInfos().map(_.keySet.map(_.value)).toBox ?~! errorMsg(ids)
       } yield {
         val array = ids.map { id =>
           val status = {
             if (accepted.contains(id)) AcceptedInventory.name
             else if (pending.contains(id)) PendingInventory.name
-            else if (deleted.contains(id))
-              "deleted" // RemovedInventory would output "removed" which is inconsistent with other API
-            else "unknown"
+            else "deleted"
           }
           JObject(JField("id", id) :: JField("status", status) :: Nil)
         }

@@ -94,13 +94,6 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
     backend.get(nodeId)(todoQC, SelectNodeStatus.Accepted).map(_.map(_.toNodeInfo))
   }
 
-  override def getNodeInfos(nodeIds: Set[NodeId]): IOResult[Set[NodeInfo]] = {
-    backend
-      .getAll()(todoQC, SelectNodeStatus.Accepted)
-      .collect { case n if (nodeIds.contains(n.id)) => n.toNodeInfo }
-      .run(ZSink.collectAllToSet)
-  }
-
   override def getNodeInfosSeq(nodeIds: Seq[NodeId]): IOResult[Seq[NodeInfo]] = {
     backend
       .getAll()(todoQC, SelectNodeStatus.Accepted)
@@ -109,8 +102,9 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
       .map(_.toSeq)
   }
 
+  // used in all plugins for checking license
   override def getNumberOfManagedNodes: IOResult[Int] = {
-    backend.getAll()(todoQC, SelectNodeStatus.Accepted).run(ZSink.count).map(_.toInt)
+    backend.getAll()(QueryContext.systemQC, SelectNodeStatus.Accepted).run(ZSink.count).map(_.toInt)
   }
 
   override def getAll(): IOResult[Map[NodeId, NodeInfo]] = {
@@ -119,18 +113,24 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
     ))
   }
 
+  // plugins: only use in tests
+  // 4 usages in rudder
   override def getAllNodesIds(): IOResult[Set[NodeId]] = {
     backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.id).run(ZSink.collectAllToSet)
   }
 
+  // only used in plugin: rudder-plugins/datasources/src/main/scala/com/normation/plugins/datasources/api/DataSourceApiImpl.scala l214
   override def getAllNodes(): IOResult[Map[NodeId, Node]] = {
     backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNode).run(ZSink.collectAllToMap[Node, NodeId](_.id)((a, b) => b))
   }
 
+  // only use in tests in plugins
   override def getAllNodeInfos(): IOResult[Seq[NodeInfo]] = {
     backend.getAll()(todoQC, SelectNodeStatus.Accepted).map(_.toNodeInfo).run(ZSink.collectAll).map(_.toSeq)
   }
 
+  // plugins: only use in tests
+  // rudder: 2 usages
   override def getAllSystemNodeIds(): IOResult[Seq[NodeId]] = {
     backend
       .getAll()(todoQC, SelectNodeStatus.Accepted)
@@ -139,6 +139,8 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
       .map(_.toSeq)
   }
 
+  // plugins: only use in test
+  // rudder: 3 usages
   override def getPendingNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
     backend
       .getAll()(todoQC, SelectNodeStatus.Pending)
@@ -146,19 +148,12 @@ class NodeInfoServiceProxy(backend: NodeFactRepository) extends NodeInfoService 
       .run(ZSink.collectAllToMap[NodeInfo, NodeId](_.id)((a, b) => b))
   }
 
+  // plugins: only use in tests
+  // rudder: 2 usages
   override def getPendingNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
     backend.get(nodeId)(todoQC, SelectNodeStatus.Pending).map(_.map(_.toNodeInfo))
   }
 
-  // not supported anymore
-  override def getDeletedNodeInfos(): IOResult[Map[NodeId, NodeInfo]] = {
-    Map().succeed
-  }
-
-  // not supported anymore
-  override def getDeletedNodeInfo(nodeId: NodeId): IOResult[Option[NodeInfo]] = {
-    None.succeed
-  }
 }
 
 /*
@@ -211,6 +206,10 @@ class MockNodeFactFullInventoryRepositoryProxy(backend: NodeFactRepository)
     backend.changeStatus(id, into)(ChangeContext.newForRudder()).unit
   }
 
+  /*
+   * Used in:
+   * - CVE plugin: Services.scala l255
+   */
   override def getSoftwareByNode(nodeIds: Set[NodeId], status: InventoryStatus): IOResult[Map[NodeId, Seq[Software]]] = {
     def getAll(s: SelectNodeStatus): IOResult[Map[NodeId, Chunk[Software]]] = {
       implicit val attrs = SelectFacts.none.copy(software = SelectFacts.all.software)
