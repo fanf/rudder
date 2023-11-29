@@ -37,7 +37,6 @@
 
 package com.normation.rudder.web.services
 
-import bootstrap.liftweb.RudderConfig
 import com.normation.appconfig.ReadConfigService
 import com.normation.box._
 import com.normation.cfclerk.services.TechniqueRepository
@@ -47,6 +46,7 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.domain.reports._
+import com.normation.rudder.facts.nodes.CoreNodeFactRepository
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.RoDirectiveRepository
 import com.normation.rudder.repository.RoRuleRepository
@@ -72,11 +72,10 @@ class ReportDisplayer(
     ruleRepository:      RoRuleRepository,
     directiveRepository: RoDirectiveRepository,
     techniqueRepository: TechniqueRepository,
+    nodeFactRepo:        CoreNodeFactRepository,
     configService:       ReadConfigService,
     logDisplayer:        LogDisplayer
 ) extends Loggable {
-
-  private[this] val nodeFactRepo = RudderConfig.nodeFactRepository
 
   def reportByNodeTemplate = ChooseTemplate(List("templates-hidden", "reports_server"), "batches-list")
   def directiveDetails     = ChooseTemplate(List("templates-hidden", "reports_server"), "directive:foreach")

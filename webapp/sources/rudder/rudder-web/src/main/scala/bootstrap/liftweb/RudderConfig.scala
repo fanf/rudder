@@ -3291,6 +3291,7 @@ object RudderConfigInit {
       roLdapRuleRepository,
       roLdapDirectiveRepository,
       techniqueRepositoryImpl,
+      nodeFactRepository,
       configService,
       logDisplayerImpl
     )
