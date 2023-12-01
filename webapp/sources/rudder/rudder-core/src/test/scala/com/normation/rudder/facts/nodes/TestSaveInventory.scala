@@ -469,7 +469,8 @@ trait TestSaveInventory extends Specification with BeforeAfterAll {
 // we don't want post commit hook in tests
 //      new PostCommitInventoryHooks[Unit](HOOKS_D, HOOKS_IGNORE_SUFFIXES)
       Nil
-    )
+    ),
+    null
   )
   lazy val pipelinedInventoryParser: InventoryParser = {
     val fusionReportParser = {

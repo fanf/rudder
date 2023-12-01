@@ -757,7 +757,8 @@ class RestTestSetUp {
     mockNodes.queryProcessor,
     null,
     () => Full(GlobalPolicyMode(Audit, PolicyModeOverrides.Always)),
-    "relay"
+    "relay",
+    null
   ) {
     implicit val testCC: ChangeContext = {
       ChangeContext(
@@ -914,7 +915,8 @@ class RestTestSetUp {
       nodeApiService,
       null,
       uuidGen,
-      DeleteMode.Erase
+      DeleteMode.Erase,
+      null
     ),
     new GroupsApi(
       mockNodeGroups.groupsRepo,

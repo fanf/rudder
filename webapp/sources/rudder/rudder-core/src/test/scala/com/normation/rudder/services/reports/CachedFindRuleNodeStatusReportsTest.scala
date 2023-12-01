@@ -55,6 +55,7 @@ import com.normation.rudder.reports.GlobalComplianceMode
 import com.normation.rudder.reports.execution.RoReportsExecutionRepository
 import com.normation.rudder.repository.FindExpectedReportRepository
 import com.normation.rudder.repository.ReportsRepository
+import com.normation.rudder.score.ScoreServiceManager
 import com.normation.rudder.services.policies.NodeConfigData
 import com.normation.zio._
 import com.softwaremill.quicklens._
@@ -193,6 +194,8 @@ class CachedFindRuleNodeStatusReportsTest extends Specification {
     def findStatusReportsForDirective(directiveId: DirectiveId)(implicit
         qc:                                        QueryContext
     ): IOResult[Map[NodeId, NodeStatusReport]] = ???
+
+    override def scoreServiceManager: ScoreServiceManager = null
   }
 
   implicit val qc: QueryContext = QueryContext.testQC

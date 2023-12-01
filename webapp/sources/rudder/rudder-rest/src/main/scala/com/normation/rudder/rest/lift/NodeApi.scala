@@ -103,6 +103,9 @@ import com.normation.rudder.rest.data.Rest
 import com.normation.rudder.rest.data.Rest.NodeDetails
 import com.normation.rudder.rest.data.Validation
 import com.normation.rudder.rest.data.Validation.NodeValidationError
+import com.normation.rudder.score.JsonScore
+import com.normation.rudder.score.ScoreSerializer
+import com.normation.rudder.score.ScoreService
 import com.normation.rudder.services.nodes.MergeNodeProperties
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.services.queries._
@@ -161,7 +164,8 @@ class NodeApi(
     nodeApiService:       NodeApiService,
     inheritedProperties:  NodeApiInheritedProperties,
     uuidGen:              StringUuidGenerator,
-    deleteDefaultMode:    DeleteMode
+    deleteDefaultMode:    DeleteMode,
+    scoreSerializer:      ScoreSerializer
 ) extends LiftApiModuleProvider[API] {
 
   def schemas = API
@@ -186,6 +190,9 @@ class NodeApi(
         case API.NodeDetailsSoftware            => NodeDetailsSoftware
         case API.NodeDetailsProperty            => NodeDetailsProperty
         case API.CreateNodes                    => CreateNodes
+        case API.NodeGlobalScore                => GetNodeGlobalScore
+        case API.NodeScoreDetails               => GetNodeScoreDetails
+        // case API.NodeScoreDetail => CreateNodes
       }
     })
   }
@@ -574,6 +581,56 @@ class NodeApi(
     }
   }
 
+  object GetNodeGlobalScore extends LiftApiModule {
+    val schema        = API.NodeGlobalScore
+    val restExtractor = restExtractorService
+
+    def process(
+        version:    ApiVersion,
+        path:       ApiPath,
+        id:         String,
+        req:        Req,
+        params:     DefaultParams,
+        authzToken: AuthzToken
+    ): LiftResponse = {
+      // implicit val action = "getNodeGlobalScore"
+      // implicit val prettify = params.prettify
+      import ScoreSerializer._
+      import com.normation.rudder.rest.implicits._
+      (for {
+        score <- nodeApiService.getNodeGlobalScore(NodeId(id))
+        // json <- score.toJsonAST.toIO
+      } yield {
+        score
+      }).toLiftResponseOne(params, schema, _ => Some(id))
+    }
+  }
+
+  object GetNodeScoreDetails extends LiftApiModule {
+    val schema        = API.NodeScoreDetails
+    val restExtractor = restExtractorService
+
+    def process(
+        version:    ApiVersion,
+        path:       ApiPath,
+        id:         String,
+        req:        Req,
+        params:     DefaultParams,
+        authzToken: AuthzToken
+    ): LiftResponse = {
+      // implicit val action = "getNodeGlobalScore"
+      // implicit val prettify = params.prettify
+      import ScoreSerializer._
+      import com.normation.rudder.rest.implicits._
+      (for {
+        score     <- nodeApiService.getNodeDetailsScore(NodeId(id))
+        jsonScore <- ZIO.foreach(score)(s => scoreSerializer.toJson(s).map(s => JsonScore(s.value, s.name, s.message, s.details)))
+      } yield {
+        jsonScore
+      }).toLiftResponseOne(params, schema, _ => Some(id))
+    }
+  }
+
   // WARNING : This is a READ ONLY action
   //   No modifications will be performed
   //   read_only user can access this endpoint
@@ -710,7 +767,8 @@ class NodeApiService(
     acceptedNodeQueryProcessor: QueryProcessor,
     pendingNodeQueryProcessor:  QueryChecker,
     getGlobalMode:              () => Box[GlobalPolicyMode],
-    relayApiEndpoint:           String
+    relayApiEndpoint:           String,
+    scoreService:               ScoreService
 ) {
 
 /// utility functions ///
@@ -1080,6 +1138,8 @@ class NodeApiService(
   }
 
   def property(req: Req, property: String, inheritedValue: Boolean)(implicit qc: QueryContext) = {
+    // import com.normation.rudder.facts.nodes.NodeFactSerialisation.SimpleCodec.codecNodeProperty
+
     for {
       optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson).toIO
       nodes      <- optNodeIds match {
@@ -1303,6 +1363,13 @@ class NodeApiService(
     }
   }
 
+  def getNodeGlobalScore(nodeId: NodeId) = {
+    scoreService.getGlobalScore(nodeId)
+  }
+
+  def getNodeDetailsScore(nodeId: NodeId) = {
+    scoreService.getScoreDetails(nodeId)
+  }
   def queryNodes(query: Query, state: InventoryStatus, detailLevel: NodeDetailLevel, version: ApiVersion)(implicit
       prettify:         Boolean,
       qc:               QueryContext

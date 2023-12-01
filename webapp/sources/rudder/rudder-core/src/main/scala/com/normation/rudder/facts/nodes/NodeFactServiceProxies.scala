@@ -61,6 +61,8 @@ import com.normation.rudder.domain.nodes.Node
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.nodes.NodeKind
 import com.normation.rudder.repository.WoNodeRepository
+import com.normation.rudder.score.InventoryScoreEvent
+import com.normation.rudder.score.ScoreServiceManager
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.softwaremill.quicklens._
 import org.joda.time.DateTime
@@ -74,12 +76,14 @@ import zio.syntax._
 class NodeFactInventorySaver(
     backend:               NodeFactRepository,
     val preCommitPipeline: Seq[PreCommit],
-    val basePostPipeline:  Seq[PostCommit[Unit]]
+    val basePostPipeline:  Seq[PostCommit[Unit]],
+    scoreServiceManager:   ScoreServiceManager
 ) extends PipelinedInventorySaver[Unit] {
 
   override def commitChange(inventory: Inventory): IOResult[Unit] = {
     implicit val cc = ChangeContext.newForRudder()
-    backend.updateInventory(FullInventory(inventory.node, Some(inventory.machine)), Some(inventory.applications)).unit
+    backend.updateInventory(FullInventory(inventory.node, Some(inventory.machine)), Some(inventory.applications)).unit *>
+    scoreServiceManager.handleEvent(InventoryScoreEvent(inventory.node.main.id, inventory)).unit
   }
 }
 

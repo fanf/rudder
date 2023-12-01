@@ -163,6 +163,12 @@ import com.normation.rudder.rest.internal._
 import com.normation.rudder.rest.lift
 import com.normation.rudder.rest.lift._
 import com.normation.rudder.rule.category._
+import com.normation.rudder.rule.category.GitRuleCategoryArchiverImpl
+import com.normation.rudder.score.GlobalScoreRepositoryImpl
+import com.normation.rudder.score.ScoreRepositoryImpl
+import com.normation.rudder.score.ScoreSerializer
+import com.normation.rudder.score.ScoreService
+import com.normation.rudder.score.ScoreServiceManager
 import com.normation.rudder.services._
 import com.normation.rudder.services.eventlog._
 import com.normation.rudder.services.eventlog.EventLogFactoryImpl
@@ -1421,7 +1427,8 @@ case class RudderServiceApi(
     gitModificationRepository:           GitModificationRepository,
     inventorySaver:                      NodeFactInventorySaver,
     inventoryDitService:                 InventoryDitService,
-    nodeFactRepository:                  NodeFactRepository
+    nodeFactRepository:                  NodeFactRepository,
+    scoreServiceManager:                 ScoreServiceManager
 )
 
 /*
@@ -1784,7 +1791,8 @@ object RudderConfigInit {
       queryProcessor,
       inventoryQueryChecker,
       () => configService.rudder_global_policy_mode().toBox,
-      RUDDER_RELAY_API
+      RUDDER_RELAY_API,
+      scoreService
     )
 
     lazy val parameterApiService2  = {
@@ -1974,7 +1982,8 @@ object RudderConfigInit {
         // removed: this is done as a callback of CoreNodeFactRepos
         // :: new TriggerPolicyGenerationPostCommit[Unit](asyncDeploymentAgent, uuidGen)
         :: Nil
-      )
+      ),
+      scoreServiceManager
     )
 
     lazy val inventoryProcessorInternal = {
@@ -2142,7 +2151,8 @@ object RudderConfigInit {
           nodeApiService,
           nodeInheritedProperties,
           uuidGen,
-          DeleteMode.Erase // only supported mode for Rudder 8.0
+          DeleteMode.Erase, // only supported mode for Rudder 8.0
+          scoreSerializer
         ),
         new ParameterApi(restExtractorService, zioJsonExtractor, parameterApiService2, parameterApiService14),
         new SettingsApi(
@@ -3002,6 +3012,14 @@ object RudderConfigInit {
       )
     }
 
+    /// score ///
+
+    lazy val scoreSerializer       = new ScoreSerializer
+    lazy val globalScoreRepository = new GlobalScoreRepositoryImpl(doobie)
+    lazy val scoreRepository       = new ScoreRepositoryImpl(doobie, scoreSerializer)
+    lazy val scoreService          = new ScoreService(globalScoreRepository, scoreRepository)
+    lazy val scoreServiceManager: ScoreServiceManager = new ScoreServiceManager(scoreService)
+
     /////// reporting ///////
 
     lazy val nodeConfigurationHashRepo: NodeConfigurationHashRepository = {
@@ -3029,7 +3047,8 @@ object RudderConfigInit {
         nodeFactRepository,
         RUDDER_JDBC_BATCH_MAX_SIZE, // use same size as for SQL requests
 
-        complianceRepositoryImpl
+        complianceRepositoryImpl,
+        scoreServiceManager
       )
       // to avoid a StackOverflowError, we set the compliance cache once it'z ready,
       // and can construct the nodeconfigurationservice without the comlpince cache
@@ -3688,7 +3707,8 @@ object RudderConfigInit {
       gitModificationRepository,
       inventorySaver,
       inventoryDitService,
-      nodeFactRepository
+      nodeFactRepository,
+      scoreServiceManager
     )
 
     // need to be done here to avoid cyclic dependencies

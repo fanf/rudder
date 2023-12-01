@@ -472,37 +472,49 @@ object DisplayNode extends Loggable {
     }
     val nodeApp            = {
       <div id="compliance-app"></div> ++
+      <div id="system-updates-app"></div> ++
       <div id="node-app"></div> ++
       Script(
-        OnLoad(JsRaw(s"""
-                        |var complianceScoreMain = document.getElementById("compliance-app");
-                        |var complianceAppScore = Elm.ComplianceScore.init({node: complianceScoreMain, flags : {}});
-                        |scoreDetailsDispatcher["compliance"] = function(value){ complianceAppScore.ports.getValue.send(value) };
-                        |var main = document.getElementById("node-app")
-                        |var initValues = {
-                        |  id : "${nodeFact.id.value}",
-                        |  contextPath : contextPath,
-                        |};
-                        |var scoreDetailsApp = Elm.Node.init({node: main, flags: initValues});
-                        |scoreDetailsApp.ports.errorNotification.subscribe(function(str) {
-                        |  createErrorNotification(str)
-                        |});
-                        |scoreDetailsApp.ports.getDetails.subscribe(function(data) {
-                        |  var name = data.name
-                        |  var value = data.details
-                        |  var detailsHandler = scoreDetailsDispatcher[name];
-                        |  if (detailsHandler !== undefined) {
-                        |    detailsHandler(value)
-                        |  }
-                        |});
-                        |complianceAppScore.ports.sendHtml.subscribe(function(html) {
-                        |  scoreDetailsApp.ports.receiveDetails.send({name : "compliance",html : html});
-                        |});
-                        |complianceAppScore.ports.errorNotification.subscribe(function(str) {
-                        |  createErrorNotification(str)
-                        |});
-                        |
-                        |""".stripMargin))
+        OnLoad(
+          JsRaw(s"""
+                   |var systemUpdatesMain = document.getElementById("system-updates-app");
+                   |var systemUpdatesAppScore = Elm.SystemUpdateScore.init({node: systemUpdatesMain, flags : {}});
+                   |scoreDetailsDispatcher["system-update"] = function(value){ systemUpdatesAppScore.ports.getValue.send(value) };
+                   |var complianceScoreMain = document.getElementById("compliance-app");
+                   |var complianceAppScore = Elm.ComplianceScore.init({node: complianceScoreMain, flags : {}});
+                   |scoreDetailsDispatcher["compliance"] = function(value){ complianceAppScore.ports.getValue.send(value) };
+                   |var main = document.getElementById("node-app")
+                   |var initValues = {
+                   |  id : "${nodeFact.id.value}",
+                   |  contextPath : contextPath,
+                   |};
+                   |var scoreDetailsApp = Elm.Node.init({node: main, flags: initValues});
+                   |scoreDetailsApp.ports.errorNotification.subscribe(function(str) {
+                   |  createErrorNotification(str)
+                   |});
+                   |scoreDetailsApp.ports.getDetails.subscribe(function(data) {
+                   |  var name = data.name
+                   |  var value = data.details
+                   |  var detailsHandler = scoreDetailsDispatcher[name];
+                   |  if (detailsHandler !== undefined) {
+                   |    detailsHandler(value)
+                   |  }
+                   |});
+                   |complianceAppScore.ports.sendHtml.subscribe(function(html) {
+                   |  scoreDetailsApp.ports.receiveDetails.send({name : "compliance",html : html});
+                   |});
+                   |systemUpdatesAppScore.ports.sendHtml.subscribe(function(html) {
+                   |  scoreDetailsApp.ports.receiveDetails.send({name : "system-update",html : html});
+                   |});
+                   |systemUpdatesAppScore.ports.errorNotification.subscribe(function(str) {
+                   |  createErrorNotification(str)
+                   |});
+                   |complianceAppScore.ports.errorNotification.subscribe(function(str) {
+                   |  createErrorNotification(str)
+                   |});
+                   |
+                   |""".stripMargin)
+        )
       )
     }
     <div id="nodeDetails">
