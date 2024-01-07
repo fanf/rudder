@@ -6,6 +6,7 @@ import com.normation.inventory.domain.InventoryError.Inconsistency
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.SoftwareUpdateKind
 import com.normation.rudder.campaigns.CampaignLogger
+import com.normation.rudder.domain.logger.ReportLoggerPure
 import com.normation.rudder.domain.reports.CompliancePercent
 import com.normation.rudder.domain.reports.ComplianceSerializable
 import com.normation.rudder.score.ScoreValue.A
@@ -240,7 +241,9 @@ class ScoreServiceManager(readScore: ScoreService) {
   def handleEvent(scoreEvent: ScoreEvent) = {
     (for {
       h       <- handlers.get
+      _ <- ReportLoggerPure.info(s"new event ${scoreEvent}")
       handled <- ZIO.foreach(h)(_.handle(scoreEvent))
+      _ <- ReportLoggerPure.info(s"new score ${handled}")
       newScore = handled.flatMap(_.groupMapReduce(_._1)(_._2)(_ ++ _)).toMap
       _       <- readScore.update(newScore)
     } yield {}).catchAll(err => CampaignLogger.error(s"${err.fullMsg}"))

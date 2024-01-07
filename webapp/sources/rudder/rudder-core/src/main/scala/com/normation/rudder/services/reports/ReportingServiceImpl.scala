@@ -980,7 +980,6 @@ trait DefaultFindRuleNodeStatusReports extends ReportingService {
 
       // compute the status
       nodeStatusReports <- buildNodeStatusReports(uncomputedRuns, Set(), Set(), complianceMode.mode, unexpectedMode)
-      _                 <- ReportLoggerPure.info(s"computing ${nodeStatusReports.keys} - ${nodeStatusReports.values.map(_.compliance)}").toBox
       t2                 = System.currentTimeMillis
       _                  = TimingDebugLogger.debug(s"Compliance: compute compliance reports: ${t2 - t1}ms")
     } yield {

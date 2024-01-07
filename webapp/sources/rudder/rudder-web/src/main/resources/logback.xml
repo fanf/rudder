@@ -316,8 +316,8 @@ along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
     Information on cache, interesting for Rudder 3.0 and up
     Set to debug or trace to have information.
   -->
-  <logger name="com.normation.rudder.services.reports.CachedReportingServiceImpl" level="debug" />
-  <logger name="com.normation.rudder.services.reports.CachedNodeChangesServiceImpl" level="debug" />
+  <logger name="com.normation.rudder.services.reports.CachedReportingServiceImpl" level="info" />
+  <logger name="com.normation.rudder.services.reports.CachedNodeChangesServiceImpl" level="info" />
   <logger name="com.normation.rudder.services.nodes.NodeInfoServiceCachedImpl" level="info"/>
 
 
@@ -449,7 +449,7 @@ along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
   <!--
       This logger allows to log information about reports, especially DB cleaning operation
   -->
-  <logger name="report" level="debug" additivity="false">
+  <logger name="report" level="info" additivity="false">
     <appender-ref ref="OPSLOG" />
     <appender-ref ref="STDOUT" />
   </logger>

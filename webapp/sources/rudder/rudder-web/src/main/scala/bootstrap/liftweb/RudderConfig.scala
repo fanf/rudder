@@ -1428,7 +1428,8 @@ case class RudderServiceApi(
     inventorySaver:                      NodeFactInventorySaver,
     inventoryDitService:                 InventoryDitService,
     nodeFactRepository:                  NodeFactRepository,
-    scoreServiceManager:                 ScoreServiceManager
+    scoreServiceManager:                 ScoreServiceManager,
+    scoreSerializer:                      ScoreSerializer
 )
 
 /*
@@ -3708,7 +3709,8 @@ object RudderConfigInit {
       inventorySaver,
       inventoryDitService,
       nodeFactRepository,
-      scoreServiceManager
+      scoreServiceManager,
+      scoreSerializer
     )
 
     // need to be done here to avoid cyclic dependencies

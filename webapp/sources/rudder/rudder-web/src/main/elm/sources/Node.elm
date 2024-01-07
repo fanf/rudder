@@ -6,7 +6,6 @@ import Html.Parser
 import Html.Parser.Util
 import Http exposing (..)
 import Json.Decode exposing (Value)
-import Json.Encode
 import Result
 
 import Node.DataTypes exposing (..)
@@ -50,7 +49,7 @@ update msg model =
             ( { model | detailsHtml = Dict.update name (always (Just (Html.Parser.Util.toVirtualDom html ))) model.detailsHtml }
             , Cmd.none
             )
-          Err err ->
+          Err _ ->
             (model, errorNotification ("Error when getting "++ name ++" score display") )
 
 

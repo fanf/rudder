@@ -488,7 +488,7 @@ object DisplayNode extends Loggable {
                    |  id : "${nodeFact.id.value}",
                    |  contextPath : contextPath,
                    |};
-                   |var scoreDetailsApp = Elm.Node.init({node: main, flags: initValues});
+                   |scoreDetailsApp = Elm.Node.init({node: main, flags: initValues});
                    |scoreDetailsApp.ports.errorNotification.subscribe(function(str) {
                    |  createErrorNotification(str)
                    |});
