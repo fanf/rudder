@@ -103,7 +103,7 @@ import com.normation.rudder.rest.data.Rest
 import com.normation.rudder.rest.data.Rest.NodeDetails
 import com.normation.rudder.rest.data.Validation
 import com.normation.rudder.rest.data.Validation.NodeValidationError
-import com.normation.rudder.score.JsonScore
+import com.normation.rudder.score.StringScore
 import com.normation.rudder.score.ScoreSerializer
 import com.normation.rudder.score.ScoreService
 import com.normation.rudder.services.nodes.MergeNodeProperties
@@ -624,10 +624,12 @@ class NodeApi(
       import com.normation.rudder.rest.implicits._
       (for {
         score     <- nodeApiService.getNodeDetailsScore(NodeId(id))
-        jsonScore <- ZIO.foreach(score)(s => scoreSerializer.toJson(s).map(s => JsonScore(s.value, s.name, s.message, s.details)))
+        encoder   <- ZIO.foreach(score){ s => scoreSerializer.getJsonEncoder(s) }
       } yield {
-        jsonScore
-      }).toLiftResponseOne(params, schema, _ => Some(id))
+        //here, we need to have a way to `toLiftResponse` with the correct jsonencoder for each bit - or just keep
+        // a conversion from score to JsonScore in place of `getJsonEncoder`
+        XXXXXX
+      }).toLiftResponseOne(params, schema, _ => Some(id))(here, have a way to build the response from score and encoders)
     }
   }
 
