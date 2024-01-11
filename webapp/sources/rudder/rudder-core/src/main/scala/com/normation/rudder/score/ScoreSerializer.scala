@@ -19,19 +19,20 @@ object ScoreSerializer {
 
   implicit val globalScoreEncoder: JsonEncoder[GlobalScore] = DeriveJsonEncoder.gen
   implicit val globalScoreDecoder: JsonDecoder[GlobalScore] = DeriveJsonDecoder.gen
+
+  implicit val jsonScoreEncoder: JsonEncoder[JsonScore] = DeriveJsonEncoder.gen
+  implicit val jsonScoreDecoder: JsonDecoder[JsonScore] = DeriveJsonDecoder.gen
 }
 
 trait ScoreSerializerService {
   def parse(score:         StringScore): IOResult[Option[Score]]
-  def toJson(score:        Score):       IOResult[Option[StringScore]]
-  def toJsonEncoder(score: Score):       Option[JsonEncoder[Score]]
+  def toStringScore(score: Score):       Option[StringScore]
+  def toJson(score:        Score):       IOResult[Option[JsonScore]]
 }
 
 case object ComplianceScoreSerializerService extends ScoreSerializerService {
-  import ScoreSerializer._
   implicit val compliancePercentDecoder: JsonDecoder[ComplianceSerializable] = DeriveJsonDecoder.gen
   implicit val compliancePercentEncoder: JsonEncoder[ComplianceSerializable] = DeriveJsonEncoder.gen
-  implicit val encoderComplianceScore:   JsonEncoder[ComplianceScore]        = DeriveJsonEncoder.gen
 
   override def parse(score: StringScore): IOResult[Option[ComplianceScore]] = {
 
@@ -42,28 +43,26 @@ case object ComplianceScoreSerializerService extends ScoreSerializerService {
     }
   }
 
-  override def toJson(score: Score): IOResult[Option[StringScore]] = {
+  override def toStringScore(score: Score): Option[StringScore] = {
     score match {
       case complianceScore: ComplianceScore =>
-        Some(StringScore(score.value, score.name, score.message, complianceScore.details.toJson)).succeed
-      case _ => None.succeed
+        Some(StringScore(score.value, score.name, score.message, complianceScore.details.toJson))
+      case _ => None
     }
   }
 
-  override def toJsonEncoder(score: Score): Option[JsonEncoder[Score]] = {
+  override def toJson(score: Score): IOResult[Option[JsonScore]] = {
     score match {
-      case _: ComplianceScore =>
-        Some(encoderComplianceScore.asInstanceOf[JsonEncoder[Score]]) // perhaps we can do better than that
-      case _ => None
+      case complianceScore: ComplianceScore =>
+        complianceScore.details.toJsonAST.toIO.map(JsonScore(score.value, score.name, score.message, _)).map(Some(_))
+      case _ => None.succeed
     }
   }
 }
 
 case object SystemUpdateScoreSerializerService extends ScoreSerializerService {
-  import ScoreSerializer._
   implicit val compliancePercentDecoder: JsonDecoder[SystemUpdateStats] = DeriveJsonDecoder.gen
   implicit val compliancePercentEncoder: JsonEncoder[SystemUpdateStats] = DeriveJsonEncoder.gen
-  implicit val encoderSystemUpdateScore: JsonEncoder[SystemUpdateScore] = DeriveJsonEncoder.gen
 
   override def parse(score: StringScore): IOResult[Option[SystemUpdateScore]] = {
 
@@ -74,21 +73,21 @@ case object SystemUpdateScoreSerializerService extends ScoreSerializerService {
     }
   }
 
-  override def toJson(score: Score): IOResult[Option[StringScore]] = {
+  override def toStringScore(score: Score): Option[StringScore] = {
     score match {
       case systemScore: SystemUpdateScore =>
-        Some(StringScore(score.value, score.name, score.message, systemScore.details.toJson)).succeed
-      case _ => None.succeed
-    }
-  }
-
-  override def toJsonEncoder(score: Score): Option[JsonEncoder[Score]] = {
-    score match {
-      case _: SystemUpdateScore => Some(encoderSystemUpdateScore.asInstanceOf[JsonEncoder[Score]])
+        Some(StringScore(score.value, score.name, score.message, systemScore.details.toJson))
       case _ => None
     }
   }
 
+  override def toJson(score: Score): IOResult[Option[JsonScore]] = {
+    score match {
+      case systemScore: SystemUpdateScore =>
+        systemScore.details.toJsonAST.toIO.map(JsonScore(score.value, score.name, score.message, _)).map(Some(_))
+      case _ => None.succeed
+    }
+  }
 }
 
 class ScoreSerializer {
@@ -112,7 +111,20 @@ class ScoreSerializer {
     }
   }
 
-  def toJson(score: Score): IOResult[StringScore] = {
+  def toStringScore(score: Score): IOResult[StringScore] = {
+    for {
+      sers <- serializers.get
+      enc   = sers.view.map(_.toStringScore(score)).collectFirst { case Some(enc) => enc }
+      res  <- enc match {
+                case Some(score) => score.succeed
+                case None        => Inconsistency(s"No encoder found for score ${score}").fail
+              }
+    } yield {
+      res
+    }
+  }
+
+  def toJson(score: Score): IOResult[JsonScore] = {
     for {
       sers            <- serializers.get
       acc             <- ZIO.partition(sers)(_.toJson(score))
@@ -126,22 +138,4 @@ class ScoreSerializer {
       res
     }
   }
-
-  def getJsonEncoder(score: Score): IOResult[JsonEncoder[Score]] = {
-    for {
-      sers  <- serializers.get
-      optEnc = sers.collectFirst {
-                 case s if (s.toJsonEncoder(score).isDefined) => s.toJsonEncoder(score)
-               } // can do better here too
-      res   <- optEnc match {
-                 case Some(Some(enc)) => enc.succeed
-                 case _               => Inconsistency(s"Error: no encoder exist for the score: ${score}").fail
-               }
-
-    } yield {
-      res
-    }
-
-  }
-
 }

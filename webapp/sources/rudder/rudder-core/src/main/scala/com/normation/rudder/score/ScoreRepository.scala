@@ -76,7 +76,7 @@ class ScoreRepositoryImpl(doobie: Doobie, scoreSerializer: ScoreSerializer) exte
 
   override def saveScore(nodeId: NodeId, score: Score): IOResult[Unit] = {
     for {
-      StringScore <- scoreSerializer.toJson(score)
+      StringScore <- scoreSerializer.toStringScore(score)
     } yield {
       val query = {
         sql"""insert into scoreDetails (nodeId, name, score, message, details) values (${(nodeId, StringScore)})

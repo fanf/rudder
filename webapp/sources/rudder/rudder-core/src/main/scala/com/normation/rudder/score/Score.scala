@@ -14,9 +14,11 @@ import com.normation.rudder.score.ScoreValue.B
 import com.normation.rudder.score.ScoreValue.C
 import com.normation.rudder.score.ScoreValue.D
 import com.normation.rudder.score.ScoreValue.E
+
 import com.normation.zio._
 import zio.Ref
 import zio.ZIO
+import zio.json.ast.Json
 import zio.syntax._
 
 sealed trait ScoreValue {
@@ -45,6 +47,7 @@ trait Score {
 }
 
 case class NoDetailsScore(name: String, value: ScoreValue, message: String)
+case class JsonScore(value: ScoreValue, name: String, message: String, details: Json) extends Score
 case class StringScore(value: ScoreValue, name: String, message: String, details: String) extends Score
 case class ComplianceScore(value: ScoreValue, message: String, details: ComplianceSerializable)
     extends Score {
