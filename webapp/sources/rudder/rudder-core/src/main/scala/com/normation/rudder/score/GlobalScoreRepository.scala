@@ -61,7 +61,7 @@ object GlobalScoreRepositoryImpl {
 
   implicit val stateWrite: Meta[List[NoDetailsScore]] = new Meta(pgDecoderGet, pgEncoderPut)
 
-  // implicit val stateWrite: Meta[Score[_]] = new Meta(pgDecoderGet, pgEncoderPut)
+  // implicit val stateWrite: Meta[Score] = new Meta(pgDecoderGet, pgEncoderPut)
 
   implicit val globalScoreWrite: Write[(NodeId, GlobalScore)] = {
     Write[(String, ScoreValue, String, List[NoDetailsScore])].contramap {

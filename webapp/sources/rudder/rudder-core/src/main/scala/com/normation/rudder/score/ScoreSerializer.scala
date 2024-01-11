@@ -5,7 +5,6 @@ import com.normation.errors.IOResult
 import com.normation.rudder.domain.reports.ComplianceSerializable
 import zio.{Ref, ZIO}
 import zio.json._
-import zio.json.ast.Json
 import zio.syntax._
 import com.normation.zio._
 
@@ -25,15 +24,15 @@ object ScoreSerializer {
 }
 
 trait ScoreSerializerService {
-  def parse(score:  Score[Json]): IOResult[Option[Score[_]]]
-  def toJson(score: Score[_]):    IOResult[Option[Score[Json]]]
+  def parse(score:  JsonScore): IOResult[Option[Score]]
+  def toJson(score: Score):    IOResult[Option[JsonScore]]
 }
 
 case object ComplianceScoreSerializerService extends ScoreSerializerService {
   implicit val compliancePercentDecoder: JsonDecoder[ComplianceSerializable] = DeriveJsonDecoder.gen
   implicit val compliancePercentEncoder: JsonEncoder[ComplianceSerializable] = DeriveJsonEncoder.gen
 
-  override def parse(score: Score[Json]): IOResult[Option[ComplianceScore]] = {
+  override def parse(score: JsonScore): IOResult[Option[ComplianceScore]] = {
 
     if (score.name == "compliance") {
       score.details.as.toIO.map(ComplianceScore(score.value, score.message, _)).map(Some(_))
@@ -42,10 +41,10 @@ case object ComplianceScoreSerializerService extends ScoreSerializerService {
     }
   }
 
-  override def toJson(score: Score[_]): IOResult[Option[Score[Json]]] = {
-    score.details match {
-      case details: ComplianceSerializable =>
-        details.toJsonAST.toIO.map(JsonScore(score.value, score.name, score.message, _)).map(Some(_))
+  override def toJson(score: Score): IOResult[Option[JsonScore]] = {
+    score match {
+      case complianceScore: ComplianceScore =>
+        complianceScore.details.toJsonAST.toIO.map(JsonScore(score.value, score.name, score.message, _)).map(Some(_))
       case _ => None.succeed
     }
   }
@@ -55,7 +54,7 @@ case object SystemUpdateScoreSerializerService extends ScoreSerializerService {
   implicit val compliancePercentDecoder: JsonDecoder[SystemUpdateStats] = DeriveJsonDecoder.gen
   implicit val compliancePercentEncoder: JsonEncoder[SystemUpdateStats] = DeriveJsonEncoder.gen
 
-  override def parse(score: Score[Json]): IOResult[Option[SystemUpdateScore]] = {
+  override def parse(score: JsonScore): IOResult[Option[SystemUpdateScore]] = {
 
     if (score.name == "system-updates") {
       score.details.as.toIO.map(SystemUpdateScore(score.value, score.message, _)).map(Some(_))
@@ -64,10 +63,10 @@ case object SystemUpdateScoreSerializerService extends ScoreSerializerService {
     }
   }
 
-  override def toJson(score: Score[_]): IOResult[Option[Score[Json]]] = {
-    score.details match {
-      case details: SystemUpdateStats =>
-        details.toJsonAST.toIO.map(JsonScore(score.value, score.name, score.message, _)).map(Some(_))
+  override def toJson(score: Score): IOResult[Option[JsonScore]] = {
+    score match {
+      case systemScore: SystemUpdateScore =>
+        systemScore.details.toJsonAST.toIO.map(JsonScore(score.value, score.name, score.message, _)).map(Some(_))
       case _ => None.succeed
     }
   }
@@ -81,7 +80,7 @@ class ScoreSerializer {
     serializers.update(handler :: _)
   }
 
-  def parse(score: Score[Json]): IOResult[Score[_]] = {
+  def parse(score: JsonScore): IOResult[Score] = {
     for {
       sers <- serializers.get
       acc             <- ZIO.partition(sers)(_.parse(score))
@@ -93,7 +92,7 @@ class ScoreSerializer {
     }
   }
 
-  def toJson(score: Score[_]): IOResult[Score[Json]] = {
+  def toJson(score: Score): IOResult[JsonScore] = {
     for {
       sers <- serializers.get
       acc <- ZIO.partition(sers)(_.toJson(score))

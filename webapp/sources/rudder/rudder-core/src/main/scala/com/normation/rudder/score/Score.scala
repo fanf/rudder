@@ -39,17 +39,16 @@ object ScoreValue {
   }
 }
 
-trait Score[T] {
+trait Score {
   def name:    String
   def value:   ScoreValue
   def message: String
-  def details: T
 }
 
 case class NoDetailsScore(name: String, value: ScoreValue, message: String)
-case class JsonScore(value: ScoreValue, name: String, message: String, details: Json) extends Score[Json]
+case class JsonScore(value: ScoreValue, name: String, message: String, details: Json) extends Score
 case class ComplianceScore(value: ScoreValue, message: String, details: ComplianceSerializable)
-    extends Score[ComplianceSerializable] {
+    extends Score {
   override val name = "compliance"
 }
 
@@ -62,13 +61,13 @@ case class SystemUpdateStats(
     other:       Option[Int]
 )
 
-case class SystemUpdateScore(value: ScoreValue, message: String, details: SystemUpdateStats) extends Score[SystemUpdateStats] {
+case class SystemUpdateScore(value: ScoreValue, message: String, details: SystemUpdateStats) extends Score {
   override val name = "system-update"
 }
 case class GlobalScore(value: ScoreValue, message: String, details: List[NoDetailsScore])
 
 object GlobalScoreService {
-  def computeGlobalScore(oldScore: List[NoDetailsScore], scores: List[Score[_]]): GlobalScore = {
+  def computeGlobalScore(oldScore: List[NoDetailsScore], scores: List[Score]): GlobalScore = {
 
     val correctScores = scores.foldRight(oldScore) {
       case (newScore, acc) =>
@@ -92,11 +91,11 @@ case class InventoryScoreEvent(nodeId: NodeId, inventory: Inventory)            
 case class ComplianceScoreEvent(nodeId: NodeId, compliancePercent: CompliancePercent) extends ScoreEvent
 
 trait ScoreEventHandler {
-  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score[_]])]]
+  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score])]]
 }
 
 object ComplianceScoreEventHandler extends ScoreEventHandler {
-  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score[_]])]] = {
+  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score])]] = {
 
     event match {
       case ComplianceScoreEvent(n, percent) =>
@@ -120,7 +119,7 @@ object ComplianceScoreEventHandler extends ScoreEventHandler {
 }
 
 object InventoryEventHandler extends ScoreEventHandler {
-  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score[_]])]] = {
+  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score])]] = {
 
     event match {
       case InventoryScoreEvent(n, inventory) =>
@@ -162,7 +161,7 @@ object InventoryEventHandler extends ScoreEventHandler {
 
 class ScoreService(globalScoreRepository: GlobalScoreRepository, scoreRepository: ScoreRepository) {
   private[this] val cache:      Ref[Map[NodeId, GlobalScore]]    = globalScoreRepository.getAll().flatMap(Ref.make(_)).runNow
-  private[this] val scoreCache: Ref[Map[NodeId, List[Score[_]]]] = scoreRepository.getAll().flatMap(Ref.make(_)).runNow
+  private[this] val scoreCache: Ref[Map[NodeId, List[Score]]] = scoreRepository.getAll().flatMap(Ref.make(_)).runNow
 
   def getAll():                       IOResult[Map[NodeId, GlobalScore]] = cache.get
   def getGlobalScore(nodeId: NodeId): IOResult[GlobalScore]              = {
@@ -178,7 +177,7 @@ class ScoreService(globalScoreRepository: GlobalScoreRepository, scoreRepository
     }
   }
 
-  def getScoreDetails(nodeId: NodeId): IOResult[List[Score[_]]] = {
+  def getScoreDetails(nodeId: NodeId): IOResult[List[Score]] = {
     for {
       c   <- scoreCache.get
       res <-
@@ -197,7 +196,7 @@ class ScoreService(globalScoreRepository: GlobalScoreRepository, scoreRepository
     } yield {}
   }
 
-  def update(newScores: Map[NodeId, List[Score[_]]]) = {
+  def update(newScores: Map[NodeId, List[Score]]) = {
     for {
       c           <- cache.get
       // sc <- scoreCache.get
@@ -241,9 +240,9 @@ class ScoreServiceManager(readScore: ScoreService) {
   def handleEvent(scoreEvent: ScoreEvent) = {
     (for {
       h       <- handlers.get
-      _ <- ReportLoggerPure.info(s"new event ${scoreEvent}")
+      _       <- ReportLoggerPure.info(s"new event ${scoreEvent}")
       handled <- ZIO.foreach(h)(_.handle(scoreEvent))
-      _ <- ReportLoggerPure.info(s"new score ${handled}")
+      _       <- ReportLoggerPure.info(s"new score ${handled}")
       newScore = handled.flatMap(_.groupMapReduce(_._1)(_._2)(_ ++ _)).toMap
       _       <- readScore.update(newScore)
     } yield {}).catchAll(err => CampaignLogger.error(s"${err.fullMsg}"))
