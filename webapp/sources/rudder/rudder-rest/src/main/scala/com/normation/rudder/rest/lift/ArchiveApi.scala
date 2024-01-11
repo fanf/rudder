@@ -1229,12 +1229,14 @@ class SaveArchiveServicebyRepo(
       _ <- x match {
              case Some(value) =>
                // if merge policy is `keep-rule-groups`, update rule from archive with existing groups before saving
-               val ruleToSave = if (mergePolicy == MergePolicy.KeepRuleGroups || mergePolicy == MergePolicy.IgnoreSourceRuleGroups) {
-                 r.copy(targets = value.targets)
-               } else r
+               val ruleToSave = {
+                 if (mergePolicy == MergePolicy.KeepRuleGroups || mergePolicy == MergePolicy.IgnoreSourceRuleGroups) {
+                   r.copy(targets = value.targets)
+                 } else r
+               }
                woRuleRepos.update(ruleToSave, eventMetadata.modId, eventMetadata.actor, eventMetadata.msg)
              case None        =>
-               val ruleToSave = if(mergePolicy == MergePolicy.IgnoreSourceRuleGroups) {
+               val ruleToSave = if (mergePolicy == MergePolicy.IgnoreSourceRuleGroups) {
                  r.copy(targets = Set())
                } else r
                woRuleRepos.create(ruleToSave, eventMetadata.modId, eventMetadata.actor, eventMetadata.msg)
