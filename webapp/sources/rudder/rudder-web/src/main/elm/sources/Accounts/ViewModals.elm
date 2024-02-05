@@ -106,6 +106,13 @@ displayModals model =
                     , SingleDatePicker.view (userDefinedDatePickerSettings model.ui.datePickerInfo.zone model.ui.datePickerInfo.currentTime selectedDate) model.ui.datePickerInfo.picker
                     ]
                   ]
+                , (if model.tenantsPluginEnabled then
+                    div [id "tenantapiaccounts-app", style "display" (if displayAcl then "block" else "none")]
+                      [ div [id "tenantapiaccounts-content"][]
+                    ]
+                  else
+                    text ""
+                  )
                 , div [class "form-group"]
                   [ label [for "newAccount-access"][text "Access level"]
                   , select [id "newAccount-access", class "form-select", onInput (\s -> UpdateAccountForm {account | authorisationType = s} )]
