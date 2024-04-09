@@ -59,8 +59,9 @@ import com.normation.zio.*
 import com.unboundid.ldap.sdk.DN
 import zio.Ref
 
-object MockLdapFactStorage {
+object MockLdapFactStorage extends MockLdapFactStorageTemplate("ldap-data/inventory-sample-data.ldif" :: Nil)
 
+abstract class MockLdapFactStorageTemplate(resourcesToLoad: List[String]) {
   val tmp: File = File.newTemporaryDirectory("rudder-test-ldap-schema-files-")
   tmp.deleteOnExit(true)
 
@@ -92,7 +93,7 @@ object MockLdapFactStorage {
     val bootstrapDir = tmp / "bootstrap"
     bootstrapDir.createDirectories()
 
-    ("ldap/bootstrap.ldif" :: "ldap-data/inventory-sample-data.ldif" :: Nil) map { name =>
+    ("ldap/bootstrap.ldif" :: resourcesToLoad) map { name =>
       // toURI is needed for https://issues.rudder.io/issues/19186
       val dest = bootstrapDir / name.split("/")(1)
       dest.writeText(Resource.getAsString(name))
