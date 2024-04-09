@@ -3343,7 +3343,7 @@ object RudderConfigInit {
         uuidGen
       ),
       new CreateSystemToken(roLDAPApiAccountRepository.systemAPIAccount),
-      new LoadNodeComplianceCache(nodeFactInfoService, reportingServiceImpl),
+      new LoadNodeComplianceCache(nodeFactRepository, reportingServiceImpl),
       new CloseOpenUserSessions(userRepository)
     )
 
@@ -3605,9 +3605,7 @@ object RudderConfigInit {
         ldapEntityMapper,
         rwLdap,
         logRepository,
-        nodeReadWriteMutex,
-        cachedNodeConfigurationService,
-        reportingServiceImpl
+        nodeReadWriteMutex
       )
     }
 

@@ -153,9 +153,9 @@ class GenerationOnChange(
  * Callback related to cache invalidation when a node changes
  */
 class CacheInvalidateNodeFactEventCallback(
-    cacheExpectedReports: InvalidateCache[CacheExpectedReportAction],
-    cacheConfiguration:   InvalidateCache[CacheComplianceQueueAction],
-    cacheToClear:         List[CachedRepository]
+    cacheNodeConfigurations: InvalidateCache[CacheExpectedReportAction],
+    cacheCompliance        :   InvalidateCache[CacheComplianceQueueAction],
+    cacheToClear           :         List[CachedRepository]
 ) extends NodeFactChangeEventCallback {
 
   import com.normation.rudder.services.reports.CacheExpectedReportAction.*
@@ -170,10 +170,10 @@ class CacheInvalidateNodeFactEventCallback(
         // ping the NodeConfiguration Cache and NodeCompliance Cache about this new node
         val i = InsertNodeInCache(node.id)
         for {
-          _ <- cacheConfiguration
+          _ <- cacheCompliance
                  .invalidateWithAction(Seq((node.id, CacheComplianceQueueAction.ExpectedReportAction(i))))
                  .chainError(s"Error when adding node ${node.id.value} to node configuration cache")
-          _ <- cacheExpectedReports
+          _ <- cacheNodeConfigurations
                  .invalidateWithAction(Seq((node.id, i)))
                  .chainError(s"Error when adding node ${node.id.value} to compliance cache")
           _ <- ZIO.foreach(cacheToClear)(c => IOResult.attempt(c.clearCache()))
@@ -187,13 +187,13 @@ class CacheInvalidateNodeFactEventCallback(
         for {
           _ <- NodeLoggerPure.Delete.debug(s"  - remove node ${node.id.value} from compliance and expected report cache")
           _ <-
-            cacheConfiguration
+            cacheCompliance
               .invalidateWithAction(Seq((node.id, CacheComplianceQueueAction.ExpectedReportAction(a))))
               .catchAll(err => {
                 NodeLoggerPure.Delete
                   .error(s"Error when removing node ${node.id.value} from node configuration cache: ${err.fullMsg}")
               })
-          _ <- cacheExpectedReports
+          _ <- cacheNodeConfigurations
                  .invalidateWithAction(Seq((node.id, a)))
                  .catchAll(err =>
                    NodeLoggerPure.Delete.error(s"Error when removing node ${node.id.value} from compliance cache: ${err.fullMsg}")

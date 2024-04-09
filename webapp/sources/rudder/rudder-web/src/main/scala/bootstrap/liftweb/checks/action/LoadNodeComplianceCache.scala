@@ -39,18 +39,18 @@ package bootstrap.liftweb.checks.action
 
 import bootstrap.liftweb.BootstrapChecks
 import bootstrap.liftweb.BootstrapLogger
-import com.normation.box.*
-import com.normation.rudder.services.nodes.NodeInfoService
+import com.normation.rudder.facts.nodes.NodeFactRepository
+import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.services.reports.CacheComplianceQueueAction.ExpectedReportAction
 import com.normation.rudder.services.reports.CachedFindRuleNodeStatusReports
 import com.normation.rudder.services.reports.CacheExpectedReportAction.InsertNodeInCache
+import com.normation.zio.*
 import javax.servlet.UnavailableException
-import net.liftweb.common.EmptyBox
 
 /**
  * At startup, we preload node compliance cache
  */
-class LoadNodeComplianceCache(nodeInfoService: NodeInfoService, reportingService: CachedFindRuleNodeStatusReports)
+class LoadNodeComplianceCache(nodeFactRepository: NodeFactRepository, reportingService: CachedFindRuleNodeStatusReports)
     extends BootstrapChecks {
 
   override val description = "Load node compliance cache"
@@ -58,13 +58,12 @@ class LoadNodeComplianceCache(nodeInfoService: NodeInfoService, reportingService
   @throws(classOf[UnavailableException])
   override def checks(): Unit = {
     (for {
-      nodeIds <- nodeInfoService.getAllNodesIds()
-      _       <- reportingService.invalidateWithAction(nodeIds.toSeq.map(x => (x, ExpectedReportAction(InsertNodeInCache(x)))))
-    } yield ()).toBox match {
-      case eb: EmptyBox =>
-        val err = eb ?~! s"Error when loading node compliance cache:"
-        BootstrapLogger.warn(err.messageChain)
-      case _ =>
+      nodes <- nodeFactRepository.getAll()(QueryContext.systemQC)
+      _     <- reportingService.invalidateWithAction(nodes.keys.map(x => (x, ExpectedReportAction(InsertNodeInCache(x)))).toSeq)
+    } yield ()).either.runNow match {
+      case Left(err) =>
+        BootstrapLogger.warn(s"Error when loading node compliance cache: ${err.fullMsg}")
+      case _         =>
       // ok
     }
   }

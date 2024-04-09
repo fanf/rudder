@@ -39,7 +39,6 @@ package com.normation.rudder
 
 import better.files.*
 import com.normation.GitVersion
-import com.normation.box.*
 import com.normation.cfclerk.domain.*
 import com.normation.cfclerk.services.impl.*
 import com.normation.cfclerk.xmlparsers.SectionSpecParser
@@ -2273,14 +2272,14 @@ class MockNodes() {
       }
     }
 
-    override def process(query: Query): Box[Seq[NodeId]] = {
+    override def processPure(query: Query): IOResult[Chunk[CoreNodeFact]] = {
       for {
         nodes    <- nodeFactStorage.nodeFactBase.get
         matching <- filterForLines(query.criteria, query.composition, nodes.map(_._2).toList).toIO
       } yield {
-        matching.map(_.id).toSeq
+        Chunk.fromIterable(matching.map(_.toCore))
       }
-    }.toBox
+    }
 
     override def processOnlyId(query: Query): Box[Seq[NodeId]] = process(query).map(_.toSeq)
   }

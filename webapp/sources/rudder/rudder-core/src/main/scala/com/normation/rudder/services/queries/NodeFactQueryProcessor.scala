@@ -37,7 +37,6 @@
 
 package com.normation.rudder.services.queries
 
-import com.normation.box.*
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.AcceptedInventory
 import com.normation.inventory.domain.InventoryStatus
@@ -54,7 +53,6 @@ import com.normation.rudder.facts.nodes.NodeFactRepository
 import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.facts.nodes.SelectNodeStatus
 import com.normation.zio.*
-import net.liftweb.common.Box
 import zio.*
 import zio.syntax.*
 
@@ -121,9 +119,6 @@ class NodeFactQueryProcessor(
     ldapQueryProc: InternalLDAPQueryProcessor,
     status:        InventoryStatus = AcceptedInventory
 ) extends QueryProcessor with QueryChecker {
-
-  def process(query:       Query): Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
-  def processOnlyId(query: Query): Box[Seq[NodeId]] = processPure(query).map(_.toList.map(_.id)).toBox
 
   def check(query: Query, nodeIds: Option[Seq[NodeId]])(implicit qc: QueryContext): IOResult[Set[NodeId]] = {
     // make a 0 criteria request raise an error like LDAP would do,

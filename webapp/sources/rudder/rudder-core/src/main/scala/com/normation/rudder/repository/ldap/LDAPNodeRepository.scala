@@ -54,9 +54,6 @@ import com.normation.rudder.domain.NodeDit
 import com.normation.rudder.domain.nodes.*
 import com.normation.rudder.repository.EventLogRepository
 import com.normation.rudder.repository.WoNodeRepository
-import com.normation.rudder.services.reports.CacheComplianceQueueAction
-import com.normation.rudder.services.reports.CacheExpectedReportAction
-import com.normation.rudder.services.reports.InvalidateCache
 import org.joda.time.DateTime
 import zio.*
 import zio.syntax.*
@@ -68,9 +65,6 @@ class WoLDAPNodeRepository(
     ldap:         LDAPConnectionProvider[RwLDAPConnection],
     actionLogger: EventLogRepository,
     nodeLibMutex: ScalaReadWriteLock, // that's a scala-level mutex to have some kind of consistency with LDAP
-
-    cacheExpectedReports: InvalidateCache[CacheExpectedReportAction],
-    cacheConfiguration:   InvalidateCache[CacheComplianceQueueAction]
 ) extends WoNodeRepository with NamedZioLogger {
   repo =>
 

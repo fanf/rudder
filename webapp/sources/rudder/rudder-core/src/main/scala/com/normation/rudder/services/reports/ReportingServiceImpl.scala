@@ -103,7 +103,7 @@ object ReportingServiceUtils {
  * * remove a node from the cache (when the node is deleted)
  * * initialize compliance
  * * update compliance with a new run (with the new compliance)
- * * init node configuration (at application startup for example - if an existing node configuration is stored for this node, this is discared)
+ * * init node configuration (at application startup for example - if an existing node configuration is stored for this node, this is discarded)
  * * update node configuration (after a policy generation, with new nodeconfiguration)
  * * set the node in node answer state (with the new compliance?)
  */

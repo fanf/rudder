@@ -37,26 +37,30 @@
 
 package com.normation.rudder.services.queries
 
+import com.normation.box.*
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.queries.Query
+import com.normation.rudder.facts.nodes.CoreNodeFact
 import com.normation.rudder.facts.nodes.QueryContext
 import net.liftweb.common.Box
+import zio.Chunk
 
 trait QueryProcessor {
 
   /**
    * Process a query and (hopefully) return the list of entry that match it.
    * @param query - the query to process
-   * @return
    */
-  def process(query: Query): Box[Seq[NodeId]]
+  def process(query: Query): Box[Seq[NodeId]] = processPure(query).map(_.map(_.id)).toBox
 
   /**
    * Only get node ids corresponding to that request, with minimal consistency check.
    * This method is useful to maximize performance (low memory, high throughout) for ex for dynamic groups.
    */
-  def processOnlyId(query: Query): Box[Seq[NodeId]]
+  def processOnlyId(query:     Query): Box[Seq[NodeId]]      = processOnlyIdPure(query).toBox
+  def processOnlyIdPure(query: Query): IOResult[Seq[NodeId]] = processPure(query).map(_.map(_.id))
+  def processPure(query:       Query): IOResult[Chunk[CoreNodeFact]]
 }
 
 trait QueryChecker {
