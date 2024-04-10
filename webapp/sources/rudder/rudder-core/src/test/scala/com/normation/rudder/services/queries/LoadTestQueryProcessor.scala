@@ -37,8 +37,10 @@
 
 package com.normation.rudder.services.queries
 
+import better.files.File
 import better.files.Resource
 import com.normation.errors.*
+import com.normation.inventory.domain.AlmaLinux
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.ldap.core.ReadOnlySoftwareDAOImpl
 import com.normation.rudder.domain.queries.*
@@ -49,8 +51,12 @@ import com.normation.rudder.repository.ldap.ZioTReentrantLock
 import com.normation.rudder.tenants.DefaultTenantService
 import com.normation.zio.*
 import com.softwaremill.quicklens.*
+import java.nio.charset.StandardCharsets
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import zio.*
 import zio.json.*
+import zio.syntax.*
 
 /*
  * Identify performance problems in NodeFactRepository implementation;
@@ -64,9 +70,19 @@ final case class ENV(
 )
 
 object LoadTestQueryProcessor {
+  val df      = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SZ")
+  val logPath = s"/tmp/test-rudder-load/${ZonedDateTime.now().format(df)}"
+  val logFile = File(logPath).createFileIfNotExists(createParents = true)
+
+  def log(s: String) = {
+    println(s)
+    logFile.appendLine(s)(StandardCharsets.UTF_8)
+  }
+
+  def logPure(s: String): UIO[Unit] = effectUioUnit(log(s))
 
   def init: ENV = {
-    println(s"Initializing load test...")
+    log(s"Initializing load test...")
 
     /*
      * We want to set things as similar as what we have in the real rudder.
@@ -99,7 +115,7 @@ object LoadTestQueryProcessor {
         LDAP.inventoryMapper
       )
     )
-    println(s"LDAP things init...")
+    log(s"LDAP things init...")
 
     val nodeRepository: CoreNodeFactRepository = {
       val buildRepo = for {
@@ -110,7 +126,7 @@ object LoadTestQueryProcessor {
       buildRepo.runNow
     }
 
-    println(s"Node fact repo init...")
+    log(s"Node fact repo init...")
 
     val queryProcessor = new NodeFactQueryProcessor(nodeRepository, subGroupComparatorRepo, internalLDAPQueryProcessor)
 
@@ -119,7 +135,7 @@ object LoadTestQueryProcessor {
       override val criterionObjects: Map[String, ObjectCriterion] = Map[String, ObjectCriterion]() ++ ditQueryData.criteriaMap
     }
 
-    println(s"all init")
+    log(s"all init")
     ENV(LDAP, nodeRepository, queryProcessor, queryParser)
   }
 
@@ -128,28 +144,52 @@ object LoadTestQueryProcessor {
       t0  <- currentTimeMillis
       res <- a
       t1  <- currentTimeMillis
-      _   <- effectUioUnit(println(s"${hint}: ${t1 - t0} ms"))
+      _   <- logPure(s"${hint}: ${t1 - t0} ms")
     } yield res
   }
 
-  val createNodes: IOResult[Chunk[NodeFact]] = {
+  def createNodes(small: Boolean): IOResult[Chunk[NodeFact]] = {
     val numByOS = 50
+    logPure(s"Create ${numByOS} nodes from ${if (small) "small" else "full"} template") *>
     time("time creating nodes: ")(for {
-      alma   <- LoadNodeFact.generateNodesFrom("alma9_1.json", 10000000, numByOS)
-      debian <- LoadNodeFact.generateNodesFrom("debian12_1.json", 20000000, numByOS)
-      ubuntu <- LoadNodeFact.generateNodesFrom("ubuntu22_1.json", 30000000, numByOS)
+      alma   <- LoadNodeFact.generateNodesFrom(if (small) "alma9_1_small.json" else "alma9_1.json", 10000000, numByOS)
+      debian <- LoadNodeFact.generateNodesFrom(if (small) "debian12_1_small.json" else "debian12_1.json", 20000000, numByOS)
+      ubuntu <- LoadNodeFact.generateNodesFrom(if (small) "ubuntu22_1_small.json" else "ubuntu22_1.json", 30000000, numByOS)
     } yield alma ++ debian ++ ubuntu)
   }
 
   def saveNodes(nodes: Chunk[NodeFact])(implicit env: ENV): IOResult[Unit] = {
     implicit val cc: ChangeContext = ChangeContext.newForRudder()
-    time(s"saving ${nodes.size} node")(ZIO.foreachDiscard(nodes)(n => env.nodeFactRepo.unsafeSave(n, checkCertificate = false)))
+    time(s"saving ${nodes.size} node")(
+      ZIO.foreachParDiscard(nodes)(n => env.nodeFactRepo.unsafeSave(n, checkCertificate = false)).withParallelism(4)
+    )
+  }
+
+  /*
+   * Comparison between selecting OS from query or LDAP, repeat N times
+   */
+  def selectOS(env: ENV, nodes: Chunk[NodeFact], repeat: Int): IOResult[Unit] = {
+    val query = """
+      { "select":"node", "where":[
+        {"objectType":"node","attribute":"osName","comparator":"eq","value":"AlmaLinux"}
+      ] }
+      """
+
+    for {
+      _ <- logPure(s"selecting OS with ${repeat} repetitions")
+      q <- env.queryParser(query).toIO
+      _ <- time(s"process query")(env.queryProcessor.processPure(q)).repeatN(repeat)
+      _ <- time(s"collect nodes")(nodes.collect { case n if (n.os.os == AlmaLinux) => n }.succeed).repeatN(repeat)
+    } yield ()
   }
 
   def prog(implicit env: ENV): IOResult[Unit] = {
     for {
-      nodes <- createNodes
+      nodes <- createNodes(small = true)
       _     <- saveNodes(nodes)
+// if a full dump of ldif is needed
+//      _     <- IOResult.attempt(env.ldap.testServer.exportToLDIF("/tmp/rudder-load.ldif", true, true))
+      _     <- selectOS(env, nodes, 50)
     } yield ()
   }
 
@@ -157,9 +197,9 @@ object LoadTestQueryProcessor {
     implicit val env: ENV = init
 
     (for {
-      _ <- effectUioUnit(println(s"Starting test..."))
+      _ <- logPure(s"Starting test...")
       _ <- prog
-      _ <- effectUioUnit(println(s"... done."))
+      _ <- logPure(s"... done.")
     } yield ()).runNow
 
     java.lang.System.exit(0)
@@ -207,8 +247,6 @@ object LoadNodeFact {
   }
 
   def generateNodesFrom(name: String, start: Int, number: Int): IOResult[Chunk[NodeFact]] = {
-    unser(name).map(n => 
-      generateNodes(n, start, number)
-    )
+    unser(name).map(n => generateNodes(n, start, number))
   }
 }
