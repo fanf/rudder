@@ -1,0 +1,5210 @@
+{
+    "id" : "951ef3ea-1a68-4ce2-a0d8-a00741bb34e7",
+    "hostname" : "nodeXX.rudder.local",
+    "os" : {
+      "type" : "Linux",
+      "name" : "Ubuntu",
+      "version" : "22.04",
+      "fullName" : "Ubuntu 22.04 LTS",
+      "kernelVersion" : "5.15.0-101-generic"
+    },
+    "machine" : {
+      "id" : "0000",
+      "machineType" : "vbox",
+      "systemSerial" : "1a517e9b-3369-cc47-99aa-a30872f13293",
+      "manufacturer" : "innotek GmbH"
+    },
+    "rudderSettings" : {
+      "keyStatus" : "certified",
+      "reportingConfiguration" : {
+
+      },
+      "kind" : "node",
+      "status" : "accepted",
+      "state" : "enabled",
+      "policyMode" : "default",
+      "policyServerId" : "root",
+      "security" : {
+        "tenants" : [
+          "zoneB"
+        ]
+      }
+    },
+    "rudderAgent" : {
+      "type" : "cfengine-community",
+      "user" : "root",
+      "version" : "8.1.0~beta3~git202403290219-ubuntu22.04",
+      "securityToken" : {
+        "kind" : "certificate",
+        "token" : "-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIUYsMe7hceeVqjAcw+61t7dRGFrXkwDQYJKoZIhvcNAQEL\nBQAwNjE0MDIGCgmSJomT8ixkAQEMJDk1MWVmM2VhLTFhNjgtNGNlMi1hMGQ4LWEw\nMDc0MWJiMzRlNzAeFw0yNDAzMjkxNTA2NTBaFw0zNDAzMjcxNTA2NTBaMDYxNDAy\nBgoJkiaJk/IsZAEBDCQ5NTFlZjNlYS0xYTY4LTRjZTItYTBkOC1hMDA3NDFiYjM0\nZTcwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQC1XjC4Uiax8skuxt10\nbbnGQKygMIvDf2qAdgxunXi3ux+t3A11SrnGAHVP8SSfzTlm6ri9oHwCMw8nDqc+\nNOmGhXPynzwSQSJVo5y+ivyr7COni1AZ6Gfxg4XJuZXm7FAcYkn8X6IHkq+xHFBv\nMlU8mw+UdTA5jYcncS1twxuNyD15Cj4IkScw/i4eI0yOwoeGRGBaFk+lu+JVq1oD\n8i2L/TVx/ZzG5hq2OnriRbdn3ZTyCzsxd/fzPZW5VXD3QeOm4KXNGCmG8pPVSUux\nWcnpXx2wEkIyNV7NQw7JeSRtM5qReEZWyZ2JLJiD6GYXTNgNN+7oU42OnDchqjEg\nqC2Oh8k3//RaUvGYaPsKTyyYe2aF+cTQpVhgIk+Mnr33ykvms/+g0eEl1SMJJaNe\nWrcLxQgyAUKU/xC62JrD2JoAluA1NqxYad0a3LA7FpJ1GycIcNCoCeohxXDXbjhP\nQbEs7S9Ksr/gl0yrNmAogI9mdUH9nztg0VyMzv6uLSIG3r9TEpeSdaiVEy8zDTdB\ntUPUJ2qKwNpZZFx7q3J9fJebXH/eGbk+BU7FQ2EcymbKw00Re3s6AN5t5h3zZnRl\nCCMKbm9QtiD0CXtvp67lnxGQxLS1aA7qV0elbL6vpfxMrzo4EMLh1jlDB+dZmtIc\ncYa/zG2t3sJJszdItMTfEfVGGQIDAQABo4GwMIGtMAwGA1UdEwQFMAMBAf8wHQYD\nVR0OBBYEFB56ZniV/iJe2De+5qG8rpwY49gWMHEGA1UdIwRqMGiAFB56ZniV/iJe\n2De+5qG8rpwY49gWoTqkODA2MTQwMgYKCZImiZPyLGQBAQwkOTUxZWYzZWEtMWE2\nOC00Y2UyLWEwZDgtYTAwNzQxYmIzNGU3ghRiwx7uFx55WqMBzD7rW3t1EYWteTAL\nBgNVHQ8EBAMCArwwDQYJKoZIhvcNAQELBQADggIBAAYD95EAOnOVP7Gi2OBLnsvr\n1eUyc9vVfl8/ghvXUqR2cUu3SKUcPwmomN0PFuWNitwJtbB+yaiDWae9sV2xscqk\n1w3da3eVeiDpgGA+QxNxD/8kXUYcW8vXrLvNc7HTRQM/UXJGUOeU+2j/4rMC3NVx\nZf8UTH+HVh+eTFqWaFPkg/Px9Sd20oftyICI6eq40bdgl72c1yHSdRE2AaBOCcFL\nD10GBdGcHW/Lnv7ACw+rXjVelwPspTme8LRhPdXGZusfMwc8dXh03Y/zUSiH3Owe\nyPM34uNkunQ3PGrCSpInbt0FR9D4wY8YVub5Cfz8mFGBnXncUhVAuwBnjJH4yWng\nJkZ23RQ3ETepyTBdHx6ORLxZHmNe3LpfCQorNOff6ckMRlq3vUJc4lG4/5Hdkf69\nKr9aFMlRQ4BD4M1h+O2GhjW3Ax7bMFQHhNy/KSfuNLHlNt7LNeclFNyPyxAEybOe\nlBqhMssiwzauVnwzBqmLYE2gkjEM0f98WQ16qAv4mjPf5Ac9/vTAdX5IUEfBtIww\navDxv1SxjXSfH/jUPwlg6P4sJQ6E5LYP+HfOM6+csRHgT8wapaItxQT6ZL0CZo66\nzBgwUM3wgbU/a8Znrq7CBsrvyDz/ZcVB8OjDXQx6zrU9o06ABlE+vUqFFeXRpBKf\ntxCN7EBBo1vBJRu42dWd\n-----END CERTIFICATE-----"
+      },
+      "capabilities" : [
+        "jq",
+        "yaml",
+        "cfengine",
+        "curl",
+        "acl",
+        "xml",
+        "http_reporting"
+      ]
+    },
+    "properties" : [],
+    "creationDate" : "2024-03-29T15:10:23Z",
+    "factProcessedDate" : "2024-04-09T20:25:11Z",
+    "lastInventoryDate" : "2024-04-09T20:25:11Z",
+    "ipAddresses" : [
+      "0:0:0:0:0:0:0:1",
+      "fe80:0:0:0:a00:27ff:fe54:1790",
+      "fe80:0:0:0:e5:1bff:fe70:f463",
+      "10.0.2.15",
+      "127.0.0.1",
+      "192.168.4.6"
+    ],
+    "timezone" : {
+      "name" : "UTC",
+      "offset" : "+0000"
+    },
+    "archDescription" : "x86_64",
+    "ram" : 476053504,
+    "accounts" : [
+      "_apt",
+      "backup",
+      "bin",
+      "daemon",
+      "games",
+      "gnats",
+      "irc",
+      "landscape",
+      "list",
+      "lp",
+      "lxd",
+      "mail",
+      "man",
+      "messagebus",
+      "news",
+      "nobody",
+      "pollinate",
+      "proxy",
+      "root",
+      "sshd",
+      "sync",
+      "sys",
+      "syslog",
+      "systemd-network",
+      "systemd-resolve",
+      "systemd-timesync",
+      "tcpdump",
+      "tss",
+      "ubuntu",
+      "uucp",
+      "uuidd",
+      "vagrant",
+      "www-data"
+    ],
+    "bios" : [
+      {
+        "name" : "VirtualBox",
+        "version" : "VirtualBox",
+        "editor" : "innotek GmbH",
+        "releaseDate" : "2006-12-01T00:00:00Z",
+        "quantity" : 1
+      }
+    ],
+    "controllers" : [
+      {
+        "name" : "440FX - 82441FX PMC [Natoma]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Host bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "53c1030 PCI-X Fusion-MPT Dual Ultra320 SCSI",
+        "manufacturer" : "Broadcom / LSI",
+        "cType" : "SCSI storage controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371AB/EB/MB PIIX4 ACPI",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371AB/EB/MB PIIX4 IDE",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "IDE interface",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371SB PIIX3 ISA [Natoma/Triton II]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "ISA bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82801AA AC'97 Audio Controller",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Multimedia audio controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "PRO/1000 MT Desktop Adapter",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Ethernet controller",
+        "quantity" : 2
+      },
+      {
+        "name" : "VirtualBox Graphics Adapter",
+        "manufacturer" : "InnoTek Systemberatung GmbH",
+        "cType" : "VGA compatible controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "VirtualBox Guest Service",
+        "manufacturer" : "InnoTek Systemberatung GmbH",
+        "cType" : "System peripheral",
+        "quantity" : 1
+      }
+    ],
+    "environmentVariables" : [
+      ["BASEDIR", "/opt/rudder/share/commands"],
+      ["DEBIAN_FRONTEND", "noninteractive"],
+      ["HOME", "/root"],
+      ["INFOMGR_BYPASS_NONSA", "1"],
+      ["LESSCLOSE", "/usr/bin/lesspipe %s %s"],
+      ["LESSOPEN", "| /usr/bin/lesspipe %s"],
+      ["LOGNAME", "root"],
+      ["LS_COLORS", "rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:"],
+      ["MAIL", "/var/mail/root"],
+      ["PATH", "/opt/rudder/bin:/usr/gnu/bin:/opt/rudder/bin:/usr/gnu/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin:/usr/sbin:/sbin:/usr/sbin"],
+      ["PWD", "/var/rudder"],
+      ["RUDDER_BIN", "/usr/bin/rudder"],
+      ["SHELL", "/bin/bash"],
+      ["SHLVL", "1"],
+      ["SUDO_COMMAND", "/usr/bin/su"],
+      ["SUDO_GID", "1000"],
+      ["SUDO_UID", "1000"],
+      ["SUDO_USER", "vagrant"],
+      ["TERM", "xterm"],
+      ["USER", "root"],
+      ["_", "/usr/bin/rudder"]
+    ],
+    "fileSystems" : [
+      {
+        "mountPoint" : "/",
+        "name" : "ext4",
+        "freeSpace" : 39166410752,
+        "totalSpace" : 41555066880
+      },
+      {
+        "mountPoint" : "/vagrant",
+        "name" : "vboxsf",
+        "freeSpace" : 216688230400,
+        "totalSpace" : 912663773184
+      }
+    ],
+    "inputs" : [],
+    "localGroups" : [],
+    "localUsers" : [],
+    "logicalVolumes" : [],
+    "memories" : [],
+    "networks" : [
+      {
+        "name" : "enp0s3",
+        "ifAddresses" : [
+          "fe80::e5:1bff:fe70:f463",
+          "10.0.2.15"
+        ],
+        "ifGateway" : [
+          "10.0.2.2"
+        ],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "10.0.2.0"
+        ],
+        "macAddress" : "02:e5:1b:70:f4:63",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "enp0s8",
+        "ifAddresses" : [
+          "fe80::a00:27ff:fe54:1790",
+          "192.168.4.6"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "192.168.4.0"
+        ],
+        "macAddress" : "08:00:27:54:17:90",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "lo",
+        "ifAddresses" : [
+          "::1",
+          "127.0.0.1"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "fff0::",
+          "255.0.0.0"
+        ],
+        "ifSubnet" : [
+          "::",
+          "127.0.0.0"
+        ],
+        "macAddress" : "00:00:00:00:00:00",
+        "status" : "Up",
+        "ifType" : "loopback"
+      }
+    ],
+    "physicalVolumes" : [],
+    "ports" : [],
+    "processes" : [],
+    "processors" : [
+      {
+        "manufacturer" : "AMD",
+        "name" : "AMD Ryzen 7 PRO 6850U with Radeon Graphics",
+        "arch" : "i386",
+        "core" : 1,
+        "thread" : 1,
+        "stepping" : 1,
+        "family" : 25,
+        "model" : 68,
+        "quantity" : 1
+      }
+    ],
+    "slots" : [],
+    "software" : [
+      {
+        "name" : "python3-idna",
+        "version" : "3.3-1",
+        "publisher" : "Debian",
+        "sourceName" : "python-idna",
+        "sourceVersion" : "3.3-1"
+      },
+      {
+        "name" : "libxxhash0",
+        "version" : "0.8.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "xxhash",
+        "sourceVersion" : "0.8.1-1"
+      },
+      {
+        "name" : "fwupd-signed",
+        "version" : "1.44+1.2-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fwupd-signed (1.44)",
+        "sourceVersion" : "1.44"
+      },
+      {
+        "name" : "gpg-agent",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "pwgen",
+        "version" : "2.08-2build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.08-2build1"
+      },
+      {
+        "name" : "libpopt0",
+        "version" : "1.18-3build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "popt",
+        "sourceVersion" : "1.18-3build1"
+      },
+      {
+        "name" : "pinentry-curses",
+        "version" : "1.1.1-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pinentry",
+        "sourceVersion" : "1.1.1-1build2"
+      },
+      {
+        "name" : "btrfs-progs",
+        "version" : "5.16.2-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.16.2-1"
+      },
+      {
+        "name" : "ubuntu-release-upgrader-core",
+        "version" : "1:22.04.11",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ubuntu-release-upgrader",
+        "sourceVersion" : "1:22.04.11"
+      },
+      {
+        "name" : "libicu70",
+        "version" : "70.1-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "icu",
+        "sourceVersion" : "70.1-2"
+      },
+      {
+        "name" : "lvm2",
+        "version" : "2.03.11-2.1ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.03.11-2.1ubuntu4"
+      },
+      {
+        "name" : "ldap-utils",
+        "version" : "2.5.17+dfsg-0ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openldap",
+        "sourceVersion" : "2.5.17+dfsg-0ubuntu0.22.04.1"
+      },
+      {
+        "name" : "info",
+        "version" : "6.8-4build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "texinfo",
+        "sourceVersion" : "6.8-4build1"
+      },
+      {
+        "name" : "libxmuu1",
+        "version" : "2:1.1.3-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxmu",
+        "sourceVersion" : "2:1.1.3-3"
+      },
+      {
+        "name" : "gnupg",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "libaudit-common",
+        "version" : "1:3.0.7-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "audit",
+        "sourceVersion" : "1:3.0.7-1build1"
+      },
+      {
+        "name" : "python3-lazr.uri",
+        "version" : "1.0.6-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lazr.uri",
+        "sourceVersion" : "1.0.6-2"
+      },
+      {
+        "name" : "command-not-found",
+        "version" : "22.04.0",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "22.04.0"
+      },
+      {
+        "name" : "update-manager-core",
+        "version" : "1:22.04.9",
+        "publisher" : "Ubuntu",
+        "sourceName" : "update-manager",
+        "sourceVersion" : "1:22.04.9"
+      },
+      {
+        "name" : "libxau6",
+        "version" : "1:1.0.9-1build5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxau",
+        "sourceVersion" : "1:1.0.9-1build5"
+      },
+      {
+        "name" : "libgudev-1.0-0",
+        "version" : "1:237-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libgudev (237-2build1)",
+        "sourceVersion" : "237-2build1"
+      },
+      {
+        "name" : "rsync",
+        "version" : "3.2.7-0ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.2.7-0ubuntu0.22.04.2"
+      },
+      {
+        "name" : "libisc-export1105",
+        "version" : "1:9.11.19+dfsg-2.1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "bind9-libs",
+        "sourceVersion" : "1:9.11.19+dfsg-2.1ubuntu3"
+      },
+      {
+        "name" : "libbrotli1",
+        "version" : "1.0.9-2build6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "brotli",
+        "sourceVersion" : "1.0.9-2build6"
+      },
+      {
+        "name" : "python3-software-properties",
+        "version" : "0.99.22.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "software-properties",
+        "sourceVersion" : "0.99.22.2"
+      },
+      {
+        "name" : "libnftables1",
+        "version" : "1.0.2-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "nftables",
+        "sourceVersion" : "1.0.2-1ubuntu2"
+      },
+      {
+        "name" : "hostname",
+        "version" : "3.23ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.23ubuntu2"
+      },
+      {
+        "name" : "pastebinit",
+        "version" : "1.5.1-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.5.1-1ubuntu1"
+      },
+      {
+        "name" : "libatasmart4",
+        "version" : "0.19-5build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libatasmart",
+        "sourceVersion" : "0.19-5build2"
+      },
+      {
+        "name" : "libcrypt1",
+        "version" : "1:4.4.27-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxcrypt",
+        "sourceVersion" : "1:4.4.27-1"
+      },
+      {
+        "name" : "libgpgme11",
+        "version" : "1.16.0-1.2ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gpgme1.0",
+        "sourceVersion" : "1.16.0-1.2ubuntu4"
+      },
+      {
+        "name" : "libxdmcp6",
+        "version" : "1:1.1.3-0ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxdmcp",
+        "sourceVersion" : "1:1.1.3-0ubuntu5"
+      },
+      {
+        "name" : "libassuan0",
+        "version" : "2.5.5-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libassuan",
+        "sourceVersion" : "2.5.5-1build1"
+      },
+      {
+        "name" : "logsave",
+        "version" : "1.46.5-2ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.46.5-2ubuntu1.1"
+      },
+      {
+        "name" : "libtss2-sys1",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "libappstream4",
+        "version" : "0.15.2-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "appstream",
+        "sourceVersion" : "0.15.2-2"
+      },
+      {
+        "name" : "packagekit",
+        "version" : "1.2.5-2ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.2.5-2ubuntu2"
+      },
+      {
+        "name" : "mawk",
+        "version" : "1.3.4.20200120-3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.3.4.20200120-3"
+      },
+      {
+        "name" : "liblzo2-2",
+        "version" : "2.10-2build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lzo2",
+        "sourceVersion" : "2.10-2build3"
+      },
+      {
+        "name" : "mtr-tiny",
+        "version" : "0.95-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "mtr",
+        "sourceVersion" : "0.95-1"
+      },
+      {
+        "name" : "python3-service-identity",
+        "version" : "18.1.0-6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-service-identity",
+        "sourceVersion" : "18.1.0-6"
+      },
+      {
+        "name" : "polkitd",
+        "version" : "0.105-33",
+        "publisher" : "Ubuntu",
+        "sourceName" : "policykit-1",
+        "sourceVersion" : "0.105-33"
+      },
+      {
+        "name" : "tpm-udev",
+        "version" : "0.6",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.6"
+      },
+      {
+        "name" : "binutils",
+        "version" : "2.38-4ubuntu2.6",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.38-4ubuntu2.6"
+      },
+      {
+        "name" : "grub2-common",
+        "version" : "2.06-2ubuntu7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-2ubuntu7"
+      },
+      {
+        "name" : "grub-common",
+        "version" : "2.06-2ubuntu7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-2ubuntu7"
+      },
+      {
+        "name" : "screen",
+        "version" : "4.9.0-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.9.0-1"
+      },
+      {
+        "name" : "e2fsprogs",
+        "version" : "1.46.5-2ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.46.5-2ubuntu1.1"
+      },
+      {
+        "name" : "shared-mime-info",
+        "version" : "2.1-2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.1-2"
+      },
+      {
+        "name" : "python3-update-manager",
+        "version" : "1:22.04.9",
+        "publisher" : "Ubuntu",
+        "sourceName" : "update-manager",
+        "sourceVersion" : "1:22.04.9"
+      },
+      {
+        "name" : "gpgconf",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "bolt",
+        "version" : "0.9.2-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.9.2-1"
+      },
+      {
+        "name" : "python3-automat",
+        "version" : "20.2.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "automat",
+        "sourceVersion" : "20.2.0-1"
+      },
+      {
+        "name" : "libsepol2",
+        "version" : "3.3-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libsepol",
+        "sourceVersion" : "3.3-1build1"
+      },
+      {
+        "name" : "ufw",
+        "version" : "0.36.1-4build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.36.1-4build1"
+      },
+      {
+        "name" : "liberror-perl",
+        "version" : "0.17029-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.17029-1"
+      },
+      {
+        "name" : "gpg",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "netplan.io",
+        "version" : "0.104-0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.104-0ubuntu2"
+      },
+      {
+        "name" : "gnupg-l10n",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "libfuse3-3",
+        "version" : "3.10.5-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fuse3",
+        "sourceVersion" : "3.10.5-1build1"
+      },
+      {
+        "name" : "libtss2-mu0",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "libdevmapper-event1.02.1",
+        "version" : "2:1.02.175-2.1ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lvm2 (2.03.11-2.1ubuntu4)",
+        "sourceVersion" : "2.03.11-2.1ubuntu4"
+      },
+      {
+        "name" : "pollinate",
+        "version" : "4.33-3ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.33-3ubuntu2"
+      },
+      {
+        "name" : "cron",
+        "version" : "3.0pl1-137ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.0pl1-137ubuntu3"
+      },
+      {
+        "name" : "librtmp1",
+        "version" : "2.4+20151223.gitfa8646d.1-2build4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "rtmpdump",
+        "sourceVersion" : "2.4+20151223.gitfa8646d.1-2build4"
+      },
+      {
+        "name" : "iputils-tracepath",
+        "version" : "3:20211215-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "iputils",
+        "sourceVersion" : "3:20211215-1"
+      },
+      {
+        "name" : "python3-dbus",
+        "version" : "1.2.18-3build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "dbus-python",
+        "sourceVersion" : "1.2.18-3build1"
+      },
+      {
+        "name" : "libcbor0.8",
+        "version" : "0.8.0-2ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libcbor",
+        "sourceVersion" : "0.8.0-2ubuntu1"
+      },
+      {
+        "name" : "libjson-glib-1.0-common",
+        "version" : "1.6.6-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "json-glib",
+        "sourceVersion" : "1.6.6-1build1"
+      },
+      {
+        "name" : "zstd",
+        "version" : "1.4.8+dfsg-3build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libzstd",
+        "sourceVersion" : "1.4.8+dfsg-3build1"
+      },
+      {
+        "name" : "debianutils",
+        "version" : "5.5-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.5-1ubuntu2"
+      },
+      {
+        "name" : "libgdbm6",
+        "version" : "1.23-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gdbm",
+        "sourceVersion" : "1.23-1"
+      },
+      {
+        "name" : "libdns-export1110",
+        "version" : "1:9.11.19+dfsg-2.1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "bind9-libs",
+        "sourceVersion" : "1:9.11.19+dfsg-2.1ubuntu3"
+      },
+      {
+        "name" : "python3-distupgrade",
+        "version" : "1:22.04.11",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ubuntu-release-upgrader",
+        "sourceVersion" : "1:22.04.11"
+      },
+      {
+        "name" : "libintl-xs-perl",
+        "version" : "1.26-3build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libintl-perl",
+        "sourceVersion" : "1.26-3build2"
+      },
+      {
+        "name" : "python3-bcrypt",
+        "version" : "3.2.0-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-bcrypt",
+        "sourceVersion" : "3.2.0-1build1"
+      },
+      {
+        "name" : "libp11-kit0",
+        "version" : "0.24.0-6build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "p11-kit",
+        "sourceVersion" : "0.24.0-6build1"
+      },
+      {
+        "name" : "time",
+        "version" : "1.9-0.1build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.9-0.1build2"
+      },
+      {
+        "name" : "liblzma5",
+        "version" : "5.2.5-2ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "xz-utils",
+        "sourceVersion" : "5.2.5-2ubuntu1"
+      },
+      {
+        "name" : "libxtables12",
+        "version" : "1.8.7-1ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "iptables",
+        "sourceVersion" : "1.8.7-1ubuntu5"
+      },
+      {
+        "name" : "bash-completion",
+        "version" : "1:2.11-5ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:2.11-5ubuntu1"
+      },
+      {
+        "name" : "python3-launchpadlib",
+        "version" : "1.10.16-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-launchpadlib",
+        "sourceVersion" : "1.10.16-1"
+      },
+      {
+        "name" : "ubuntu-advantage-tools",
+        "version" : "27.9~22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "27.9~22.04.1"
+      },
+      {
+        "name" : "libsigsegv2",
+        "version" : "2.13-1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libsigsegv",
+        "sourceVersion" : "2.13-1ubuntu3"
+      },
+      {
+        "name" : "kmod",
+        "version" : "29-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "29-1ubuntu1"
+      },
+      {
+        "name" : "libmbim-proxy",
+        "version" : "1.26.2-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libmbim",
+        "sourceVersion" : "1.26.2-1build1"
+      },
+      {
+        "name" : "python3-pyasn1",
+        "version" : "0.4.8-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyasn1",
+        "sourceVersion" : "0.4.8-1"
+      },
+      {
+        "name" : "libpackagekit-glib2-18",
+        "version" : "1.2.5-2ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "packagekit",
+        "sourceVersion" : "1.2.5-2ubuntu2"
+      },
+      {
+        "name" : "libelf1",
+        "version" : "0.186-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "elfutils",
+        "sourceVersion" : "0.186-1build1"
+      },
+      {
+        "name" : "libqmi-proxy",
+        "version" : "1.30.4-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libqmi",
+        "sourceVersion" : "1.30.4-1"
+      },
+      {
+        "name" : "lsb-base",
+        "version" : "11.1.0ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lsb",
+        "sourceVersion" : "11.1.0ubuntu4"
+      },
+      {
+        "name" : "libzstd1",
+        "version" : "1.4.8+dfsg-3build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libzstd",
+        "sourceVersion" : "1.4.8+dfsg-3build1"
+      },
+      {
+        "name" : "libblockdev-loop2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "libtext-charwidth-perl",
+        "version" : "0.04-10build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.04-10build3"
+      },
+      {
+        "name" : "libpolkit-gobject-1-0",
+        "version" : "0.105-33",
+        "publisher" : "Ubuntu",
+        "sourceName" : "policykit-1",
+        "sourceVersion" : "0.105-33"
+      },
+      {
+        "name" : "policykit-1",
+        "version" : "0.105-33",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.105-33"
+      },
+      {
+        "name" : "iptables",
+        "version" : "1.8.7-1ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.8.7-1ubuntu5"
+      },
+      {
+        "name" : "iproute2",
+        "version" : "5.15.0-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.15.0-1ubuntu2"
+      },
+      {
+        "name" : "libedit2",
+        "version" : "3.1-20210910-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libedit",
+        "sourceVersion" : "3.1-20210910-1build1"
+      },
+      {
+        "name" : "cloud-initramfs-dyn-netconf",
+        "version" : "0.47ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cloud-initramfs-tools",
+        "sourceVersion" : "0.47ubuntu1"
+      },
+      {
+        "name" : "python3-colorama",
+        "version" : "0.4.4-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-colorama",
+        "sourceVersion" : "0.4.4-1"
+      },
+      {
+        "name" : "libgusb2",
+        "version" : "0.3.10-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libgusb",
+        "sourceVersion" : "0.3.10-1"
+      },
+      {
+        "name" : "apt-utils",
+        "version" : "2.4.5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "apt",
+        "sourceVersion" : "2.4.5"
+      },
+      {
+        "name" : "libmpdec3",
+        "version" : "2.5.1-2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "mpdecimal",
+        "sourceVersion" : "2.5.1-2build2"
+      },
+      {
+        "name" : "update-notifier-common",
+        "version" : "3.192.54",
+        "publisher" : "Ubuntu",
+        "sourceName" : "update-notifier",
+        "sourceVersion" : "3.192.54"
+      },
+      {
+        "name" : "net-tools",
+        "version" : "1.60+git20181103.0eebece-1ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.60+git20181103.0eebece-1ubuntu5"
+      },
+      {
+        "name" : "groff-base",
+        "version" : "1.22.4-8build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "groff",
+        "sourceVersion" : "1.22.4-8build1"
+      },
+      {
+        "name" : "libtasn1-6",
+        "version" : "4.18.0-4build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.18.0-4build1"
+      },
+      {
+        "name" : "libsemanage2",
+        "version" : "3.3-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libsemanage",
+        "sourceVersion" : "3.3-1build2"
+      },
+      {
+        "name" : "libopeniscsiusr",
+        "version" : "2.1.5-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "open-iscsi",
+        "sourceVersion" : "2.1.5-1ubuntu1"
+      },
+      {
+        "name" : "libnftnl11",
+        "version" : "1.2.1-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libnftnl",
+        "sourceVersion" : "1.2.1-1build1"
+      },
+      {
+        "name" : "libcap-ng0",
+        "version" : "0.7.9-2.2build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libcap-ng",
+        "sourceVersion" : "0.7.9-2.2build3"
+      },
+      {
+        "name" : "tree",
+        "version" : "2.0.2-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.0.2-1"
+      },
+      {
+        "name" : "gir1.2-packagekitglib-1.0",
+        "version" : "1.2.5-2ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "packagekit",
+        "sourceVersion" : "1.2.5-2ubuntu2"
+      },
+      {
+        "name" : "libvolume-key1",
+        "version" : "0.3.12-3.1build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "volume-key",
+        "sourceVersion" : "0.3.12-3.1build3"
+      },
+      {
+        "name" : "sysvinit-utils",
+        "version" : "3.01-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "sysvinit",
+        "sourceVersion" : "3.01-1ubuntu1"
+      },
+      {
+        "name" : "debconf",
+        "version" : "1.5.79ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.5.79ubuntu1"
+      },
+      {
+        "name" : "libtcl8.6",
+        "version" : "8.6.12+dfsg-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tcl8.6",
+        "sourceVersion" : "8.6.12+dfsg-1build1"
+      },
+      {
+        "name" : "python3-certifi",
+        "version" : "2020.6.20-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-certifi",
+        "sourceVersion" : "2020.6.20-1"
+      },
+      {
+        "name" : "libsasl2-modules-db",
+        "version" : "2.1.27+dfsg2-3ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cyrus-sasl2",
+        "sourceVersion" : "2.1.27+dfsg2-3ubuntu1"
+      },
+      {
+        "name" : "libterm-readkey-perl",
+        "version" : "2.38-1build4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.38-1build4"
+      },
+      {
+        "name" : "byobu",
+        "version" : "5.133-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.133-1"
+      },
+      {
+        "name" : "tcl",
+        "version" : "8.6.11+1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tcltk-defaults",
+        "sourceVersion" : "8.6.11+1build2"
+      },
+      {
+        "name" : "python3-httplib2",
+        "version" : "0.20.2-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-httplib2",
+        "sourceVersion" : "0.20.2-2"
+      },
+      {
+        "name" : "initramfs-tools",
+        "version" : "0.140ubuntu13",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.140ubuntu13"
+      },
+      {
+        "name" : "findutils",
+        "version" : "4.8.0-1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.8.0-1ubuntu3"
+      },
+      {
+        "name" : "sensible-utils",
+        "version" : "0.0.17",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.0.17"
+      },
+      {
+        "name" : "zerofree",
+        "version" : "1.1.1-1build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.1.1-1build3"
+      },
+      {
+        "name" : "parted",
+        "version" : "3.4-2build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.4-2build1"
+      },
+      {
+        "name" : "libxml-treepp-perl",
+        "version" : "0.43-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.43-1"
+      },
+      {
+        "name" : "ucf",
+        "version" : "3.0043",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.0043"
+      },
+      {
+        "name" : "gzip",
+        "version" : "1.10-4ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.10-4ubuntu4"
+      },
+      {
+        "name" : "busybox-static",
+        "version" : "1:1.30.1-7ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "busybox",
+        "sourceVersion" : "1:1.30.1-7ubuntu3"
+      },
+      {
+        "name" : "python3-secretstorage",
+        "version" : "3.3.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-secretstorage",
+        "sourceVersion" : "3.3.1-1"
+      },
+      {
+        "name" : "python3-ptyprocess",
+        "version" : "0.7.0-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ptyprocess",
+        "sourceVersion" : "0.7.0-3"
+      },
+      {
+        "name" : "libfwupd2",
+        "version" : "1.7.5-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fwupd",
+        "sourceVersion" : "1.7.5-3"
+      },
+      {
+        "name" : "iso-codes",
+        "version" : "4.9.0-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.9.0-1"
+      },
+      {
+        "name" : "libintl-perl",
+        "version" : "1.26-3build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.26-3build2"
+      },
+      {
+        "name" : "libplymouth5",
+        "version" : "0.9.5+git20211018-1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "plymouth",
+        "sourceVersion" : "0.9.5+git20211018-1ubuntu3"
+      },
+      {
+        "name" : "python3-zipp",
+        "version" : "1.0.0-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-zipp",
+        "sourceVersion" : "1.0.0-3"
+      },
+      {
+        "name" : "python3-openssl",
+        "version" : "21.0.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyopenssl",
+        "sourceVersion" : "21.0.0-1"
+      },
+      {
+        "name" : "vim",
+        "version" : "2:8.2.3995-1ubuntu2.16",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2:8.2.3995-1ubuntu2.16"
+      },
+      {
+        "name" : "grub-pc-bin",
+        "version" : "2.06-2ubuntu7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-2ubuntu7"
+      },
+      {
+        "name" : "open-iscsi",
+        "version" : "2.1.5-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.1.5-1ubuntu1"
+      },
+      {
+        "name" : "lxd-agent-loader",
+        "version" : "0.5",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.5"
+      },
+      {
+        "name" : "publicsuffix",
+        "version" : "20211207.1025-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "20211207.1025-1"
+      },
+      {
+        "name" : "liburcu8",
+        "version" : "0.13.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "liburcu",
+        "sourceVersion" : "0.13.1-1"
+      },
+      {
+        "name" : "libpsl5",
+        "version" : "0.21.0-1.2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libpsl",
+        "sourceVersion" : "0.21.0-1.2build2"
+      },
+      {
+        "name" : "libjq1",
+        "version" : "1.6-2.1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "jq",
+        "sourceVersion" : "1.6-2.1ubuntu3"
+      },
+      {
+        "name" : "libstemmer0d",
+        "version" : "2.2.0-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "snowball",
+        "sourceVersion" : "2.2.0-1build1"
+      },
+      {
+        "name" : "linux-base",
+        "version" : "4.5ubuntu9",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.5ubuntu9"
+      },
+      {
+        "name" : "libinih1",
+        "version" : "53-1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libinih",
+        "sourceVersion" : "53-1ubuntu3"
+      },
+      {
+        "name" : "libblockdev-fs2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "libparted-fs-resize0",
+        "version" : "3.4-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "parted",
+        "sourceVersion" : "3.4-2build1"
+      },
+      {
+        "name" : "libgpg-error0",
+        "version" : "1.43-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libgpg-error",
+        "sourceVersion" : "1.43-3"
+      },
+      {
+        "name" : "friendly-recovery",
+        "version" : "0.2.42",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.2.42"
+      },
+      {
+        "name" : "python3-attr",
+        "version" : "21.2.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-attrs",
+        "sourceVersion" : "21.2.0-1"
+      },
+      {
+        "name" : "libslang2",
+        "version" : "2.3.2-5build4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "slang2",
+        "sourceVersion" : "2.3.2-5build4"
+      },
+      {
+        "name" : "libnewt0.52",
+        "version" : "0.52.21-5ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "newt",
+        "sourceVersion" : "0.52.21-5ubuntu2"
+      },
+      {
+        "name" : "libsort-naturally-perl",
+        "version" : "1.03-2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.03-2"
+      },
+      {
+        "name" : "finalrd",
+        "version" : "9build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "9build1"
+      },
+      {
+        "name" : "git",
+        "version" : "1:2.34.1-1ubuntu1.10",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:2.34.1-1ubuntu1.10"
+      },
+      {
+        "name" : "libnfnetlink0",
+        "version" : "1.0.1-3build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libnfnetlink",
+        "sourceVersion" : "1.0.1-3build3"
+      },
+      {
+        "name" : "libnuma1",
+        "version" : "2.0.14-3ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "numactl",
+        "sourceVersion" : "2.0.14-3ubuntu2"
+      },
+      {
+        "name" : "libblockdev2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "python3-markupsafe",
+        "version" : "2.0.1-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "markupsafe",
+        "sourceVersion" : "2.0.1-2build1"
+      },
+      {
+        "name" : "pci.ids",
+        "version" : "0.0~2022.01.22-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.0~2022.01.22-1"
+      },
+      {
+        "name" : "lsof",
+        "version" : "4.93.2+dfsg-1.1build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.93.2+dfsg-1.1build2"
+      },
+      {
+        "name" : "modemmanager",
+        "version" : "1.18.6-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.18.6-1"
+      },
+      {
+        "name" : "libxmlsec1-openssl",
+        "version" : "1.2.33-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "xmlsec1",
+        "sourceVersion" : "1.2.33-1build2"
+      },
+      {
+        "name" : "cloud-guest-utils",
+        "version" : "0.32-22-g45fe84a5-0ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cloud-utils",
+        "sourceVersion" : "0.32-22-g45fe84a5-0ubuntu1"
+      },
+      {
+        "name" : "ed",
+        "version" : "1.18-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.18-1"
+      },
+      {
+        "name" : "init",
+        "version" : "1.62",
+        "publisher" : "Ubuntu",
+        "sourceName" : "init-system-helpers",
+        "sourceVersion" : "1.62"
+      },
+      {
+        "name" : "netcat-openbsd",
+        "version" : "1.218-4ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.218-4ubuntu1"
+      },
+      {
+        "name" : "udisks2",
+        "version" : "2.9.4-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.9.4-1ubuntu2"
+      },
+      {
+        "name" : "python3-gi",
+        "version" : "3.42.0-3build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pygobject",
+        "sourceVersion" : "3.42.0-3build1"
+      },
+      {
+        "name" : "libnl-3-200",
+        "version" : "3.5.0-0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libnl3",
+        "sourceVersion" : "3.5.0-0.1"
+      },
+      {
+        "name" : "usb.ids",
+        "version" : "2022.04.02-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2022.04.02-1"
+      },
+      {
+        "name" : "libbz2-1.0",
+        "version" : "1.0.8-5build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "bzip2",
+        "sourceVersion" : "1.0.8-5build1"
+      },
+      {
+        "name" : "nftables",
+        "version" : "1.0.2-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.0.2-1ubuntu2"
+      },
+      {
+        "name" : "libjson-glib-1.0-0",
+        "version" : "1.6.6-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "json-glib",
+        "sourceVersion" : "1.6.6-1build1"
+      },
+      {
+        "name" : "libxmlsec1",
+        "version" : "1.2.33-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "xmlsec1",
+        "sourceVersion" : "1.2.33-1build2"
+      },
+      {
+        "name" : "gpgv",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "libblockdev-utils2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "powermgmt-base",
+        "version" : "1.36",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.36"
+      },
+      {
+        "name" : "libip6tc2",
+        "version" : "1.8.7-1ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "iptables",
+        "sourceVersion" : "1.8.7-1ubuntu5"
+      },
+      {
+        "name" : "jq",
+        "version" : "1.6-2.1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.6-2.1ubuntu3"
+      },
+      {
+        "name" : "libltdl7",
+        "version" : "2.4.6-15build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libtool",
+        "sourceVersion" : "2.4.6-15build2"
+      },
+      {
+        "name" : "linux-modules-5.15.0-41-generic",
+        "version" : "5.15.0-41.44",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux",
+        "sourceVersion" : "5.15.0-41.44"
+      },
+      {
+        "name" : "distro-info",
+        "version" : "1.1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.1build1"
+      },
+      {
+        "name" : "libdrm2",
+        "version" : "2.4.110-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libdrm",
+        "sourceVersion" : "2.4.110-1ubuntu1"
+      },
+      {
+        "name" : "rsyslog",
+        "version" : "8.2112.0-2ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "8.2112.0-2ubuntu2.2"
+      },
+      {
+        "name" : "media-types",
+        "version" : "7.0.0",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "7.0.0"
+      },
+      {
+        "name" : "libargon2-1",
+        "version" : "0~20171227-0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "argon2",
+        "sourceVersion" : "0~20171227-0.3"
+      },
+      {
+        "name" : "tcl8.6",
+        "version" : "8.6.12+dfsg-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "8.6.12+dfsg-1build1"
+      },
+      {
+        "name" : "libtext-wrapi18n-perl",
+        "version" : "0.06-9",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.06-9"
+      },
+      {
+        "name" : "python3-newt",
+        "version" : "0.52.21-5ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "newt",
+        "sourceVersion" : "0.52.21-5ubuntu2"
+      },
+      {
+        "name" : "python3-keyring",
+        "version" : "23.5.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-keyring",
+        "sourceVersion" : "23.5.0-1"
+      },
+      {
+        "name" : "motd-news-config",
+        "version" : "12ubuntu4.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "base-files",
+        "sourceVersion" : "12ubuntu4.1"
+      },
+      {
+        "name" : "tcpdump",
+        "version" : "4.99.1-3build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.99.1-3build2"
+      },
+      {
+        "name" : "secureboot-db",
+        "version" : "1.8",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.8"
+      },
+      {
+        "name" : "python3-importlib-metadata",
+        "version" : "4.6.4-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-importlib-metadata",
+        "sourceVersion" : "4.6.4-1"
+      },
+      {
+        "name" : "libblockdev-crypto2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "libnetplan0",
+        "version" : "0.104-0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "netplan.io",
+        "sourceVersion" : "0.104-0ubuntu2"
+      },
+      {
+        "name" : "libseccomp2",
+        "version" : "2.5.3-2ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libseccomp",
+        "sourceVersion" : "2.5.3-2ubuntu2"
+      },
+      {
+        "name" : "uuid-runtime",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "libisns0",
+        "version" : "0.101-0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "open-isns",
+        "sourceVersion" : "0.101-0ubuntu2"
+      },
+      {
+        "name" : "htop",
+        "version" : "3.0.5-7build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.0.5-7build2"
+      },
+      {
+        "name" : "libdb5.3",
+        "version" : "5.3.28+dfsg1-0.8ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "db5.3",
+        "sourceVersion" : "5.3.28+dfsg1-0.8ubuntu3"
+      },
+      {
+        "name" : "python3-more-itertools",
+        "version" : "8.10.0-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "more-itertools",
+        "sourceVersion" : "8.10.0-2"
+      },
+      {
+        "name" : "lsb-release",
+        "version" : "11.1.0ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lsb",
+        "sourceVersion" : "11.1.0ubuntu4"
+      },
+      {
+        "name" : "libjansson4",
+        "version" : "2.13.1-1.1build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "jansson",
+        "sourceVersion" : "2.13.1-1.1build3"
+      },
+      {
+        "name" : "libtss2-tcti-device0",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "cryptsetup-initramfs",
+        "version" : "2:2.4.3-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cryptsetup",
+        "sourceVersion" : "2:2.4.3-1ubuntu1"
+      },
+      {
+        "name" : "python3-distro-info",
+        "version" : "1.1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "distro-info",
+        "sourceVersion" : "1.1build1"
+      },
+      {
+        "name" : "gdisk",
+        "version" : "1.0.8-4build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.0.8-4build1"
+      },
+      {
+        "name" : "grub-pc",
+        "version" : "2.06-2ubuntu7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-2ubuntu7"
+      },
+      {
+        "name" : "vim-tiny",
+        "version" : "2:8.2.3995-1ubuntu2.16",
+        "publisher" : "Ubuntu",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:8.2.3995-1ubuntu2.16"
+      },
+      {
+        "name" : "libgpm2",
+        "version" : "1.20.7-10build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gpm",
+        "sourceVersion" : "1.20.7-10build1"
+      },
+      {
+        "name" : "irqbalance",
+        "version" : "1.8.0-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.8.0-1build1"
+      },
+      {
+        "name" : "python3-serial",
+        "version" : "3.5-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyserial",
+        "sourceVersion" : "3.5-1"
+      },
+      {
+        "name" : "binutils-common",
+        "version" : "2.38-4ubuntu2.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.38-4ubuntu2.6"
+      },
+      {
+        "name" : "needrestart",
+        "version" : "3.5-5ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.5-5ubuntu2.1"
+      },
+      {
+        "name" : "diffutils",
+        "version" : "1:3.8-0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:3.8-0ubuntu2"
+      },
+      {
+        "name" : "whiptail",
+        "version" : "0.52.21-5ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "newt",
+        "sourceVersion" : "0.52.21-5ubuntu2"
+      },
+      {
+        "name" : "install-info",
+        "version" : "6.8-4build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "texinfo",
+        "sourceVersion" : "6.8-4build1"
+      },
+      {
+        "name" : "libsodium23",
+        "version" : "1.0.18-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libsodium",
+        "sourceVersion" : "1.0.18-1build2"
+      },
+      {
+        "name" : "libapparmor1",
+        "version" : "3.0.4-2ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "apparmor",
+        "sourceVersion" : "3.0.4-2ubuntu2.1"
+      },
+      {
+        "name" : "python3-constantly",
+        "version" : "15.1.0-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "constantly",
+        "sourceVersion" : "15.1.0-2"
+      },
+      {
+        "name" : "busybox-initramfs",
+        "version" : "1:1.30.1-7ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "busybox",
+        "sourceVersion" : "1:1.30.1-7ubuntu3"
+      },
+      {
+        "name" : "python3-debian",
+        "version" : "0.1.43ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-debian",
+        "sourceVersion" : "0.1.43ubuntu1"
+      },
+      {
+        "name" : "coreutils",
+        "version" : "8.32-4.1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "8.32-4.1ubuntu1"
+      },
+      {
+        "name" : "python3-jsonpatch",
+        "version" : "1.32-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-json-patch",
+        "sourceVersion" : "1.32-2"
+      },
+      {
+        "name" : "liblmdb0",
+        "version" : "0.9.24-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lmdb",
+        "sourceVersion" : "0.9.24-1build2"
+      },
+      {
+        "name" : "libnettle8",
+        "version" : "3.7.3-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "nettle",
+        "sourceVersion" : "3.7.3-1build2"
+      },
+      {
+        "name" : "fonts-ubuntu-console",
+        "version" : "0.83-6ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fonts-ubuntu",
+        "sourceVersion" : "0.83-6ubuntu1"
+      },
+      {
+        "name" : "libgdbm-compat4",
+        "version" : "1.23-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gdbm",
+        "sourceVersion" : "1.23-1"
+      },
+      {
+        "name" : "ssh-import-id",
+        "version" : "5.11-0ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.11-0ubuntu1"
+      },
+      {
+        "name" : "libparted2",
+        "version" : "3.4-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "parted",
+        "sourceVersion" : "3.4-2build1"
+      },
+      {
+        "name" : "gir1.2-glib-2.0",
+        "version" : "1.72.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gobject-introspection",
+        "sourceVersion" : "1.72.0-1"
+      },
+      {
+        "name" : "linux-image-5.15.0-41-generic",
+        "version" : "5.15.0-41.44",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-signed",
+        "sourceVersion" : "5.15.0-41.44"
+      },
+      {
+        "name" : "libip4tc2",
+        "version" : "1.8.7-1ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "iptables",
+        "sourceVersion" : "1.8.7-1ubuntu5"
+      },
+      {
+        "name" : "sed",
+        "version" : "4.8-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.8-1ubuntu2"
+      },
+      {
+        "name" : "libunistring2",
+        "version" : "1.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libunistring",
+        "sourceVersion" : "1.0-1"
+      },
+      {
+        "name" : "libmm-glib0",
+        "version" : "1.18.6-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "modemmanager",
+        "sourceVersion" : "1.18.6-1"
+      },
+      {
+        "name" : "keyboard-configuration",
+        "version" : "1.205ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "console-setup",
+        "sourceVersion" : "1.205ubuntu3"
+      },
+      {
+        "name" : "libmspack0",
+        "version" : "0.10.1-2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libmspack",
+        "sourceVersion" : "0.10.1-2build2"
+      },
+      {
+        "name" : "linux-headers-5.15.0-41-generic",
+        "version" : "5.15.0-41.44",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux",
+        "sourceVersion" : "5.15.0-41.44"
+      },
+      {
+        "name" : "libnspr4",
+        "version" : "2:4.32-3build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "nspr",
+        "sourceVersion" : "2:4.32-3build1"
+      },
+      {
+        "name" : "apt-transport-https",
+        "version" : "2.4.12",
+        "publisher" : "Ubuntu",
+        "sourceName" : "apt",
+        "sourceVersion" : "2.4.12"
+      },
+      {
+        "name" : "liblocale-gettext-perl",
+        "version" : "1.07-4build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.07-4build3"
+      },
+      {
+        "name" : "distro-info-data",
+        "version" : "0.52ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.52ubuntu0.1"
+      },
+      {
+        "name" : "bc",
+        "version" : "1.07.1-3build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.07.1-3build1"
+      },
+      {
+        "name" : "python-apt-common",
+        "version" : "2.3.0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-apt",
+        "sourceVersion" : "2.3.0ubuntu2"
+      },
+      {
+        "name" : "kbd",
+        "version" : "2.3.0-3ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.3.0-3ubuntu4"
+      },
+      {
+        "name" : "libwrap0",
+        "version" : "7.6.q-31build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tcp-wrappers",
+        "sourceVersion" : "7.6.q-31build2"
+      },
+      {
+        "name" : "libgirepository-1.0-1",
+        "version" : "1.72.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gobject-introspection",
+        "sourceVersion" : "1.72.0-1"
+      },
+      {
+        "name" : "python3-six",
+        "version" : "1.16.0-3ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "six",
+        "sourceVersion" : "1.16.0-3ubuntu1"
+      },
+      {
+        "name" : "plymouth-theme-ubuntu-text",
+        "version" : "0.9.5+git20211018-1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "plymouth",
+        "sourceVersion" : "0.9.5+git20211018-1ubuntu3"
+      },
+      {
+        "name" : "libcurl4",
+        "version" : "7.81.0-1ubuntu1.16",
+        "publisher" : "Ubuntu",
+        "sourceName" : "curl",
+        "sourceVersion" : "7.81.0-1ubuntu1.16"
+      },
+      {
+        "name" : "libpipeline1",
+        "version" : "1.5.5-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libpipeline",
+        "sourceVersion" : "1.5.5-1"
+      },
+      {
+        "name" : "libqmi-glib5",
+        "version" : "1.30.4-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libqmi",
+        "sourceVersion" : "1.30.4-1"
+      },
+      {
+        "name" : "python3-distro",
+        "version" : "1.7.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-distro",
+        "sourceVersion" : "1.7.0-1"
+      },
+      {
+        "name" : "cloud-initramfs-copymods",
+        "version" : "0.47ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cloud-initramfs-tools",
+        "sourceVersion" : "0.47ubuntu1"
+      },
+      {
+        "name" : "libblockdev-part2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "sbsigntool",
+        "version" : "0.9.4-2ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.9.4-2ubuntu2"
+      },
+      {
+        "name" : "gpg-wks-server",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "libefiboot1",
+        "version" : "37-6ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "efivar",
+        "sourceVersion" : "37-6ubuntu2"
+      },
+      {
+        "name" : "python3-jsonschema",
+        "version" : "3.2.0-0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-jsonschema",
+        "sourceVersion" : "3.2.0-0ubuntu2"
+      },
+      {
+        "name" : "libsmbios-c2",
+        "version" : "2.4.3-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libsmbios",
+        "sourceVersion" : "2.4.3-1build1"
+      },
+      {
+        "name" : "gpg-wks-client",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "patch",
+        "version" : "2.7.6-7build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.7.6-7build2"
+      },
+      {
+        "name" : "ethtool",
+        "version" : "1:5.16-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:5.16-1"
+      },
+      {
+        "name" : "less",
+        "version" : "590-1ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "590-1ubuntu0.22.04.2"
+      },
+      {
+        "name" : "libtss2-tcti-cmd0",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "python3-json-pointer",
+        "version" : "2.0-0ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-json-pointer",
+        "sourceVersion" : "2.0-0ubuntu1"
+      },
+      {
+        "name" : "dirmngr",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "readline-common",
+        "version" : "8.1.2-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "readline",
+        "sourceVersion" : "8.1.2-1"
+      },
+      {
+        "name" : "xz-utils",
+        "version" : "5.2.5-2ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.2.5-2ubuntu1"
+      },
+      {
+        "name" : "python3-netifaces",
+        "version" : "0.11.0-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "netifaces",
+        "sourceVersion" : "0.11.0-1build2"
+      },
+      {
+        "name" : "zsh-common",
+        "version" : "5.8.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "zsh",
+        "sourceVersion" : "5.8.1-1"
+      },
+      {
+        "name" : "libext2fs2",
+        "version" : "1.46.5-2ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.46.5-2ubuntu1.1"
+      },
+      {
+        "name" : "xauth",
+        "version" : "1:1.1-1build2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:1.1-1build2"
+      },
+      {
+        "name" : "libonig5",
+        "version" : "6.9.7.1-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libonig",
+        "sourceVersion" : "6.9.7.1-2build1"
+      },
+      {
+        "name" : "gpgsm",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "libfido2-1",
+        "version" : "1.10.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libfido2",
+        "sourceVersion" : "1.10.0-1"
+      },
+      {
+        "name" : "os-prober",
+        "version" : "1.79ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.79ubuntu2"
+      },
+      {
+        "name" : "libtss2-tcti-mssim0",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "xdg-user-dirs",
+        "version" : "0.17-2ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.17-2ubuntu4"
+      },
+      {
+        "name" : "apparmor",
+        "version" : "3.0.4-2ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.0.4-2ubuntu2.1"
+      },
+      {
+        "name" : "python3-incremental",
+        "version" : "21.3.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "incremental",
+        "sourceVersion" : "21.3.0-1"
+      },
+      {
+        "name" : "console-setup-linux",
+        "version" : "1.205ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "console-setup",
+        "sourceVersion" : "1.205ubuntu3"
+      },
+      {
+        "name" : "libreadline8",
+        "version" : "8.1.2-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "readline",
+        "sourceVersion" : "8.1.2-1"
+      },
+      {
+        "name" : "libnetfilter-conntrack3",
+        "version" : "1.0.9-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libnetfilter-conntrack",
+        "sourceVersion" : "1.0.9-1"
+      },
+      {
+        "name" : "libcryptsetup12",
+        "version" : "2:2.4.3-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cryptsetup",
+        "sourceVersion" : "2:2.4.3-1ubuntu1"
+      },
+      {
+        "name" : "psmisc",
+        "version" : "23.4-2build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "23.4-2build3"
+      },
+      {
+        "name" : "run-one",
+        "version" : "1.17-0ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.17-0ubuntu1"
+      },
+      {
+        "name" : "thin-provisioning-tools",
+        "version" : "0.9.0-2ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.9.0-2ubuntu1"
+      },
+      {
+        "name" : "dpkg",
+        "version" : "1.21.1ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.21.1ubuntu2.1"
+      },
+      {
+        "name" : "overlayroot",
+        "version" : "0.47ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cloud-initramfs-tools",
+        "sourceVersion" : "0.47ubuntu1"
+      },
+      {
+        "name" : "libctf0",
+        "version" : "2.38-4ubuntu2.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.38-4ubuntu2.6"
+      },
+      {
+        "name" : "libpcre3",
+        "version" : "2:8.39-13ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pcre3",
+        "sourceVersion" : "2:8.39-13ubuntu0.22.04.1"
+      },
+      {
+        "name" : "libxcb1",
+        "version" : "1.14-3ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxcb",
+        "sourceVersion" : "1.14-3ubuntu3"
+      },
+      {
+        "name" : "libmodule-scandeps-perl",
+        "version" : "1.31-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.31-1"
+      },
+      {
+        "name" : "libevent-core-2.1-7",
+        "version" : "2.1.12-stable-1build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libevent",
+        "sourceVersion" : "2.1.12-stable-1build3"
+      },
+      {
+        "name" : "python3-pyasn1-modules",
+        "version" : "0.2.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-pyasn1-modules",
+        "sourceVersion" : "0.2.1-1"
+      },
+      {
+        "name" : "libselinux1",
+        "version" : "3.3-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libselinux",
+        "sourceVersion" : "3.3-1build2"
+      },
+      {
+        "name" : "dmidecode",
+        "version" : "3.3-3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.3-3"
+      },
+      {
+        "name" : "initramfs-tools-core",
+        "version" : "0.140ubuntu13",
+        "publisher" : "Ubuntu",
+        "sourceName" : "initramfs-tools",
+        "sourceVersion" : "0.140ubuntu13"
+      },
+      {
+        "name" : "libmpfr6",
+        "version" : "4.1.0-3build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "mpfr4",
+        "sourceVersion" : "4.1.0-3build3"
+      },
+      {
+        "name" : "libaio1",
+        "version" : "0.3.112-13build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libaio",
+        "sourceVersion" : "0.3.112-13build1"
+      },
+      {
+        "name" : "libsasl2-2",
+        "version" : "2.1.27+dfsg2-3ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cyrus-sasl2",
+        "sourceVersion" : "2.1.27+dfsg2-3ubuntu1"
+      },
+      {
+        "name" : "ubuntu-keyring",
+        "version" : "2021.03.26",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2021.03.26"
+      },
+      {
+        "name" : "python3-cffi-backend",
+        "version" : "1.15.0-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-cffi",
+        "sourceVersion" : "1.15.0-1build2"
+      },
+      {
+        "name" : "python3-zope.interface",
+        "version" : "5.4.0-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "zope.interface",
+        "sourceVersion" : "5.4.0-1build1"
+      },
+      {
+        "name" : "libfwupdplugin5",
+        "version" : "1.7.5-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fwupd",
+        "sourceVersion" : "1.7.5-3"
+      },
+      {
+        "name" : "dmeventd",
+        "version" : "2:1.02.175-2.1ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lvm2 (2.03.11-2.1ubuntu4)",
+        "sourceVersion" : "2.03.11-2.1ubuntu4"
+      },
+      {
+        "name" : "python3-debconf",
+        "version" : "1.5.79ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "debconf",
+        "sourceVersion" : "1.5.79ubuntu1"
+      },
+      {
+        "name" : "libfribidi0",
+        "version" : "1.0.8-2ubuntu3.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fribidi",
+        "sourceVersion" : "1.0.8-2ubuntu3.1"
+      },
+      {
+        "name" : "libeatmydata1",
+        "version" : "130-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libeatmydata",
+        "sourceVersion" : "130-2build1"
+      },
+      {
+        "name" : "python3-babel",
+        "version" : "2.8.0+dfsg.1-7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-babel",
+        "sourceVersion" : "2.8.0+dfsg.1-7"
+      },
+      {
+        "name" : "gnupg-utils",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "libdrm-common",
+        "version" : "2.4.110-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libdrm",
+        "sourceVersion" : "2.4.110-1ubuntu1"
+      },
+      {
+        "name" : "klibc-utils",
+        "version" : "2.0.10-4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "klibc",
+        "sourceVersion" : "2.0.10-4"
+      },
+      {
+        "name" : "libldap-2.5-0",
+        "version" : "2.5.17+dfsg-0ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openldap",
+        "sourceVersion" : "2.5.17+dfsg-0ubuntu0.22.04.1"
+      },
+      {
+        "name" : "libarchive13",
+        "version" : "3.6.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libarchive",
+        "sourceVersion" : "3.6.0-1ubuntu1"
+      },
+      {
+        "name" : "libattr1",
+        "version" : "1:2.5.1-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "attr",
+        "sourceVersion" : "1:2.5.1-1build1"
+      },
+      {
+        "name" : "libatm1",
+        "version" : "1:2.5.1-4build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-atm",
+        "sourceVersion" : "1:2.5.1-4build2"
+      },
+      {
+        "name" : "libss2",
+        "version" : "1.46.5-2ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.46.5-2ubuntu1.1"
+      },
+      {
+        "name" : "python3-hamcrest",
+        "version" : "2.0.2-2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyhamcrest",
+        "sourceVersion" : "2.0.2-2"
+      },
+      {
+        "name" : "pciutils",
+        "version" : "1:3.7.0-6",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:3.7.0-6"
+      },
+      {
+        "name" : "libfastjson4",
+        "version" : "0.99.9-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libfastjson",
+        "sourceVersion" : "0.99.9-1build2"
+      },
+      {
+        "name" : "libpcap0.8",
+        "version" : "1.10.1-4build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libpcap",
+        "sourceVersion" : "1.10.1-4build1"
+      },
+      {
+        "name" : "libefivar1",
+        "version" : "37-6ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "efivar",
+        "sourceVersion" : "37-6ubuntu2"
+      },
+      {
+        "name" : "python3-pyparsing",
+        "version" : "2.4.7-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyparsing",
+        "sourceVersion" : "2.4.7-1"
+      },
+      {
+        "name" : "xkb-data",
+        "version" : "2.33-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "xkeyboard-config",
+        "sourceVersion" : "2.33-1"
+      },
+      {
+        "name" : "python3-jeepney",
+        "version" : "0.7.1-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "jeepney",
+        "sourceVersion" : "0.7.1-3"
+      },
+      {
+        "name" : "python3-chardet",
+        "version" : "4.0.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "chardet",
+        "sourceVersion" : "4.0.0-1"
+      },
+      {
+        "name" : "ubuntu-standard",
+        "version" : "1.481",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ubuntu-meta",
+        "sourceVersion" : "1.481"
+      },
+      {
+        "name" : "libpci3",
+        "version" : "1:3.7.0-6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pciutils",
+        "sourceVersion" : "1:3.7.0-6"
+      },
+      {
+        "name" : "ubuntu-minimal",
+        "version" : "1.481",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ubuntu-meta",
+        "sourceVersion" : "1.481"
+      },
+      {
+        "name" : "cpio",
+        "version" : "2.13+dfsg-7",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.13+dfsg-7"
+      },
+      {
+        "name" : "libklibc",
+        "version" : "2.0.10-4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "klibc",
+        "sourceVersion" : "2.0.10-4"
+      },
+      {
+        "name" : "initramfs-tools-bin",
+        "version" : "0.140ubuntu13",
+        "publisher" : "Ubuntu",
+        "sourceName" : "initramfs-tools",
+        "sourceVersion" : "0.140ubuntu13"
+      },
+      {
+        "name" : "fuse3",
+        "version" : "3.10.5-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.10.5-1build1"
+      },
+      {
+        "name" : "ubuntu-server",
+        "version" : "1.481",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ubuntu-meta",
+        "sourceVersion" : "1.481"
+      },
+      {
+        "name" : "telnet",
+        "version" : "0.17-44build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "netkit-telnet",
+        "sourceVersion" : "0.17-44build1"
+      },
+      {
+        "name" : "vim-runtime",
+        "version" : "2:8.2.3995-1ubuntu2.16",
+        "publisher" : "Ubuntu",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:8.2.3995-1ubuntu2.16"
+      },
+      {
+        "name" : "tnftp",
+        "version" : "20210827-4build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "20210827-4build1"
+      },
+      {
+        "name" : "python3-pexpect",
+        "version" : "4.8.0-2ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pexpect",
+        "sourceVersion" : "4.8.0-2ubuntu1"
+      },
+      {
+        "name" : "libkmod2",
+        "version" : "29-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "kmod",
+        "sourceVersion" : "29-1ubuntu1"
+      },
+      {
+        "name" : "netbase",
+        "version" : "6.3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "6.3"
+      },
+      {
+        "name" : "squashfs-tools",
+        "version" : "1:4.5-3build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:4.5-3build1"
+      },
+      {
+        "name" : "libtss2-esys-3.0.2-0",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "pkexec",
+        "version" : "0.105-33",
+        "publisher" : "Ubuntu",
+        "sourceName" : "policykit-1",
+        "sourceVersion" : "0.105-33"
+      },
+      {
+        "name" : "libmaxminddb0",
+        "version" : "1.5.2-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libmaxminddb",
+        "sourceVersion" : "1.5.2-1build2"
+      },
+      {
+        "name" : "python3-tz",
+        "version" : "2022.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-tz",
+        "sourceVersion" : "2022.1-1"
+      },
+      {
+        "name" : "sg3-utils-udev",
+        "version" : "1.46-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "sg3-utils",
+        "sourceVersion" : "1.46-1build1"
+      },
+      {
+        "name" : "libdw1",
+        "version" : "0.186-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "elfutils",
+        "sourceVersion" : "0.186-1build1"
+      },
+      {
+        "name" : "binutils-x86-64-linux-gnu",
+        "version" : "2.38-4ubuntu2.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.38-4ubuntu2.6"
+      },
+      {
+        "name" : "libyaml-0-2",
+        "version" : "0.2.2-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libyaml",
+        "sourceVersion" : "0.2.2-1build2"
+      },
+      {
+        "name" : "unattended-upgrades",
+        "version" : "2.8ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.8ubuntu1"
+      },
+      {
+        "name" : "eatmydata",
+        "version" : "130-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libeatmydata",
+        "sourceVersion" : "130-2build1"
+      },
+      {
+        "name" : "libuchardet0",
+        "version" : "0.0.7-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "uchardet",
+        "sourceVersion" : "0.0.7-1build2"
+      },
+      {
+        "name" : "strace",
+        "version" : "5.16-0ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.16-0ubuntu3"
+      },
+      {
+        "name" : "libgcrypt20",
+        "version" : "1.9.4-3ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.9.4-3ubuntu3"
+      },
+      {
+        "name" : "libblockdev-part-err2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "fwupd",
+        "version" : "1.7.5-3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.7.5-3"
+      },
+      {
+        "name" : "libnl-genl-3-200",
+        "version" : "3.5.0-0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libnl3",
+        "sourceVersion" : "3.5.0-0.1"
+      },
+      {
+        "name" : "python3-hyperlink",
+        "version" : "21.0.0-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "hyperlink",
+        "sourceVersion" : "21.0.0-3"
+      },
+      {
+        "name" : "libmnl0",
+        "version" : "1.0.4-3build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libmnl",
+        "sourceVersion" : "1.0.4-3build2"
+      },
+      {
+        "name" : "python3-commandnotfound",
+        "version" : "22.04.0",
+        "publisher" : "Ubuntu",
+        "sourceName" : "command-not-found",
+        "sourceVersion" : "22.04.0"
+      },
+      {
+        "name" : "libtext-iconv-perl",
+        "version" : "1.7-7build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.7-7build3"
+      },
+      {
+        "name" : "libdebconfclient0",
+        "version" : "0.261ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cdebconf",
+        "sourceVersion" : "0.261ubuntu1"
+      },
+      {
+        "name" : "curl",
+        "version" : "7.81.0-1ubuntu1.16",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "7.81.0-1ubuntu1.16"
+      },
+      {
+        "name" : "wget",
+        "version" : "1.21.2-2ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.21.2-2ubuntu1"
+      },
+      {
+        "name" : "linux-headers-5.15.0-41",
+        "version" : "5.15.0-41.44",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux",
+        "sourceVersion" : "5.15.0-41.44"
+      },
+      {
+        "name" : "python3-click",
+        "version" : "8.0.3-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-click",
+        "sourceVersion" : "8.0.3-1"
+      },
+      {
+        "name" : "base-files",
+        "version" : "12ubuntu4.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "12ubuntu4.1"
+      },
+      {
+        "name" : "mdadm",
+        "version" : "4.2-0ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.2-0ubuntu1"
+      },
+      {
+        "name" : "nano",
+        "version" : "6.2-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "6.2-1"
+      },
+      {
+        "name" : "libutempter0",
+        "version" : "1.2.1-2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libutempter",
+        "sourceVersion" : "1.2.1-2build2"
+      },
+      {
+        "name" : "sharutils",
+        "version" : "1:4.15.2-5build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:4.15.2-5build1"
+      },
+      {
+        "name" : "iputils-ping",
+        "version" : "3:20211215-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "iputils",
+        "sourceVersion" : "3:20211215-1"
+      },
+      {
+        "name" : "libaugeas0",
+        "version" : "1.13.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "augeas",
+        "sourceVersion" : "1.13.0-1"
+      },
+      {
+        "name" : "networkd-dispatcher",
+        "version" : "2.1-2ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.1-2ubuntu0.22.04.2"
+      },
+      {
+        "name" : "xfsprogs",
+        "version" : "5.13.0-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.13.0-1ubuntu2"
+      },
+      {
+        "name" : "adduser",
+        "version" : "3.118ubuntu5",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.118ubuntu5"
+      },
+      {
+        "name" : "python3-wadllib",
+        "version" : "1.3.6-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-wadllib",
+        "sourceVersion" : "1.3.6-1"
+      },
+      {
+        "name" : "libaudit1",
+        "version" : "1:3.0.7-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "audit",
+        "sourceVersion" : "1:3.0.7-1build1"
+      },
+      {
+        "name" : "python3-blinker",
+        "version" : "1.4+dfsg1-0.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "blinker",
+        "sourceVersion" : "1.4+dfsg1-0.4"
+      },
+      {
+        "name" : "libffi8",
+        "version" : "3.4.2-4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libffi",
+        "sourceVersion" : "3.4.2-4"
+      },
+      {
+        "name" : "libapt-pkg6.0",
+        "version" : "2.4.5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "apt",
+        "sourceVersion" : "2.4.5"
+      },
+      {
+        "name" : "libkeyutils1",
+        "version" : "1.6.1-2ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "keyutils",
+        "sourceVersion" : "1.6.1-2ubuntu3"
+      },
+      {
+        "name" : "python3-pyrsistent",
+        "version" : "0.18.1-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyrsistent",
+        "sourceVersion" : "0.18.1-1build1"
+      },
+      {
+        "name" : "init-system-helpers",
+        "version" : "1.62",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.62"
+      },
+      {
+        "name" : "libsemanage-common",
+        "version" : "3.3-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libsemanage",
+        "sourceVersion" : "3.3-1build2"
+      },
+      {
+        "name" : "manpages",
+        "version" : "5.10-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.10-1ubuntu1"
+      },
+      {
+        "name" : "console-setup",
+        "version" : "1.205ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.205ubuntu3"
+      },
+      {
+        "name" : "augeas-tools",
+        "version" : "1.13.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "augeas",
+        "sourceVersion" : "1.13.0-1"
+      },
+      {
+        "name" : "base-passwd",
+        "version" : "3.5.52build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.5.52build1"
+      },
+      {
+        "name" : "libftdi1-2",
+        "version" : "1.5-5build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libftdi1",
+        "sourceVersion" : "1.5-5build3"
+      },
+      {
+        "name" : "libunwind8",
+        "version" : "1.3.2-2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libunwind",
+        "sourceVersion" : "1.3.2-2build2"
+      },
+      {
+        "name" : "grep",
+        "version" : "3.7-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.7-1build1"
+      },
+      {
+        "name" : "ftp",
+        "version" : "20210827-4build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tnftp",
+        "sourceVersion" : "20210827-4build1"
+      },
+      {
+        "name" : "libtss2-tcti-swtpm0",
+        "version" : "3.2.0-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "tpm2-tss",
+        "sourceVersion" : "3.2.0-1ubuntu1"
+      },
+      {
+        "name" : "libcom-err2",
+        "version" : "1.46.5-2ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.46.5-2ubuntu1.1"
+      },
+      {
+        "name" : "python3-configobj",
+        "version" : "5.0.6-5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "configobj",
+        "sourceVersion" : "5.0.6-5"
+      },
+      {
+        "name" : "usb-modeswitch-data",
+        "version" : "20191128-4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "20191128-4"
+      },
+      {
+        "name" : "liblz4-1",
+        "version" : "1.9.3-2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lz4",
+        "sourceVersion" : "1.9.3-2build2"
+      },
+      {
+        "name" : "libusb-1.0-0",
+        "version" : "2:1.0.25-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libusb-1.0",
+        "sourceVersion" : "2:1.0.25-1ubuntu2"
+      },
+      {
+        "name" : "dmsetup",
+        "version" : "2:1.02.175-2.1ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lvm2 (2.03.11-2.1ubuntu4)",
+        "sourceVersion" : "2.03.11-2.1ubuntu4"
+      },
+      {
+        "name" : "zsh",
+        "version" : "5.8.1-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.8.1-1"
+      },
+      {
+        "name" : "usrmerge",
+        "version" : "25ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "25ubuntu2"
+      },
+      {
+        "name" : "bcache-tools",
+        "version" : "1.0.8-4ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.0.8-4ubuntu3"
+      },
+      {
+        "name" : "libproc-processtable-perl",
+        "version" : "0.634-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.634-1build1"
+      },
+      {
+        "name" : "debconf-i18n",
+        "version" : "1.5.79ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "debconf",
+        "sourceVersion" : "1.5.79ubuntu1"
+      },
+      {
+        "name" : "python3-yaml",
+        "version" : "5.4.1-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyyaml",
+        "sourceVersion" : "5.4.1-1ubuntu1"
+      },
+      {
+        "name" : "libgmp10",
+        "version" : "2:6.2.1+dfsg-3ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gmp",
+        "sourceVersion" : "2:6.2.1+dfsg-3ubuntu1"
+      },
+      {
+        "name" : "landscape-common",
+        "version" : "19.12-0ubuntu13",
+        "publisher" : "Ubuntu",
+        "sourceName" : "landscape-client",
+        "sourceVersion" : "19.12-0ubuntu13"
+      },
+      {
+        "name" : "packagekit-tools",
+        "version" : "1.2.5-2ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "packagekit",
+        "sourceVersion" : "1.2.5-2ubuntu2"
+      },
+      {
+        "name" : "libmodule-find-perl",
+        "version" : "0.15-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.15-1"
+      },
+      {
+        "name" : "libxext6",
+        "version" : "2:1.3.4-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxext",
+        "sourceVersion" : "2:1.3.4-1build1"
+      },
+      {
+        "name" : "libidn2-0",
+        "version" : "2.3.2-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libidn2",
+        "sourceVersion" : "2.3.2-2build1"
+      },
+      {
+        "name" : "software-properties-common",
+        "version" : "0.99.22.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "software-properties",
+        "sourceVersion" : "0.99.22.2"
+      },
+      {
+        "name" : "libmbim-glib4",
+        "version" : "1.26.2-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libmbim",
+        "sourceVersion" : "1.26.2-1build1"
+      },
+      {
+        "name" : "libacl1",
+        "version" : "2.3.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "acl",
+        "sourceVersion" : "2.3.1-1"
+      },
+      {
+        "name" : "sg3-utils",
+        "version" : "1.46-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.46-1build1"
+      },
+      {
+        "name" : "plymouth",
+        "version" : "0.9.5+git20211018-1ubuntu3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.9.5+git20211018-1ubuntu3"
+      },
+      {
+        "name" : "libbinutils",
+        "version" : "2.38-4ubuntu2.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.38-4ubuntu2.6"
+      },
+      {
+        "name" : "usbutils",
+        "version" : "1:014-1build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:014-1build1"
+      },
+      {
+        "name" : "python3-apt",
+        "version" : "2.3.0ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-apt",
+        "sourceVersion" : "2.3.0ubuntu2"
+      },
+      {
+        "name" : "lshw",
+        "version" : "02.19.git.2021.06.19.996aaad9c7-2build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "02.19.git.2021.06.19.996aaad9c7-2build1"
+      },
+      {
+        "name" : "libpng16-16",
+        "version" : "1.6.37-3build5",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libpng1.6",
+        "sourceVersion" : "1.6.37-3build5"
+      },
+      {
+        "name" : "libudisks2-0",
+        "version" : "2.9.4-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "udisks2",
+        "sourceVersion" : "2.9.4-1ubuntu2"
+      },
+      {
+        "name" : "apport-symptoms",
+        "version" : "0.24",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.24"
+      },
+      {
+        "name" : "apt",
+        "version" : "2.4.5",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.4.5"
+      },
+      {
+        "name" : "libgstreamer1.0-0",
+        "version" : "1.20.1-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gstreamer1.0",
+        "sourceVersion" : "1.20.1-1"
+      },
+      {
+        "name" : "dash",
+        "version" : "0.5.11+git20210903+057cd650a4ed-3build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.5.11+git20210903+057cd650a4ed-3build1"
+      },
+      {
+        "name" : "libsgutils2-2",
+        "version" : "1.46-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "sg3-utils",
+        "sourceVersion" : "1.46-1build1"
+      },
+      {
+        "name" : "ldapscripts",
+        "version" : "2.0.8-1ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.0.8-1ubuntu2"
+      },
+      {
+        "name" : "libflashrom1",
+        "version" : "1.2-5build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "flashrom",
+        "sourceVersion" : "1.2-5build1"
+      },
+      {
+        "name" : "libdevmapper1.02.1",
+        "version" : "2:1.02.175-2.1ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lvm2 (2.03.11-2.1ubuntu4)",
+        "sourceVersion" : "2.03.11-2.1ubuntu4"
+      },
+      {
+        "name" : "vim-common",
+        "version" : "2:8.2.3995-1ubuntu2.16",
+        "publisher" : "Ubuntu",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:8.2.3995-1ubuntu2.16"
+      },
+      {
+        "name" : "libxmlb2",
+        "version" : "0.3.6-2build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxmlb",
+        "sourceVersion" : "0.3.6-2build1"
+      },
+      {
+        "name" : "libnpth0",
+        "version" : "1.6-3build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "npth",
+        "sourceVersion" : "1.6-3build2"
+      },
+      {
+        "name" : "libsasl2-modules",
+        "version" : "2.1.27+dfsg2-3ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cyrus-sasl2",
+        "sourceVersion" : "2.1.27+dfsg2-3ubuntu1"
+      },
+      {
+        "name" : "gettext-base",
+        "version" : "0.21-4ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gettext",
+        "sourceVersion" : "0.21-4ubuntu4"
+      },
+      {
+        "name" : "augeas-lenses",
+        "version" : "1.13.0-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "augeas",
+        "sourceVersion" : "1.13.0-1"
+      },
+      {
+        "name" : "libhogweed6",
+        "version" : "3.7.3-1build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "nettle",
+        "sourceVersion" : "3.7.3-1build2"
+      },
+      {
+        "name" : "libgcab-1.0-0",
+        "version" : "1.4-3build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gcab",
+        "sourceVersion" : "1.4-3build2"
+      },
+      {
+        "name" : "hdparm",
+        "version" : "9.60+ds-1build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "9.60+ds-1build3"
+      },
+      {
+        "name" : "python3-systemd",
+        "version" : "234-3ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-systemd",
+        "sourceVersion" : "234-3ubuntu2"
+      },
+      {
+        "name" : "libmd0",
+        "version" : "1.0.4-1build1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libmd",
+        "sourceVersion" : "1.0.4-1build1"
+      },
+      {
+        "name" : "libblockdev-swap2",
+        "version" : "2.26-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libblockdev",
+        "sourceVersion" : "2.26-1"
+      },
+      {
+        "name" : "cryptsetup",
+        "version" : "2:2.4.3-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2:2.4.3-1ubuntu1"
+      },
+      {
+        "name" : "libestr0",
+        "version" : "0.1.10-2.1build3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libestr",
+        "sourceVersion" : "0.1.10-2.1build3"
+      },
+      {
+        "name" : "libjcat1",
+        "version" : "0.1.9-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libjcat",
+        "sourceVersion" : "0.1.9-1"
+      },
+      {
+        "name" : "cryptsetup-bin",
+        "version" : "2:2.4.3-1ubuntu1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "cryptsetup",
+        "sourceVersion" : "2:2.4.3-1ubuntu1"
+      },
+      {
+        "name" : "libnsl2",
+        "version" : "1.3.0-2build2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libnsl",
+        "sourceVersion" : "1.3.0-2build2"
+      },
+      {
+        "name" : "liblvm2cmd2.03",
+        "version" : "2.03.11-2.1ubuntu4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lvm2",
+        "sourceVersion" : "2.03.11-2.1ubuntu4"
+      },
+      {
+        "name" : "logrotate",
+        "version" : "3.19.0-1ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.19.0-1ubuntu1.1"
+      },
+      {
+        "name" : "python-babel-localedata",
+        "version" : "2.8.0+dfsg.1-7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-babel",
+        "sourceVersion" : "2.8.0+dfsg.1-7"
+      },
+      {
+        "name" : "grub-gfxpayload-lists",
+        "version" : "0.7",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.7"
+      },
+      {
+        "name" : "usb-modeswitch",
+        "version" : "2.6.1-3ubuntu2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.6.1-3ubuntu2"
+      },
+      {
+        "name" : "python3-lazr.restfulclient",
+        "version" : "0.14.4-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "lazr.restfulclient",
+        "sourceVersion" : "0.14.4-1"
+      },
+      {
+        "name" : "libbsd0",
+        "version" : "0.11.5-1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libbsd",
+        "sourceVersion" : "0.11.5-1"
+      },
+      {
+        "name" : "dosfstools",
+        "version" : "4.2-1build3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.2-1build3"
+      },
+      {
+        "name" : "libpolkit-agent-1-0",
+        "version" : "0.105-33",
+        "publisher" : "Ubuntu",
+        "sourceName" : "policykit-1",
+        "sourceVersion" : "0.105-33"
+      },
+      {
+        "name" : "rudder-agent",
+        "version" : "8.1.0~beta3~git202403290219-ubuntu22.04",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "8.1.0~beta3~git202403290219-ubuntu22.04"
+      },
+      {
+        "name" : "man-db",
+        "version" : "2.10.2-1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.10.2-1"
+      },
+      {
+        "name" : "libblkid1",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "bash",
+        "version" : "5.1-6ubuntu1.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.1-6ubuntu1.1"
+      },
+      {
+        "name" : "libxml2",
+        "version" : "2.9.13+dfsg-1ubuntu0.4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.9.13+dfsg-1ubuntu0.4"
+      },
+      {
+        "name" : "libglib2.0-0",
+        "version" : "2.72.4-0ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "glib2.0",
+        "sourceVersion" : "2.72.4-0ubuntu2.2"
+      },
+      {
+        "name" : "systemd-sysv",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "libpam-runtime",
+        "version" : "1.4.0-11ubuntu2.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.4.0-11ubuntu2.4"
+      },
+      {
+        "name" : "systemd-timesyncd",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "libudev1",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "isc-dhcp-client",
+        "version" : "4.4.1-2.3ubuntu2.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "isc-dhcp",
+        "sourceVersion" : "4.4.1-2.3ubuntu2.3"
+      },
+      {
+        "name" : "linux-modules-5.15.0-101-generic",
+        "version" : "5.15.0-101.111",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux",
+        "sourceVersion" : "5.15.0-101.111"
+      },
+      {
+        "name" : "openssh-client",
+        "version" : "1:8.9p1-3ubuntu0.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openssh",
+        "sourceVersion" : "1:8.9p1-3ubuntu0.6"
+      },
+      {
+        "name" : "linux-headers-5.15.0-101-generic",
+        "version" : "5.15.0-101.111",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux",
+        "sourceVersion" : "5.15.0-101.111"
+      },
+      {
+        "name" : "libdbus-1-3",
+        "version" : "1.12.20-2ubuntu4.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.12.20-2ubuntu4.1"
+      },
+      {
+        "name" : "python3-jinja2",
+        "version" : "3.0.3-1ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "jinja2",
+        "sourceVersion" : "3.0.3-1ubuntu0.1"
+      },
+      {
+        "name" : "sosreport",
+        "version" : "4.3-1ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "4.3-1ubuntu2.1"
+      },
+      {
+        "name" : "libncurses6",
+        "version" : "6.3-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.3-2ubuntu0.1"
+      },
+      {
+        "name" : "mount",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "ntfs-3g",
+        "version" : "1:2021.8.22-3ubuntu1.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:2021.8.22-3ubuntu1.2"
+      },
+      {
+        "name" : "libnghttp2-14",
+        "version" : "1.43.0-1ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "nghttp2",
+        "sourceVersion" : "1.43.0-1ubuntu0.1"
+      },
+      {
+        "name" : "libx11-data",
+        "version" : "2:1.7.5-1ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libx11",
+        "sourceVersion" : "2:1.7.5-1ubuntu0.3"
+      },
+      {
+        "name" : "libmount1",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "tmux",
+        "version" : "3.2a-4ubuntu0.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.2a-4ubuntu0.2"
+      },
+      {
+        "name" : "multipath-tools",
+        "version" : "0.8.8-1ubuntu1.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "0.8.8-1ubuntu1.22.04.1"
+      },
+      {
+        "name" : "libssl3",
+        "version" : "3.0.2-0ubuntu1.15",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openssl",
+        "sourceVersion" : "3.0.2-0ubuntu1.15"
+      },
+      {
+        "name" : "libsqlite3-0",
+        "version" : "3.37.2-2ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "sqlite3",
+        "sourceVersion" : "3.37.2-2ubuntu0.3"
+      },
+      {
+        "name" : "zlib1g",
+        "version" : "1:1.2.11.dfsg-2ubuntu9.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "zlib",
+        "sourceVersion" : "1:1.2.11.dfsg-2ubuntu9.2"
+      },
+      {
+        "name" : "systemd",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "libtinfo6",
+        "version" : "6.3-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.3-2ubuntu0.1"
+      },
+      {
+        "name" : "libprocps8",
+        "version" : "2:3.3.17-6ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "procps",
+        "sourceVersion" : "2:3.3.17-6ubuntu2.1"
+      },
+      {
+        "name" : "libk5crypto3",
+        "version" : "1.19.2-2ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.19.2-2ubuntu0.3"
+      },
+      {
+        "name" : "ca-certificates",
+        "version" : "20230311ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "20230311ubuntu0.22.04.1"
+      },
+      {
+        "name" : "ncurses-term",
+        "version" : "6.3-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.3-2ubuntu0.1"
+      },
+      {
+        "name" : "python3-urllib3",
+        "version" : "1.26.5-1~exp1ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-urllib3",
+        "sourceVersion" : "1.26.5-1~exp1ubuntu0.1"
+      },
+      {
+        "name" : "xxd",
+        "version" : "2:8.2.3995-1ubuntu2.16",
+        "publisher" : "Ubuntu",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:8.2.3995-1ubuntu2.16"
+      },
+      {
+        "name" : "libcap2",
+        "version" : "1:2.44-1ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:2.44-1ubuntu0.22.04.1"
+      },
+      {
+        "name" : "libpython3.10-minimal",
+        "version" : "3.10.12-1~22.04.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3.10",
+        "sourceVersion" : "3.10.12-1~22.04.3"
+      },
+      {
+        "name" : "libc6",
+        "version" : "2.35-0ubuntu3.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.35-0ubuntu3.6"
+      },
+      {
+        "name" : "eject",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "libkrb5support0",
+        "version" : "1.19.2-2ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.19.2-2ubuntu0.3"
+      },
+      {
+        "name" : "apport",
+        "version" : "2.20.11-0ubuntu82.4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.20.11-0ubuntu82.4"
+      },
+      {
+        "name" : "linux-image-virtual",
+        "version" : "5.15.0.101.98",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-meta",
+        "sourceVersion" : "5.15.0.101.98"
+      },
+      {
+        "name" : "libstdc++6",
+        "version" : "12.3.0-1ubuntu1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gcc-12",
+        "sourceVersion" : "12.3.0-1ubuntu1~22.04"
+      },
+      {
+        "name" : "tzdata",
+        "version" : "2024a-0ubuntu0.22.04",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2024a-0ubuntu0.22.04"
+      },
+      {
+        "name" : "isc-dhcp-common",
+        "version" : "4.4.1-2.3ubuntu2.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "isc-dhcp",
+        "sourceVersion" : "4.4.1-2.3ubuntu2.3"
+      },
+      {
+        "name" : "libcap2-bin",
+        "version" : "1:2.44-1ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libcap2",
+        "sourceVersion" : "1:2.44-1ubuntu0.22.04.1"
+      },
+      {
+        "name" : "linux-image-5.15.0-101-generic",
+        "version" : "5.15.0-101.111",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-signed",
+        "sourceVersion" : "5.15.0-101.111"
+      },
+      {
+        "name" : "python3-apport",
+        "version" : "2.20.11-0ubuntu82.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "apport",
+        "sourceVersion" : "2.20.11-0ubuntu82.4"
+      },
+      {
+        "name" : "python3-problem-report",
+        "version" : "2.20.11-0ubuntu82.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "apport",
+        "sourceVersion" : "2.20.11-0ubuntu82.4"
+      },
+      {
+        "name" : "procps",
+        "version" : "2:3.3.17-6ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2:3.3.17-6ubuntu2.1"
+      },
+      {
+        "name" : "libgssapi-krb5-2",
+        "version" : "1.19.2-2ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.19.2-2ubuntu0.3"
+      },
+      {
+        "name" : "libfdisk1",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "linux-headers-generic",
+        "version" : "5.15.0.101.98",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-meta",
+        "sourceVersion" : "5.15.0.101.98"
+      },
+      {
+        "name" : "python3-cryptography",
+        "version" : "3.4.8-1ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-cryptography",
+        "sourceVersion" : "3.4.8-1ubuntu2.2"
+      },
+      {
+        "name" : "libbpf0",
+        "version" : "1:0.5.0-1ubuntu22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libbpf (0.5.0-1ubuntu22.04.1)",
+        "sourceVersion" : "0.5.0-1ubuntu22.04.1"
+      },
+      {
+        "name" : "libtirpc-common",
+        "version" : "1.3.2-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libtirpc",
+        "sourceVersion" : "1.3.2-2ubuntu0.1"
+      },
+      {
+        "name" : "libsystemd0",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "open-vm-tools",
+        "version" : "2:12.1.5-3~ubuntu0.22.04.4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2:12.1.5-3~ubuntu0.22.04.4"
+      },
+      {
+        "name" : "perl-modules-5.34",
+        "version" : "5.34.0-3ubuntu1.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "perl",
+        "sourceVersion" : "5.34.0-3ubuntu1.3"
+      },
+      {
+        "name" : "perl",
+        "version" : "5.34.0-3ubuntu1.3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "5.34.0-3ubuntu1.3"
+      },
+      {
+        "name" : "bind9-libs",
+        "version" : "1:9.18.18-0ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "bind9",
+        "sourceVersion" : "1:9.18.18-0ubuntu0.22.04.2"
+      },
+      {
+        "name" : "locales",
+        "version" : "2.35-0ubuntu3.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.35-0ubuntu3.6"
+      },
+      {
+        "name" : "libnss-systemd",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "python3-setuptools",
+        "version" : "59.6.0-1.2ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "setuptools",
+        "sourceVersion" : "59.6.0-1.2ubuntu0.22.04.1"
+      },
+      {
+        "name" : "libldap-common",
+        "version" : "2.5.16+dfsg-0ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openldap",
+        "sourceVersion" : "2.5.16+dfsg-0ubuntu0.22.04.2"
+      },
+      {
+        "name" : "libx11-6",
+        "version" : "2:1.7.5-1ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libx11",
+        "sourceVersion" : "2:1.7.5-1ubuntu0.3"
+      },
+      {
+        "name" : "libxslt1.1",
+        "version" : "1.1.34-4ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libxslt",
+        "sourceVersion" : "1.1.34-4ubuntu0.22.04.1"
+      },
+      {
+        "name" : "libcurl3-gnutls",
+        "version" : "7.81.0-1ubuntu1.16",
+        "publisher" : "Ubuntu",
+        "sourceName" : "curl",
+        "sourceVersion" : "7.81.0-1ubuntu1.16"
+      },
+      {
+        "name" : "libglib2.0-data",
+        "version" : "2.72.4-0ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "glib2.0",
+        "sourceVersion" : "2.72.4-0ubuntu2.2"
+      },
+      {
+        "name" : "cloud-init",
+        "version" : "23.1.2-0ubuntu0~22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "23.1.2-0ubuntu0~22.04.1"
+      },
+      {
+        "name" : "libmagic-mgc",
+        "version" : "1:5.41-3ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "file",
+        "sourceVersion" : "1:5.41-3ubuntu0.1"
+      },
+      {
+        "name" : "libpam-cap",
+        "version" : "1:2.44-1ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libcap2",
+        "sourceVersion" : "1:2.44-1ubuntu0.22.04.1"
+      },
+      {
+        "name" : "python3-oauthlib",
+        "version" : "3.2.0-1ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python-oauthlib",
+        "sourceVersion" : "3.2.0-1ubuntu0.1"
+      },
+      {
+        "name" : "libglib2.0-bin",
+        "version" : "2.72.4-0ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "glib2.0",
+        "sourceVersion" : "2.72.4-0ubuntu2.2"
+      },
+      {
+        "name" : "fdisk",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "bind9-dnsutils",
+        "version" : "1:9.18.18-0ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "bind9",
+        "sourceVersion" : "1:9.18.18-0ubuntu0.22.04.2"
+      },
+      {
+        "name" : "ncurses-bin",
+        "version" : "6.3-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.3-2ubuntu0.1"
+      },
+      {
+        "name" : "libntfs-3g89",
+        "version" : "1:2021.8.22-3ubuntu1.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ntfs-3g",
+        "sourceVersion" : "1:2021.8.22-3ubuntu1.2"
+      },
+      {
+        "name" : "libpcre2-8-0",
+        "version" : "10.39-3ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pcre2",
+        "sourceVersion" : "10.39-3ubuntu0.1"
+      },
+      {
+        "name" : "libjson-c5",
+        "version" : "0.15-3~ubuntu1.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "json-c",
+        "sourceVersion" : "0.15-3~ubuntu1.22.04.2"
+      },
+      {
+        "name" : "login",
+        "version" : "1:4.8.1-2ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "shadow",
+        "sourceVersion" : "1:4.8.1-2ubuntu2.2"
+      },
+      {
+        "name" : "libpython3-stdlib",
+        "version" : "3.10.6-1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3-defaults",
+        "sourceVersion" : "3.10.6-1~22.04"
+      },
+      {
+        "name" : "snapd",
+        "version" : "2.58+22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.58+22.04.1"
+      },
+      {
+        "name" : "sudo",
+        "version" : "1.9.9-1ubuntu2.4",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.9.9-1ubuntu2.4"
+      },
+      {
+        "name" : "python3-lib2to3",
+        "version" : "3.10.8-1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3-stdlib-extensions",
+        "sourceVersion" : "3.10.8-1~22.04"
+      },
+      {
+        "name" : "perl-base",
+        "version" : "5.34.0-3ubuntu1.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "perl",
+        "sourceVersion" : "5.34.0-3ubuntu1.3"
+      },
+      {
+        "name" : "libuuid1",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "linux-virtual",
+        "version" : "5.15.0.101.98",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-meta",
+        "sourceVersion" : "5.15.0.101.98"
+      },
+      {
+        "name" : "libmagic1",
+        "version" : "1:5.41-3ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "file",
+        "sourceVersion" : "1:5.41-3ubuntu0.1"
+      },
+      {
+        "name" : "gawk",
+        "version" : "1:5.1.0-1ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:5.1.0-1ubuntu0.1"
+      },
+      {
+        "name" : "libpam-modules",
+        "version" : "1.4.0-11ubuntu2.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.4.0-11ubuntu2.4"
+      },
+      {
+        "name" : "util-linux",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "dbus",
+        "version" : "1.12.20-2ubuntu4.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.12.20-2ubuntu4.1"
+      },
+      {
+        "name" : "libsmartcols1",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "bind9-host",
+        "version" : "1:9.18.18-0ubuntu0.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "bind9",
+        "sourceVersion" : "1:9.18.18-0ubuntu0.22.04.2"
+      },
+      {
+        "name" : "python3-jwt",
+        "version" : "2.3.0-1ubuntu0.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pyjwt",
+        "sourceVersion" : "2.3.0-1ubuntu0.2"
+      },
+      {
+        "name" : "python3-gdbm",
+        "version" : "3.10.8-1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3-stdlib-extensions",
+        "sourceVersion" : "3.10.8-1~22.04"
+      },
+      {
+        "name" : "bsdextrautils",
+        "version" : "2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "openssl",
+        "version" : "3.0.2-0ubuntu1.15",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.0.2-0ubuntu1.15"
+      },
+      {
+        "name" : "libexpat1",
+        "version" : "2.4.7-1ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "expat",
+        "sourceVersion" : "2.4.7-1ubuntu0.3"
+      },
+      {
+        "name" : "libuv1",
+        "version" : "1.43.0-1ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.43.0-1ubuntu0.1"
+      },
+      {
+        "name" : "libkrb5-3",
+        "version" : "1.19.2-2ubuntu0.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.19.2-2ubuntu0.3"
+      },
+      {
+        "name" : "libncursesw6",
+        "version" : "6.3-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.3-2ubuntu0.1"
+      },
+      {
+        "name" : "libpython3.10",
+        "version" : "3.10.12-1~22.04.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3.10",
+        "sourceVersion" : "3.10.12-1~22.04.3"
+      },
+      {
+        "name" : "linux-headers-virtual",
+        "version" : "5.15.0.101.98",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux-meta",
+        "sourceVersion" : "5.15.0.101.98"
+      },
+      {
+        "name" : "python3",
+        "version" : "3.10.6-1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3-defaults",
+        "sourceVersion" : "3.10.6-1~22.04"
+      },
+      {
+        "name" : "gcc-12-base",
+        "version" : "12.3.0-1ubuntu1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gcc-12",
+        "sourceVersion" : "12.3.0-1ubuntu1~22.04"
+      },
+      {
+        "name" : "libnss3",
+        "version" : "2:3.68.2-0ubuntu1.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "nss",
+        "sourceVersion" : "2:3.68.2-0ubuntu1.2"
+      },
+      {
+        "name" : "libgnutls30",
+        "version" : "3.7.3-4ubuntu1.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnutls28",
+        "sourceVersion" : "3.7.3-4ubuntu1.4"
+      },
+      {
+        "name" : "bsdutils",
+        "version" : "1:2.37.2-4ubuntu3.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "util-linux (2.37.2-4ubuntu3.3)",
+        "sourceVersion" : "2.37.2-4ubuntu3.3"
+      },
+      {
+        "name" : "libc-bin",
+        "version" : "2.35-0ubuntu3.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.35-0ubuntu3.6"
+      },
+      {
+        "name" : "tar",
+        "version" : "1.34+dfsg-1ubuntu0.1.22.04.2",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1.34+dfsg-1ubuntu0.1.22.04.2"
+      },
+      {
+        "name" : "git-man",
+        "version" : "1:2.34.1-1ubuntu1.9",
+        "publisher" : "Ubuntu",
+        "sourceName" : "git",
+        "sourceVersion" : "1:2.34.1-1ubuntu1.9"
+      },
+      {
+        "name" : "python3.10-minimal",
+        "version" : "3.10.12-1~22.04.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3.10",
+        "sourceVersion" : "3.10.12-1~22.04.3"
+      },
+      {
+        "name" : "libssh-4",
+        "version" : "0.9.6-2ubuntu0.22.04.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libssh",
+        "sourceVersion" : "0.9.6-2ubuntu0.22.04.3"
+      },
+      {
+        "name" : "python3-minimal",
+        "version" : "3.10.6-1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3-defaults",
+        "sourceVersion" : "3.10.6-1~22.04"
+      },
+      {
+        "name" : "libctf-nobfd0",
+        "version" : "2.38-4ubuntu2.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.38-4ubuntu2.6"
+      },
+      {
+        "name" : "python3-twisted",
+        "version" : "22.1.0-2ubuntu2.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "twisted",
+        "sourceVersion" : "22.1.0-2ubuntu2.4"
+      },
+      {
+        "name" : "ncurses-base",
+        "version" : "6.3-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.3-2ubuntu0.1"
+      },
+      {
+        "name" : "libpython3.10-stdlib",
+        "version" : "3.10.12-1~22.04.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3.10",
+        "sourceVersion" : "3.10.12-1~22.04.3"
+      },
+      {
+        "name" : "libpam-systemd",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "dbus-user-session",
+        "version" : "1.12.20-2ubuntu4.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.12.20-2ubuntu4.1"
+      },
+      {
+        "name" : "python3.10",
+        "version" : "3.10.12-1~22.04.3",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "3.10.12-1~22.04.3"
+      },
+      {
+        "name" : "python3-distutils",
+        "version" : "3.10.8-1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "python3-stdlib-extensions",
+        "sourceVersion" : "3.10.8-1~22.04"
+      },
+      {
+        "name" : "libperl5.34",
+        "version" : "5.34.0-3ubuntu1.3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "perl",
+        "sourceVersion" : "5.34.0-3ubuntu1.3"
+      },
+      {
+        "name" : "openssh-server",
+        "version" : "1:8.9p1-3ubuntu0.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openssh",
+        "sourceVersion" : "1:8.9p1-3ubuntu0.6"
+      },
+      {
+        "name" : "openssh-sftp-server",
+        "version" : "1:8.9p1-3ubuntu0.6",
+        "publisher" : "Ubuntu",
+        "sourceName" : "openssh",
+        "sourceVersion" : "1:8.9p1-3ubuntu0.6"
+      },
+      {
+        "name" : "file",
+        "version" : "1:5.41-3ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "1:5.41-3ubuntu0.1"
+      },
+      {
+        "name" : "python3-pkg-resources",
+        "version" : "59.6.0-1.2ubuntu0.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "setuptools",
+        "sourceVersion" : "59.6.0-1.2ubuntu0.22.04.1"
+      },
+      {
+        "name" : "libpam-modules-bin",
+        "version" : "1.4.0-11ubuntu2.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.4.0-11ubuntu2.4"
+      },
+      {
+        "name" : "libksba8",
+        "version" : "1.6.0-2ubuntu0.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libksba",
+        "sourceVersion" : "1.6.0-2ubuntu0.2"
+      },
+      {
+        "name" : "libgcc-s1",
+        "version" : "12.3.0-1ubuntu1~22.04",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gcc-12",
+        "sourceVersion" : "12.3.0-1ubuntu1~22.04"
+      },
+      {
+        "name" : "python3-requests",
+        "version" : "2.25.1+dfsg-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "requests",
+        "sourceVersion" : "2.25.1+dfsg-2ubuntu0.1"
+      },
+      {
+        "name" : "libfreetype6",
+        "version" : "2.11.1+dfsg-1ubuntu0.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "freetype",
+        "sourceVersion" : "2.11.1+dfsg-1ubuntu0.2"
+      },
+      {
+        "name" : "linux-headers-5.15.0-101",
+        "version" : "5.15.0-101.111",
+        "publisher" : "Ubuntu",
+        "sourceName" : "linux",
+        "sourceVersion" : "5.15.0-101.111"
+      },
+      {
+        "name" : "kpartx",
+        "version" : "0.8.8-1ubuntu1.22.04.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "multipath-tools",
+        "sourceVersion" : "0.8.8-1ubuntu1.22.04.1"
+      },
+      {
+        "name" : "udev",
+        "version" : "249.11-0ubuntu3.7",
+        "publisher" : "Ubuntu",
+        "sourceName" : "systemd",
+        "sourceVersion" : "249.11-0ubuntu3.7"
+      },
+      {
+        "name" : "passwd",
+        "version" : "1:4.8.1-2ubuntu2.2",
+        "publisher" : "Ubuntu",
+        "sourceName" : "shadow",
+        "sourceVersion" : "1:4.8.1-2ubuntu2.2"
+      },
+      {
+        "name" : "libpam0g",
+        "version" : "1.4.0-11ubuntu2.4",
+        "publisher" : "Ubuntu",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.4.0-11ubuntu2.4"
+      },
+      {
+        "name" : "libtirpc3",
+        "version" : "1.3.2-2ubuntu0.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "libtirpc",
+        "sourceVersion" : "1.3.2-2ubuntu0.1"
+      }
+    ],
+    "softwareUpdate" : [
+      {
+        "name" : "nftables",
+        "version" : "1.0.2-1ubuntu3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-tz",
+        "version" : "2022.1-1ubuntu0.22.04.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-update-manager",
+        "version" : "1:22.04.19",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python-apt-common",
+        "version" : "2.4.0ubuntu3",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "distro-info-data",
+        "version" : "0.52ubuntu0.6",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "udev",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "cryptsetup-bin",
+        "version" : "2:2.4.3-1ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libqmi-proxy",
+        "version" : "1.32.0-1ubuntu0.22.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "distro-info",
+        "version" : "1.1ubuntu0.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "initramfs-tools-core",
+        "version" : "0.140ubuntu13.4",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "ubuntu-minimal",
+        "version" : "1.481.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "grub-common",
+        "version" : "2.06-2ubuntu7.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "sg3-utils",
+        "version" : "1.46-1ubuntu0.22.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "grub2-common",
+        "version" : "2.06-2ubuntu7.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libnetplan0",
+        "version" : "0.106.1-7ubuntu0.22.04.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libip4tc2",
+        "version" : "1.8.7-1ubuntu5.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "cloud-init",
+        "version" : "23.4.4-0ubuntu0~22.04.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "sosreport",
+        "version" : "4.5.6-0ubuntu1~22.04.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "base-files",
+        "version" : "12ubuntu4.6",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "snapd",
+        "version" : "2.61.3+22.04",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "rudder-agent",
+        "version" : "8.1.0~beta3~git202404050219-ubuntu22.04",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Rudder:jammy"
+      },
+      {
+        "name" : "ubuntu-server",
+        "version" : "1.481.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "irqbalance",
+        "version" : "1.8.0-1ubuntu0.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-problem-report",
+        "version" : "2.20.11-0ubuntu82.5",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libgpgme11",
+        "version" : "1.16.0-1.2ubuntu4.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "netplan.io",
+        "version" : "0.106.1-7ubuntu0.22.04.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "apport",
+        "version" : "2.20.11-0ubuntu82.5",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "dmidecode",
+        "version" : "3.3-3ubuntu0.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libunwind8",
+        "version" : "1.3.2-2build2.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libdrm-common",
+        "version" : "2.4.113-2~ubuntu0.22.04.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libsystemd0",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libudev1",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "update-manager-core",
+        "version" : "1:22.04.19",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libcryptsetup12",
+        "version" : "2:2.4.3-1ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libmm-glib0",
+        "version" : "1.20.0-1~ubuntu22.04.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libsasl2-2",
+        "version" : "2.1.27+dfsg2-3ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libsasl2-modules-db",
+        "version" : "2.1.27+dfsg2-3ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libpam-systemd",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "tcpdump",
+        "version" : "4.99.1-3ubuntu0.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "dpkg",
+        "version" : "1.21.1ubuntu2.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-software-properties",
+        "version" : "0.99.22.9",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "open-vm-tools",
+        "version" : "2:12.3.5-3~ubuntu0.22.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "systemd-timesyncd",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libnftables1",
+        "version" : "1.0.2-1ubuntu3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-apport",
+        "version" : "2.20.11-0ubuntu82.5",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "ubuntu-release-upgrader-core",
+        "version" : "1:22.04.19",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "ubuntu-advantage-tools",
+        "version" : "31.2~22.04",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libldap-common",
+        "version" : "2.5.17+dfsg-0ubuntu0.22.04.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "apparmor",
+        "version" : "3.0.4-2ubuntu2.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "iptables",
+        "version" : "1.8.7-1ubuntu5.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "modemmanager",
+        "version" : "1.20.0-1~ubuntu22.04.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "ubuntu-standard",
+        "version" : "1.481.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "coreutils",
+        "version" : "8.32-4.1ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "cryptsetup-initramfs",
+        "version" : "2:2.4.3-1ubuntu1.2",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libqmi-glib5",
+        "version" : "1.32.0-1ubuntu0.22.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libdrm2",
+        "version" : "2.4.113-2~ubuntu0.22.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "apt",
+        "version" : "2.4.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "fwupd-signed",
+        "version" : "1.51.1~22.04.1+1.4-0ubuntu0.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "kpartx",
+        "version" : "0.8.8-1ubuntu1.22.04.4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "kbd",
+        "version" : "2.3.0-3ubuntu4.22.04",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libip6tc2",
+        "version" : "1.8.7-1ubuntu5.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libxtables12",
+        "version" : "1.8.7-1ubuntu5.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "multipath-tools",
+        "version" : "0.8.8-1ubuntu1.22.04.4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-apt",
+        "version" : "2.4.0ubuntu3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libsgutils2-2",
+        "version" : "1.46-1ubuntu0.22.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "initramfs-tools-bin",
+        "version" : "0.140ubuntu13.4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libnss-systemd",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libsasl2-modules",
+        "version" : "2.1.27+dfsg2-3ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-distro-info",
+        "version" : "1.1ubuntu0.2",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libapparmor1",
+        "version" : "3.0.4-2ubuntu2.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "sg3-utils-udev",
+        "version" : "1.46-1ubuntu0.22.04.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libfwupd2",
+        "version" : "1.7.9-1~22.04.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "motd-news-config",
+        "version" : "12ubuntu4.6",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "ufw",
+        "version" : "0.36.1-4ubuntu0.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "update-notifier-common",
+        "version" : "3.192.54.8",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libgstreamer1.0-0",
+        "version" : "1.20.3-0ubuntu1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "git-man",
+        "version" : "1:2.34.1-1ubuntu1.10",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "gzip",
+        "version" : "1.10-4ubuntu4.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libmbim-proxy",
+        "version" : "1.28.0-1~ubuntu20.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "software-properties-common",
+        "version" : "0.99.22.9",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "initramfs-tools",
+        "version" : "0.140ubuntu13.4",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "grub-pc-bin",
+        "version" : "2.06-2ubuntu7.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libapt-pkg6.0",
+        "version" : "2.4.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "systemd",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "systemd-sysv",
+        "version" : "249.11-0ubuntu3.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "cryptsetup",
+        "version" : "2:2.4.3-1ubuntu1.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-debian",
+        "version" : "0.1.43ubuntu1.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "isc-dhcp-common",
+        "version" : "4.4.1-2.3ubuntu2.4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "ethtool",
+        "version" : "1:5.16-1ubuntu0.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-distupgrade",
+        "version" : "1:22.04.19",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "fwupd",
+        "version" : "1.7.9-1~22.04.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "mdadm",
+        "version" : "4.2-0ubuntu2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-gi",
+        "version" : "3.42.1-0ubuntu1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libfwupdplugin5",
+        "version" : "1.7.9-1~22.04.3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "grub-pc",
+        "version" : "2.06-2ubuntu7.2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "isc-dhcp-client",
+        "version" : "4.4.1-2.3ubuntu2.4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "libmbim-glib4",
+        "version" : "1.28.0-1~ubuntu20.04.1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "apt-utils",
+        "version" : "2.4.12",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      }
+    ],
+    "sounds" : [
+      {
+        "name" : "Multimedia audio controller - Intel Corporation 82801AA AC'97 Audio Controller",
+        "description" : "rev 01",
+        "quantity" : 1
+      }
+    ],
+    "storages" : [
+      {
+        "name" : "sda",
+        "description" : "SCSI",
+        "size" : 45035290624,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX",
+        "model" : "HARDDISK",
+        "serialNumber" : "a23d4170",
+        "sType" : "disk",
+        "quantity" : 1
+      },
+      {
+        "name" : "sdb",
+        "description" : "SCSI",
+        "size" : 10485760,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX",
+        "model" : "HARDDISK",
+        "sType" : "disk",
+        "quantity" : 1
+      }
+    ],
+    "videos" : [],
+    "vms" : []
+  }

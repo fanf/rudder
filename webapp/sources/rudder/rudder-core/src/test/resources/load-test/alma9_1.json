@@ -1,0 +1,7052 @@
+{
+    "id" : "35ad4958-4a72-4a83-8cb5-b577837f3350",
+    "hostname" : "nodeXX.rudder.local",
+    "os" : {
+      "type" : "Linux",
+      "name" : "AlmaLinux",
+      "version" : "9.0",
+      "fullName" : "AlmaLinux release 9.0 (Emerald Puma)",
+      "kernelVersion" : "5.14.0-70.22.1.el9_0.x86_64"
+    },
+    "machine" : {
+      "id" : "0000",
+      "machineType" : "vbox",
+      "systemSerial" : "dca6859d-21f0-f042-bea2-44bee3cb6959",
+      "manufacturer" : "innotek GmbH"
+    },
+    "rudderSettings" : {
+      "keyStatus" : "certified",
+      "reportingConfiguration" : {
+
+      },
+      "kind" : "node",
+      "status" : "accepted",
+      "state" : "enabled",
+      "policyMode" : "default",
+      "policyServerId" : "root",
+      "security" : {
+        "tenants" : [
+          "zoneA"
+        ]
+      }
+    },
+    "rudderAgent" : {
+      "type" : "cfengine-community",
+      "user" : "root",
+      "version" : "1398866025:8.1.0.beta3.git202403290219-1.EL.9",
+      "securityToken" : {
+        "kind" : "certificate",
+        "token" : "-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIUAvcW624q17zq6TOvZ2wsRTuAq2swDQYJKoZIhvcNAQEL\nBQAwNjE0MDIGCgmSJomT8ixkAQEMJDM1YWQ0OTU4LTRhNzItNGE4My04Y2I1LWI1\nNzc4MzdmMzM1MDAeFw0yNDAzMjkxMDA3MjVaFw0zNDAzMjcxMDA3MjVaMDYxNDAy\nBgoJkiaJk/IsZAEBDCQzNWFkNDk1OC00YTcyLTRhODMtOGNiNS1iNTc3ODM3ZjMz\nNTAwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDRTqJR7WBA4cLjrKTb\nmz3FD0l7CdmIPSiXSGgwj201zUOjwjcb92xt7NSO2JG1N9fjAbABt00btpEyGV1h\nGoGaA1jVwtskGj4eEOZZOOvRR17Tsns0H9GY934uIoGZvF0cUusCcw3QOEO+Eac/\nZcRaO3q1RHupeqCKLOjj+ym8rzbVA5vKhC2GS46dmX/HKqXk3vw577135DhP4Dtw\ng4IyR1b6ZEjfMFONNFiB6287QVjUPdx6hzt+z7DwU92GNzBE+kWi0n1YtR6ZAXss\nHgx4a067k7X6aFYdENw+wRAdibsU2ou+Fe+3yEusdjCT0yeKLg9A/3y2MsoHE3I8\nWpL8KmtD5kT0L+H4sHVPEe/ToHqel721xRiqMImBcP1AQvPAGPdAw5geQ+g+50At\nmef3Fjdnu+oF85NZ1v111pSfiYB/iXZA74JVh/wW4tEb/Pd1flFOgVj9xBW6rLbR\nsOoIvy0tP84YcC1Uacn+p03luhtg88ucxMnXOT6ynR/eYVPkoS/7Q4tDRSkllBkQ\nAJgaCO09/DIDmN8bgY2S9BHrIHWLalTSqFL48/0w2xHf2tsHohySv/8tUPXRNZqj\nmMcJHFA+dZzIj9t+9qYGClWrCsAM7OZlqH4KbPPwgeZf1ARaKKQ/2wR8CMWBMbe/\ndA6QJd6R+pZs19XZTVDOLt7zpQIDAQABo4GwMIGtMAwGA1UdEwQFMAMBAf8wHQYD\nVR0OBBYEFEfDpmxOZoyiNR+A7Jf1Kyo7fFCvMHEGA1UdIwRqMGiAFEfDpmxOZoyi\nNR+A7Jf1Kyo7fFCvoTqkODA2MTQwMgYKCZImiZPyLGQBAQwkMzVhZDQ5NTgtNGE3\nMi00YTgzLThjYjUtYjU3NzgzN2YzMzUwghQC9xbrbirXvOrpM69nbCxFO4CrazAL\nBgNVHQ8EBAMCArwwDQYJKoZIhvcNAQELBQADggIBACSSD3+0O2qONU57ZsDv/K9N\n8xMCVGZEz9UTWE0pW1sl79lCLJYQR1Cvs2Gi5PN1dpJB9R1O8d1pgPqz1RA0FurA\n/3AwVRirtb4YyMasyFv5lqylV8p4gZ/D+GVxhA3yrkW4yLORsGx0Wjpj84cNTzDi\naRH5SF9XJx4QpaXc+gTOMw6Pd08UDGsZ4DuUchJCF1bw2ofUoCJbVhSJ9D+cV4QX\nmU86fuIrwgS0bJtSeZp04ugMHwqGZu8Kc/lfmCpkmXKLXsjNFNhGy//R29KBN/Gg\n9CqS6/i3hQVDo8DGQndoFZGPoFBubhvdp1H89az8uGe1SvwSzENYoh0uMAlpgmuF\nmZYpe5bdHX0tuLo27kqVsWSkjR1FHr1E/VEGtqvVPz9grxenm2Yp9trAjW57bGgz\nYdTZBA0I+V4QVj8jQadsOYwM5cu1bUlgX7IVmknc9twqLt/97nmNFDpW2Ih+uled\nCgR8T+cRUi1Gfn3S5kQemdUaPRnKhEdzrvjb9yLK8E7pMiBtWBZoJNtVgRj56n5d\nmFDqZFKopxV7DHlFf0ZZjr1edtydejWZlKhgeR1JEr5/eHLSQIWWV6G9GqPfQifb\nPjbFpzDO73coJ32VYHkJcU46JPVb+J7Rl48+mrtEhvKuu9G49ePpsCw5uWKKjLJd\nguKyEl3hZprr/ml6MFNp\n-----END CERTIFICATE-----"
+      },
+      "capabilities" : [
+        "jq",
+        "yaml",
+        "cfengine",
+        "curl",
+        "acl",
+        "xml",
+        "http_reporting"
+      ]
+    },
+    "properties" : [],
+    "creationDate" : "2024-03-29T10:07:32Z",
+    "factProcessedDate" : "2024-04-09T20:25:33Z",
+    "lastInventoryDate" : "2024-04-09T20:25:33Z",
+    "ipAddresses" : [
+      "192.168.4.5",
+      "0:0:0:0:0:0:0:1",
+      "fe80:0:0:0:a00:27ff:feff:4812",
+      "10.0.2.15",
+      "fe80:0:0:0:a00:27ff:fec3:c3d6",
+      "127.0.0.1"
+    ],
+    "timezone" : {
+      "name" : "UTC",
+      "offset" : "+0000"
+    },
+    "archDescription" : "x86_64",
+    "ram" : 479199232,
+    "accounts" : [
+      "adm",
+      "bin",
+      "chrony",
+      "daemon",
+      "dbus",
+      "ftp",
+      "games",
+      "halt",
+      "lp",
+      "mail",
+      "nobody",
+      "operator",
+      "root",
+      "rpc",
+      "rpcuser",
+      "shutdown",
+      "sshd",
+      "sssd",
+      "sync",
+      "systemd-coredump",
+      "systemd-oom",
+      "tss",
+      "vagrant",
+      "vboxadd"
+    ],
+    "bios" : [
+      {
+        "name" : "VirtualBox",
+        "version" : "VirtualBox",
+        "editor" : "innotek GmbH",
+        "releaseDate" : "2006-12-01T00:00:00Z",
+        "quantity" : 1
+      }
+    ],
+    "controllers" : [],
+    "environmentVariables" : [
+      ["BASEDIR", "/opt/rudder/share/commands"],
+      ["DEBIAN_FRONTEND", "noninteractive"],
+      ["INFOMGR_BYPASS_NONSA", "1"],
+      ["INVOCATION_ID", "3ab12b2435b84b75b75af4bbc7e1cfdc"],
+      ["JOURNAL_STREAM", "8:19104"],
+      ["PATH", "/opt/rudder/bin:/usr/gnu/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/usr/sbin"],
+      ["PWD", "/var/rudder"],
+      ["RUDDER_BIN", "/opt/rudder/bin/rudder"],
+      ["SHLVL", "2"],
+      ["SYSTEMD_EXEC_PID", "601"],
+      ["VERBOSITY_OPTION", ""],
+      ["_", "/usr/bin/perl"]
+    ],
+    "fileSystems" : [
+      {
+        "mountPoint" : "/vagrant",
+        "name" : "vboxsf",
+        "freeSpace" : 216688230400,
+        "totalSpace" : 912663773184
+      },
+      {
+        "mountPoint" : "/",
+        "name" : "xfs",
+        "freeSpace" : 19485687808,
+        "totalSpace" : 20957888512
+      }
+    ],
+    "inputs" : [],
+    "localGroups" : [],
+    "localUsers" : [],
+    "logicalVolumes" : [],
+    "memories" : [],
+    "networks" : [
+      {
+        "name" : "enp0s3",
+        "ifAddresses" : [
+          "fe80::a00:27ff:feff:4812",
+          "10.0.2.15"
+        ],
+        "ifGateway" : [
+          "10.0.2.2"
+        ],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "10.0.2.0"
+        ],
+        "macAddress" : "08:00:27:ff:48:12",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "enp0s8",
+        "ifAddresses" : [
+          "fe80::a00:27ff:fec3:c3d6",
+          "192.168.4.5"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "192.168.4.0"
+        ],
+        "macAddress" : "08:00:27:c3:c3:d6",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "lo",
+        "ifAddresses" : [
+          "::1",
+          "127.0.0.1"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "fff0::",
+          "255.0.0.0"
+        ],
+        "ifSubnet" : [
+          "::",
+          "127.0.0.0"
+        ],
+        "macAddress" : "00:00:00:00:00:00",
+        "status" : "Up",
+        "ifType" : "loopback"
+      }
+    ],
+    "physicalVolumes" : [],
+    "ports" : [],
+    "processes" : [],
+    "processors" : [
+      {
+        "manufacturer" : "AMD",
+        "name" : "AMD Ryzen 7 PRO 6850U with Radeon Graphics",
+        "arch" : "i386",
+        "core" : 1,
+        "thread" : 1,
+        "stepping" : 1,
+        "family" : 25,
+        "model" : 68,
+        "quantity" : 1
+      }
+    ],
+    "slots" : [],
+    "software" : [
+      {
+        "name" : "dracut-config-generic",
+        "version" : "055-45.git20220404.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libbpf",
+        "version" : "2:0.5.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "elfutils-debuginfod-client",
+        "version" : "0.186-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Temp",
+        "version" : "1:0.231.100-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-filetest",
+        "version" : "1.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-base",
+        "version" : "2.27-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "initscripts-service",
+        "version" : "10.11.4-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gawk-all-langpacks",
+        "version" : "5.1.0-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "newt",
+        "version" : "0.52.21-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "publicsuffix-list-dafsa",
+        "version" : "20210518-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-PerlIO-via-QuotedPrint",
+        "version" : "0.09-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-doc",
+        "version" : "5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnl3-cli",
+        "version" : "3.5.0-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-pyyaml",
+        "version" : "5.4.1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dracut-network",
+        "version" : "055-45.git20220404.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-dnf-plugins-core",
+        "version" : "4.0.24-4.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "selinux-policy",
+        "version" : "34.1.29-1.el9_0.2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsysfs",
+        "version" : "2.1.1-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libfastjson",
+        "version" : "0.99.9-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm-build-libs",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Net-Ping",
+        "version" : "2.74-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "setup",
+        "version" : "2.13.7-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libstdc++",
+        "version" : "11.2.1-9.4.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dracut",
+        "version" : "055-45.git20220404.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-constant",
+        "version" : "1.33-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Search-Dict",
+        "version" : "1.07-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libselinux-utils",
+        "version" : "3.3-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IPC-Cmd",
+        "version" : "2:1.04-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-FileCache",
+        "version" : "1.10-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "iptables-nft",
+        "version" : "1.8.7-28.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libxcrypt",
+        "version" : "4.4.18-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-vars",
+        "version" : "1.05-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-open",
+        "version" : "1.12-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grub2-tools-minimal",
+        "version" : "1:2.06-27.el9_0.7.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libibverbs",
+        "version" : "37.2-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-NEXT",
+        "version" : "0.67-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-parent",
+        "version" : "1:0.238-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-diagnostics",
+        "version" : "1.37-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-Size-Perl",
+        "version" : "0.031-12.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-Balanced",
+        "version" : "2.04-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Tie-Memoize",
+        "version" : "1.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "librepo",
+        "version" : "1.14.2-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "NetworkManager-libnm",
+        "version" : "1:1.36.0-5.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "keyutils-libs",
+        "version" : "1.6.1-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsepol",
+        "version" : "3.3-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-CPAN-DistnameInfo",
+        "version" : "0.12-23.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Config-Perl-V",
+        "version" : "0.33-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Archive-Zip",
+        "version" : "1.68-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "unzip",
+        "version" : "6.0-56.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dracut-squash",
+        "version" : "055-45.git20220404.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libreport-filesystem",
+        "version" : "2.15.2-6.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "filesystem",
+        "version" : "3.16-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Time-HiRes",
+        "version" : "4:1.9764-462.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "iputils",
+        "version" : "20210202-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "iptables-libs",
+        "version" : "1.8.7-28.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Tie-File",
+        "version" : "1.06-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-TermReadKey",
+        "version" : "2.38-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IPC-SysV",
+        "version" : "2.09-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-hawkey",
+        "version" : "0.65.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lua-libs",
+        "version" : "5.4.2-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "glib2",
+        "version" : "2.68.4-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Html",
+        "version" : "1.25-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-Diff",
+        "version" : "1.45-13.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "inih",
+        "version" : "49-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-MakeMaker",
+        "version" : "2:7.60-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lshw",
+        "version" : "B.02.19.2-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm-sign-libs",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-PathTools",
+        "version" : "3.78-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libselinux",
+        "version" : "3.3-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "authselect",
+        "version" : "1.2.3-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ipset",
+        "version" : "7.11-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-Table",
+        "version" : "0.015-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-threads-shared",
+        "version" : "1.61-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "krb5-libs",
+        "version" : "1.19.1-15.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-gobject-base",
+        "version" : "3.40.1-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "audit",
+        "version" : "3.0.7-101.el9_0.2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-macros",
+        "version" : "4:5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Symbol",
+        "version" : "1.08-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "nftables",
+        "version" : "1:0.9.8-12.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libgomp",
+        "version" : "11.2.1-9.4.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Math-BigInt",
+        "version" : "1:1.9998.18-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kernel-srpm-macros",
+        "version" : "1.0-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-Signature",
+        "version" : "0.88-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "nfs-utils",
+        "version" : "1:2.5.4-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gpg-pubkey",
+        "version" : "6f07d355-509cdb91"
+      },
+      {
+        "name" : "qt5-srpm-macros",
+        "version" : "5.15.2-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-experimental",
+        "version" : "0.022-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openssl",
+        "version" : "1:3.0.7-25.el9_3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sqlite-libs",
+        "version" : "3.34.1-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "vim-enhanced",
+        "version" : "2:8.2.2637-20.el9_1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Class-Struct",
+        "version" : "0.66-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnetfilter_conntrack",
+        "version" : "1.0.8-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-libdnf",
+        "version" : "0.65.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "hwdata",
+        "version" : "0.348-9.3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "findutils",
+        "version" : "1:4.8.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openblas-srpm-macros",
+        "version" : "2-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rsyslog-logrotate",
+        "version" : "8.2102.0-101.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "iproute",
+        "version" : "5.15.0-2.2.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "systemd-udev",
+        "version" : "250-6.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libdaemon",
+        "version" : "0.14-23.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "tar",
+        "version" : "2:1.34-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsss_idmap",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Data-OptList",
+        "version" : "0.110-17.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Devel-SelfStubber",
+        "version" : "1.06-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rudder-agent",
+        "version" : "1398866025:8.1.0.beta3.git202403290219-1.EL.9",
+        "publisher" : "Normation"
+      },
+      {
+        "name" : "device-mapper-libs",
+        "version" : "9:1.02.183-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libxcrypt-compat",
+        "version" : "4.4.18-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dnf",
+        "version" : "4.10.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-sigtrap",
+        "version" : "1.09-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "systemd-libs",
+        "version" : "250-6.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libgcrypt",
+        "version" : "1.10.0-4.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libpcap",
+        "version" : "14:1.10.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pkgconf",
+        "version" : "1.7.3-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libgcc",
+        "version" : "11.2.1-9.4.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-MIME-Base64",
+        "version" : "3.16-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "keyutils",
+        "version" : "1.6.1-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gawk",
+        "version" : "5.1.0-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-gpg",
+        "version" : "1.15.1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Compress-Bzip2",
+        "version" : "2.28-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Errno",
+        "version" : "1.30-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "bzip2",
+        "version" : "1.0.8-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ghc-srpm-macros",
+        "version" : "1.5.0-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libpath_utils",
+        "version" : "0.2.1-51.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libpsl",
+        "version" : "0.21.1-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnfnetlink",
+        "version" : "1.0.1-21.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "redhat-rpm-config",
+        "version" : "194-1.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcurl",
+        "version" : "7.76.1-26.el9_3.3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pciutils-libs",
+        "version" : "3.7.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ncurses-libs",
+        "version" : "6.2-8.20210508.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "vim-common",
+        "version" : "2:8.2.2637-20.el9_1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-pyparsing",
+        "version" : "2.4.7-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Path",
+        "version" : "2.18-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "elfutils-libelf",
+        "version" : "0.186-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-SelectSaver",
+        "version" : "1.02-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "device-mapper",
+        "version" : "9:1.02.183-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libfido2",
+        "version" : "1.6.0-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "squashfs-tools",
+        "version" : "4.4-8.git1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-blib",
+        "version" : "1.07-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-Abbrev",
+        "version" : "1.02-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-English",
+        "version" : "1.11-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnl3",
+        "version" : "3.5.0-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dbus-common",
+        "version" : "1:1.12.20-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gpm-libs",
+        "version" : "1.20.7-29.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Encode-devel",
+        "version" : "4:3.08-462.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libteam",
+        "version" : "1.31-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Math-BigRat",
+        "version" : "0.2614-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libldb",
+        "version" : "2.7.2-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IO-Socket-SSL",
+        "version" : "2.073-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "teamd",
+        "version" : "1.31-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kernel",
+        "version" : "5.14.0-70.22.1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-Manifest",
+        "version" : "1:1.73-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sssd-client",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Digest-MD5",
+        "version" : "2.58-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "linux-firmware",
+        "version" : "20220209-126.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "parted",
+        "version" : "3.4-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "zlib-devel",
+        "version" : "1.2.11-31.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cracklib-dicts",
+        "version" : "2.9.6-27.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libss",
+        "version" : "1.46.5-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-dateutil",
+        "version" : "1:2.8.1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libmnl",
+        "version" : "1.0.4-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "elfutils-default-yama-scope",
+        "version" : "0.186-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Checker",
+        "version" : "4:1.74-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "file",
+        "version" : "5.39-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-Loaded",
+        "version" : "1:0.08-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gnupg2",
+        "version" : "2.3.3-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-NDBM_File",
+        "version" : "1.15-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IO-Compress",
+        "version" : "2.102-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "less",
+        "version" : "590-2.el9_2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kernel-core",
+        "version" : "5.14.0-70.22.1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "hostname",
+        "version" : "3.23-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Unicode-Collate",
+        "version" : "1.29-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "git-core-doc",
+        "version" : "2.39.3-1.el9_2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "psmisc",
+        "version" : "23.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libtalloc",
+        "version" : "2.4.0-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gettext",
+        "version" : "0.21-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcom_err",
+        "version" : "1.46.5-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-libs",
+        "version" : "3.9.10-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libseccomp",
+        "version" : "2.5.2-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python-unversioned-command",
+        "version" : "3.9.10-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-bignum",
+        "version" : "0.51-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "p11-kit",
+        "version" : "0.24.1-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libini_config",
+        "version" : "1.3.1-51.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libtdb",
+        "version" : "1.4.8-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Hash-Util",
+        "version" : "0.23-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-FindBin",
+        "version" : "1.51-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Params-Check",
+        "version" : "1:0.38-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gzip",
+        "version" : "1.10-9.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openssh",
+        "version" : "8.7p1-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ethtool",
+        "version" : "2:5.16-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsigsegv",
+        "version" : "2.13-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grub2-tools",
+        "version" : "1:2.06-27.el9_0.7.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Compress-Raw-Lzma",
+        "version" : "2.101-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-Cap",
+        "version" : "1.17-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libverto-libev",
+        "version" : "0.3.2-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dmidecode",
+        "version" : "1:3.5-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IO",
+        "version" : "1.43-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Opcode",
+        "version" : "1.48-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Exporter",
+        "version" : "5.74-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm-plugin-systemd-inhibit",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-I18N-Langinfo",
+        "version" : "0.19-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Find",
+        "version" : "1.37-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "mpfr",
+        "version" : "4.1.0-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-I18N-Collate",
+        "version" : "1.02-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "glibc-minimal-langpack",
+        "version" : "2.34-28.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-threads",
+        "version" : "1:2.25-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gpg-pubkey",
+        "version" : "b86b3716-61e69f29"
+      },
+      {
+        "name" : "openssl-libs",
+        "version" : "1:3.0.7-25.el9_3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-libnetcfg",
+        "version" : "4:5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-setuptools-wheel",
+        "version" : "53.0.0-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "fonts-srpm-macros",
+        "version" : "1:2.0.5-7.el9.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Perldoc",
+        "version" : "3.28.01-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "basesystem",
+        "version" : "11-13.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IPC-System-Simple",
+        "version" : "1.30-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-deprecate",
+        "version" : "0.04-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cyrus-sasl-lib",
+        "version" : "2.1.27-20.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "selinux-policy-targeted",
+        "version" : "34.1.29-1.el9_0.2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcap",
+        "version" : "2.48-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libutempter",
+        "version" : "1.2.1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Thread",
+        "version" : "3.05-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-srpm-macros",
+        "version" : "1-41.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libtevent",
+        "version" : "0.14.1-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-libselinux",
+        "version" : "3.3-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "groff-base",
+        "version" : "1.22.4-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openssh-clients",
+        "version" : "8.7p1-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Data-Section",
+        "version" : "0.200007-14.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libmodulemd",
+        "version" : "2.13.0-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libtasn1",
+        "version" : "4.16.0-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-GDBM_File",
+        "version" : "1.18-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-MM-Utils",
+        "version" : "2:7.60-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Unicode-LineBreak",
+        "version" : "2019.001-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-AutoLoader",
+        "version" : "5.74-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Which",
+        "version" : "1.23-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libbrotli",
+        "version" : "1.0.9-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ph",
+        "version" : "5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-six",
+        "version" : "1.15.0-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "binutils-gold",
+        "version" : "2.35.2-42.el9_3.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libdhash",
+        "version" : "0.5.0-51.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Encode-Locale",
+        "version" : "1.05-21.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ncurses",
+        "version" : "6.2-8.20210508.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Compress-Raw-Bzip2",
+        "version" : "2.101-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libattr",
+        "version" : "2.5.1-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Memoize",
+        "version" : "1.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-meta-notation",
+        "version" : "5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "binutils",
+        "version" : "2.35.2-42.el9_3.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "curl",
+        "version" : "7.76.1-26.el9_3.3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Mozilla-CA",
+        "version" : "20200520-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sombok",
+        "version" : "2.4.0-16.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kmod-libs",
+        "version" : "28-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-pip-wheel",
+        "version" : "21.2.3-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libarchive",
+        "version" : "3.5.3-2.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kexec-tools",
+        "version" : "2.0.23-9_1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsss_nss_idmap",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cryptsetup-libs",
+        "version" : "2.4.3-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "jq",
+        "version" : "1.6-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libmount",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "procps-ng",
+        "version" : "3.3.17-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-lib",
+        "version" : "0.65-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcbor",
+        "version" : "0.7.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ocaml-srpm-macros",
+        "version" : "6-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libbasicobjects",
+        "version" : "0.1.1-51.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "e2fsprogs-libs",
+        "version" : "1.46.5-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-encoding-warnings",
+        "version" : "0.13-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "zlib",
+        "version" : "1.2.11-31.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Getopt-Std",
+        "version" : "1.12-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libssh-config",
+        "version" : "0.10.4-12.el9_3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Time-Local",
+        "version" : "2:1.300-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "bison",
+        "version" : "3.7.4-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "coreutils-common",
+        "version" : "8.32-31.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "diffutils",
+        "version" : "3.7-12.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "zip",
+        "version" : "3.0-33.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Safe",
+        "version" : "2.41-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Math-BigInt-FastCalc",
+        "version" : "0.500.900-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cracklib",
+        "version" : "2.9.6-27.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-CPAN-Meta-YAML",
+        "version" : "0.018-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libyaml",
+        "version" : "0.2.5-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "os-prober",
+        "version" : "1.77-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libref_array",
+        "version" : "0.1.5-51.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dbus-libs",
+        "version" : "1:1.12.20-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Escapes",
+        "version" : "1:1.07-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Encode",
+        "version" : "4:3.08-462.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rootfiles",
+        "version" : "8.1-31.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "snappy",
+        "version" : "1.1.8-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "quota-nls",
+        "version" : "1:4.06-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IO-Zlib",
+        "version" : "1:1.11-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "systemd",
+        "version" : "250-6.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libidn2",
+        "version" : "2.3.0-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Thread-Semaphore",
+        "version" : "2.13-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "systemtap-sdt-devel",
+        "version" : "4.6-13.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Tie-RefHash",
+        "version" : "1.40-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Compress-Raw-Zlib",
+        "version" : "2.101-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libpipeline",
+        "version" : "1.5.3-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "popt",
+        "version" : "1.18-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-User-pwent",
+        "version" : "1.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Git",
+        "version" : "2.39.3-1.el9_2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Time-Piece",
+        "version" : "1.3401-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "m4",
+        "version" : "1.4.19-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libassuan",
+        "version" : "2.5.5-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gmp",
+        "version" : "1:6.2.0-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Thread-Queue",
+        "version" : "3.14-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-inc-latest",
+        "version" : "2:0.500-20.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "c-ares",
+        "version" : "1.17.1-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Math-Complex",
+        "version" : "1.59-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "vim-minimal",
+        "version" : "2:8.2.2637-16.el9_0.3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openldap",
+        "version" : "2.6.3-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libeconf",
+        "version" : "0.4.1-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libdb",
+        "version" : "5.3.28-53.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "elfutils-libs",
+        "version" : "0.186-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IO-Compress-Lzma",
+        "version" : "2.101-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-local-lib",
+        "version" : "2.000024-13.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-podlators",
+        "version" : "1:4.14-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "logrotate",
+        "version" : "3.18.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-Command",
+        "version" : "2:7.60-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "fuse-libs",
+        "version" : "2.9.9-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-libnet",
+        "version" : "3.13-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-mro",
+        "version" : "1.23-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Archive-Tar",
+        "version" : "2.38-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "e2fsprogs",
+        "version" : "1.46.5-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Fcntl",
+        "version" : "1.13-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "man-db",
+        "version" : "2.9.3-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "augeas-libs",
+        "version" : "1.13.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dnf-plugins-core",
+        "version" : "4.0.24-4.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "xfsprogs",
+        "version" : "5.14.2-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-CoreList-tools",
+        "version" : "1:5.20210320-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "util-linux-core",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-FileHandle",
+        "version" : "2.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libuser",
+        "version" : "0.63-13.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Test-Simple",
+        "version" : "3:1.302183-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "almalinux-gpg-keys",
+        "version" : "9.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "file-libs",
+        "version" : "5.39-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-sort",
+        "version" : "2.04-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-libcomps",
+        "version" : "0.1.18-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsolv",
+        "version" : "0.7.20-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libstdc++-devel",
+        "version" : "11.2.1-9.4.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Params-Util",
+        "version" : "1.102-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-encoding",
+        "version" : "4:3.00-462.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cronie",
+        "version" : "1.5.7-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kmod",
+        "version" : "28-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-locale",
+        "version" : "1.09-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "shadow-utils",
+        "version" : "2:4.9-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsss_certmap",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Scalar-List-Utils",
+        "version" : "4:1.56-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kbd",
+        "version" : "2.4.0-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-POSIX",
+        "version" : "1.94-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sssd-nfs-idmap",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "net-tools",
+        "version" : "2.0-0.62.20160912git.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openssl-devel",
+        "version" : "1:3.0.7-25.el9_3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-DynaLoader",
+        "version" : "1.47-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "readline",
+        "version" : "8.1-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gobject-introspection",
+        "version" : "1.68.0-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libverto",
+        "version" : "0.3.2-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Unicode-UCD",
+        "version" : "0.75-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Filter-Simple",
+        "version" : "0.96-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ODBM_File",
+        "version" : "1.16-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sssd-kcm",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "crypto-policies-scripts",
+        "version" : "20220223-1.git5203b41.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "flex",
+        "version" : "2.6.4-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dbus-broker",
+        "version" : "28-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "tpm2-tss",
+        "version" : "3.0.3-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Benchmark",
+        "version" : "1.23-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "efi-srpm-macros",
+        "version" : "6-2.el9_0.0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "git",
+        "version" : "2.39.3-1.el9_2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-Glob",
+        "version" : "0.11-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libssh",
+        "version" : "0.10.4-12.el9_3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "expat",
+        "version" : "2.2.10-12.el9_0.2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-Complete",
+        "version" : "1.403-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Attribute-Handlers",
+        "version" : "1.01-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "oniguruma",
+        "version" : "6.9.6-1.el9.5",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcollection",
+        "version" : "0.7.0-51.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Net-SSLeay",
+        "version" : "1.92-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-HomeDir",
+        "version" : "1.006-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "llvm-libs",
+        "version" : "13.0.1-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-autodie",
+        "version" : "2.34-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dwz",
+        "version" : "0.14-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sssd-common",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "almalinux-repos",
+        "version" : "9.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-Constant",
+        "version" : "0.25-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "usermode",
+        "version" : "1.114-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IPC-Open3",
+        "version" : "1.21-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Devel-Peek",
+        "version" : "1.28-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kernel-modules",
+        "version" : "5.14.0-70.22.1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "coreutils",
+        "version" : "8.32-31.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Compare",
+        "version" : "1.100.600-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libfdisk",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "bash",
+        "version" : "5.1.8-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-utils",
+        "version" : "5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pkgconf-pkg-config",
+        "version" : "1.7.3-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Config-Extensions",
+        "version" : "0.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "tmux",
+        "version" : "3.2a-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-Load-Conditional",
+        "version" : "0.74-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gpgme",
+        "version" : "1.15.1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-IO-Socket-IP",
+        "version" : "0.41-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnfsidmap",
+        "version" : "1:2.5.4-20.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-version",
+        "version" : "7:0.99.28-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libgpg-error",
+        "version" : "1.42-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "glibc-headers",
+        "version" : "2.34-28.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libtirpc",
+        "version" : "1.3.2-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-DB_File",
+        "version" : "1.855-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "vim-filesystem",
+        "version" : "2:8.2.2637-20.el9_1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python-srpm-macros",
+        "version" : "3.9-52.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Algorithm-Diff",
+        "version" : "1.2010-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libksba",
+        "version" : "1.5.1-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "NetworkManager-team",
+        "version" : "1:1.36.0-5.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "alternatives",
+        "version" : "1.20-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-Tabs+Wrap",
+        "version" : "2013.0523-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lsscsi",
+        "version" : "0.32-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-Metadata",
+        "version" : "1.000037-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Tie",
+        "version" : "4.6-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Devel-PPPort",
+        "version" : "3.62-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-CPAN-Meta",
+        "version" : "2.150010-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-subs",
+        "version" : "1.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-ANSIColor",
+        "version" : "5.01-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ima-evm-utils",
+        "version" : "1.4-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-HTTP-Tiny",
+        "version" : "0.076-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openssh-server",
+        "version" : "8.7p1-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "glibc-gconv-extra",
+        "version" : "2.34-28.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "systemd-pam",
+        "version" : "250-6.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libzstd",
+        "version" : "1.5.1-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libestr",
+        "version" : "0.1.11-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libacl",
+        "version" : "2.3.1-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-ParseWords",
+        "version" : "3.30-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "xz-libs",
+        "version" : "5.2.5-8.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Functions",
+        "version" : "1.13-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "glibc-common",
+        "version" : "2.34-28.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sg3_utils",
+        "version" : "1.47-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Sys-Syslog",
+        "version" : "0.36-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Package-Generator",
+        "version" : "1.106-23.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pcre",
+        "version" : "8.44-3.el9.3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gssproxy",
+        "version" : "0.8.4-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-libs",
+        "version" : "4:5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "zstd",
+        "version" : "1.5.1-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Fetch",
+        "version" : "1.00-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnghttp2",
+        "version" : "1.43.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Socket",
+        "version" : "4:2.031-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "microcode_ctl",
+        "version" : "4:20220207-1.20220510.1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm-libs",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Usage",
+        "version" : "4:2.01-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-DirHandle",
+        "version" : "1.05-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "linux-firmware-whence",
+        "version" : "20220209-126.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "initscripts-rename-device",
+        "version" : "10.11.4-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Pod-Simple",
+        "version" : "1:3.42-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "chrony",
+        "version" : "4.1-3.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ncurses-base",
+        "version" : "6.2-8.20210508.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-stat",
+        "version" : "1.09-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "NetworkManager-tui",
+        "version" : "1:1.36.0-5.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "policycoreutils",
+        "version" : "3.3-6.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Test",
+        "version" : "1.31-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lua-srpm-macros",
+        "version" : "1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-autouse",
+        "version" : "1.11-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm-plugin-selinux",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcomps",
+        "version" : "0.1.18-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dbus",
+        "version" : "1:1.12.20-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpcbind",
+        "version" : "1.2.6-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pigz",
+        "version" : "2.5-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libdnf",
+        "version" : "0.65.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "go-srpm-macros",
+        "version" : "3.0.9-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libkcapi-hmaccalc",
+        "version" : "1.3.1-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Sys-Hostname",
+        "version" : "1.23-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "p11-kit-trust",
+        "version" : "0.24.1-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "slang",
+        "version" : "2.3.2-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3",
+        "version" : "3.9.10-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kpartx",
+        "version" : "0.8.7-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "dnf-data",
+        "version" : "4.10.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "crontabs",
+        "version" : "1.11-27.20190603git.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "augeas",
+        "version" : "1.13.0-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pcre2-syntax",
+        "version" : "10.37-5.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "tzdata",
+        "version" : "2022c-1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsss_sudo",
+        "version" : "2.9.1-4.el9_3.5.alma.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pkgconf-m4",
+        "version" : "1.7.3-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "systemd-rpm-macros",
+        "version" : "250-6.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libevent",
+        "version" : "2.1.12-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "firewalld-filesystem",
+        "version" : "1.0.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Basename",
+        "version" : "2.85-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-Size-Any",
+        "version" : "0.002-35.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-I18N-LangTags",
+        "version" : "0.44-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-perlfaq",
+        "version" : "5.20201107-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "glibc",
+        "version" : "2.34-28.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-JSON-PP",
+        "version" : "1:4.06-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gdbm-libs",
+        "version" : "1:1.19-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rust-srpm-macros",
+        "version" : "17-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcap-ng",
+        "version" : "0.8.2-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grub2-pc",
+        "version" : "1:2.06-27.el9_0.7.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-rpm",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Perl-OSType",
+        "version" : "1.010-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grubby",
+        "version" : "8.40-55.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-AutoSplit",
+        "version" : "5.74-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-URI",
+        "version" : "5.09-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sg3_utils-libs",
+        "version" : "1.47-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libthai",
+        "version" : "0.1.28-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grub2-common",
+        "version" : "1:2.06-27.el9_0.7.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-ParseXS",
+        "version" : "1:3.40-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Error",
+        "version" : "1:0.17029-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Copy",
+        "version" : "2.34-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libxml2",
+        "version" : "2.9.13-1.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-overloading",
+        "version" : "0.02-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Locale-Maketext-Simple",
+        "version" : "1:0.21-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kernel-tools",
+        "version" : "5.14.0-70.22.1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Hash-Util-FieldHash",
+        "version" : "1.20-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "NetworkManager",
+        "version" : "1:1.36.0-5.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libndp",
+        "version" : "1.8-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Software-License",
+        "version" : "0.103014-12.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kernel-tools-libs",
+        "version" : "5.14.0-70.22.1.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "crypto-policies",
+        "version" : "20220223-1.git5203b41.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ipset-libs",
+        "version" : "7.11-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "yum",
+        "version" : "4.10.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Term-ReadLine",
+        "version" : "1.17-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-overload",
+        "version" : "1.31-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "jansson",
+        "version" : "2.14-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libkcapi",
+        "version" : "1.3.1-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libblkid",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "zsh",
+        "version" : "5.8-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "xz",
+        "version" : "5.2.5-8.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Digest",
+        "version" : "1.19-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lz4-libs",
+        "version" : "1.9.3-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Filter",
+        "version" : "2:1.60-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pcre2",
+        "version" : "10.37-5.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-debugger",
+        "version" : "1.56-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libuuid",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-ExtUtils-Install",
+        "version" : "2.20-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "nettle",
+        "version" : "3.7.3-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-SelfLoader",
+        "version" : "1.26-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-DBM_Filter",
+        "version" : "0.06-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "quota",
+        "version" : "1:4.06-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-firewall",
+        "version" : "1.0.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libunistring",
+        "version" : "0.9.10-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsmartcols",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libsemanage",
+        "version" : "3.3-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-dnf",
+        "version" : "4.10.0-5.el9_0.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libpwquality",
+        "version" : "1.4.4-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "kbd-misc",
+        "version" : "2.4.0-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gettext-libs",
+        "version" : "0.21-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Data-Dumper",
+        "version" : "2.174-462.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sudo",
+        "version" : "1.9.5p2-10.el9_3",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-if",
+        "version" : "0.60.800-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "passwd",
+        "version" : "0.80-12.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Unicode-Normalize",
+        "version" : "1.27-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Env",
+        "version" : "1.04-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "ca-certificates",
+        "version" : "2020.2.50-94.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-interpreter",
+        "version" : "4:5.32.1-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libev",
+        "version" : "4.33-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libmpc",
+        "version" : "1.2.1-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Digest-SHA",
+        "version" : "1:6.02-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Net",
+        "version" : "1.02-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "iproute-tc",
+        "version" : "5.15.0-2.2.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-fields",
+        "version" : "2.27-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "irqbalance",
+        "version" : "2:1.8.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "numactl-libs",
+        "version" : "2.0.14-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rsyslog",
+        "version" : "8.2102.0-101.el9_0.1",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "firewalld",
+        "version" : "1.0.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "npth",
+        "version" : "1.6-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-Build",
+        "version" : "2:0.42.31-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "sed",
+        "version" : "4.8-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "json-c",
+        "version" : "0.14-11.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Text-Template",
+        "version" : "1.59-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rsync",
+        "version" : "3.2.3-19.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-DosGlob",
+        "version" : "1.12-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libpkgconf",
+        "version" : "1.7.3-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Getopt-Long",
+        "version" : "1:2.52-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Time",
+        "version" : "1.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Dumpvalue",
+        "version" : "2.27-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "util-linux",
+        "version" : "2.37.4-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "userspace-rcu",
+        "version" : "0.12.1-6.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Carp",
+        "version" : "1.50-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Sub-Install",
+        "version" : "0.928-28.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Object-HashBase",
+        "version" : "0.009-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "bzip2-libs",
+        "version" : "1.0.8-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libffi",
+        "version" : "3.4.2-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "prefixdevname",
+        "version" : "0.1.0-8.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "which",
+        "version" : "2.21-27.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "openssl-pkcs11",
+        "version" : "0.4.11-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libedit",
+        "version" : "3.1-37.20210216cvs.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-less",
+        "version" : "0.03-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Devel-Size",
+        "version" : "0.83-10.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lmdb-libs",
+        "version" : "0.9.29-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "acl",
+        "version" : "2.3.1-3.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "pam",
+        "version" : "1.5.1-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm-plugin-audit",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Importer",
+        "version" : "0.026-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grub2-pc-modules",
+        "version" : "1:2.06-27.el9_0.7.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "audit-libs",
+        "version" : "3.0.7-101.el9_0.2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "lzo",
+        "version" : "2.10-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Sub-Exporter",
+        "version" : "0.987-27.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-CPAN-Meta-Requirements",
+        "version" : "2.140-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "authselect-libs",
+        "version" : "1.2.3-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Storable",
+        "version" : "1:3.21-460.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cpp",
+        "version" : "11.2.1-9.4.el9.alma",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "rpm",
+        "version" : "4.16.1.3-12.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libdatrie",
+        "version" : "0.2.13-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libcap-ng-python3",
+        "version" : "0.8.2-7.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-dbus",
+        "version" : "1.2.18-2.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-Load",
+        "version" : "1:0.36-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Locale-Maketext",
+        "version" : "1.29-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libnftnl",
+        "version" : "1.1.9-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "git-core",
+        "version" : "2.39.3-1.el9_2",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "python3-nftables",
+        "version" : "1:0.9.8-12.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "almalinux-release",
+        "version" : "9.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-MRO-Compat",
+        "version" : "0.13-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Test-Harness",
+        "version" : "1:3.42-461.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "gnutls",
+        "version" : "3.7.3-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "grep",
+        "version" : "3.6-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cronie-anacron",
+        "version" : "1.5.7-5.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Digest-SHA1",
+        "version" : "2.13-34.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-B",
+        "version" : "1.80-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "cpio",
+        "version" : "2.13-16.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-MIME-Charset",
+        "version" : "1.012.2-15.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "emacs-filesystem",
+        "version" : "1:27.2-9.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-vmsish",
+        "version" : "1.04-479.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-Module-CoreList",
+        "version" : "1:5.20210320-3.el9",
+        "publisher" : "AlmaLinux"
+      }
+    ],
+    "softwareUpdate" : [
+      {
+        "name" : "cryptsetup-libs",
+        "version" : "2.6.0-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-vmsish",
+        "version" : "1.04-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ipset-libs",
+        "version" : "7.11-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Math-Complex",
+        "version" : "1.59-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Memoize",
+        "version" : "1.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "linux-firmware",
+        "version" : "20230814-140.el9_3",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The linux-firmware packages contain all of the firmware files that are required by various devices to operate.\\n \\nSecurity Fix(es):\\n \\n* hw: amd: Cross-Process Information Leak (CVE-2023-20593)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2023-20593",
+          "ALSA-2023:5068"
+        ]
+      },
+      {
+        "name" : "python3-libdnf",
+        "version" : "0.69.0-6.el9_3.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Thread-Semaphore",
+        "version" : "2.13-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ca-certificates",
+        "version" : "2023.2.60_v7.0.306-90.1.el9_2",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "cronie-anacron",
+        "version" : "1.5.7-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-minimal",
+        "version" : "1:2.06-70.el9_3.2.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "file",
+        "version" : "5.39-14.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gobject-introspection",
+        "version" : "1.68.0-11.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libsepol",
+        "version" : "3.5-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "xfsprogs",
+        "version" : "5.19.0-4.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "systemd-udev",
+        "version" : "252-18.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "util-linux",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Tie",
+        "version" : "4.6-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "procps-ng",
+        "version" : "3.3.17-13.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The procps-ng packages contain a set of system utilities that provide system information, including ps, free, skill, pkill, pgrep, snice, tload, top, uptime, vmstat, w, watch, and pwdx.\\n \\nSecurity Fix(es):\\n \\n* procps: ps buffer overflow (CVE-2023-4016)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "low",
+        "ids" : [
+          "CVE-2023-4016",
+          "ALSA-2023:6705"
+        ]
+      },
+      {
+        "name" : "grub2-common",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "keyutils",
+        "version" : "1.6.3-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "almalinux-gpg-keys",
+        "version" : "9.3-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libteam",
+        "version" : "1.31-16.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ncurses",
+        "version" : "6.2-10.20210508.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The ncurses (new curses) library routines are a terminal-independent method of updating character screens with reasonable optimization. The ncurses packages contain support utilities including a terminfo compiler tic, a decompiler infocmp, clear, tput, tset, and a termcap conversion tool captoinfo.\\n \\nSecurity Fix(es):\\n \\n* ncurses: Local users can trigger security-relevant memory corruption via malformed data (CVE-2023-29491)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2023-29491",
+          "ALSA-2023:6698"
+        ]
+      },
+      {
+        "name" : "rpm-plugin-selinux",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "sqlite-libs",
+        "version" : "3.34.1-7.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "openssh-server",
+        "version" : "8.7p1-34.el9_3.3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dbus",
+        "version" : "1:1.12.20-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "D-Bus is a system for sending messages between applications. It is used both for the system-wide message bus service, and as a per-user-login-session messaging facility.\\n \\nSecurity Fix(es):\\n \\n* dbus: dbus-daemon crashes when receiving message with incorrectly nested parentheses and curly brackets (CVE-2022-42010)\\n* dbus: dbus-daemon can be crashed by messages with array length inconsistent with element type (CVE-2022-42011)\\n* dbus: `_dbus_marshal_byteswap` doesn't process fds in messages with \"foreign\" endianness correctly (CVE-2022-42012)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-42010",
+          "CVE-2022-42011",
+          "CVE-2022-42012",
+          "ALSA-2023:0335"
+        ]
+      },
+      {
+        "name" : "perl-IO",
+        "version" : "1.43-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "alternatives",
+        "version" : "1.24-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "NetworkManager-team",
+        "version" : "1:1.44.0-5.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-sort",
+        "version" : "2.04-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-libs",
+        "version" : "4:5.32.1-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-I18N-Langinfo",
+        "version" : "0.19-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-hawkey",
+        "version" : "0.69.0-6.el9_3.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-less",
+        "version" : "0.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "e2fsprogs-libs",
+        "version" : "1.46.5-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "NetworkManager-tui",
+        "version" : "1:1.44.0-5.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "iproute",
+        "version" : "6.2.0-5.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-AutoSplit",
+        "version" : "5.74-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libpkgconf",
+        "version" : "1.7.3-10.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-lib",
+        "version" : "0.65-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Pod-Html",
+        "version" : "1.25-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-autouse",
+        "version" : "1.11-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "sg3_utils",
+        "version" : "1.47-9.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libibverbs",
+        "version" : "46.0-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "keyutils-libs",
+        "version" : "1.6.3-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kbd-misc",
+        "version" : "2.4.0-9.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "elfutils-libs",
+        "version" : "0.189-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Attribute-Handlers",
+        "version" : "1.01-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-extra",
+        "version" : "1:2.06-70.el9_3.2.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "which",
+        "version" : "2.21-29.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-File-Copy",
+        "version" : "2.34-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dracut-squash",
+        "version" : "057-44.git20230822.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rudder-agent",
+        "version" : "1398866025:8.1.0.rc2.git202404090219-1.EL.9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "Rudder",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libfastjson",
+        "version" : "0.99.9-5.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "appstream",
+        "description" : "The libfastjson library provides essential JavaScript Object Notation (JSON) handling functions. The library enables users to construct JSON objects in C, output them as JSON-formatted strings, and convert JSON-formatted strings back to the C representation of JSON objects.\\n \\nSecurity Fix(es):\\n \\n* json-c, libfastjson: integer overflow and out-of-bounds write via a large JSON file (CVE-2020-12762)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2020-12762",
+          "ALSA-2023:6431"
+        ]
+      },
+      {
+        "name" : "grub2-pc",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "e2fsprogs",
+        "version" : "1.46.5-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The e2fsprogs packages provide a number of utilities for creating, checking, modifying, and correcting the ext2, ext3, and ext4 file systems.\\n \\nSecurity Fix(es):\\n \\n* e2fsprogs: out-of-bounds read/write via crafted filesystem (CVE-2022-1304)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-1304",
+          "ALSA-2022:8361"
+        ]
+      },
+      {
+        "name" : "perl-Getopt-Std",
+        "version" : "1.12-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-firewall",
+        "version" : "1.2.5-2.el9_3",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "glibc-minimal-langpack",
+        "version" : "2.34-83.el9_3.12",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "firewalld-filesystem",
+        "version" : "1.2.5-2.el9_3",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libnftnl",
+        "version" : "1.2.2-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libxml2",
+        "version" : "2.9.13-5.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The libxml2 library is a development toolbox providing the implementation of various XML standards.\\n \\nSecurity Fix(es):\\n \\n* libxml2: integer overflows with XML_PARSE_HUGE (CVE-2022-40303)\\n* libxml2: dict corruption caused by entity reference cycles (CVE-2022-40304)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-40303",
+          "CVE-2022-40304",
+          "ALSA-2023:0338"
+        ]
+      },
+      {
+        "name" : "perl-Dumpvalue",
+        "version" : "2.27-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-vars",
+        "version" : "1.05-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "glibc-headers",
+        "version" : "2.34-83.el9_3.12",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "glib2",
+        "version" : "2.68.4-11.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "GLib provides the core application building blocks for libraries and applications written in C. It provides the core object system used in GNOME, the main loop implementation, and a large set of utility functions for strings and common data structures.\\n \\nSecurity Fix(es):\\n \\n* glib: GVariant offset table entry size is not checked in is_normal() (CVE-2023-29499)\\n* glib: g_variant_byteswap() can take a long time with some non-normal inputs (CVE-2023-32611)\\n* glib: GVariant deserialisation does not match spec for non-normal data (CVE-2023-32665)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "low",
+        "ids" : [
+          "CVE-2023-29499",
+          "CVE-2023-32611",
+          "CVE-2023-32665",
+          "ALSA-2023:6631"
+        ]
+      },
+      {
+        "name" : "libestr",
+        "version" : "0.1.11-4.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-base",
+        "version" : "2.27-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-extra",
+        "version" : "1:2.06-70.el9_3.1.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "file-libs",
+        "version" : "5.39-14.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "cyrus-sasl-lib",
+        "version" : "2.1.27-21.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "librepo",
+        "version" : "1.14.5-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-English",
+        "version" : "1.11-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-minimal",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "numactl-libs",
+        "version" : "2.0.16-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gzip",
+        "version" : "1.12-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-doc",
+        "version" : "5.32.1-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "iptables-libs",
+        "version" : "1.8.8-6.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kmod",
+        "version" : "28-9.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-ODBM_File",
+        "version" : "1.16-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "coreutils-common",
+        "version" : "8.32-34.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "expat",
+        "version" : "2.5.0-1.el9_3.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "Expat is a C library for parsing XML documents.\\n \\nSecurity Fix(es):\\n \\n* expat: a use-after-free in the doContent function in xmlparse.c (CVE-2022-40674)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "high",
+        "ids" : [
+          "CVE-2022-40674",
+          "ALSA-2022:6838"
+        ]
+      },
+      {
+        "name" : "os-prober",
+        "version" : "1.77-10.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "chrony",
+        "version" : "4.3-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libffi",
+        "version" : "3.4.2-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libnetfilter_conntrack",
+        "version" : "1.0.9-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rpm-sign-libs",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "findutils",
+        "version" : "1:4.8.0-6.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "initscripts-service",
+        "version" : "10.11.5-1.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "shadow-utils",
+        "version" : "2:4.9-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The shadow-utils packages include programs for converting UNIX password files to the shadow password format, as well as utilities for managing user and group accounts. \\n \\nSecurity Fix(es):\\n \\n* shadow-utils: possible password leak during passwd(1) change (CVE-2023-4641)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "low",
+        "ids" : [
+          "CVE-2023-4641",
+          "ALSA-2023:6632"
+        ]
+      },
+      {
+        "name" : "perl-SelfLoader",
+        "version" : "1.26-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Devel-SelfStubber",
+        "version" : "1.06-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Thread",
+        "version" : "3.05-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "lshw",
+        "version" : "B.02.19.2-10.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Test",
+        "version" : "1.31-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dracut",
+        "version" : "057-44.git20230822.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "glibc",
+        "version" : "2.34-83.el9_3.12",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The glibc packages provide the standard C libraries (libc), POSIX thread libraries (libpthread), standard math libraries (libm), and the name service cache daemon (nscd) used by multiple programs on the system. Without these libraries, the Linux system cannot function correctly.\\n \\nSecurity Fix(es):\\n \\n* glibc: buffer overflow in ld.so leading to privilege escalation (CVE-2023-4911)\\n* glibc: Stack read overflow in getaddrinfo in no-aaaa mode (CVE-2023-4527)\\n* glibc: potential use-after-free in getaddrinfo() (CVE-2023-4806)\\n* glibc: potential use-after-free in gaih_inet() (CVE-2023-4813)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "high",
+        "ids" : [
+          "CVE-2023-4527",
+          "CVE-2023-4806",
+          "CVE-2023-4813",
+          "CVE-2023-4911",
+          "ALSA-2023:5453"
+        ]
+      },
+      {
+        "name" : "authselect",
+        "version" : "1.2.6-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-encoding-warnings",
+        "version" : "0.13-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libini_config",
+        "version" : "1.3.1-53.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-FindBin",
+        "version" : "1.51-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "inih",
+        "version" : "49-6.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-fields",
+        "version" : "2.27-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "sg3_utils-libs",
+        "version" : "1.47-9.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ncurses-base",
+        "version" : "6.2-10.20210508.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-if",
+        "version" : "0.60.800-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-blib",
+        "version" : "1.07-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libeconf",
+        "version" : "0.4.1-3.el9_2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "Libeconf is a highly flexible and configurable library to parse and manage key=value configuration files. It reads configuration file snippets from different directories and builds the final configuration file from it.\\n \\nSecurity Fix(es):\\n \\n* libeconf: stack-based buffer overflow in read_file() in lib/getfilecontents.c (CVE-2023-22652)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2023-22652",
+          "ALSA-2023:4347"
+        ]
+      },
+      {
+        "name" : "perl-overloading",
+        "version" : "0.02-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libnl3",
+        "version" : "3.7.0-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-dnf-plugins-core",
+        "version" : "4.3.0-11.el9_3.alma.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "teamd",
+        "version" : "1.31-16.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "c-ares",
+        "version" : "1.19.1-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The c-ares C library defines asynchronous DNS (Domain Name System) requests and provides name resolving API.\\n \\nSecurity Fix(es):\\n \\n* c-ares: 0-byte UDP payload Denial of Service (CVE-2023-32067)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "high",
+        "ids" : [
+          "CVE-2023-32067",
+          "ALSA-2023:3559"
+        ]
+      },
+      {
+        "name" : "linux-firmware-whence",
+        "version" : "20230814-140.el9_3",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-AutoLoader",
+        "version" : "5.74-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "pcre2",
+        "version" : "10.40-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "openssh-clients",
+        "version" : "8.7p1-34.el9_3.3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kbd",
+        "version" : "2.4.0-9.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libtasn1",
+        "version" : "4.16.0-8.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "A library that provides Abstract Syntax Notation One (ASN.1, as specified by the X.680 ITU-T recommendation) parsing and structures management, and Distinguished Encoding Rules (DER, as per X.690) encoding and decoding functions.\\n \\nSecurity Fix(es):\\n \\n* libtasn1: Out-of-bound access in ETYPE_OK (CVE-2021-46848)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2021-46848",
+          "ALSA-2023:0343"
+        ]
+      },
+      {
+        "name" : "python3-nftables",
+        "version" : "1:1.0.4-11.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "systemd",
+        "version" : "252-18.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The systemd packages contain systemd, a system and service manager for Linux, compatible with the SysV and LSB init scripts. It provides aggressive parallelism capabilities, uses socket and D-Bus activation for starting services, offers on-demand starting of daemons, and keeps track of processes using Linux cgroups. In addition, it supports snapshotting and restoring of the system state, maintains mount and automount points, and implements an elaborate transactional dependency-based service control logic. It can also work as a drop-in replacement for sysvinit.\\n \\nSecurity Fix(es):\\n \\n* systemd: buffer overrun in format_timespan() function (CVE-2022-3821)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-3821",
+          "ALSA-2023:0336"
+        ]
+      },
+      {
+        "name" : "pcre2-syntax",
+        "version" : "10.40-2.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-GDBM_File",
+        "version" : "1.18-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "crypto-policies-scripts",
+        "version" : "20230731-1.git94f0e2c.el9_3.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-SelectSaver",
+        "version" : "1.02-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dnf-data",
+        "version" : "4.14.0-8.el9.alma.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "almalinux-repos",
+        "version" : "9.3-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "logrotate",
+        "version" : "3.18.0-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The logrotate utility simplifies the administration of multiple log files by allowing their automatic rotation, compression, removal, and mailing.\\n \\nSecurity Fix(es):\\n \\n* logrotate: potential DoS from unprivileged users via the state file (CVE-2022-1348)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-1348",
+          "ALSA-2022:8393"
+        ]
+      },
+      {
+        "name" : "perl-Unicode-UCD",
+        "version" : "0.75-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "audit-libs",
+        "version" : "3.0.7-104.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "cpp",
+        "version" : "11.4.1-2.1.el9.alma",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dnf-plugins-core",
+        "version" : "4.3.0-11.el9_3.alma.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-subs",
+        "version" : "1.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grubby",
+        "version" : "8.40-63.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libuuid",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dbus-libs",
+        "version" : "1:1.12.20-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-deprecate",
+        "version" : "0.04-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-ExtUtils-Constant",
+        "version" : "0.25-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-overload",
+        "version" : "1.31-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "authselect-libs",
+        "version" : "1.2.6-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "systemd-libs",
+        "version" : "252-18.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "nfs-utils",
+        "version" : "1:2.5.4-20.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-POSIX",
+        "version" : "1.94-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libcom_err",
+        "version" : "1.46.5-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "qt5-srpm-macros",
+        "version" : "5.15.9-1.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "coreutils",
+        "version" : "8.32-34.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-dnf",
+        "version" : "4.14.0-8.el9.alma.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "nettle",
+        "version" : "3.8-3.el9_0",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rpm-plugin-audit",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ipset",
+        "version" : "7.11-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libdhash",
+        "version" : "0.5.0-53.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "pkgconf-pkg-config",
+        "version" : "1.7.3-10.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "tar",
+        "version" : "2:1.34-6.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The GNU tar program can save multiple files in an archive and restore files from an archive.\\n \\nSecurity Fix(es):\\n \\n* tar: heap buffer overflow at from_header() in list.c via specially crafted checksum (CVE-2022-48303)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-48303",
+          "ALSA-2023:0959"
+        ]
+      },
+      {
+        "name" : "systemd-rpm-macros",
+        "version" : "252-18.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kpartx",
+        "version" : "0.8.7-22.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rsyslog-logrotate",
+        "version" : "8.2102.0-117.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libtirpc",
+        "version" : "1.3.3-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The libtirpc packages contain SunLib's implementation of transport-independent remote procedure call (TI-RPC) documentation, which includes a library required by programs in the nfs-utils and rpcbind packages.\\n \\nSecurity Fix(es):\\n \\n* libtirpc: DoS vulnerability with lots of connections (CVE-2021-46828)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2021-46828",
+          "ALSA-2022:8400"
+        ]
+      },
+      {
+        "name" : "krb5-libs",
+        "version" : "1.21.1-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "go-srpm-macros",
+        "version" : "3.2.0-2.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rsyslog",
+        "version" : "8.2102.0-117.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "glibc-gconv-extra",
+        "version" : "2.34-83.el9_3.12",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools",
+        "version" : "1:2.06-70.el9_3.2.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libss",
+        "version" : "1.46.5-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kexec-tools",
+        "version" : "2.0.26-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Locale-Maketext-Simple",
+        "version" : "1:0.21-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Net-SSLeay",
+        "version" : "1.92-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "glibc-common",
+        "version" : "2.34-83.el9_3.12",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kernel-core",
+        "version" : "5.14.0-362.24.2.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-ph",
+        "version" : "5.32.1-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dbus-common",
+        "version" : "1:1.12.20-8.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kernel-srpm-macros",
+        "version" : "1.0-13.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libblkid",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-libs",
+        "version" : "3.9.18-1.el9_3.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kernel-modules",
+        "version" : "5.14.0-362.24.2.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rpm-plugin-systemd-inhibit",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libfdisk",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-mro",
+        "version" : "1.23-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "llvm-libs",
+        "version" : "16.0.6-4.el9.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libstdc++-devel",
+        "version" : "11.4.1-2.1.el9.alma",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libgcc",
+        "version" : "11.4.1-2.1.el9.alma",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-File-DosGlob",
+        "version" : "1.12-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Term-ReadLine",
+        "version" : "1.17-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "parted",
+        "version" : "3.5-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-File-Basename",
+        "version" : "2.85-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rpcbind",
+        "version" : "1.2.6-5.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-FileCache",
+        "version" : "1.10-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Text-Abbrev",
+        "version" : "1.02-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3",
+        "version" : "3.9.18-1.el9_3.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libgomp",
+        "version" : "11.4.1-2.1.el9.alma",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libsolv",
+        "version" : "0.7.24-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-interpreter",
+        "version" : "4:5.32.1-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-utils",
+        "version" : "5.32.1-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "microcode_ctl",
+        "version" : "4:20230808-2.20231009.1.el9_3",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "iproute-tc",
+        "version" : "6.2.0-5.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-DBM_Filter",
+        "version" : "0.06-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gnutls",
+        "version" : "3.7.6-23.el9_3.3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The gnutls packages provide the GNU Transport Layer Security (GnuTLS) library, which implements cryptographic algorithms and protocols such as SSL, TLS, and DTLS.\\n \\nSecurity Fix(es):\\n \\n* gnutls: timing side-channel in the TLS RSA key exchange code (CVE-2023-0361)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nBug Fix(es):\\n \\n* CCM tag length should be limited to known values (BZ#2144535)\\n* In FIPS mode, gnutls should reject RSASSA-PSS salt lengths larger than the output size of the hash function used, or provide an indicator (BZ#2144537)\\n* dracut-cmdline[554]: Error in GnuTLS initialization: Error while performing self checks i FIPS mode (BZ#2149640)",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2023-0361",
+          "ALSA-2023:1141"
+        ]
+      },
+      {
+        "name" : "python-unversioned-command",
+        "version" : "3.9.18-1.el9_3.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "device-mapper",
+        "version" : "9:1.02.195-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-rpm",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-DirHandle",
+        "version" : "1.05-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "nftables",
+        "version" : "1:1.0.4-11.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-locale",
+        "version" : "1.09-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-FileHandle",
+        "version" : "2.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools",
+        "version" : "1:2.06-70.el9_3.1.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "zip",
+        "version" : "3.0-35.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "NetworkManager",
+        "version" : "1:1.44.0-5.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kernel",
+        "version" : "5.14.0-362.24.2.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The kernel packages contain the Linux kernel, the core of any Linux operating system.\\n \\nSecurity Fix(es):\\n \\n* kernel: watch queue race condition can lead to privilege escalation (CVE-2022-2959)\\n* kernel: memory corruption in AX88179_178A based USB ethernet device. (CVE-2022-2964)\\n* kernel: i915: Incorrect GPU TLB flush can lead to random memory access (CVE-2022-4139)\\n* kernel: nfsd buffer overflow by RPC message over TCP with garbage data (CVE-2022-43945)\\n* kernel: i2c: unbounded length leads to buffer overflow in ismt_access() (CVE-2022-3077)\\n* kernel: Unprivileged users may use PTRACE_SEIZE to set PTRACE_O_SUSPEND_SECCOMP option (CVE-2022-30594)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nBug Fix(es):\\n \\n* Intel 9.2: Important iavf bug fixes (BZ#2127884)\\n* vfio zero page mappings fail after 2M instances (BZ#2128514)\\n* nvme-tcp automatic reconnect fails intermittently during EMC powerstore NDU operation (BZ#2131359)\\n* ice: Driver Update to 5.19 (BZ#2132070)\\n* WARNING: CPU: 116 PID: 3440 at arch/x86/mm/extable.c:105 ex_handler_fprestore+0x3f/0x50 (BZ#2134588)\\n* drm: duplicated call of drm_privacy_screen_register_notifier() in drm_connector_register() (BZ#2134619)\\n* updating the appid field through sysfs is returning an -EINVAL error (BZ#2136914)\\n* DELL EMC: System is not booting into RT Kernel with perc12. (BZ#2139213)\\n* No signal showed in the VGA monitor when installing AlmaLinux9 in the legacy bios mode (BZ#2140153)\\n* Practically limit \"Dummy wait\" workaround to old Intel systems (BZ#2142168)\\n* ppc64le: unexpected oom panic when there's enough memory left in zswap test (BZ#2143976)\\n* fatal error: error in backend: Branch target out of insn range (BZ#2144902)\\n* AMdCLIENT: The kernel command line parameter \"nomodeset\" not working properly (BZ#2145217)\\n* Azure: PCI: hv: Do not set PCI_COMMAND_MEMORY to reduce VM boot time (BZ#2150910)\\n* Azure z-stream: Sometimes newly deployed VMs are not getting accelerated network during provisioning (BZ#2151605)\\n* DELL 9.0 RT - On PE R760 system, call traces are observed dmesg when system is running stress (BZ#2154407)",
+        "severity" : "high",
+        "ids" : [
+          "CVE-2022-2959",
+          "CVE-2022-2964",
+          "CVE-2022-30594",
+          "CVE-2022-3077",
+          "CVE-2022-4139",
+          "CVE-2022-43945",
+          "ALSA-2023:0334"
+        ]
+      },
+      {
+        "name" : "perl-diagnostics",
+        "version" : "1.37-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Hash-Util-FieldHash",
+        "version" : "1.20-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-gobject-base",
+        "version" : "3.40.1-6.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-filetest",
+        "version" : "1.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "openssh",
+        "version" : "8.7p1-34.el9_3.3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "OpenSSH is an SSH protocol implementation supported by a number of Linux, UNIX, and similar operating systems. It includes the core files necessary for both the OpenSSH client and server.\\n \\nSecurity Fix(es):\\n \\n* openssh: Remote code execution in ssh-agent PKCS#11 support (CVE-2023-38408)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "high",
+        "ids" : [
+          "CVE-2023-38408",
+          "ALSA-2023:4412"
+        ]
+      },
+      {
+        "name" : "perl-Sys-Hostname",
+        "version" : "1.23-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dracut-network",
+        "version" : "057-44.git20230822.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libksba",
+        "version" : "1.5.1-6.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "KSBA (pronounced Kasbah) is a library to make X.509 certificates as well as the CMS easily accessible by other applications. Both specifications are building blocks of S/MIME and TLS.\\n \\nSecurity Fix(es):\\n \\n* libksba: integer overflow may lead to remote code execution (CVE-2022-3515)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "high",
+        "ids" : [
+          "CVE-2022-3515",
+          "ALSA-2022:7090"
+        ]
+      },
+      {
+        "name" : "perl-Time",
+        "version" : "1.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kernel-tools-libs",
+        "version" : "5.14.0-362.24.2.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libsmartcols",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "elfutils-debuginfod-client",
+        "version" : "0.189-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-File-Find",
+        "version" : "1.37-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-IPC-Open3",
+        "version" : "1.21-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Benchmark",
+        "version" : "1.23-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-User-pwent",
+        "version" : "1.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-File-Compare",
+        "version" : "1.100.600-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-DynaLoader",
+        "version" : "1.47-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "systemtap-sdt-devel",
+        "version" : "4.9-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libcollection",
+        "version" : "0.7.0-53.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-HTTP-Tiny",
+        "version" : "0.076-461.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "appstream",
+        "description" : "HTTP::Tiny is a small and simple HTTP/1.1 client written in Perl.\\n \\nSecurity Fix(es):\\n \\n* http-tiny: insecure TLS cert default (CVE-2023-31486)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2023-31486",
+          "ALSA-2023:6542"
+        ]
+      },
+      {
+        "name" : "perl-Safe",
+        "version" : "2.41-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rpm",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The RPM Package Manager (RPM) is a command-line driven package management system capable of installing, uninstalling, verifying, querying, and updating software packages.\\n \\nSecurity Fix(es):\\n \\n* rpm: TOCTOU race in checks for unsafe symlinks (CVE-2021-35937)\\n* rpm: races with chown/chmod/capabilities calls during installation (CVE-2021-35938)\\n* rpm: checks for unsafe symlinks are not performed for intermediary directories (CVE-2021-35939)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2021-35937",
+          "CVE-2021-35938",
+          "CVE-2021-35939",
+          "ALSA-2024:0463"
+        ]
+      },
+      {
+        "name" : "rpm-build-libs",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-I18N-LangTags",
+        "version" : "0.44-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libselinux",
+        "version" : "3.5-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-efi",
+        "version" : "1:2.06-70.el9_3.1.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Errno",
+        "version" : "1.30-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libnl3-cli",
+        "version" : "3.7.0-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Time-Piece",
+        "version" : "1.3401-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "selinux-policy",
+        "version" : "38.1.23-1.el9_3.2",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-efi",
+        "version" : "1:2.06-70.el9_3.2.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gssproxy",
+        "version" : "0.8.4-6.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-meta-notation",
+        "version" : "5.32.1-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gettext-libs",
+        "version" : "0.21-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libstdc++",
+        "version" : "11.4.1-2.1.el9.alma",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-efi",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Symbol",
+        "version" : "1.08-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "pkgconf",
+        "version" : "1.7.3-10.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kernel-tools",
+        "version" : "5.14.0-362.24.2.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Module-Loaded",
+        "version" : "1:0.08-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libbpf",
+        "version" : "2:1.2.0-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "bash",
+        "version" : "5.1.8-6.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The bash packages provide Bash (Bourne-again shell), which is the default shell for AlmaLinux.\\n \\nSecurity Fix(es):\\n \\n* bash: a heap-buffer-overflow in valid_parameter_transform (CVE-2022-3715)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-3715",
+          "ALSA-2023:0340"
+        ]
+      },
+      {
+        "name" : "elfutils-default-yama-scope",
+        "version" : "0.189-3.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libselinux-utils",
+        "version" : "3.5-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "redhat-rpm-config",
+        "version" : "201-1.el9.alma",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libsemanage",
+        "version" : "3.5-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "iputils",
+        "version" : "20210202-9.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-File-stat",
+        "version" : "1.09-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libgcrypt",
+        "version" : "1.10.0-10.el9_2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "hwdata",
+        "version" : "0.348-9.11.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Net",
+        "version" : "1.02-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "firewalld",
+        "version" : "1.2.5-2.el9_3",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "yum",
+        "version" : "4.14.0-8.el9.alma.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-libnetcfg",
+        "version" : "4:5.32.1-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "util-linux-core",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Fcntl",
+        "version" : "1.13-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-pip-wheel",
+        "version" : "21.2.3-7.el9_3.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-NDBM_File",
+        "version" : "1.15-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "tpm2-tss",
+        "version" : "3.2.2-2.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The tpm2-tss packages provide the Intel implementation of the Trusted Platform Module (TPM) 2.0 System API library. This library enables programs to interact with TPM 2.0 devices\\n \\nSecurity Fix(es):\\n \\n* tpm2-tss: Buffer Overlow in TSS2_RC_Decode (CVE-2023-22745)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "low",
+        "ids" : [
+          "CVE-2023-22745",
+          "ALSA-2023:6685"
+        ]
+      },
+      {
+        "name" : "libarchive",
+        "version" : "3.5.3-4.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The libarchive programming library can create and read several different streaming archive formats, including GNU tar, cpio, and ISO 9660 CD-ROM images. Libarchive is used notably in the bsdtar utility, scripting language bindings such as python-libarchive, and several popular desktop file managers.\\n \\nSecurity Fix(es):\\n \\n* libarchive: NULL pointer dereference in archive_write.c (CVE-2022-36227)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "low",
+        "ids" : [
+          "CVE-2022-36227",
+          "ALSA-2023:2532"
+        ]
+      },
+      {
+        "name" : "perl-NEXT",
+        "version" : "0.67-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dbus-broker",
+        "version" : "28-7.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "dbus-broker is an implementation of a message bus as defined by the D-Bus specification. Its aim is to provide high performance and reliability, while keeping compatibility to the D-Bus reference implementation. It is exclusively written for Linux systems, and makes use of many modern features provided by recent Linux kernel releases.\\n \\nSecurity Fix(es):\\n \\n* dbus-broker: a stack buffer over-read if a malicious Exec line is supplied (CVE-2022-31212)\\n* dbus-broker: null pointer reference when supplying a malformed XML config file (CVE-2022-31213)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2022-31212",
+          "CVE-2022-31213",
+          "ALSA-2022:6608"
+        ]
+      },
+      {
+        "name" : "setup",
+        "version" : "2.13.7-9.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-macros",
+        "version" : "4:5.32.1-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "zlib",
+        "version" : "1.2.11-40.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "pam",
+        "version" : "1.5.1-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-debugger",
+        "version" : "1.56-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "lua-libs",
+        "version" : "5.4.4-4.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-extra",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools-minimal",
+        "version" : "1:2.06-70.el9_3.1.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Search-Dict",
+        "version" : "1.07-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "crypto-policies",
+        "version" : "20230731-1.git94f0e2c.el9_3.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Tie-File",
+        "version" : "1.06-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "iptables-nft",
+        "version" : "1.8.8-6.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libedit",
+        "version" : "3.1-38.20210216cvs.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gmp",
+        "version" : "1:6.2.0-13.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "The gmp packages contain GNU MP, a library for arbitrary precision arithmetics, signed integers operations, rational numbers, and floating point numbers. \\n \\nSecurity Fix(es):\\n \\n* gmp: Integer overflow and resultant buffer overflow via crafted input (CVE-2021-43618)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.\\n \\nAdditional Changes:\\n \\nFor detailed information on changes in this release, see the AlmaLinux Release Notes linked from the References section.",
+        "severity" : "low",
+        "ids" : [
+          "CVE-2021-43618",
+          "ALSA-2023:6661"
+        ]
+      },
+      {
+        "name" : "NetworkManager-libnm",
+        "version" : "1:1.44.0-5.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Term-Complete",
+        "version" : "1.403-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "man-db",
+        "version" : "2.9.3-7.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "tzdata",
+        "version" : "2024a-1.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "systemd-pam",
+        "version" : "252-18.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ncurses-libs",
+        "version" : "6.2-10.20210508.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-tools",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "grub2-pc-modules",
+        "version" : "1:2.06-70.el9_3.2.alma.2",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dnf",
+        "version" : "4.14.0-8.el9.alma.1",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "initscripts-rename-device",
+        "version" : "10.11.5-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "pkgconf-m4",
+        "version" : "1.7.3-10.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-libselinux",
+        "version" : "3.5-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libfido2",
+        "version" : "1.13.0-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "cronie",
+        "version" : "1.5.7-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-sigtrap",
+        "version" : "1.09-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-open",
+        "version" : "1.12-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-I18N-Collate",
+        "version" : "1.02-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libmount",
+        "version" : "2.37.4-15.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "gettext",
+        "version" : "0.21-8.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "device-mapper-libs",
+        "version" : "9:1.02.195-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Opcode",
+        "version" : "1.48-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libcap",
+        "version" : "2.48-9.el9_2",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "security",
+        "source" : "baseos",
+        "description" : "Libcap is a library for getting and setting POSIX.1e (formerly POSIX 6) draft 15 capabilities.\\n \\nSecurity Fix(es):\\n \\n* libcap: Integer Overflow in _libcap_strdup() (CVE-2023-2603)\\n* libcap: Memory Leak on pthread_create() Error (CVE-2023-2602)\\n \\nFor more details about the security issue(s), including the impact, a CVSS score, acknowledgments, and other related information, refer to the CVE page(s) listed in the References section.",
+        "severity" : "moderate",
+        "ids" : [
+          "CVE-2023-2602",
+          "CVE-2023-2603",
+          "ALSA-2023:5071"
+        ]
+      },
+      {
+        "name" : "libref_array",
+        "version" : "0.1.5-53.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Config-Extensions",
+        "version" : "0.03-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-dateutil",
+        "version" : "1:2.8.1-7.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libpath_utils",
+        "version" : "0.2.1-53.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "selinux-policy-targeted",
+        "version" : "38.1.23-1.el9_3.2",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "ethtool",
+        "version" : "2:6.2-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "elfutils-libelf",
+        "version" : "0.189-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Tie-Memoize",
+        "version" : "1.1-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "dracut-config-generic",
+        "version" : "057-44.git20230822.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "zlib-devel",
+        "version" : "1.2.11-40.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "irqbalance",
+        "version" : "2:1.9.2-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "policycoreutils",
+        "version" : "3.5-3.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Class-Struct",
+        "version" : "0.66-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "almalinux-release",
+        "version" : "9.3-1.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "audit",
+        "version" : "3.0.7-104.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "rpm-libs",
+        "version" : "4.16.1.3-27.el9_3",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "python3-setuptools-wheel",
+        "version" : "53.0.0-12.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Hash-Util",
+        "version" : "0.23-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libdnf",
+        "version" : "0.69.0-6.el9_3.alma.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libbasicobjects",
+        "version" : "0.1.1-53.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-B",
+        "version" : "1.80-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Devel-Peek",
+        "version" : "1.28-480.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "libnghttp2",
+        "version" : "1.43.0-5.el9_3.1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-Pod-Functions",
+        "version" : "1.13-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "kmod-libs",
+        "version" : "28-9.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "vim-minimal",
+        "version" : "2:8.2.2637-20.el9_1",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      }
+    ],
+    "sounds" : [],
+    "storages" : [
+      {
+        "name" : "sda",
+        "description" : "SATA",
+        "size" : 21989687296,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX HARDDISK",
+        "model" : "VBOX HARDDISK",
+        "serialNumber" : "VB0eaab07f-512e5d7e",
+        "sType" : "disk",
+        "quantity" : 1
+      }
+    ],
+    "videos" : [],
+    "vms" : []
+  }

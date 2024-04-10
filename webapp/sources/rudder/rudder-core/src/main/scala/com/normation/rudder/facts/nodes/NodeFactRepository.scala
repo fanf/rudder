@@ -674,8 +674,16 @@ class CoreNodeFactRepository(
   override def save(
       nodeFact: NodeFact
   )(implicit cc: ChangeContext, attrs: SelectFacts = SelectFacts.all): IOResult[NodeFactChangeEventCC] = {
+    unsafeSave(nodeFact, checkCertificate = true)
+  }
+
+  // for test and internal use, should never be used in rudder code
+  def unsafeSave(
+      nodeFact:         NodeFact,
+      checkCertificate: Boolean
+  )(implicit cc: ChangeContext, attrs: SelectFacts = SelectFacts.all): IOResult[NodeFactChangeEventCC] = {
     checkRootProperties(nodeFact) *>
-    checkAgentKey(nodeFact) *>
+    ZIO.when(checkCertificate)(checkAgentKey(nodeFact)) *>
     internalSave(Left(nodeFact))
   }
 

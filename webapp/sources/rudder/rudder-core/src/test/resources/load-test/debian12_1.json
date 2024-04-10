@@ -1,0 +1,3067 @@
+{
+    "id" : "623b479d-fb76-4fdf-86fa-40b69e3769c2",
+    "hostname" : "nodeXX.rudder.local",
+    "os" : {
+      "type" : "Linux",
+      "name" : "Debian",
+      "version" : "12",
+      "fullName" : "Debian GNU/Linux 12 (bookworm)",
+      "kernelVersion" : "6.1.0-18-amd64"
+    },
+    "machine" : {
+      "id" : "0000",
+      "machineType" : "vbox",
+      "systemSerial" : "ecb68c9f-bab8-4315-a7a1-d3f55b98034b",
+      "manufacturer" : "innotek GmbH"
+    },
+    "rudderSettings" : {
+      "keyStatus" : "certified",
+      "reportingConfiguration" : {
+
+      },
+      "kind" : "node",
+      "status" : "accepted",
+      "state" : "enabled",
+      "policyMode" : "default",
+      "policyServerId" : "root"
+    },
+    "rudderAgent" : {
+      "type" : "cfengine-community",
+      "user" : "root",
+      "version" : "8.1.0~beta3~git202403290219-debian12",
+      "securityToken" : {
+        "kind" : "certificate",
+        "token" : "-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIUAJG1I/yifO51787fiqanT+ksP/EwDQYJKoZIhvcNAQEL\nBQAwNjE0MDIGCgmSJomT8ixkAQEMJDYyM2I0NzlkLWZiNzYtNGZkZi04NmZhLTQw\nYjY5ZTM3NjljMjAeFw0yNDAzMjkxNTA5NDRaFw0zNDAzMjcxNTA5NDRaMDYxNDAy\nBgoJkiaJk/IsZAEBDCQ2MjNiNDc5ZC1mYjc2LTRmZGYtODZmYS00MGI2OWUzNzY5\nYzIwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCdZE4ulp34LCQjMoE7\ncFmkKjbEwFjGzo/Y2IKSpWyM5kSDy6upPhkKlux6AvrDjNYdLuE7ALZG+WeXURxS\nBDjW+W+7VLjAG9XVt+ub0VdIcfOwRKr1MwJpvW/boznLEk6dNZu/sgIbwdiIDijn\naiI7bCxB4pkoQsjN7Ri5DMNJjMGrMIXR7YiEfxlcbEtuP1IoQnCkYmT4UhIXn2uq\nzPjzKXMujHsvzEI7GAmnrLDl9CNri2ozmaUR46Svjq0yrrIU1Y9kBWcgc+OhVbgl\ndTFxCkuJiS3PDUc91E73NeXzJ0ROpumyiJ8+3GoE6g6S3fVtppfCNfs9diUFFmvY\nBDbH74StgRZmljPkSIBtgHbPBj9G2YGW1nGTG23bg8OgNVvDxX7DJmGjJyw/D86h\njqoCrZ2A+8WE6Dg01AfeMp+PAVkEQtGJZ8Jm1FXe3iwAAhZV0MPwqrltUsMO92RB\n/lT/MERuxipGK0xygFrAUSL+8bpzBobSJmX/Rr884j+DRBLWgLJ+AAFfzNNpHCC+\nxJtaroVOFrJ3o/zX1LdMSQD0GmOM2xXr4XzdhkTTgXNrx8r8iQ8FBQe1sws8VQGq\nKUIW8sP/UAUVePll34gNfKJLNko5192RJtUVtAoNiK0kwPuzC686cY+08SzSnIC+\nWRm3kgpBaFImMVpx9lExbN5uNwIDAQABo4GwMIGtMAwGA1UdEwQFMAMBAf8wHQYD\nVR0OBBYEFHhZMC84EpLDXu2cQNvkae+5xG5HMHEGA1UdIwRqMGiAFHhZMC84EpLD\nXu2cQNvkae+5xG5HoTqkODA2MTQwMgYKCZImiZPyLGQBAQwkNjIzYjQ3OWQtZmI3\nNi00ZmRmLTg2ZmEtNDBiNjllMzc2OWMyghQAkbUj/KJ87nXvzt+KpqdP6Sw/8TAL\nBgNVHQ8EBAMCArwwDQYJKoZIhvcNAQELBQADggIBAHPj/WPcfa0UlZdgiFKQVTNI\n0HZiP69vlyStzhTH9i1sVK4bjAFoBX7bnTUU91kyyD1VvwDkCGMPxYlxAO6G2vYI\nGzlqIR+hep2cpt57/mRM0CQelSZZwwl/c7BdrqdJUJAoLXr1HeHSE/mPr+8zUKBT\ngOB7IoLQlpyuz/YgzMtf2hmv60QkZBxEvPGTZHZ4ekE1Pl9xjiLJchmqt2ra5r1M\nbjSQMeSSP+QC0ayPmBnG8nxgb+e+Z65nyH1xptt/t/i6igPNBRbcHGs4zO5ZLG0w\n5cybt8jZkYineSjJ82F08qf/CO8eVMA2nmUcJdMJHqc2y84iuqvTpEglKiJpQfYT\n8wRNMhgO+Ca88JtPVnlMWyFnbwFT4/9GoqEfb5I+md2pwW60/baKtZNI8mckvfVJ\nyZ1oVW3uCVM61qrlw5iGdrWiGwKyJ0gyzw9nAsCLPCwQSXV/QQGURqeKwVYv6Hu+\nmY5E3Rh7tsc/y2sAth3yfO3lmPMZlq2AEacCcCDSlgEKO3BVUD4eGC4B9DWzZy5d\nkGBjpUw+tnEoKcgoquSmXAOfT1/yytQ0F735GdmWk2JXlDRhXSUP8/aLF0HFhP2p\ngtNKROQuNMHYaoG/m6lHv5MeyDCmVpjvALJxE2gm/sVBjFSBW8C4udiCXfNB7u0k\nHLhv+6UkeJ1VU/6cXboD\n-----END CERTIFICATE-----"
+      },
+      "capabilities" : [
+        "jq",
+        "yaml",
+        "cfengine",
+        "curl",
+        "acl",
+        "xml",
+        "http_reporting"
+      ]
+    },
+    "properties" : [],
+    "creationDate" : "2024-03-29T15:09:49Z",
+    "factProcessedDate" : "2024-04-09T20:25:13Z",
+    "lastInventoryDate" : "2024-04-09T20:25:13Z",
+    "ipAddresses" : [
+      "0:0:0:0:0:0:0:1",
+      "fe80:0:0:0:a00:27ff:fe10:9287",
+      "fe80:0:0:0:a00:27ff:fe8d:c04d",
+      "192.168.4.3",
+      "10.0.2.15",
+      "127.0.0.1"
+    ],
+    "timezone" : {
+      "name" : "UTC",
+      "offset" : "+0000"
+    },
+    "archDescription" : "x86_64",
+    "ram" : 479199232,
+    "accounts" : [
+      "_apt",
+      "_chrony",
+      "backup",
+      "bin",
+      "daemon",
+      "games",
+      "irc",
+      "list",
+      "lp",
+      "mail",
+      "man",
+      "messagebus",
+      "news",
+      "nobody",
+      "proxy",
+      "root",
+      "sshd",
+      "sync",
+      "sys",
+      "systemd-network",
+      "systemd-timesync",
+      "uucp",
+      "uuidd",
+      "vagrant",
+      "www-data"
+    ],
+    "bios" : [
+      {
+        "name" : "VirtualBox",
+        "version" : "VirtualBox",
+        "editor" : "innotek GmbH",
+        "releaseDate" : "2006-12-01T00:00:00Z",
+        "quantity" : 1
+      }
+    ],
+    "controllers" : [
+      {
+        "name" : "440FX - 82441FX PMC [Natoma]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Host bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371AB/EB/MB PIIX4 ACPI",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371SB PIIX3 ISA [Natoma/Triton II]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "ISA bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82801HM/HEM (ICH8M/ICH8M-E) SATA Controller [AHCI mode]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "SATA controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "PRO/1000 MT Desktop Adapter",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Ethernet controller",
+        "quantity" : 2
+      },
+      {
+        "name" : "SVGA II Adapter",
+        "manufacturer" : "VMware",
+        "cType" : "VGA compatible controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "VirtualBox Guest Service",
+        "manufacturer" : "InnoTek Systemberatung GmbH",
+        "cType" : "System peripheral",
+        "quantity" : 1
+      }
+    ],
+    "environmentVariables" : [
+      ["BASEDIR", "/opt/rudder/share/commands"],
+      ["DEBIAN_FRONTEND", "noninteractive"],
+      ["HOME", "/root"],
+      ["INFOMGR_BYPASS_NONSA", "1"],
+      ["LOGNAME", "root"],
+      ["PATH", "/opt/rudder/bin:/usr/gnu/bin:/opt/rudder/bin:/usr/gnu/bin:/opt/rudder/bin:/usr/gnu/bin:/usr/bin:/bin:/sbin:/usr/sbin:/sbin:/usr/sbin:/sbin:/usr/sbin"],
+      ["PWD", "/var/rudder"],
+      ["RUDDER_BIN", "/opt/rudder/bin/rudder"],
+      ["SHELL", "/bin/sh"]
+    ],
+    "fileSystems" : [
+      {
+        "mountPoint" : "/",
+        "name" : "ext4",
+        "freeSpace" : 17880317952,
+        "totalSpace" : 20955791360
+      },
+      {
+        "mountPoint" : "/vagrant",
+        "name" : "vboxsf",
+        "freeSpace" : 216688230400,
+        "totalSpace" : 912663773184
+      }
+    ],
+    "inputs" : [],
+    "localGroups" : [],
+    "localUsers" : [],
+    "logicalVolumes" : [],
+    "memories" : [],
+    "networks" : [
+      {
+        "name" : "eth0",
+        "ifAddresses" : [
+          "fe80::a00:27ff:fe8d:c04d",
+          "10.0.2.15"
+        ],
+        "ifGateway" : [
+          "10.0.2.2"
+        ],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "10.0.2.0"
+        ],
+        "macAddress" : "08:00:27:8d:c0:4d",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "eth1",
+        "ifAddresses" : [
+          "fe80::a00:27ff:fe10:9287",
+          "192.168.4.3"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "192.168.4.0"
+        ],
+        "macAddress" : "08:00:27:10:92:87",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "lo",
+        "ifAddresses" : [
+          "::1",
+          "127.0.0.1"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "fff0::",
+          "255.0.0.0"
+        ],
+        "ifSubnet" : [
+          "::",
+          "127.0.0.0"
+        ],
+        "macAddress" : "00:00:00:00:00:00",
+        "status" : "Up",
+        "ifType" : "loopback"
+      }
+    ],
+    "physicalVolumes" : [],
+    "ports" : [],
+    "processes" : [],
+    "processors" : [
+      {
+        "manufacturer" : "AMD",
+        "name" : "AMD Ryzen 7 PRO 6850U with Radeon Graphics",
+        "arch" : "i386",
+        "core" : 1,
+        "thread" : 1,
+        "stepping" : 1,
+        "family" : 25,
+        "model" : 68,
+        "quantity" : 1
+      }
+    ],
+    "slots" : [],
+    "software" : [
+      {
+        "name" : "nftables",
+        "version" : "1.0.6-2+deb12u2",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.0.6-2+deb12u2"
+      },
+      {
+        "name" : "gettext-base",
+        "version" : "0.21-12",
+        "publisher" : "Debian",
+        "sourceName" : "gettext",
+        "sourceVersion" : "0.21-12"
+      },
+      {
+        "name" : "libpipeline1",
+        "version" : "1.5.7-1",
+        "publisher" : "Debian",
+        "sourceName" : "libpipeline",
+        "sourceVersion" : "1.5.7-1"
+      },
+      {
+        "name" : "libfdisk1",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "libpam-modules-bin",
+        "version" : "1.5.2-6+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.5.2-6+deb12u1"
+      },
+      {
+        "name" : "libtext-charwidth-perl",
+        "version" : "0.04-11",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.04-11"
+      },
+      {
+        "name" : "binutils-common",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "libfuse2",
+        "version" : "2.9.9-6+b1",
+        "publisher" : "Debian",
+        "sourceName" : "fuse (2.9.9-6)",
+        "sourceVersion" : "2.9.9-6"
+      },
+      {
+        "name" : "libattr1",
+        "version" : "1:2.5.1-4",
+        "publisher" : "Debian",
+        "sourceName" : "attr",
+        "sourceVersion" : "1:2.5.1-4"
+      },
+      {
+        "name" : "libkeyutils1",
+        "version" : "1.6.3-2",
+        "publisher" : "Debian",
+        "sourceName" : "keyutils",
+        "sourceVersion" : "1.6.3-2"
+      },
+      {
+        "name" : "libxml2",
+        "version" : "2.9.14+dfsg-1.3~deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.9.14+dfsg-1.3~deb12u1"
+      },
+      {
+        "name" : "bash",
+        "version" : "5.2.15-2+b2",
+        "publisher" : "Debian",
+        "sourceName" : "bash (5.2.15-2)",
+        "sourceVersion" : "5.2.15-2"
+      },
+      {
+        "name" : "python3.11",
+        "version" : "3.11.2-6",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.11.2-6"
+      },
+      {
+        "name" : "libpam-runtime",
+        "version" : "1.5.2-6+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.5.2-6+deb12u1"
+      },
+      {
+        "name" : "readline-common",
+        "version" : "8.2-1.3",
+        "publisher" : "Debian",
+        "sourceName" : "readline",
+        "sourceVersion" : "8.2-1.3"
+      },
+      {
+        "name" : "libffi8",
+        "version" : "3.4.4-1",
+        "publisher" : "Debian",
+        "sourceName" : "libffi",
+        "sourceVersion" : "3.4.4-1"
+      },
+      {
+        "name" : "kmod",
+        "version" : "30+20221128-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "30+20221128-1"
+      },
+      {
+        "name" : "lsof",
+        "version" : "4.95.0-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "4.95.0-1"
+      },
+      {
+        "name" : "less",
+        "version" : "590-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "590-2"
+      },
+      {
+        "name" : "libcbor0.8",
+        "version" : "0.8.0-2+b1",
+        "publisher" : "Debian",
+        "sourceName" : "libcbor (0.8.0-2)",
+        "sourceVersion" : "0.8.0-2"
+      },
+      {
+        "name" : "initramfs-tools-core",
+        "version" : "0.142",
+        "publisher" : "Debian",
+        "sourceName" : "initramfs-tools",
+        "sourceVersion" : "0.142"
+      },
+      {
+        "name" : "libmount1",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "python3-pkg-resources",
+        "version" : "66.1.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "setuptools",
+        "sourceVersion" : "66.1.1-1"
+      },
+      {
+        "name" : "python3-debianbts",
+        "version" : "4.0.1",
+        "publisher" : "Debian",
+        "sourceName" : "python-debianbts",
+        "sourceVersion" : "4.0.1"
+      },
+      {
+        "name" : "pinentry-curses",
+        "version" : "1.2.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "pinentry",
+        "sourceVersion" : "1.2.1-1"
+      },
+      {
+        "name" : "rsyslog",
+        "version" : "8.2302.0-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "8.2302.0-1"
+      },
+      {
+        "name" : "dbus-system-bus-common",
+        "version" : "1.14.10-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.14.10-1~deb12u1"
+      },
+      {
+        "name" : "dpkg",
+        "version" : "1.21.22",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.21.22"
+      },
+      {
+        "name" : "chrony",
+        "version" : "4.3-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "4.3-2+deb12u1"
+      },
+      {
+        "name" : "libpcre3",
+        "version" : "2:8.39-15",
+        "publisher" : "Debian",
+        "sourceName" : "pcre3",
+        "sourceVersion" : "2:8.39-15"
+      },
+      {
+        "name" : "libtext-wrapi18n-perl",
+        "version" : "0.06-10",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.06-10"
+      },
+      {
+        "name" : "zsh",
+        "version" : "5.9-4+b2",
+        "publisher" : "Debian",
+        "sourceName" : "zsh (5.9-4)",
+        "sourceVersion" : "5.9-4"
+      },
+      {
+        "name" : "grep",
+        "version" : "3.8-5",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.8-5"
+      },
+      {
+        "name" : "libaudit-common",
+        "version" : "1:3.0.9-1",
+        "publisher" : "Debian",
+        "sourceName" : "audit",
+        "sourceVersion" : "1:3.0.9-1"
+      },
+      {
+        "name" : "libgpg-error0",
+        "version" : "1.46-1",
+        "publisher" : "Debian",
+        "sourceName" : "libgpg-error",
+        "sourceVersion" : "1.46-1"
+      },
+      {
+        "name" : "lsb-release",
+        "version" : "12.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "lsb-release-minimal",
+        "sourceVersion" : "12.0-1"
+      },
+      {
+        "name" : "bash-completion",
+        "version" : "1:2.11-6",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:2.11-6"
+      },
+      {
+        "name" : "python3-dbus",
+        "version" : "1.3.2-4+b1",
+        "publisher" : "Debian",
+        "sourceName" : "dbus-python (1.3.2-4)",
+        "sourceVersion" : "1.3.2-4"
+      },
+      {
+        "name" : "libfido2-1",
+        "version" : "1.12.0-2+b1",
+        "publisher" : "Debian",
+        "sourceName" : "libfido2 (1.12.0-2)",
+        "sourceVersion" : "1.12.0-2"
+      },
+      {
+        "name" : "bsdextrautils",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "apt",
+        "version" : "2.6.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.6.1"
+      },
+      {
+        "name" : "sed",
+        "version" : "4.9-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "4.9-1"
+      },
+      {
+        "name" : "liblockfile-bin",
+        "version" : "1.17-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "liblockfile (1.17-1)",
+        "sourceVersion" : "1.17-1"
+      },
+      {
+        "name" : "libaugeas0",
+        "version" : "1.14.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "augeas",
+        "sourceVersion" : "1.14.0-1"
+      },
+      {
+        "name" : "libctf0",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "vim-runtime",
+        "version" : "2:9.0.1378-2",
+        "publisher" : "Debian",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:9.0.1378-2"
+      },
+      {
+        "name" : "libedit2",
+        "version" : "3.1-20221030-2",
+        "publisher" : "Debian",
+        "sourceName" : "libedit",
+        "sourceVersion" : "3.1-20221030-2"
+      },
+      {
+        "name" : "libpci3",
+        "version" : "1:3.9.0-4",
+        "publisher" : "Debian",
+        "sourceName" : "pciutils",
+        "sourceVersion" : "1:3.9.0-4"
+      },
+      {
+        "name" : "dbus-daemon",
+        "version" : "1.14.10-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.14.10-1~deb12u1"
+      },
+      {
+        "name" : "login",
+        "version" : "1:4.13+dfsg1-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "shadow (1:4.13+dfsg1-1)",
+        "sourceVersion" : "1:4.13+dfsg1-1"
+      },
+      {
+        "name" : "sysvinit-utils",
+        "version" : "3.06-4",
+        "publisher" : "Debian",
+        "sourceName" : "sysvinit",
+        "sourceVersion" : "3.06-4"
+      },
+      {
+        "name" : "mount",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "doc-debian",
+        "version" : "11.3+nmu1",
+        "publisher" : "Debian",
+        "sourceVersion" : "11.3+nmu1"
+      },
+      {
+        "name" : "libfstrm0",
+        "version" : "0.6.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "fstrm",
+        "sourceVersion" : "0.6.1-1"
+      },
+      {
+        "name" : "binutils-x86-64-linux-gnu",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "ncurses-base",
+        "version" : "6.4-4",
+        "publisher" : "Debian",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.4-4"
+      },
+      {
+        "name" : "cron",
+        "version" : "3.0pl1-162",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.0pl1-162"
+      },
+      {
+        "name" : "libseccomp2",
+        "version" : "2.5.4-1+b3",
+        "publisher" : "Debian",
+        "sourceName" : "libseccomp (2.5.4-1)",
+        "sourceVersion" : "2.5.4-1"
+      },
+      {
+        "name" : "libmagic1",
+        "version" : "1:5.44-3",
+        "publisher" : "Debian",
+        "sourceName" : "file",
+        "sourceVersion" : "1:5.44-3"
+      },
+      {
+        "name" : "init",
+        "version" : "1.65.2",
+        "publisher" : "Debian",
+        "sourceName" : "init-system-helpers",
+        "sourceVersion" : "1.65.2"
+      },
+      {
+        "name" : "libefiboot1",
+        "version" : "37-6",
+        "publisher" : "Debian",
+        "sourceName" : "efivar",
+        "sourceVersion" : "37-6"
+      },
+      {
+        "name" : "debconf-i18n",
+        "version" : "1.5.82",
+        "publisher" : "Debian",
+        "sourceName" : "debconf",
+        "sourceVersion" : "1.5.82"
+      },
+      {
+        "name" : "initramfs-tools",
+        "version" : "0.142",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.142"
+      },
+      {
+        "name" : "libtirpc-common",
+        "version" : "1.3.3+ds-1",
+        "publisher" : "Debian",
+        "sourceName" : "libtirpc",
+        "sourceVersion" : "1.3.3+ds-1"
+      },
+      {
+        "name" : "libsemanage2",
+        "version" : "3.4-1+b5",
+        "publisher" : "Debian",
+        "sourceName" : "libsemanage (3.4-1)",
+        "sourceVersion" : "3.4-1"
+      },
+      {
+        "name" : "libcap2",
+        "version" : "1:2.66-4",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:2.66-4"
+      },
+      {
+        "name" : "debian-archive-keyring",
+        "version" : "2023.3+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2023.3+deb12u1"
+      },
+      {
+        "name" : "iputils-ping",
+        "version" : "3:20221126-1",
+        "publisher" : "Debian",
+        "sourceName" : "iputils",
+        "sourceVersion" : "3:20221126-1"
+      },
+      {
+        "name" : "liburing2",
+        "version" : "2.3-3",
+        "publisher" : "Debian",
+        "sourceName" : "liburing",
+        "sourceVersion" : "2.3-3"
+      },
+      {
+        "name" : "libslang2",
+        "version" : "2.3.3-3",
+        "publisher" : "Debian",
+        "sourceName" : "slang2",
+        "sourceVersion" : "2.3.3-3"
+      },
+      {
+        "name" : "libpython3.11-minimal",
+        "version" : "3.11.2-6",
+        "publisher" : "Debian",
+        "sourceName" : "python3.11",
+        "sourceVersion" : "3.11.2-6"
+      },
+      {
+        "name" : "bsdutils",
+        "version" : "1:2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "coreutils",
+        "version" : "9.1-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "9.1-1"
+      },
+      {
+        "name" : "bzip2",
+        "version" : "1.0.8-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "bzip2 (1.0.8-5)",
+        "sourceVersion" : "1.0.8-5"
+      },
+      {
+        "name" : "patch",
+        "version" : "2.7.6-7",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.7.6-7"
+      },
+      {
+        "name" : "libjansson4",
+        "version" : "2.14-2",
+        "publisher" : "Debian",
+        "sourceName" : "jansson",
+        "sourceVersion" : "2.14-2"
+      },
+      {
+        "name" : "libbz2-1.0",
+        "version" : "1.0.8-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "bzip2 (1.0.8-5)",
+        "sourceVersion" : "1.0.8-5"
+      },
+      {
+        "name" : "libpam-modules",
+        "version" : "1.5.2-6+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.5.2-6+deb12u1"
+      },
+      {
+        "name" : "libtext-iconv-perl",
+        "version" : "1.7-8",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.7-8"
+      },
+      {
+        "name" : "libpam0g",
+        "version" : "1.5.2-6+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "pam",
+        "sourceVersion" : "1.5.2-6+deb12u1"
+      },
+      {
+        "name" : "groff-base",
+        "version" : "1.22.4-10",
+        "publisher" : "Debian",
+        "sourceName" : "groff",
+        "sourceVersion" : "1.22.4-10"
+      },
+      {
+        "name" : "traceroute",
+        "version" : "1:2.1.2-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:2.1.2-1"
+      },
+      {
+        "name" : "libnumber-compare-perl",
+        "version" : "0.03-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.03-3"
+      },
+      {
+        "name" : "libnpth0",
+        "version" : "1.6-3",
+        "publisher" : "Debian",
+        "sourceName" : "npth",
+        "sourceVersion" : "1.6-3"
+      },
+      {
+        "name" : "libprotobuf-c1",
+        "version" : "1.4.1-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "protobuf-c (1.4.1-1)",
+        "sourceVersion" : "1.4.1-1"
+      },
+      {
+        "name" : "libnsl2",
+        "version" : "1.3.0-2",
+        "publisher" : "Debian",
+        "sourceName" : "libnsl",
+        "sourceVersion" : "1.3.0-2"
+      },
+      {
+        "name" : "git-man",
+        "version" : "1:2.39.2-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "git",
+        "sourceVersion" : "1:2.39.2-1.1"
+      },
+      {
+        "name" : "binutils",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "ncurses-bin",
+        "version" : "6.4-4",
+        "publisher" : "Debian",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.4-4"
+      },
+      {
+        "name" : "isc-dhcp-client",
+        "version" : "4.4.3-P1-2",
+        "publisher" : "Debian",
+        "sourceName" : "isc-dhcp",
+        "sourceVersion" : "4.4.3-P1-2"
+      },
+      {
+        "name" : "libstdc++6",
+        "version" : "12.2.0-14",
+        "publisher" : "Debian",
+        "sourceName" : "gcc-12",
+        "sourceVersion" : "12.2.0-14"
+      },
+      {
+        "name" : "libunistring2",
+        "version" : "1.0-2",
+        "publisher" : "Debian",
+        "sourceName" : "libunistring",
+        "sourceVersion" : "1.0-2"
+      },
+      {
+        "name" : "libmaxminddb0",
+        "version" : "1.7.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "libmaxminddb",
+        "sourceVersion" : "1.7.1-1"
+      },
+      {
+        "name" : "python3-six",
+        "version" : "1.16.0-4",
+        "publisher" : "Debian",
+        "sourceName" : "six",
+        "sourceVersion" : "1.16.0-4"
+      },
+      {
+        "name" : "debconf",
+        "version" : "1.5.82",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.5.82"
+      },
+      {
+        "name" : "cloud-utils",
+        "version" : "0.33-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.33-1"
+      },
+      {
+        "name" : "libk5crypto3",
+        "version" : "1.20.1-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.20.1-2+deb12u1"
+      },
+      {
+        "name" : "netcat-traditional",
+        "version" : "1.10-47",
+        "publisher" : "Debian",
+        "sourceName" : "netcat",
+        "sourceVersion" : "1.10-47"
+      },
+      {
+        "name" : "apt-utils",
+        "version" : "2.6.1",
+        "publisher" : "Debian",
+        "sourceName" : "apt",
+        "sourceVersion" : "2.6.1"
+      },
+      {
+        "name" : "libbpf1",
+        "version" : "1:1.1.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "libbpf (1.1.0-1)",
+        "sourceVersion" : "1.1.0-1"
+      },
+      {
+        "name" : "wget",
+        "version" : "1.21.3-1+b2",
+        "publisher" : "Debian",
+        "sourceName" : "wget (1.21.3-1)",
+        "sourceVersion" : "1.21.3-1"
+      },
+      {
+        "name" : "dmidecode",
+        "version" : "3.4-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.4-1"
+      },
+      {
+        "name" : "dirmngr",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "libnl-3-200",
+        "version" : "3.7.0-0.2+b1",
+        "publisher" : "Debian",
+        "sourceName" : "libnl3 (3.7.0-0.2)",
+        "sourceVersion" : "3.7.0-0.2"
+      },
+      {
+        "name" : "media-types",
+        "version" : "10.0.0",
+        "publisher" : "Debian",
+        "sourceVersion" : "10.0.0"
+      },
+      {
+        "name" : "fdisk",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "libhogweed6",
+        "version" : "3.8.1-2",
+        "publisher" : "Debian",
+        "sourceName" : "nettle",
+        "sourceVersion" : "3.8.1-2"
+      },
+      {
+        "name" : "libbinutils",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "libtinfo6",
+        "version" : "6.4-4",
+        "publisher" : "Debian",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.4-4"
+      },
+      {
+        "name" : "libcap-ng0",
+        "version" : "0.8.3-1+b3",
+        "publisher" : "Debian",
+        "sourceName" : "libcap-ng (0.8.3-1)",
+        "sourceVersion" : "0.8.3-1"
+      },
+      {
+        "name" : "libksba8",
+        "version" : "1.6.3-2",
+        "publisher" : "Debian",
+        "sourceName" : "libksba",
+        "sourceVersion" : "1.6.3-2"
+      },
+      {
+        "name" : "libnftnl11",
+        "version" : "1.2.4-2",
+        "publisher" : "Debian",
+        "sourceName" : "libnftnl",
+        "sourceVersion" : "1.2.4-2"
+      },
+      {
+        "name" : "python3-urllib3",
+        "version" : "1.26.12-1",
+        "publisher" : "Debian",
+        "sourceName" : "python-urllib3",
+        "sourceVersion" : "1.26.12-1"
+      },
+      {
+        "name" : "uuid-runtime",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "cloud-initramfs-growroot",
+        "version" : "0.18.debian13",
+        "publisher" : "Debian",
+        "sourceName" : "cloud-initramfs-tools",
+        "sourceVersion" : "0.18.debian13"
+      },
+      {
+        "name" : "libgcrypt20",
+        "version" : "1.10.1-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.10.1-3"
+      },
+      {
+        "name" : "python3.11-minimal",
+        "version" : "3.11.2-6",
+        "publisher" : "Debian",
+        "sourceName" : "python3.11",
+        "sourceVersion" : "3.11.2-6"
+      },
+      {
+        "name" : "apt-listchanges",
+        "version" : "3.24",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.24"
+      },
+      {
+        "name" : "libp11-kit0",
+        "version" : "0.24.1-2",
+        "publisher" : "Debian",
+        "sourceName" : "p11-kit",
+        "sourceVersion" : "0.24.1-2"
+      },
+      {
+        "name" : "libxtables12",
+        "version" : "1.8.9-2",
+        "publisher" : "Debian",
+        "sourceName" : "iptables",
+        "sourceVersion" : "1.8.9-2"
+      },
+      {
+        "name" : "gpgconf",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "libdebconfclient0",
+        "version" : "0.270",
+        "publisher" : "Debian",
+        "sourceName" : "cdebconf",
+        "sourceVersion" : "0.270"
+      },
+      {
+        "name" : "file",
+        "version" : "1:5.44-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:5.44-3"
+      },
+      {
+        "name" : "python3-pysimplesoap",
+        "version" : "1.16.2-5",
+        "publisher" : "Debian",
+        "sourceName" : "pysimplesoap",
+        "sourceVersion" : "1.16.2-5"
+      },
+      {
+        "name" : "dbus-session-bus-common",
+        "version" : "1.14.10-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.14.10-1~deb12u1"
+      },
+      {
+        "name" : "linux-image-6.1.0-13-amd64",
+        "version" : "6.1.55-1",
+        "publisher" : "Debian",
+        "sourceName" : "linux-signed-amd64 (6.1.55+1)",
+        "sourceVersion" : "6.1.55+1"
+      },
+      {
+        "name" : "libapparmor1",
+        "version" : "3.0.8-3",
+        "publisher" : "Debian",
+        "sourceName" : "apparmor",
+        "sourceVersion" : "3.0.8-3"
+      },
+      {
+        "name" : "nano",
+        "version" : "7.2-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "7.2-1"
+      },
+      {
+        "name" : "debianutils",
+        "version" : "5.7-0.5~deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "5.7-0.5~deb12u1"
+      },
+      {
+        "name" : "librtmp1",
+        "version" : "2.4+20151223.gitfa8646d.1-2+b2",
+        "publisher" : "Debian",
+        "sourceName" : "rtmpdump (2.4+20151223.gitfa8646d.1-2)",
+        "sourceVersion" : "2.4+20151223.gitfa8646d.1-2"
+      },
+      {
+        "name" : "python3-reportbug",
+        "version" : "12.0.0",
+        "publisher" : "Debian",
+        "sourceName" : "reportbug",
+        "sourceVersion" : "12.0.0"
+      },
+      {
+        "name" : "libblkid1",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "cloud-image-utils",
+        "version" : "0.33-1",
+        "publisher" : "Debian",
+        "sourceName" : "cloud-utils",
+        "sourceVersion" : "0.33-1"
+      },
+      {
+        "name" : "libssh2-1",
+        "version" : "1.10.0-3+b1",
+        "publisher" : "Debian",
+        "sourceName" : "libssh2 (1.10.0-3)",
+        "sourceVersion" : "1.10.0-3"
+      },
+      {
+        "name" : "gnupg-l10n",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "ncurses-term",
+        "version" : "6.4-4",
+        "publisher" : "Debian",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.4-4"
+      },
+      {
+        "name" : "vim-tiny",
+        "version" : "2:9.0.1378-2",
+        "publisher" : "Debian",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:9.0.1378-2"
+      },
+      {
+        "name" : "libselinux1",
+        "version" : "3.4-1+b6",
+        "publisher" : "Debian",
+        "sourceName" : "libselinux (3.4-1)",
+        "sourceVersion" : "3.4-1"
+      },
+      {
+        "name" : "libicu72",
+        "version" : "72.1-3",
+        "publisher" : "Debian",
+        "sourceName" : "icu",
+        "sourceVersion" : "72.1-3"
+      },
+      {
+        "name" : "augeas-tools",
+        "version" : "1.14.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "augeas",
+        "sourceVersion" : "1.14.0-1"
+      },
+      {
+        "name" : "dbus-bin",
+        "version" : "1.14.10-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.14.10-1~deb12u1"
+      },
+      {
+        "name" : "wamerican",
+        "version" : "2020.12.07-2",
+        "publisher" : "Debian",
+        "sourceName" : "scowl",
+        "sourceVersion" : "2020.12.07-2"
+      },
+      {
+        "name" : "libgmp10",
+        "version" : "2:6.2.1+dfsg1-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gmp",
+        "sourceVersion" : "2:6.2.1+dfsg1-1.1"
+      },
+      {
+        "name" : "libnfnetlink0",
+        "version" : "1.0.2-2",
+        "publisher" : "Debian",
+        "sourceName" : "libnfnetlink",
+        "sourceVersion" : "1.0.2-2"
+      },
+      {
+        "name" : "gpg-wks-server",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "libjq1",
+        "version" : "1.6-2.1",
+        "publisher" : "Debian",
+        "sourceName" : "jq",
+        "sourceVersion" : "1.6-2.1"
+      },
+      {
+        "name" : "gzip",
+        "version" : "1.12-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.12-1"
+      },
+      {
+        "name" : "libjemalloc2",
+        "version" : "5.3.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "jemalloc",
+        "sourceVersion" : "5.3.0-1"
+      },
+      {
+        "name" : "gcc-12-base",
+        "version" : "12.2.0-14",
+        "publisher" : "Debian",
+        "sourceName" : "gcc-12",
+        "sourceVersion" : "12.2.0-14"
+      },
+      {
+        "name" : "libcap2-bin",
+        "version" : "1:2.66-4",
+        "publisher" : "Debian",
+        "sourceName" : "libcap2",
+        "sourceVersion" : "1:2.66-4"
+      },
+      {
+        "name" : "libip6tc2",
+        "version" : "1.8.9-2",
+        "publisher" : "Debian",
+        "sourceName" : "iptables",
+        "sourceVersion" : "1.8.9-2"
+      },
+      {
+        "name" : "git",
+        "version" : "1:2.39.2-1.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:2.39.2-1.1"
+      },
+      {
+        "name" : "base-passwd",
+        "version" : "3.6.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.6.1"
+      },
+      {
+        "name" : "libsqlite3-0",
+        "version" : "3.40.1-2",
+        "publisher" : "Debian",
+        "sourceName" : "sqlite3",
+        "sourceVersion" : "3.40.1-2"
+      },
+      {
+        "name" : "libyaml-0-2",
+        "version" : "0.2.5-1",
+        "publisher" : "Debian",
+        "sourceName" : "libyaml",
+        "sourceVersion" : "0.2.5-1"
+      },
+      {
+        "name" : "gnupg",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "libestr0",
+        "version" : "0.1.11-1",
+        "publisher" : "Debian",
+        "sourceName" : "libestr",
+        "sourceVersion" : "0.1.11-1"
+      },
+      {
+        "name" : "libext2fs2",
+        "version" : "1.47.0-2",
+        "publisher" : "Debian",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.47.0-2"
+      },
+      {
+        "name" : "python3-httplib2",
+        "version" : "0.20.4-3",
+        "publisher" : "Debian",
+        "sourceName" : "python-httplib2",
+        "sourceVersion" : "0.20.4-3"
+      },
+      {
+        "name" : "libargon2-1",
+        "version" : "0~20171227-0.3+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "argon2",
+        "sourceVersion" : "0~20171227-0.3+deb12u1"
+      },
+      {
+        "name" : "libproc2-0",
+        "version" : "2:4.0.2-3",
+        "publisher" : "Debian",
+        "sourceName" : "procps",
+        "sourceVersion" : "2:4.0.2-3"
+      },
+      {
+        "name" : "libss2",
+        "version" : "1.47.0-2",
+        "publisher" : "Debian",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.47.0-2"
+      },
+      {
+        "name" : "libsmartcols1",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "libkrb5support0",
+        "version" : "1.20.1-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.20.1-2+deb12u1"
+      },
+      {
+        "name" : "libreadline8",
+        "version" : "8.2-1.3",
+        "publisher" : "Debian",
+        "sourceName" : "readline",
+        "sourceVersion" : "8.2-1.3"
+      },
+      {
+        "name" : "libacl1",
+        "version" : "2.3.1-3",
+        "publisher" : "Debian",
+        "sourceName" : "acl",
+        "sourceVersion" : "2.3.1-3"
+      },
+      {
+        "name" : "util-linux",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "libsasl2-modules-db",
+        "version" : "2.1.28+dfsg-10",
+        "publisher" : "Debian",
+        "sourceName" : "cyrus-sasl2",
+        "sourceVersion" : "2.1.28+dfsg-10"
+      },
+      {
+        "name" : "libtasn1-6",
+        "version" : "4.19.0-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "4.19.0-2"
+      },
+      {
+        "name" : "dash",
+        "version" : "0.5.12-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.5.12-2"
+      },
+      {
+        "name" : "logrotate",
+        "version" : "3.21.0-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.21.0-1"
+      },
+      {
+        "name" : "libidn2-0",
+        "version" : "2.3.3-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "libidn2 (2.3.3-1)",
+        "sourceVersion" : "2.3.3-1"
+      },
+      {
+        "name" : "logsave",
+        "version" : "1.47.0-2",
+        "publisher" : "Debian",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.47.0-2"
+      },
+      {
+        "name" : "libklibc",
+        "version" : "2.0.12-1",
+        "publisher" : "Debian",
+        "sourceName" : "klibc",
+        "sourceVersion" : "2.0.12-1"
+      },
+      {
+        "name" : "libkrb5-3",
+        "version" : "1.20.1-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.20.1-2+deb12u1"
+      },
+      {
+        "name" : "ldapscripts",
+        "version" : "2.0.8-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.0.8-2"
+      },
+      {
+        "name" : "libpython3.11-stdlib",
+        "version" : "3.11.2-6",
+        "publisher" : "Debian",
+        "sourceName" : "python3.11",
+        "sourceVersion" : "3.11.2-6"
+      },
+      {
+        "name" : "libefivar1",
+        "version" : "37-6",
+        "publisher" : "Debian",
+        "sourceName" : "efivar",
+        "sourceVersion" : "37-6"
+      },
+      {
+        "name" : "libkmod2",
+        "version" : "30+20221128-1",
+        "publisher" : "Debian",
+        "sourceName" : "kmod",
+        "sourceVersion" : "30+20221128-1"
+      },
+      {
+        "name" : "debian-faq",
+        "version" : "11.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "11.1"
+      },
+      {
+        "name" : "libnettle8",
+        "version" : "3.8.1-2",
+        "publisher" : "Debian",
+        "sourceName" : "nettle",
+        "sourceVersion" : "3.8.1-2"
+      },
+      {
+        "name" : "init-system-helpers",
+        "version" : "1.65.2",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.65.2"
+      },
+      {
+        "name" : "e2fsprogs",
+        "version" : "1.47.0-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.47.0-2"
+      },
+      {
+        "name" : "libbrotli1",
+        "version" : "1.0.9-2+b6",
+        "publisher" : "Debian",
+        "sourceName" : "brotli (1.0.9-2)",
+        "sourceVersion" : "1.0.9-2"
+      },
+      {
+        "name" : "libuchardet0",
+        "version" : "0.0.7-1",
+        "publisher" : "Debian",
+        "sourceName" : "uchardet",
+        "sourceVersion" : "0.0.7-1"
+      },
+      {
+        "name" : "libonig5",
+        "version" : "6.9.8-1",
+        "publisher" : "Debian",
+        "sourceName" : "libonig",
+        "sourceVersion" : "6.9.8-1"
+      },
+      {
+        "name" : "libcrypt1",
+        "version" : "1:4.4.33-2",
+        "publisher" : "Debian",
+        "sourceName" : "libxcrypt",
+        "sourceVersion" : "1:4.4.33-2"
+      },
+      {
+        "name" : "libncursesw6",
+        "version" : "6.4-4",
+        "publisher" : "Debian",
+        "sourceName" : "ncurses",
+        "sourceVersion" : "6.4-4"
+      },
+      {
+        "name" : "sharutils",
+        "version" : "1:4.15.2-9",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:4.15.2-9"
+      },
+      {
+        "name" : "libnftables1",
+        "version" : "1.0.6-2+deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "nftables",
+        "sourceVersion" : "1.0.6-2+deb12u2"
+      },
+      {
+        "name" : "runit-helper",
+        "version" : "2.15.2",
+        "publisher" : "Debian",
+        "sourceName" : "dh-runit",
+        "sourceVersion" : "2.15.2"
+      },
+      {
+        "name" : "liblzma5",
+        "version" : "5.4.1-0.2",
+        "publisher" : "Debian",
+        "sourceName" : "xz-utils",
+        "sourceVersion" : "5.4.1-0.2"
+      },
+      {
+        "name" : "libcom-err2",
+        "version" : "1.47.0-2",
+        "publisher" : "Debian",
+        "sourceName" : "e2fsprogs",
+        "sourceVersion" : "1.47.0-2"
+      },
+      {
+        "name" : "libdevmapper1.02.1",
+        "version" : "2:1.02.185-2",
+        "publisher" : "Debian",
+        "sourceName" : "lvm2 (2.03.16-2)",
+        "sourceVersion" : "2.03.16-2"
+      },
+      {
+        "name" : "libtirpc3",
+        "version" : "1.3.3+ds-1",
+        "publisher" : "Debian",
+        "sourceName" : "libtirpc",
+        "sourceVersion" : "1.3.3+ds-1"
+      },
+      {
+        "name" : "augeas-lenses",
+        "version" : "1.14.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "augeas",
+        "sourceVersion" : "1.14.0-1"
+      },
+      {
+        "name" : "libglib2.0-0",
+        "version" : "2.74.6-2",
+        "publisher" : "Debian",
+        "sourceName" : "glib2.0",
+        "sourceVersion" : "2.74.6-2"
+      },
+      {
+        "name" : "net-tools",
+        "version" : "2.10-0.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.10-0.1"
+      },
+      {
+        "name" : "libip4tc2",
+        "version" : "1.8.9-2",
+        "publisher" : "Debian",
+        "sourceName" : "iptables",
+        "sourceVersion" : "1.8.9-2"
+      },
+      {
+        "name" : "libtext-glob-perl",
+        "version" : "0.11-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.11-3"
+      },
+      {
+        "name" : "python3-chardet",
+        "version" : "5.1.0+dfsg-2",
+        "publisher" : "Debian",
+        "sourceName" : "chardet",
+        "sourceVersion" : "5.1.0+dfsg-2"
+      },
+      {
+        "name" : "libsepol2",
+        "version" : "3.4-2.1",
+        "publisher" : "Debian",
+        "sourceName" : "libsepol",
+        "sourceVersion" : "3.4-2.1"
+      },
+      {
+        "name" : "libsemanage-common",
+        "version" : "3.4-1",
+        "publisher" : "Debian",
+        "sourceName" : "libsemanage",
+        "sourceVersion" : "3.4-1"
+      },
+      {
+        "name" : "zsh-common",
+        "version" : "5.9-4",
+        "publisher" : "Debian",
+        "sourceName" : "zsh",
+        "sourceVersion" : "5.9-4"
+      },
+      {
+        "name" : "libmnl0",
+        "version" : "1.0.4-3",
+        "publisher" : "Debian",
+        "sourceName" : "libmnl",
+        "sourceVersion" : "1.0.4-3"
+      },
+      {
+        "name" : "ucf",
+        "version" : "3.0043+nmu1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.0043+nmu1"
+      },
+      {
+        "name" : "vim-common",
+        "version" : "2:9.0.1378-2",
+        "publisher" : "Debian",
+        "sourceName" : "vim",
+        "sourceVersion" : "2:9.0.1378-2"
+      },
+      {
+        "name" : "libpopt0",
+        "version" : "1.19+dfsg-1",
+        "publisher" : "Debian",
+        "sourceName" : "popt",
+        "sourceVersion" : "1.19+dfsg-1"
+      },
+      {
+        "name" : "genisoimage",
+        "version" : "9:1.1.11-3.4",
+        "publisher" : "Debian",
+        "sourceName" : "cdrkit",
+        "sourceVersion" : "9:1.1.11-3.4"
+      },
+      {
+        "name" : "isc-dhcp-common",
+        "version" : "4.4.3-P1-2",
+        "publisher" : "Debian",
+        "sourceName" : "isc-dhcp",
+        "sourceVersion" : "4.4.3-P1-2"
+      },
+      {
+        "name" : "libexpat1",
+        "version" : "2.5.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "expat",
+        "sourceVersion" : "2.5.0-1"
+      },
+      {
+        "name" : "libnuma1",
+        "version" : "2.0.16-1",
+        "publisher" : "Debian",
+        "sourceName" : "numactl",
+        "sourceVersion" : "2.0.16-1"
+      },
+      {
+        "name" : "python3-apt",
+        "version" : "2.6.0",
+        "publisher" : "Debian",
+        "sourceName" : "python-apt",
+        "sourceVersion" : "2.6.0"
+      },
+      {
+        "name" : "diffutils",
+        "version" : "1:3.8-4",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:3.8-4"
+      },
+      {
+        "name" : "libgprofng0",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "gpg",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "python3-charset-normalizer",
+        "version" : "3.0.1-2",
+        "publisher" : "Debian",
+        "sourceName" : "python-charset-normalizer",
+        "sourceVersion" : "3.0.1-2"
+      },
+      {
+        "name" : "pwgen",
+        "version" : "2.08-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.08-2"
+      },
+      {
+        "name" : "linux-base",
+        "version" : "4.9",
+        "publisher" : "Debian",
+        "sourceVersion" : "4.9"
+      },
+      {
+        "name" : "liblocale-gettext-perl",
+        "version" : "1.07-5",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.07-5"
+      },
+      {
+        "name" : "cron-daemon-common",
+        "version" : "3.0pl1-162",
+        "publisher" : "Debian",
+        "sourceName" : "cron",
+        "sourceVersion" : "3.0pl1-162"
+      },
+      {
+        "name" : "libnewt0.52",
+        "version" : "0.52.23-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "newt (0.52.23-1)",
+        "sourceVersion" : "0.52.23-1"
+      },
+      {
+        "name" : "iproute2",
+        "version" : "6.1.0-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "6.1.0-3"
+      },
+      {
+        "name" : "libmagic-mgc",
+        "version" : "1:5.44-3",
+        "publisher" : "Debian",
+        "sourceName" : "file",
+        "sourceVersion" : "1:5.44-3"
+      },
+      {
+        "name" : "libmd0",
+        "version" : "1.0.4-2",
+        "publisher" : "Debian",
+        "sourceName" : "libmd",
+        "sourceVersion" : "1.0.4-2"
+      },
+      {
+        "name" : "gnupg-utils",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "pci.ids",
+        "version" : "0.0~2023.04.11-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.0~2023.04.11-1"
+      },
+      {
+        "name" : "ifupdown",
+        "version" : "0.8.41",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.8.41"
+      },
+      {
+        "name" : "libnl-genl-3-200",
+        "version" : "3.7.0-0.2+b1",
+        "publisher" : "Debian",
+        "sourceName" : "libnl3 (3.7.0-0.2)",
+        "sourceVersion" : "3.7.0-0.2"
+      },
+      {
+        "name" : "python-apt-common",
+        "version" : "2.6.0",
+        "publisher" : "Debian",
+        "sourceName" : "python-apt",
+        "sourceVersion" : "2.6.0"
+      },
+      {
+        "name" : "libgcc-s1",
+        "version" : "12.2.0-14",
+        "publisher" : "Debian",
+        "sourceName" : "gcc-12",
+        "sourceVersion" : "12.2.0-14"
+      },
+      {
+        "name" : "mawk",
+        "version" : "1.3.4.20200120-3.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.3.4.20200120-3.1"
+      },
+      {
+        "name" : "apt-transport-https",
+        "version" : "2.6.1",
+        "publisher" : "Debian",
+        "sourceName" : "apt",
+        "sourceVersion" : "2.6.1"
+      },
+      {
+        "name" : "ca-certificates",
+        "version" : "20230311",
+        "publisher" : "Debian",
+        "sourceVersion" : "20230311"
+      },
+      {
+        "name" : "python3-pyparsing",
+        "version" : "3.0.9-1",
+        "publisher" : "Debian",
+        "sourceName" : "pyparsing",
+        "sourceVersion" : "3.0.9-1"
+      },
+      {
+        "name" : "passwd",
+        "version" : "1:4.13+dfsg1-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "shadow (1:4.13+dfsg1-1)",
+        "sourceVersion" : "1:4.13+dfsg1-1"
+      },
+      {
+        "name" : "tasksel-data",
+        "version" : "3.73",
+        "publisher" : "Debian",
+        "sourceName" : "tasksel",
+        "sourceVersion" : "3.73"
+      },
+      {
+        "name" : "tree",
+        "version" : "2.1.0-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.1.0-1"
+      },
+      {
+        "name" : "libcurl3-gnutls",
+        "version" : "7.88.1-10+deb12u5",
+        "publisher" : "Debian",
+        "sourceName" : "curl",
+        "sourceVersion" : "7.88.1-10+deb12u5"
+      },
+      {
+        "name" : "tasksel",
+        "version" : "3.73",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.73"
+      },
+      {
+        "name" : "libpython3-stdlib",
+        "version" : "3.11.2-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "python3-defaults (3.11.2-1)",
+        "sourceVersion" : "3.11.2-1"
+      },
+      {
+        "name" : "pciutils",
+        "version" : "1:3.9.0-4",
+        "publisher" : "Debian",
+        "sourceVersion" : "1:3.9.0-4"
+      },
+      {
+        "name" : "gpgsm",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "dbus",
+        "version" : "1.14.10-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.14.10-1~deb12u1"
+      },
+      {
+        "name" : "libgssapi-krb5-2",
+        "version" : "1.20.1-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.20.1-2+deb12u1"
+      },
+      {
+        "name" : "gpg-agent",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "libgpm2",
+        "version" : "1.20.7-10+b1",
+        "publisher" : "Debian",
+        "sourceName" : "gpm (1.20.7-10)",
+        "sourceVersion" : "1.20.7-10"
+      },
+      {
+        "name" : "apparmor",
+        "version" : "3.0.8-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.0.8-3"
+      },
+      {
+        "name" : "libctf-nobfd0",
+        "version" : "2.40-2",
+        "publisher" : "Debian",
+        "sourceName" : "binutils",
+        "sourceVersion" : "2.40-2"
+      },
+      {
+        "name" : "whiptail",
+        "version" : "0.52.23-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "newt (0.52.23-1)",
+        "sourceVersion" : "0.52.23-1"
+      },
+      {
+        "name" : "libfile-find-rule-perl",
+        "version" : "0.34-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.34-3"
+      },
+      {
+        "name" : "python3-pycurl",
+        "version" : "7.45.2-3",
+        "publisher" : "Debian",
+        "sourceName" : "pycurl",
+        "sourceVersion" : "7.45.2-3"
+      },
+      {
+        "name" : "zlib1g",
+        "version" : "1:1.2.13.dfsg-1",
+        "publisher" : "Debian",
+        "sourceName" : "zlib",
+        "sourceVersion" : "1:1.2.13.dfsg-1"
+      },
+      {
+        "name" : "rsync",
+        "version" : "3.2.7-1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.2.7-1"
+      },
+      {
+        "name" : "cloud-guest-utils",
+        "version" : "0.33-1",
+        "publisher" : "Debian",
+        "sourceName" : "cloud-utils",
+        "sourceVersion" : "0.33-1"
+      },
+      {
+        "name" : "libfreetype6",
+        "version" : "2.12.1+dfsg-5",
+        "publisher" : "Debian",
+        "sourceName" : "freetype",
+        "sourceVersion" : "2.12.1+dfsg-5"
+      },
+      {
+        "name" : "libelf1",
+        "version" : "0.188-2.1",
+        "publisher" : "Debian",
+        "sourceName" : "elfutils",
+        "sourceVersion" : "0.188-2.1"
+      },
+      {
+        "name" : "liblognorm5",
+        "version" : "2.0.6-4",
+        "publisher" : "Debian",
+        "sourceName" : "liblognorm",
+        "sourceVersion" : "2.0.6-4"
+      },
+      {
+        "name" : "vim",
+        "version" : "2:9.0.1378-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "2:9.0.1378-2"
+      },
+      {
+        "name" : "libfuse3-3",
+        "version" : "3.14.0-4",
+        "publisher" : "Debian",
+        "sourceName" : "fuse3",
+        "sourceVersion" : "3.14.0-4"
+      },
+      {
+        "name" : "python3-idna",
+        "version" : "3.3-1",
+        "publisher" : "Debian",
+        "sourceName" : "python-idna",
+        "sourceVersion" : "3.3-1"
+      },
+      {
+        "name" : "klibc-utils",
+        "version" : "2.0.12-1",
+        "publisher" : "Debian",
+        "sourceName" : "klibc",
+        "sourceVersion" : "2.0.12-1"
+      },
+      {
+        "name" : "reportbug",
+        "version" : "12.0.0",
+        "publisher" : "Debian",
+        "sourceVersion" : "12.0.0"
+      },
+      {
+        "name" : "python3",
+        "version" : "3.11.2-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "python3-defaults (3.11.2-1)",
+        "sourceVersion" : "3.11.2-1"
+      },
+      {
+        "name" : "libuuid1",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "libpng16-16",
+        "version" : "1.6.39-2",
+        "publisher" : "Debian",
+        "sourceName" : "libpng1.6",
+        "sourceVersion" : "1.6.39-2"
+      },
+      {
+        "name" : "procps",
+        "version" : "2:4.0.2-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "2:4.0.2-3"
+      },
+      {
+        "name" : "libfastjson4",
+        "version" : "1.2304.0-1",
+        "publisher" : "Debian",
+        "sourceName" : "libfastjson",
+        "sourceVersion" : "1.2304.0-1"
+      },
+      {
+        "name" : "mime-support",
+        "version" : "3.66",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.66"
+      },
+      {
+        "name" : "gpg-wks-client",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "libltdl7",
+        "version" : "2.4.7-5",
+        "publisher" : "Debian",
+        "sourceName" : "libtool",
+        "sourceVersion" : "2.4.7-5"
+      },
+      {
+        "name" : "libassuan0",
+        "version" : "2.5.5-5",
+        "publisher" : "Debian",
+        "sourceName" : "libassuan",
+        "sourceVersion" : "2.5.5-5"
+      },
+      {
+        "name" : "liblz4-1",
+        "version" : "1.9.4-1",
+        "publisher" : "Debian",
+        "sourceName" : "lz4",
+        "sourceVersion" : "1.9.4-1"
+      },
+      {
+        "name" : "libnetfilter-conntrack3",
+        "version" : "1.0.9-3",
+        "publisher" : "Debian",
+        "sourceName" : "libnetfilter-conntrack",
+        "sourceVersion" : "1.0.9-3"
+      },
+      {
+        "name" : "sudo",
+        "version" : "1.9.13p3-1+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.9.13p3-1+deb12u1"
+      },
+      {
+        "name" : "gpgv",
+        "version" : "2.2.40-1.1",
+        "publisher" : "Debian",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.40-1.1"
+      },
+      {
+        "name" : "jq",
+        "version" : "1.6-2.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.6-2.1"
+      },
+      {
+        "name" : "libjson-c5",
+        "version" : "0.16-2",
+        "publisher" : "Debian",
+        "sourceName" : "json-c",
+        "sourceVersion" : "0.16-2"
+      },
+      {
+        "name" : "manpages",
+        "version" : "6.03-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "6.03-2"
+      },
+      {
+        "name" : "mailcap",
+        "version" : "3.70+nmu1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.70+nmu1"
+      },
+      {
+        "name" : "libxml-treepp-perl",
+        "version" : "0.43-3",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.43-3"
+      },
+      {
+        "name" : "python3-debconf",
+        "version" : "1.5.82",
+        "publisher" : "Debian",
+        "sourceName" : "debconf",
+        "sourceVersion" : "1.5.82"
+      },
+      {
+        "name" : "libpcre2-8-0",
+        "version" : "10.42-1",
+        "publisher" : "Debian",
+        "sourceName" : "pcre2",
+        "sourceVersion" : "10.42-1"
+      },
+      {
+        "name" : "libaudit1",
+        "version" : "1:3.0.9-1",
+        "publisher" : "Debian",
+        "sourceName" : "audit",
+        "sourceVersion" : "1:3.0.9-1"
+      },
+      {
+        "name" : "util-linux-extra",
+        "version" : "2.38.1-5+b1",
+        "publisher" : "Debian",
+        "sourceName" : "util-linux (2.38.1-5)",
+        "sourceVersion" : "2.38.1-5"
+      },
+      {
+        "name" : "python3-minimal",
+        "version" : "3.11.2-1+b1",
+        "publisher" : "Debian",
+        "sourceName" : "python3-defaults (3.11.2-1)",
+        "sourceVersion" : "3.11.2-1"
+      },
+      {
+        "name" : "libzstd1",
+        "version" : "1.5.4+dfsg2-5",
+        "publisher" : "Debian",
+        "sourceName" : "libzstd",
+        "sourceVersion" : "1.5.4+dfsg2-5"
+      },
+      {
+        "name" : "libgdbm-compat4",
+        "version" : "1.23-3",
+        "publisher" : "Debian",
+        "sourceName" : "gdbm",
+        "sourceVersion" : "1.23-3"
+      },
+      {
+        "name" : "xz-utils",
+        "version" : "5.4.1-0.2",
+        "publisher" : "Debian",
+        "sourceVersion" : "5.4.1-0.2"
+      },
+      {
+        "name" : "libsasl2-2",
+        "version" : "2.1.28+dfsg-10",
+        "publisher" : "Debian",
+        "sourceName" : "cyrus-sasl2",
+        "sourceVersion" : "2.1.28+dfsg-10"
+      },
+      {
+        "name" : "cpio",
+        "version" : "2.13+dfsg-7.1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.13+dfsg-7.1"
+      },
+      {
+        "name" : "unattended-upgrades",
+        "version" : "2.9.1+nmu3",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.9.1+nmu3"
+      },
+      {
+        "name" : "hostname",
+        "version" : "3.23+nmu1",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.23+nmu1"
+      },
+      {
+        "name" : "python3-debian",
+        "version" : "0.1.49",
+        "publisher" : "Debian",
+        "sourceName" : "python-debian",
+        "sourceVersion" : "0.1.49"
+      },
+      {
+        "name" : "inetutils-telnet",
+        "version" : "2:2.4-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "inetutils",
+        "sourceVersion" : "2:2.4-2+deb12u1"
+      },
+      {
+        "name" : "libsodium23",
+        "version" : "1.0.18-1",
+        "publisher" : "Debian",
+        "sourceName" : "libsodium",
+        "sourceVersion" : "1.0.18-1"
+      },
+      {
+        "name" : "dmsetup",
+        "version" : "2:1.02.185-2",
+        "publisher" : "Debian",
+        "sourceName" : "lvm2 (2.03.16-2)",
+        "sourceVersion" : "2.03.16-2"
+      },
+      {
+        "name" : "python3-certifi",
+        "version" : "2022.9.24-1",
+        "publisher" : "Debian",
+        "sourceName" : "python-certifi",
+        "sourceVersion" : "2022.9.24-1"
+      },
+      {
+        "name" : "libdb5.3",
+        "version" : "5.3.28+dfsg2-1",
+        "publisher" : "Debian",
+        "sourceName" : "db5.3",
+        "sourceVersion" : "5.3.28+dfsg2-1"
+      },
+      {
+        "name" : "htop",
+        "version" : "3.2.2-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.2.2-2"
+      },
+      {
+        "name" : "libaio1",
+        "version" : "0.3.113-4",
+        "publisher" : "Debian",
+        "sourceName" : "libaio",
+        "sourceVersion" : "0.3.113-4"
+      },
+      {
+        "name" : "krb5-locales",
+        "version" : "1.20.1-2+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "krb5",
+        "sourceVersion" : "1.20.1-2+deb12u1"
+      },
+      {
+        "name" : "libwrap0",
+        "version" : "7.6.q-32",
+        "publisher" : "Debian",
+        "sourceName" : "tcp-wrappers",
+        "sourceVersion" : "7.6.q-32"
+      },
+      {
+        "name" : "ldap-utils",
+        "version" : "2.5.13+dfsg-5",
+        "publisher" : "Debian",
+        "sourceName" : "openldap",
+        "sourceVersion" : "2.5.13+dfsg-5"
+      },
+      {
+        "name" : "libcurl4",
+        "version" : "7.88.1-10+deb12u5",
+        "publisher" : "Debian",
+        "sourceName" : "curl",
+        "sourceVersion" : "7.88.1-10+deb12u5"
+      },
+      {
+        "name" : "python3-requests",
+        "version" : "2.28.1+dfsg-1",
+        "publisher" : "Debian",
+        "sourceName" : "requests",
+        "sourceVersion" : "2.28.1+dfsg-1"
+      },
+      {
+        "name" : "libapt-pkg6.0",
+        "version" : "2.6.1",
+        "publisher" : "Debian",
+        "sourceName" : "apt",
+        "sourceVersion" : "2.6.1"
+      },
+      {
+        "name" : "curl",
+        "version" : "7.88.1-10+deb12u5",
+        "publisher" : "Debian",
+        "sourceVersion" : "7.88.1-10+deb12u5"
+      },
+      {
+        "name" : "sensible-utils",
+        "version" : "0.0.17+nmu1",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.0.17+nmu1"
+      },
+      {
+        "name" : "libgdbm6",
+        "version" : "1.23-3",
+        "publisher" : "Debian",
+        "sourceName" : "gdbm",
+        "sourceVersion" : "1.23-3"
+      },
+      {
+        "name" : "libxxhash0",
+        "version" : "0.8.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "xxhash",
+        "sourceVersion" : "0.8.1-1"
+      },
+      {
+        "name" : "findutils",
+        "version" : "4.9.0-4",
+        "publisher" : "Debian",
+        "sourceVersion" : "4.9.0-4"
+      },
+      {
+        "name" : "libldap-2.5-0",
+        "version" : "2.5.13+dfsg-5",
+        "publisher" : "Debian",
+        "sourceName" : "openldap",
+        "sourceVersion" : "2.5.13+dfsg-5"
+      },
+      {
+        "name" : "libdbus-1-3",
+        "version" : "1.14.10-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "dbus",
+        "sourceVersion" : "1.14.10-1~deb12u1"
+      },
+      {
+        "name" : "liblmdb0",
+        "version" : "0.9.24-1",
+        "publisher" : "Debian",
+        "sourceName" : "lmdb",
+        "sourceVersion" : "0.9.24-1"
+      },
+      {
+        "name" : "iptables",
+        "version" : "1.8.9-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.8.9-2"
+      },
+      {
+        "name" : "libbsd0",
+        "version" : "0.11.7-2",
+        "publisher" : "Debian",
+        "sourceName" : "libbsd",
+        "sourceVersion" : "0.11.7-2"
+      },
+      {
+        "name" : "adduser",
+        "version" : "3.134",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.134"
+      },
+      {
+        "name" : "liberror-perl",
+        "version" : "0.17029-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.17029-2"
+      },
+      {
+        "name" : "libpsl5",
+        "version" : "0.21.2-1",
+        "publisher" : "Debian",
+        "sourceName" : "libpsl",
+        "sourceVersion" : "0.21.2-1"
+      },
+      {
+        "name" : "netbase",
+        "version" : "6.4",
+        "publisher" : "Debian",
+        "sourceVersion" : "6.4"
+      },
+      {
+        "name" : "man-db",
+        "version" : "2.11.2-2",
+        "publisher" : "Debian",
+        "sourceVersion" : "2.11.2-2"
+      },
+      {
+        "name" : "rudder-agent",
+        "version" : "8.1.0~beta3~git202403290219-debian12",
+        "publisher" : "Debian",
+        "sourceVersion" : "8.1.0~beta3~git202403290219-debian12"
+      },
+      {
+        "name" : "grub-pc-bin",
+        "version" : "2.06-13+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-13+deb12u1"
+      },
+      {
+        "name" : "firmware-linux-free",
+        "version" : "20200122-1",
+        "publisher" : "Debian",
+        "sourceName" : "firmware-free",
+        "sourceVersion" : "20200122-1"
+      },
+      {
+        "name" : "libssl3",
+        "version" : "3.0.11-1~deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "openssl",
+        "sourceVersion" : "3.0.11-1~deb12u2"
+      },
+      {
+        "name" : "tar",
+        "version" : "1.34+dfsg-1.2+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.34+dfsg-1.2+deb12u1"
+      },
+      {
+        "name" : "linux-image-6.1.0-18-amd64",
+        "version" : "6.1.76-1",
+        "publisher" : "Debian",
+        "sourceName" : "linux-signed-amd64 (6.1.76+1)",
+        "sourceVersion" : "6.1.76+1"
+      },
+      {
+        "name" : "libc-l10n",
+        "version" : "2.36-9+deb12u4",
+        "publisher" : "Debian",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.36-9+deb12u4"
+      },
+      {
+        "name" : "usr-is-merged",
+        "version" : "37~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "usrmerge",
+        "sourceVersion" : "37~deb12u1"
+      },
+      {
+        "name" : "tzdata",
+        "version" : "2024a-0+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "2024a-0+deb12u1"
+      },
+      {
+        "name" : "perl-base",
+        "version" : "5.36.0-7+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "perl",
+        "sourceVersion" : "5.36.0-7+deb12u1"
+      },
+      {
+        "name" : "base-files",
+        "version" : "12.4+deb12u5",
+        "publisher" : "Debian",
+        "sourceVersion" : "12.4+deb12u5"
+      },
+      {
+        "name" : "openssl",
+        "version" : "3.0.11-1~deb12u2",
+        "publisher" : "Debian",
+        "sourceVersion" : "3.0.11-1~deb12u2"
+      },
+      {
+        "name" : "perl-modules-5.36",
+        "version" : "5.36.0-7+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "perl",
+        "sourceVersion" : "5.36.0-7+deb12u1"
+      },
+      {
+        "name" : "libgnutls30",
+        "version" : "3.7.9-2+deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "gnutls28",
+        "sourceVersion" : "3.7.9-2+deb12u2"
+      },
+      {
+        "name" : "systemd-sysv",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "grub-common",
+        "version" : "2.06-13+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-13+deb12u1"
+      },
+      {
+        "name" : "libc6",
+        "version" : "2.36-9+deb12u4",
+        "publisher" : "Debian",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.36-9+deb12u4"
+      },
+      {
+        "name" : "qemu-utils",
+        "version" : "1:7.2+dfsg-7+deb12u5",
+        "publisher" : "Debian",
+        "sourceName" : "qemu",
+        "sourceVersion" : "1:7.2+dfsg-7+deb12u5"
+      },
+      {
+        "name" : "usrmerge",
+        "version" : "37~deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "37~deb12u1"
+      },
+      {
+        "name" : "libsystemd-shared",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "libuv1",
+        "version" : "1.44.2-1+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "1.44.2-1+deb12u1"
+      },
+      {
+        "name" : "grub2-common",
+        "version" : "2.06-13+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-13+deb12u1"
+      },
+      {
+        "name" : "locales",
+        "version" : "2.36-9+deb12u4",
+        "publisher" : "Debian",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.36-9+deb12u4"
+      },
+      {
+        "name" : "systemd",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "openssh-sftp-server",
+        "version" : "1:9.2p1-2+deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "openssh",
+        "sourceVersion" : "1:9.2p1-2+deb12u2"
+      },
+      {
+        "name" : "grub-pc",
+        "version" : "2.06-13+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "grub2",
+        "sourceVersion" : "2.06-13+deb12u1"
+      },
+      {
+        "name" : "distro-info-data",
+        "version" : "0.58+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "0.58+deb12u1"
+      },
+      {
+        "name" : "libnghttp2-14",
+        "version" : "1.52.0-1+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "nghttp2",
+        "sourceVersion" : "1.52.0-1+deb12u1"
+      },
+      {
+        "name" : "libudev1",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "python3-distro-info",
+        "version" : "1.5+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "distro-info",
+        "sourceVersion" : "1.5+deb12u1"
+      },
+      {
+        "name" : "udev",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "linux-image-amd64",
+        "version" : "6.1.76-1",
+        "publisher" : "Debian",
+        "sourceName" : "linux-signed-amd64 (6.1.76+1)",
+        "sourceVersion" : "6.1.76+1"
+      },
+      {
+        "name" : "libc-bin",
+        "version" : "2.36-9+deb12u4",
+        "publisher" : "Debian",
+        "sourceName" : "glibc",
+        "sourceVersion" : "2.36-9+deb12u4"
+      },
+      {
+        "name" : "libnss-systemd",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "libperl5.36",
+        "version" : "5.36.0-7+deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "perl",
+        "sourceVersion" : "5.36.0-7+deb12u1"
+      },
+      {
+        "name" : "bind9-dnsutils",
+        "version" : "1:9.18.24-1",
+        "publisher" : "Debian",
+        "sourceName" : "bind9",
+        "sourceVersion" : "1:9.18.24-1"
+      },
+      {
+        "name" : "perl",
+        "version" : "5.36.0-7+deb12u1",
+        "publisher" : "Debian",
+        "sourceVersion" : "5.36.0-7+deb12u1"
+      },
+      {
+        "name" : "openssh-client",
+        "version" : "1:9.2p1-2+deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "openssh",
+        "sourceVersion" : "1:9.2p1-2+deb12u2"
+      },
+      {
+        "name" : "bind9-libs",
+        "version" : "1:9.18.24-1",
+        "publisher" : "Debian",
+        "sourceName" : "bind9",
+        "sourceVersion" : "1:9.18.24-1"
+      },
+      {
+        "name" : "libcryptsetup12",
+        "version" : "2:2.6.1-4~deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "cryptsetup",
+        "sourceVersion" : "2:2.6.1-4~deb12u2"
+      },
+      {
+        "name" : "libsystemd0",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "libpam-systemd",
+        "version" : "252.22-1~deb12u1",
+        "publisher" : "Debian",
+        "sourceName" : "systemd",
+        "sourceVersion" : "252.22-1~deb12u1"
+      },
+      {
+        "name" : "openssh-server",
+        "version" : "1:9.2p1-2+deb12u2",
+        "publisher" : "Debian",
+        "sourceName" : "openssh",
+        "sourceVersion" : "1:9.2p1-2+deb12u2"
+      },
+      {
+        "name" : "bind9-host",
+        "version" : "1:9.18.24-1",
+        "publisher" : "Debian",
+        "sourceName" : "bind9",
+        "sourceVersion" : "1:9.18.24-1"
+      }
+    ],
+    "softwareUpdate" : [
+      {
+        "name" : "openssh-client",
+        "version" : "1:9.2p1-2+deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "bind9-libs",
+        "version" : "1:9.18.24-1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "python3-distro-info",
+        "version" : "1.5+deb12u1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "grub2-common",
+        "version" : "2.06-13+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "bind9-dnsutils",
+        "version" : "1:9.18.24-1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libsystemd0",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "locales",
+        "version" : "2.36-9+deb12u4",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "distro-info-data",
+        "version" : "0.58+deb12u1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libcryptsetup12",
+        "version" : "2:2.6.1-4~deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "linux-image-amd64",
+        "version" : "6.1.76-1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "perl-base",
+        "version" : "5.36.0-7+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "openssh-server",
+        "version" : "1:9.2p1-2+deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libnghttp2-14",
+        "version" : "1.52.0-1+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "usr-is-merged",
+        "version" : "37~deb12u1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "systemd",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libudev1",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libpam-systemd",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libsystemd-shared",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "grub-pc-bin",
+        "version" : "2.06-13+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libuv1",
+        "version" : "1.44.2-1+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "grub-pc",
+        "version" : "2.06-13+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libssl3",
+        "version" : "3.0.11-1~deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "usrmerge",
+        "version" : "37~deb12u1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "base-files",
+        "version" : "12.4+deb12u5",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libc6",
+        "version" : "2.36-9+deb12u4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libc-l10n",
+        "version" : "2.36-9+deb12u4",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "perl-modules-5.36",
+        "version" : "5.36.0-7+deb12u1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "qemu-utils",
+        "version" : "1:7.2+dfsg-7+deb12u5",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "openssh-sftp-server",
+        "version" : "1:9.2p1-2+deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "udev",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "openssl",
+        "version" : "3.0.11-1~deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "perl",
+        "version" : "5.36.0-7+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "bind9-host",
+        "version" : "1:9.18.24-1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libperl5.36",
+        "version" : "5.36.0-7+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "systemd-sysv",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libnss-systemd",
+        "version" : "252.22-1~deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "libc-bin",
+        "version" : "2.36-9+deb12u4",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "tar",
+        "version" : "1.34+dfsg-1.2+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "tzdata",
+        "version" : "2024a-0+deb12u1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      },
+      {
+        "name" : "grub-common",
+        "version" : "2.06-13+deb12u1",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "security",
+        "source" : "Debian:12.5/stable, Debian-Security:12/stable-security"
+      },
+      {
+        "name" : "libgnutls30",
+        "version" : "3.7.9-2+deb12u2",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Debian:12.5/stable"
+      }
+    ],
+    "sounds" : [],
+    "storages" : [
+      {
+        "name" : "sda",
+        "description" : "SATA",
+        "size" : 22517121024,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX HARDDISK",
+        "model" : "VBOX HARDDISK",
+        "serialNumber" : "VB9a3235be-aa56d267",
+        "sType" : "disk",
+        "quantity" : 1
+      }
+    ],
+    "videos" : [],
+    "vms" : []
+  }
