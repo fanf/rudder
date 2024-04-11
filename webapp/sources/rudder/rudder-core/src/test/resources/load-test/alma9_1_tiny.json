@@ -1,0 +1,285 @@
+{
+    "id" : "35ad4958-4a72-4a83-8cb5-b577837f3350",
+    "hostname" : "nodeXX.rudder.local",
+    "os" : {
+      "type" : "Linux",
+      "name" : "AlmaLinux",
+      "version" : "9.0",
+      "fullName" : "AlmaLinux release 9.0 (Emerald Puma)",
+      "kernelVersion" : "5.14.0-70.22.1.el9_0.x86_64"
+    },
+    "machine" : {
+      "id" : "0000",
+      "machineType" : "vbox",
+      "systemSerial" : "dca6859d-21f0-f042-bea2-44bee3cb6959",
+      "manufacturer" : "innotek GmbH"
+    },
+    "rudderSettings" : {
+      "keyStatus" : "certified",
+      "reportingConfiguration" : {
+
+      },
+      "kind" : "node",
+      "status" : "accepted",
+      "state" : "enabled",
+      "policyMode" : "default",
+      "policyServerId" : "root",
+      "security" : {
+        "tenants" : [
+          "zoneA"
+        ]
+      }
+    },
+    "rudderAgent" : {
+      "type" : "cfengine-community",
+      "user" : "root",
+      "version" : "1398866025:8.1.0.beta3.git202403290219-1.EL.9",
+      "securityToken" : {
+        "kind" : "certificate",
+        "token" : "-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIUAvcW624q17zq6TOvZ2wsRTuAq2swDQYJKoZIhvcNAQEL\nBQAwNjE0MDIGCgmSJomT8ixkAQEMJDM1YWQ0OTU4LTRhNzItNGE4My04Y2I1LWI1\nNzc4MzdmMzM1MDAeFw0yNDAzMjkxMDA3MjVaFw0zNDAzMjcxMDA3MjVaMDYxNDAy\nBgoJkiaJk/IsZAEBDCQzNWFkNDk1OC00YTcyLTRhODMtOGNiNS1iNTc3ODM3ZjMz\nNTAwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDRTqJR7WBA4cLjrKTb\nmz3FD0l7CdmIPSiXSGgwj201zUOjwjcb92xt7NSO2JG1N9fjAbABt00btpEyGV1h\nGoGaA1jVwtskGj4eEOZZOOvRR17Tsns0H9GY934uIoGZvF0cUusCcw3QOEO+Eac/\nZcRaO3q1RHupeqCKLOjj+ym8rzbVA5vKhC2GS46dmX/HKqXk3vw577135DhP4Dtw\ng4IyR1b6ZEjfMFONNFiB6287QVjUPdx6hzt+z7DwU92GNzBE+kWi0n1YtR6ZAXss\nHgx4a067k7X6aFYdENw+wRAdibsU2ou+Fe+3yEusdjCT0yeKLg9A/3y2MsoHE3I8\nWpL8KmtD5kT0L+H4sHVPEe/ToHqel721xRiqMImBcP1AQvPAGPdAw5geQ+g+50At\nmef3Fjdnu+oF85NZ1v111pSfiYB/iXZA74JVh/wW4tEb/Pd1flFOgVj9xBW6rLbR\nsOoIvy0tP84YcC1Uacn+p03luhtg88ucxMnXOT6ynR/eYVPkoS/7Q4tDRSkllBkQ\nAJgaCO09/DIDmN8bgY2S9BHrIHWLalTSqFL48/0w2xHf2tsHohySv/8tUPXRNZqj\nmMcJHFA+dZzIj9t+9qYGClWrCsAM7OZlqH4KbPPwgeZf1ARaKKQ/2wR8CMWBMbe/\ndA6QJd6R+pZs19XZTVDOLt7zpQIDAQABo4GwMIGtMAwGA1UdEwQFMAMBAf8wHQYD\nVR0OBBYEFEfDpmxOZoyiNR+A7Jf1Kyo7fFCvMHEGA1UdIwRqMGiAFEfDpmxOZoyi\nNR+A7Jf1Kyo7fFCvoTqkODA2MTQwMgYKCZImiZPyLGQBAQwkMzVhZDQ5NTgtNGE3\nMi00YTgzLThjYjUtYjU3NzgzN2YzMzUwghQC9xbrbirXvOrpM69nbCxFO4CrazAL\nBgNVHQ8EBAMCArwwDQYJKoZIhvcNAQELBQADggIBACSSD3+0O2qONU57ZsDv/K9N\n8xMCVGZEz9UTWE0pW1sl79lCLJYQR1Cvs2Gi5PN1dpJB9R1O8d1pgPqz1RA0FurA\n/3AwVRirtb4YyMasyFv5lqylV8p4gZ/D+GVxhA3yrkW4yLORsGx0Wjpj84cNTzDi\naRH5SF9XJx4QpaXc+gTOMw6Pd08UDGsZ4DuUchJCF1bw2ofUoCJbVhSJ9D+cV4QX\nmU86fuIrwgS0bJtSeZp04ugMHwqGZu8Kc/lfmCpkmXKLXsjNFNhGy//R29KBN/Gg\n9CqS6/i3hQVDo8DGQndoFZGPoFBubhvdp1H89az8uGe1SvwSzENYoh0uMAlpgmuF\nmZYpe5bdHX0tuLo27kqVsWSkjR1FHr1E/VEGtqvVPz9grxenm2Yp9trAjW57bGgz\nYdTZBA0I+V4QVj8jQadsOYwM5cu1bUlgX7IVmknc9twqLt/97nmNFDpW2Ih+uled\nCgR8T+cRUi1Gfn3S5kQemdUaPRnKhEdzrvjb9yLK8E7pMiBtWBZoJNtVgRj56n5d\nmFDqZFKopxV7DHlFf0ZZjr1edtydejWZlKhgeR1JEr5/eHLSQIWWV6G9GqPfQifb\nPjbFpzDO73coJ32VYHkJcU46JPVb+J7Rl48+mrtEhvKuu9G49ePpsCw5uWKKjLJd\nguKyEl3hZprr/ml6MFNp\n-----END CERTIFICATE-----"
+      },
+      "capabilities" : [
+        "jq",
+        "yaml",
+        "cfengine",
+        "curl",
+        "acl",
+        "xml",
+        "http_reporting"
+      ]
+    },
+    "properties" : [],
+    "creationDate" : "2024-03-29T10:07:32Z",
+    "factProcessedDate" : "2024-04-09T20:25:33Z",
+    "lastInventoryDate" : "2024-04-09T20:25:33Z",
+    "ipAddresses" : [
+      "192.168.4.5",
+      "0:0:0:0:0:0:0:1",
+      "fe80:0:0:0:a00:27ff:feff:4812",
+      "10.0.2.15",
+      "fe80:0:0:0:a00:27ff:fec3:c3d6",
+      "127.0.0.1"
+    ],
+    "timezone" : {
+      "name" : "UTC",
+      "offset" : "+0000"
+    },
+    "archDescription" : "x86_64",
+    "ram" : 479199232,
+    "accounts" : [
+      "adm",
+      "bin",
+      "chrony",
+      "daemon",
+      "dbus",
+      "ftp",
+      "games",
+      "halt",
+      "lp",
+      "mail",
+      "nobody",
+      "operator",
+      "root",
+      "rpc",
+      "rpcuser",
+      "shutdown",
+      "sshd",
+      "sssd",
+      "sync",
+      "systemd-coredump",
+      "systemd-oom",
+      "tss",
+      "vagrant",
+      "vboxadd"
+    ],
+    "bios" : [
+      {
+        "name" : "VirtualBox",
+        "version" : "VirtualBox",
+        "editor" : "innotek GmbH",
+        "releaseDate" : "2006-12-01T00:00:00Z",
+        "quantity" : 1
+      }
+    ],
+    "controllers" : [],
+    "environmentVariables" : [
+      ["BASEDIR", "/opt/rudder/share/commands"],
+      ["DEBIAN_FRONTEND", "noninteractive"],
+      ["INFOMGR_BYPASS_NONSA", "1"],
+      ["INVOCATION_ID", "3ab12b2435b84b75b75af4bbc7e1cfdc"],
+      ["JOURNAL_STREAM", "8:19104"],
+      ["PATH", "/opt/rudder/bin:/usr/gnu/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/usr/sbin"],
+      ["PWD", "/var/rudder"],
+      ["RUDDER_BIN", "/opt/rudder/bin/rudder"],
+      ["SHLVL", "2"],
+      ["SYSTEMD_EXEC_PID", "601"],
+      ["VERBOSITY_OPTION", ""],
+      ["_", "/usr/bin/perl"]
+    ],
+    "fileSystems" : [
+      {
+        "mountPoint" : "/vagrant",
+        "name" : "vboxsf",
+        "freeSpace" : 216688230400,
+        "totalSpace" : 912663773184
+      },
+      {
+        "mountPoint" : "/",
+        "name" : "xfs",
+        "freeSpace" : 19485687808,
+        "totalSpace" : 20957888512
+      }
+    ],
+    "inputs" : [],
+    "localGroups" : [],
+    "localUsers" : [],
+    "logicalVolumes" : [],
+    "memories" : [],
+    "networks" : [
+      {
+        "name" : "enp0s3",
+        "ifAddresses" : [
+          "fe80::a00:27ff:feff:4812",
+          "10.0.2.15"
+        ],
+        "ifGateway" : [
+          "10.0.2.2"
+        ],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "10.0.2.0"
+        ],
+        "macAddress" : "08:00:27:ff:48:12",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "enp0s8",
+        "ifAddresses" : [
+          "fe80::a00:27ff:fec3:c3d6",
+          "192.168.4.5"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "192.168.4.0"
+        ],
+        "macAddress" : "08:00:27:c3:c3:d6",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "lo",
+        "ifAddresses" : [
+          "::1",
+          "127.0.0.1"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "fff0::",
+          "255.0.0.0"
+        ],
+        "ifSubnet" : [
+          "::",
+          "127.0.0.0"
+        ],
+        "macAddress" : "00:00:00:00:00:00",
+        "status" : "Up",
+        "ifType" : "loopback"
+      }
+    ],
+    "physicalVolumes" : [],
+    "ports" : [],
+    "processes" : [],
+    "processors" : [
+      {
+        "manufacturer" : "AMD",
+        "name" : "AMD Ryzen 7 PRO 6850U with Radeon Graphics",
+        "arch" : "i386",
+        "core" : 1,
+        "thread" : 1,
+        "stepping" : 1,
+        "family" : 25,
+        "model" : 68,
+        "quantity" : 1
+      }
+    ],
+    "slots" : [],
+    "software" : [
+      {
+        "name" : "dracut-config-generic",
+        "version" : "055-45.git20220404.el9_0",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "libbpf",
+        "version" : "2:0.5.0-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "elfutils-debuginfod-client",
+        "version" : "0.186-1.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-File-Temp",
+        "version" : "1:0.231.100-4.el9",
+        "publisher" : "AlmaLinux"
+      },
+      {
+        "name" : "perl-filetest",
+        "version" : "1.03-479.el9",
+        "publisher" : "AlmaLinux"
+      }
+    ],
+    "softwareUpdate" : [
+      {
+        "name" : "cryptsetup-libs",
+        "version" : "2.6.0-3.el9",
+        "arch" : "x86_64",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "baseos",
+        "ids" : [
+          ""
+        ]
+      },
+      {
+        "name" : "perl-vmsish",
+        "version" : "1.04-480.el9",
+        "arch" : "noarch",
+        "from" : "yum",
+        "kind" : "none",
+        "source" : "appstream",
+        "ids" : [
+          ""
+        ]
+      }
+    ],
+    "sounds" : [],
+    "storages" : [
+      {
+        "name" : "sda",
+        "description" : "SATA",
+        "size" : 21989687296,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX HARDDISK",
+        "model" : "VBOX HARDDISK",
+        "serialNumber" : "VB0eaab07f-512e5d7e",
+        "sType" : "disk",
+        "quantity" : 1
+      }
+    ],
+    "videos" : [],
+    "vms" : []
+  }

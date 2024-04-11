@@ -43,6 +43,8 @@ import com.normation.errors.*
 import com.normation.inventory.domain.AlmaLinux
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.ldap.core.ReadOnlySoftwareDAOImpl
+import com.normation.rudder.domain.logger.FactQueryProcessorLoggerPure
+import com.normation.rudder.domain.nodes.NodeState
 import com.normation.rudder.domain.queries.*
 import com.normation.rudder.facts.nodes.*
 import com.normation.rudder.facts.nodes.NodeFactSerialisation.*
@@ -70,6 +72,12 @@ final case class ENV(
 )
 
 object LoadTestQueryProcessor {
+
+  org.slf4j.LoggerFactory
+    .getLogger("query.node-fact.metrics")
+    .asInstanceOf[ch.qos.logback.classic.Logger]
+    .setLevel(ch.qos.logback.classic.Level.TRACE)
+
   val df      = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SZ")
   val logPath = s"/tmp/test-rudder-load/${ZonedDateTime.now().format(df)}"
   val logFile = File(logPath).createFileIfNotExists(createParents = true)
@@ -141,20 +149,19 @@ object LoadTestQueryProcessor {
 
   def time[A](hint: String)(a: IOResult[A]): IOResult[A] = {
     for {
-      t0  <- currentTimeMillis
+      t0  <- currentTimeNanos
       res <- a
-      t1  <- currentTimeMillis
-      _   <- logPure(s"${hint}: ${t1 - t0} ms")
+      t1  <- currentTimeNanos
+      _   <- logPure(s"${hint}: ${t1 - t0} ns")
     } yield res
   }
 
-  def createNodes(small: Boolean): IOResult[Chunk[NodeFact]] = {
-    val numByOS = 50
-    logPure(s"Create ${numByOS} nodes from ${if (small) "small" else "full"} template") *>
+  def createNodes(numByOS: Int, small: Boolean): IOResult[Chunk[NodeFact]] = {
+    logPure(s"Create ${numByOS * 3} nodes from ${if (small) "small" else "full"} template") *>
     time("time creating nodes: ")(for {
-      alma   <- LoadNodeFact.generateNodesFrom(if (small) "alma9_1_small.json" else "alma9_1.json", 10000000, numByOS)
-      debian <- LoadNodeFact.generateNodesFrom(if (small) "debian12_1_small.json" else "debian12_1.json", 20000000, numByOS)
-      ubuntu <- LoadNodeFact.generateNodesFrom(if (small) "ubuntu22_1_small.json" else "ubuntu22_1.json", 30000000, numByOS)
+      alma   <- LoadNodeFact.generateNodesFrom(if (small) "alma9_1_tiny.json" else "alma9_1.json", 10000000, numByOS)
+      debian <- LoadNodeFact.generateNodesFrom(if (small) "debian12_1_tiny.json" else "debian12_1.json", 20000000, numByOS)
+      ubuntu <- LoadNodeFact.generateNodesFrom(if (small) "ubuntu22_1_tiny.json" else "ubuntu22_1.json", 30000000, numByOS)
     } yield alma ++ debian ++ ubuntu)
   }
 
@@ -169,27 +176,63 @@ object LoadTestQueryProcessor {
    * Comparison between selecting OS from query or LDAP, repeat N times
    */
   def selectOS(env: ENV, nodes: Chunk[NodeFact], repeat: Int): IOResult[Unit] = {
-    val query = """
+//    val query = """
+//      { "select":"node", "where":[
+//        {"objectType":"node","attribute":"osName","comparator":"eq","value":"AlmaLinux"}
+//      ] }
+//      """
+//    def directMatchNode(n: NodeFact) = {
+//      (n.os.os == AlmaLinux)
+//    }
+
+    val query                        = """
       { "select":"node", "where":[
-        {"objectType":"node","attribute":"osName","comparator":"eq","value":"AlmaLinux"}
+        {"objectType":"node","attribute":"osName","comparator":"eq","value":"AlmaLinux"},
+        {"objectType":"node","attribute":"nodeHostname","comparator":"regex","value":".*.rudder.local"},
+        {"objectType":"node","attribute":"state","comparator":"eq","value":"enabled"},
+        {"objectType":"node","attribute":"ram","comparator":"gt","value":"1000"}
       ] }
       """
+    val p                            = ".*.rudder.local".r
+
+    def directMatchNode(n: CoreNodeFact) = {
+      (n.os.os == AlmaLinux) &&
+      p.matches(n.fqdn) &&
+      (n.rudderSettings.state == NodeState.Enabled) &&
+      (n.ram.map(_.size).getOrElse(0L) > 1000)
+    }
+
+    // compare ZIO.filter to collect
+
+    def processOne(n: CoreNodeFact): IOResult[Boolean] = {
+      for {
+        _   <- FactQueryProcessorLoggerPure.debug(s"  --'${n.fqdn}' (${n.id.value})--")
+        res <- directMatchNode(n).succeed
+        _   <- FactQueryProcessorLoggerPure.debug(s"  = [${res}] on '${n.fqdn}' (${n.id.value})")
+      } yield res
+    }
+    val process = ZIO.filter(nodes)(node =>
+      FactQueryProcessorLoggerPure.debug(s"processing node ${node.id.value}") *> processOne(node.toCore)
+    )
 
     for {
       _ <- logPure(s"selecting OS with ${repeat} repetitions")
       q <- env.queryParser(query).toIO
       _ <- time(s"process query")(env.queryProcessor.processPure(q)).repeatN(repeat)
-      _ <- time(s"collect nodes")(nodes.collect { case n if (n.os.os == AlmaLinux) => n }.succeed).repeatN(repeat)
+      _ <- time(s"collect nodes")(nodes.collect { case n if directMatchNode(n.toCore) => n }.succeed)
+             .repeatN(2) // no need to have as many
+      _ <- time(s"zio filter nodes")(process).repeatN(2)
+      _ <- time(s"zio filter nodes (no log)")(ZIO.filter(nodes)(node => directMatchNode(node.toCore).succeed)).repeatN(2)
     } yield ()
   }
 
   def prog(implicit env: ENV): IOResult[Unit] = {
     for {
-      nodes <- createNodes(small = true)
+      nodes <- createNodes(500, small = true)
       _     <- saveNodes(nodes)
 // if a full dump of ldif is needed
 //      _     <- IOResult.attempt(env.ldap.testServer.exportToLDIF("/tmp/rudder-load.ldif", true, true))
-      _     <- selectOS(env, nodes, 50)
+      _     <- selectOS(env, nodes, 30)
     } yield ()
   }
 

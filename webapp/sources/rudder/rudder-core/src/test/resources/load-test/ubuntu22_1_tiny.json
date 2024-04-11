@@ -1,0 +1,377 @@
+{
+    "id" : "951ef3ea-1a68-4ce2-a0d8-a00741bb34e7",
+    "hostname" : "nodeXX.rudder.local",
+    "os" : {
+      "type" : "Linux",
+      "name" : "Ubuntu",
+      "version" : "22.04",
+      "fullName" : "Ubuntu 22.04 LTS",
+      "kernelVersion" : "5.15.0-101-generic"
+    },
+    "machine" : {
+      "id" : "0000",
+      "machineType" : "vbox",
+      "systemSerial" : "1a517e9b-3369-cc47-99aa-a30872f13293",
+      "manufacturer" : "innotek GmbH"
+    },
+    "rudderSettings" : {
+      "keyStatus" : "certified",
+      "reportingConfiguration" : {
+
+      },
+      "kind" : "node",
+      "status" : "accepted",
+      "state" : "enabled",
+      "policyMode" : "default",
+      "policyServerId" : "root",
+      "security" : {
+        "tenants" : [
+          "zoneB"
+        ]
+      }
+    },
+    "rudderAgent" : {
+      "type" : "cfengine-community",
+      "user" : "root",
+      "version" : "8.1.0~beta3~git202403290219-ubuntu22.04",
+      "securityToken" : {
+        "kind" : "certificate",
+        "token" : "-----BEGIN CERTIFICATE-----\nMIIFqzCCA5OgAwIBAgIUYsMe7hceeVqjAcw+61t7dRGFrXkwDQYJKoZIhvcNAQEL\nBQAwNjE0MDIGCgmSJomT8ixkAQEMJDk1MWVmM2VhLTFhNjgtNGNlMi1hMGQ4LWEw\nMDc0MWJiMzRlNzAeFw0yNDAzMjkxNTA2NTBaFw0zNDAzMjcxNTA2NTBaMDYxNDAy\nBgoJkiaJk/IsZAEBDCQ5NTFlZjNlYS0xYTY4LTRjZTItYTBkOC1hMDA3NDFiYjM0\nZTcwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQC1XjC4Uiax8skuxt10\nbbnGQKygMIvDf2qAdgxunXi3ux+t3A11SrnGAHVP8SSfzTlm6ri9oHwCMw8nDqc+\nNOmGhXPynzwSQSJVo5y+ivyr7COni1AZ6Gfxg4XJuZXm7FAcYkn8X6IHkq+xHFBv\nMlU8mw+UdTA5jYcncS1twxuNyD15Cj4IkScw/i4eI0yOwoeGRGBaFk+lu+JVq1oD\n8i2L/TVx/ZzG5hq2OnriRbdn3ZTyCzsxd/fzPZW5VXD3QeOm4KXNGCmG8pPVSUux\nWcnpXx2wEkIyNV7NQw7JeSRtM5qReEZWyZ2JLJiD6GYXTNgNN+7oU42OnDchqjEg\nqC2Oh8k3//RaUvGYaPsKTyyYe2aF+cTQpVhgIk+Mnr33ykvms/+g0eEl1SMJJaNe\nWrcLxQgyAUKU/xC62JrD2JoAluA1NqxYad0a3LA7FpJ1GycIcNCoCeohxXDXbjhP\nQbEs7S9Ksr/gl0yrNmAogI9mdUH9nztg0VyMzv6uLSIG3r9TEpeSdaiVEy8zDTdB\ntUPUJ2qKwNpZZFx7q3J9fJebXH/eGbk+BU7FQ2EcymbKw00Re3s6AN5t5h3zZnRl\nCCMKbm9QtiD0CXtvp67lnxGQxLS1aA7qV0elbL6vpfxMrzo4EMLh1jlDB+dZmtIc\ncYa/zG2t3sJJszdItMTfEfVGGQIDAQABo4GwMIGtMAwGA1UdEwQFMAMBAf8wHQYD\nVR0OBBYEFB56ZniV/iJe2De+5qG8rpwY49gWMHEGA1UdIwRqMGiAFB56ZniV/iJe\n2De+5qG8rpwY49gWoTqkODA2MTQwMgYKCZImiZPyLGQBAQwkOTUxZWYzZWEtMWE2\nOC00Y2UyLWEwZDgtYTAwNzQxYmIzNGU3ghRiwx7uFx55WqMBzD7rW3t1EYWteTAL\nBgNVHQ8EBAMCArwwDQYJKoZIhvcNAQELBQADggIBAAYD95EAOnOVP7Gi2OBLnsvr\n1eUyc9vVfl8/ghvXUqR2cUu3SKUcPwmomN0PFuWNitwJtbB+yaiDWae9sV2xscqk\n1w3da3eVeiDpgGA+QxNxD/8kXUYcW8vXrLvNc7HTRQM/UXJGUOeU+2j/4rMC3NVx\nZf8UTH+HVh+eTFqWaFPkg/Px9Sd20oftyICI6eq40bdgl72c1yHSdRE2AaBOCcFL\nD10GBdGcHW/Lnv7ACw+rXjVelwPspTme8LRhPdXGZusfMwc8dXh03Y/zUSiH3Owe\nyPM34uNkunQ3PGrCSpInbt0FR9D4wY8YVub5Cfz8mFGBnXncUhVAuwBnjJH4yWng\nJkZ23RQ3ETepyTBdHx6ORLxZHmNe3LpfCQorNOff6ckMRlq3vUJc4lG4/5Hdkf69\nKr9aFMlRQ4BD4M1h+O2GhjW3Ax7bMFQHhNy/KSfuNLHlNt7LNeclFNyPyxAEybOe\nlBqhMssiwzauVnwzBqmLYE2gkjEM0f98WQ16qAv4mjPf5Ac9/vTAdX5IUEfBtIww\navDxv1SxjXSfH/jUPwlg6P4sJQ6E5LYP+HfOM6+csRHgT8wapaItxQT6ZL0CZo66\nzBgwUM3wgbU/a8Znrq7CBsrvyDz/ZcVB8OjDXQx6zrU9o06ABlE+vUqFFeXRpBKf\ntxCN7EBBo1vBJRu42dWd\n-----END CERTIFICATE-----"
+      },
+      "capabilities" : [
+        "jq",
+        "yaml",
+        "cfengine",
+        "curl",
+        "acl",
+        "xml",
+        "http_reporting"
+      ]
+    },
+    "properties" : [],
+    "creationDate" : "2024-03-29T15:10:23Z",
+    "factProcessedDate" : "2024-04-09T20:25:11Z",
+    "lastInventoryDate" : "2024-04-09T20:25:11Z",
+    "ipAddresses" : [
+      "0:0:0:0:0:0:0:1",
+      "fe80:0:0:0:a00:27ff:fe54:1790",
+      "fe80:0:0:0:e5:1bff:fe70:f463",
+      "10.0.2.15",
+      "127.0.0.1",
+      "192.168.4.6"
+    ],
+    "timezone" : {
+      "name" : "UTC",
+      "offset" : "+0000"
+    },
+    "archDescription" : "x86_64",
+    "ram" : 476053504,
+    "accounts" : [
+      "_apt",
+      "backup",
+      "bin",
+      "daemon",
+      "games",
+      "gnats",
+      "irc",
+      "landscape",
+      "list",
+      "lp",
+      "lxd",
+      "mail",
+      "man",
+      "messagebus",
+      "news",
+      "nobody",
+      "pollinate",
+      "proxy",
+      "root",
+      "sshd",
+      "sync",
+      "sys",
+      "syslog",
+      "systemd-network",
+      "systemd-resolve",
+      "systemd-timesync",
+      "tcpdump",
+      "tss",
+      "ubuntu",
+      "uucp",
+      "uuidd",
+      "vagrant",
+      "www-data"
+    ],
+    "bios" : [
+      {
+        "name" : "VirtualBox",
+        "version" : "VirtualBox",
+        "editor" : "innotek GmbH",
+        "releaseDate" : "2006-12-01T00:00:00Z",
+        "quantity" : 1
+      }
+    ],
+    "controllers" : [
+      {
+        "name" : "440FX - 82441FX PMC [Natoma]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Host bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "53c1030 PCI-X Fusion-MPT Dual Ultra320 SCSI",
+        "manufacturer" : "Broadcom / LSI",
+        "cType" : "SCSI storage controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371AB/EB/MB PIIX4 ACPI",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371AB/EB/MB PIIX4 IDE",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "IDE interface",
+        "quantity" : 1
+      },
+      {
+        "name" : "82371SB PIIX3 ISA [Natoma/Triton II]",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "ISA bridge",
+        "quantity" : 1
+      },
+      {
+        "name" : "82801AA AC'97 Audio Controller",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Multimedia audio controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "PRO/1000 MT Desktop Adapter",
+        "manufacturer" : "Intel Corporation",
+        "cType" : "Ethernet controller",
+        "quantity" : 2
+      },
+      {
+        "name" : "VirtualBox Graphics Adapter",
+        "manufacturer" : "InnoTek Systemberatung GmbH",
+        "cType" : "VGA compatible controller",
+        "quantity" : 1
+      },
+      {
+        "name" : "VirtualBox Guest Service",
+        "manufacturer" : "InnoTek Systemberatung GmbH",
+        "cType" : "System peripheral",
+        "quantity" : 1
+      }
+    ],
+    "environmentVariables" : [
+      ["BASEDIR", "/opt/rudder/share/commands"],
+      ["DEBIAN_FRONTEND", "noninteractive"],
+      ["HOME", "/root"],
+      ["INFOMGR_BYPASS_NONSA", "1"],
+      ["LESSCLOSE", "/usr/bin/lesspipe %s %s"],
+      ["LESSOPEN", "| /usr/bin/lesspipe %s"],
+      ["LOGNAME", "root"],
+      ["LS_COLORS", "rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:"],
+      ["MAIL", "/var/mail/root"],
+      ["PATH", "/opt/rudder/bin:/usr/gnu/bin:/opt/rudder/bin:/usr/gnu/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin:/usr/sbin:/sbin:/usr/sbin"],
+      ["PWD", "/var/rudder"],
+      ["RUDDER_BIN", "/usr/bin/rudder"],
+      ["SHELL", "/bin/bash"],
+      ["SHLVL", "1"],
+      ["SUDO_COMMAND", "/usr/bin/su"],
+      ["SUDO_GID", "1000"],
+      ["SUDO_UID", "1000"],
+      ["SUDO_USER", "vagrant"],
+      ["TERM", "xterm"],
+      ["USER", "root"],
+      ["_", "/usr/bin/rudder"]
+    ],
+    "fileSystems" : [
+      {
+        "mountPoint" : "/",
+        "name" : "ext4",
+        "freeSpace" : 39166410752,
+        "totalSpace" : 41555066880
+      },
+      {
+        "mountPoint" : "/vagrant",
+        "name" : "vboxsf",
+        "freeSpace" : 216688230400,
+        "totalSpace" : 912663773184
+      }
+    ],
+    "inputs" : [],
+    "localGroups" : [],
+    "localUsers" : [],
+    "logicalVolumes" : [],
+    "memories" : [],
+    "networks" : [
+      {
+        "name" : "enp0s3",
+        "ifAddresses" : [
+          "fe80::e5:1bff:fe70:f463",
+          "10.0.2.15"
+        ],
+        "ifGateway" : [
+          "10.0.2.2"
+        ],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "10.0.2.0"
+        ],
+        "macAddress" : "02:e5:1b:70:f4:63",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "enp0s8",
+        "ifAddresses" : [
+          "fe80::a00:27ff:fe54:1790",
+          "192.168.4.6"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "ffff:ffff:ffff:ffff::",
+          "255.255.255.0"
+        ],
+        "ifSubnet" : [
+          "fe80::",
+          "192.168.4.0"
+        ],
+        "macAddress" : "08:00:27:54:17:90",
+        "status" : "Up",
+        "ifType" : "ethernet",
+        "speed" : "1000"
+      },
+      {
+        "name" : "lo",
+        "ifAddresses" : [
+          "::1",
+          "127.0.0.1"
+        ],
+        "ifGateway" : [],
+        "ifMask" : [
+          "fff0::",
+          "255.0.0.0"
+        ],
+        "ifSubnet" : [
+          "::",
+          "127.0.0.0"
+        ],
+        "macAddress" : "00:00:00:00:00:00",
+        "status" : "Up",
+        "ifType" : "loopback"
+      }
+    ],
+    "physicalVolumes" : [],
+    "ports" : [],
+    "processes" : [],
+    "processors" : [
+      {
+        "manufacturer" : "AMD",
+        "name" : "AMD Ryzen 7 PRO 6850U with Radeon Graphics",
+        "arch" : "i386",
+        "core" : 1,
+        "thread" : 1,
+        "stepping" : 1,
+        "family" : 25,
+        "model" : 68,
+        "quantity" : 1
+      }
+    ],
+    "slots" : [],
+    "software" : [
+      {
+        "name" : "python3-idna",
+        "version" : "3.3-1",
+        "publisher" : "Debian",
+        "sourceName" : "python-idna",
+        "sourceVersion" : "3.3-1"
+      },
+      {
+        "name" : "libxxhash0",
+        "version" : "0.8.1-1",
+        "publisher" : "Debian",
+        "sourceName" : "xxhash",
+        "sourceVersion" : "0.8.1-1"
+      },
+      {
+        "name" : "fwupd-signed",
+        "version" : "1.44+1.2-3",
+        "publisher" : "Ubuntu",
+        "sourceName" : "fwupd-signed (1.44)",
+        "sourceVersion" : "1.44"
+      },
+      {
+        "name" : "gpg-agent",
+        "version" : "2.2.27-3ubuntu2.1",
+        "publisher" : "Ubuntu",
+        "sourceName" : "gnupg2",
+        "sourceVersion" : "2.2.27-3ubuntu2.1"
+      },
+      {
+        "name" : "pwgen",
+        "version" : "2.08-2build1",
+        "publisher" : "Ubuntu",
+        "sourceVersion" : "2.08-2build1"
+      }
+    ],
+    "softwareUpdate" : [
+      {
+        "name" : "nftables",
+        "version" : "1.0.2-1ubuntu3",
+        "arch" : "amd64",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      },
+      {
+        "name" : "python3-tz",
+        "version" : "2022.1-1ubuntu0.22.04.1",
+        "arch" : "all",
+        "from" : "apt-get",
+        "kind" : "none",
+        "source" : "Ubuntu:22.04/jammy-updates"
+      }
+    ],
+    "sounds" : [
+      {
+        "name" : "Multimedia audio controller - Intel Corporation 82801AA AC'97 Audio Controller",
+        "description" : "rev 01",
+        "quantity" : 1
+      }
+    ],
+    "storages" : [
+      {
+        "name" : "sda",
+        "description" : "SCSI",
+        "size" : 45035290624,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX",
+        "model" : "HARDDISK",
+        "serialNumber" : "a23d4170",
+        "sType" : "disk",
+        "quantity" : 1
+      },
+      {
+        "name" : "sdb",
+        "description" : "SCSI",
+        "size" : 10485760,
+        "firmware" : "1.0",
+        "manufacturer" : "VBOX",
+        "model" : "HARDDISK",
+        "sType" : "disk",
+        "quantity" : 1
+      }
+    ],
+    "videos" : [],
+    "vms" : []
+  }
