@@ -139,7 +139,7 @@ class ComplianceJdbcRepository(
 
           case x: NoExpectedReport         =>
             // here, the expiration date has not much meaning, since we don't have
-            // information on that node configuration (and so the node has most likelly no
+            // information on that node configuration (and so the node has most likely no
             // idea whatsoever of any config, even global). Take default values,
             // ie 5min for run + 5min for grace
             Some(RunCompliance.from(x.lastRunDateTime, x.lastRunDateTime.plusMinutes(10), r))
