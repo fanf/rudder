@@ -853,7 +853,7 @@ class ApiAccountUnserialisationImpl extends ApiAccountUnserialisation {
                             Full(ApiAuthorization.RO)
                           case Some(Text(text)) if text == ApiAuthorizationKind.RW.name =>
                             Full(ApiAuthorization.RW)
-                          case Some(xml @ <acl>{_*}</acl>) if xml.child.nonEmpty        => unserAcl(xml.child.head)
+                          case Some(xml @ <acl>{_}</acl>) if xml.child.nonEmpty        => unserAcl(xml.child.head)
                           // all other case: serialization pb => None
                           case _                                                        => Full(ApiAuthorization.None)
                         }

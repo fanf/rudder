@@ -64,6 +64,8 @@ import org.joda.time.Duration
 import zio.json.*
 import zio.json.internal.Write
 
+import scala.annotation.nowarn
+
 final case class NodeModeConfig(
     globalComplianceMode: ComplianceMode,
     nodeHeartbeatPeriod:  Option[Int], // if it is defined, then it does override (ie if override = false => None)
@@ -687,6 +689,7 @@ object NodeConfigIdSerializer {
     else {
       implicit val formats = DefaultFormats
       val configs          = parse(ids)
+        // avoid Compiler synthesis of Manifest and OptManifest is deprecated
         .extractOrElse[List[Map[String, String]]](List())
         .flatMap {
           case map =>
@@ -697,7 +700,7 @@ object NodeConfigIdSerializer {
             }
         }
         .flatten
-        .sortBy(_._2.getMillis)
+        .sortBy(_._2.getMillis) : @nowarn("cat=deprecation")
 
       // build interval
       configs match {

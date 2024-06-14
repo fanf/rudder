@@ -101,7 +101,7 @@ sealed trait UserManagementApi extends EnumEntry with EndpointSchema with Genera
 
 object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[UserManagementApi] {
 
-  final case object GetUserInfo extends UserManagementApi with ZeroParam with StartsAtVersion10 {
+  case object GetUserInfo extends UserManagementApi with ZeroParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Get information about registered users in Rudder"
     val (action, path) = GET / "usermanagement" / "users"
@@ -110,7 +110,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String]          = None
   }
 
-  final case object GetRoles extends UserManagementApi with ZeroParam with StartsAtVersion10 {
+  case object GetRoles extends UserManagementApi with ZeroParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Get roles and their authorizations"
     val (action, path) = GET / "usermanagement" / "roles"
@@ -123,7 +123,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
    * This one does not return the list of users so that it can allow script integration
    * but without revealing the actual list of users.
    */
-  final case object ReloadUsersConf extends UserManagementApi with ZeroParam with StartsAtVersion10 {
+  case object ReloadUsersConf extends UserManagementApi with ZeroParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Reload (read again rudder-users.xml and process result) information about registered users in Rudder"
     val (action, path) = POST / "usermanagement" / "users" / "reload"
@@ -131,7 +131,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object DeleteUser extends UserManagementApi with OneParam with StartsAtVersion10 {
+  case object DeleteUser extends UserManagementApi with OneParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Delete a user from the system"
     val (action, path) = DELETE / "usermanagement" / "{username}"
@@ -139,7 +139,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object AddUser extends UserManagementApi with ZeroParam with StartsAtVersion10 {
+  case object AddUser extends UserManagementApi with ZeroParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Add a user with his information and privileges"
     val (action, path) = POST / "usermanagement"
@@ -147,7 +147,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object UpdateUser extends UserManagementApi with OneParam with StartsAtVersion10 {
+  case object UpdateUser extends UserManagementApi with OneParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Update user's administration fields"
     val (action, path) = POST / "usermanagement" / "update" / "{username}"
@@ -155,7 +155,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object UpdateUserInfo extends UserManagementApi with OneParam with StartsAtVersion10 {
+  case object UpdateUserInfo extends UserManagementApi with OneParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Update user's information"
     val (action, path) = POST / "usermanagement" / "update" / "info" / "{username}"
@@ -163,7 +163,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object ActivateUser extends UserManagementApi with OneParam with StartsAtVersion10 {
+  case object ActivateUser extends UserManagementApi with OneParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Activate a user"
     val (action, path) = PUT / "usermanagement" / "status" / "activate" / "{username}"
@@ -171,7 +171,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object DisableUser extends UserManagementApi with OneParam with StartsAtVersion10 {
+  case object DisableUser extends UserManagementApi with OneParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Disable a user"
     val (action, path) = PUT / "usermanagement" / "status" / "disable" / "{username}"
@@ -179,7 +179,7 @@ object UserManagementApi extends Enum[UserManagementApi] with ApiModuleProvider[
     override def dataContainer: Option[String] = None
   }
 
-  final case object RoleCoverage extends UserManagementApi with OneParam with StartsAtVersion10 {
+  case object RoleCoverage extends UserManagementApi with OneParam with StartsAtVersion10 {
     val z              = implicitly[Line].value
     val description    = "Get the coverage of roles over rights"
     val (action, path) = POST / "usermanagement" / "coverage" / "{username}"
