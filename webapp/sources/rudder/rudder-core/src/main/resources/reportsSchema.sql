@@ -188,31 +188,23 @@ ALTER TABLE nodeconfigurations set (autovacuum_vacuum_threshold = 0);
 /*
  *************************************************************************************
  * The following table stores the last compliance computed for a node.
- * It is segmented by policyType, so a node can have several entries in that table.
  * It must be autonomous and in particular it must remains meaningful even if the
  * corresponding expected reports or run are deleted.
  *************************************************************************************
  */
 
-CREATE TABLE nodeLastCompliance (
+CREATE TABLE NodeLastCompliance (
   nodeId              text NOT NULL CHECK (nodeId <> '')
-, policyType          text NOT NULL CHECK (policytype <> '')
 
 -- the time when the compliance was computed. Used to know if it's sill valid or should be cleaned/ignored
 , computationDateTime timestamp with time zone NOT NULL
 
 -- all information about the run and what lead to that compliance:
 -- the run config version, the awaited config version, etc
--- It's JSON
-, runAnalysis         jsonb NOT NULL
-
--- node compliance summary (ie short version) of compliance (typically something alike the compliance bar)
-, summary             jsonb NOT NULL
-
--- node compliance for that policy type in JSON (meaning / details linked to type)
+-- plus the node compliance for that policy type in JSON (meaning / details linked to type)
 , details             jsonb NOT NULL
 
-, PRIMARY KEY (nodeid, policytype)
+, PRIMARY KEY nodeid
 );
 
 

@@ -188,6 +188,97 @@ object NodeStatusReport {
   }
 }
 
+object NodeStatusReportDbSerialisation {
+//  import com.normation.rudder.facts.nodes.NodeFactSerialisation.SimpleCodec.*
+//  import zio.json.*
+
+  sealed trait JsonRunAndConfigInfo
+  object JsonRunAndConfigInfo {
+    case object NoRunNoExpectedReport extends JsonRunAndConfigInfo
+    final case class NoExpectedReport(
+        lastRunDateTime: DateTime,
+        lastRunConfigId: Option[NodeConfigId]
+    ) extends JsonRunAndConfigInfo
+    final case class RunWithoutExpectedReport(
+        lastRunDateTime: DateTime,
+        expectedConfig:  NodeExpectedReports
+    ) extends JsonRunAndConfigInfo
+    final case class NoUserRulesDefined(
+        lastRunDateTime:    DateTime,
+        expectedConfig:     NodeExpectedReports,
+        lastRunConfigId:    NodeConfigId,
+        lastRunConfigInfo:  Option[NodeExpectedReports],
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class NoReportInInterval(
+        expectedConfig:     NodeExpectedReports,
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class KeepLastCompliance(
+        expectedConfig:     NodeExpectedReports,
+        expiredSince:       DateTime,
+        expirationDateTime: DateTime,
+        optLastRun:         Option[(DateTime, NodeExpectedReports)]
+    ) extends JsonRunAndConfigInfo
+    final case class ReportsDisabledInInterval(
+        expectedConfig:     NodeExpectedReports,
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class Pending(
+        expectedConfig:     NodeExpectedReports,
+        optLastRun:         Option[(DateTime, NodeExpectedReports)],
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class UnexpectedVersion(
+        lastRunDateTime:    DateTime,
+        lastRunConfigInfo:  Some[NodeExpectedReports],
+        lastRunExpiration:  DateTime,
+        expectedConfig:     NodeExpectedReports,
+        expectedExpiration: DateTime,
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class UnexpectedNoVersion(
+        lastRunDateTime:    DateTime,
+        lastRunConfigId:    NodeConfigId,
+        lastRunExpiration:  DateTime,
+        expectedConfig:     NodeExpectedReports,
+        expectedExpiration: DateTime,
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class UnexpectedUnknownVersion(
+        lastRunDateTime:    DateTime,
+        lastRunConfigId:    NodeConfigId,
+        expectedConfig:     NodeExpectedReports,
+        expectedExpiration: DateTime,
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+    final case class ComputeCompliance(
+        lastRunDateTime:    DateTime,
+        expectedConfig:     NodeExpectedReports,
+        expirationDateTime: DateTime
+    ) extends JsonRunAndConfigInfo
+
+  }
+
+  /*
+   * Serialisation from/to json in base of a NodeStatusReport
+   */
+  case class JsonNodeStatusReport(
+      nodeId:     NodeId,
+      runInfo:    RunAndConfigInfo,
+      statusInfo: RunComplianceInfo,
+      overrides:  List[OverridenPolicy],
+      reports:    Map[PolicyTypeName, AggregatedStatusReport]
+  )
+
+  object JsonbNodeStatusReport {
+
+//    implicit val codecRunAndConfigInfo:      JsonCodec[RunAndConfigInfo]      = DeriveJsonCodec.gen
+//    implicit val codecJsonbNodeStatusReport: JsonCodec[JsonNodeStatusReport] = DeriveJsonCodec.gen
+
+  }
+}
+
 /**
  * build an aggregated view of a set of reports,
  * allowing to access compound compliance for rules,

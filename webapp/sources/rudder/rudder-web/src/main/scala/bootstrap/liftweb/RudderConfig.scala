@@ -3080,9 +3080,13 @@ object RudderConfigInit {
       RUDDER_JDBC_BATCH_MAX_SIZE
     )
 
-    lazy val nodeStatusReportRepository: NodeStatusReportRepository = new DummyNodeStatusReportRepository(
-      Ref.make(Map[NodeId, NodeStatusReport]()).runNow
-    )
+    lazy val nodeStatusReportRepository: NodeStatusReportRepository = {
+      (for {
+        x <- Ref.make(Map[NodeId, NodeStatusReport]())
+        s  = new InMemoryNodeStatusReportStorage(x)
+        r <- NodeStatusReportRepositoryImpl.make(s)
+      } yield r).runNow
+    }
 
     lazy val computeNodeStatusReportService: ComputeNodeStatusReportService = new ComputeNodeStatusReportServiceImpl(
       nodeStatusReportRepository,

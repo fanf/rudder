@@ -39,12 +39,16 @@ package com.normation.rudder.services.reports
 
 import com.normation.errors.*
 import com.normation.inventory.domain.NodeId
+import com.normation.rudder.db.Doobie
 import com.normation.rudder.domain.logger.ReportLoggerPure
 import com.normation.rudder.domain.reports.NodeStatusReport
 import com.normation.rudder.facts.nodes.ChangeContext
 import com.normation.rudder.facts.nodes.QueryContext
+
 import com.softwaremill.quicklens.ModifyPimp
+
 import scala.annotation.nowarn
+
 import zio.{System as _, *}
 
 /*
@@ -83,12 +87,35 @@ trait NodeStatusReportRepository {
   def deleteNodeStatusReports(nodeIds: Chunk[NodeId])(implicit cc: ChangeContext): IOResult[Unit]
 }
 
+trait NodeStatusReportStorage {
+
+  def getAll(): IOResult[Map[NodeId, NodeStatusReport]]
+
+  // this method save (add or update) these nodes with the provided status reports
+  def save(reports: Iterable[(NodeId, NodeStatusReport)]): IOResult[Unit]
+
+  // this method erase these node status reports
+  def delete(nodes: Iterable[NodeId]): IOResult[Unit]
+}
+
+object NodeStatusReportRepositoryImpl {
+
+  def make(storage: NodeStatusReportStorage): IOResult[NodeStatusReportRepositoryImpl] = {
+    for {
+      reports <- storage.getAll()
+      ref     <- Ref.make(reports)
+    } yield new NodeStatusReportRepositoryImpl(storage, ref)
+  }
+
+}
+
 /*
- * Dummy class for tests:
- *   - in memory
- *   - doesn't use Query/ChangeContext
+ * Default implementation for the NodeStatusReportRepository.
+ * It only relies on a local cache for access methods.
+ * The cache is update along with an underlying cold storage on update/delete operation.
  */
-class DummyNodeStatusReportRepository(
+class NodeStatusReportRepositoryImpl(
+    storage:        NodeStatusReportStorage,
     initialReports: Ref[Map[NodeId, NodeStatusReport]]
 ) extends NodeStatusReportRepository {
 
@@ -106,44 +133,85 @@ class DummyNodeStatusReportRepository(
   override def saveNodeStatusReports(
       reports: Iterable[(NodeId, NodeStatusReport)]
   )(implicit cc: ChangeContext): IOResult[Chunk[(NodeId, NodeStatusReport)]] = {
-    ReportLoggerPure.Repository.debug(
-      s"Add NodeStatusReports to repository for nodes: [${reports.map(_._1.value).mkString(", ")}]"
-    ) *>
-    cache.modify { m =>
-      // we need to take special care for node with "keep compliance"
-      val newOrUpdated = reports.flatMap {
-        case (id, report) =>
-          report.runInfo match {
-            // if we are asked to keep compliance, start by checking we do have one
-            case k: KeepLastCompliance =>
-              m.get(id) match {
-                case Some(e) =>
-                  e.runInfo match {
-                    case c: ComputeCompliance => // keep existing compliance, change run info
-                      val optLastRun = c.lastRunConfigInfo.map(x => (c.lastRunDateTime, x))
-                      Some((id, e.modify(_.runInfo).setTo(k.modify(_.optLastRun).setTo(optLastRun))))
-                    case _ => // in any other case, change nothing but check if there's an actual change
-                      if (e == report) None else Some((id, e))
-                  }
-                case None    => // ok, just a new report
-                  Some((id, report))
-              }
-            // in other case, just update what is in cache if it's actually different
-            case _ =>
-              m.get(id) match {
-                case Some(e) => if (e == report) None else Some((id, report))
-                case None    => Some((id, report))
-              }
-          }
-      }
-      (Chunk.fromIterable(newOrUpdated), m ++ newOrUpdated)
-    }
+    for {
+      _       <- ReportLoggerPure.Repository.debug(
+                   s"Add NodeStatusReports to repository for nodes: [${reports.map(_._1.value).mkString(", ")}]"
+                 )
+      updated <- cache.modify { m =>
+                   // we need to take special care for node with "keep compliance"
+                   val newOrUpdated = reports.flatMap {
+                     case (id, report) =>
+                       report.runInfo match {
+                         // if we are asked to keep compliance, start by checking we do have one
+                         case k: KeepLastCompliance =>
+                           m.get(id) match {
+                             case Some(e) =>
+                               e.runInfo match {
+                                 case c: ComputeCompliance => // keep existing compliance, change run info
+                                   val optLastRun = c.lastRunConfigInfo.map(x => (c.lastRunDateTime, x))
+                                   Some((id, e.modify(_.runInfo).setTo(k.modify(_.optLastRun).setTo(optLastRun))))
+                                 case _ => // in any other case, change nothing but check if there's an actual change
+                                   if (e == report) None else Some((id, e))
+                               }
+                             case None    => // ok, just a new report
+                               Some((id, report))
+                           }
+                         // in other case, just update what is in cache if it's actually different
+                         case _ =>
+                           m.get(id) match {
+                             case Some(e) => if (e == report) None else Some((id, report))
+                             case None    => Some((id, report))
+                           }
+                       }
+                   }
+                   (Chunk.fromIterable(newOrUpdated), m ++ newOrUpdated)
+                 }
+      _       <- storage.save(updated)
+    } yield updated
   }
 
   override def deleteNodeStatusReports(nodeIds: Chunk[NodeId])(implicit cc: ChangeContext): IOResult[Unit] = {
-    ReportLoggerPure.Repository.debug(
-      s"Remove NodeStatusReports from repository for nodes: [${nodeIds.map(_.value).mkString(", ")}]"
-    ) *>
-    cache.update(_ -- nodeIds)
+    for {
+      _ <- ReportLoggerPure.Repository.debug(
+             s"Remove NodeStatusReports from repository for nodes: [${nodeIds.map(_.value).mkString(", ")}]"
+           )
+      _ <- cache.update(_ -- nodeIds)
+      _ <- storage.delete(nodeIds)
+    } yield ()
   }
+}
+
+
+/*
+ * Dummy, in memory storage. For test.
+ */
+class InMemoryNodeStatusReportStorage(storage: Ref[Map[NodeId, NodeStatusReport]]) extends NodeStatusReportStorage {
+  override def getAll(): IOResult[Map[NodeId, NodeStatusReport]] = {
+    storage.get
+  }
+
+  override def save(reports: Iterable[(NodeId, NodeStatusReport)]): IOResult[Unit] = {
+    storage.update(_ ++ reports)
+  }
+
+  override def delete(nodeIds: Iterable[NodeId]): IOResult[Unit] = {
+    storage.update(_ -- nodeIds)
+  }
+}
+
+/*
+ * What we save in base is segmented by policy type if
+ */
+
+/*
+ * A JDBC implementation using the `NodeLastCompliance` table as backend
+ */
+class JdbcNodeStatusReportStorage(doobie: Doobie) extends NodeStatusReportStorage {
+  override def getAll(): IOResult[Map[NodeId, NodeStatusReport]] = {
+    ???
+  }
+
+  override def save(reports: Iterable[(NodeId, NodeStatusReport)]): IOResult[Unit] = ???
+
+  override def delete(nodes: Iterable[NodeId]): IOResult[Unit] = ???
 }

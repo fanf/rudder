@@ -97,7 +97,7 @@ sealed trait RunAndConfigInfo
 /**
  * The type of report to use for missing reports
  * (actually missing reports).
- * Depends of compliance mode.
+ * Depends on compliance mode.
  */
 sealed trait ExpiringStatus extends RunAndConfigInfo {
   def expirationDateTime: DateTime

@@ -472,7 +472,7 @@ object ExpectedReportsSerialisation {
 
     /*
      * In 8.2 we changed the s: Option[Boolean] for isSystem to t: Option[ComplianceTag]
-     * We sill want to be able to decode json with s, but never write it. This is done by
+     * We still want to be able to decode json with s, but never write it. This is done by
      * being sure that when we go from DirectiveExpectedReports to JsonDirectiveExpectedReports8_2,
      * we always let the s value to None.
      * The chosen strategy means that when there is neither s nor t present in json (ie the common
