@@ -38,28 +38,39 @@
 package bootstrap.liftweb.checks.migration
 
 import better.files.File
-import com.normation.errors.IOResult
+import com.normation.errors.*
 import com.normation.eventlog.ModificationId
+import com.normation.inventory.domain.Version
 import com.normation.rudder.MockGitConfigRepo
 import com.normation.rudder.MockTechniques
 import com.normation.rudder.db.DB
 import com.normation.rudder.facts.nodes.QueryContext
 import com.normation.rudder.git.GitCommitId
+import com.normation.rudder.hooks.CmdResult
+import com.normation.rudder.ncf.BundleName
+import com.normation.rudder.ncf.CompilationStatusErrors
 import com.normation.rudder.ncf.DeleteEditorTechnique
-import com.normation.rudder.ncf.EditorTechnique
+import com.normation.rudder.ncf.EditorTechniqueError
+import com.normation.rudder.ncf.EditorTechniqueReader
+import com.normation.rudder.ncf.EditorTechniqueReaderImpl
+import com.normation.rudder.ncf.GenericMethod
+import com.normation.rudder.ncf.GitResourceFileService
+import com.normation.rudder.ncf.ReloadTechniqueCompilationStatusService
 import com.normation.rudder.ncf.ResourceFile
 import com.normation.rudder.ncf.ResourceFileState
 import com.normation.rudder.ncf.RuddercOptions
 import com.normation.rudder.ncf.RuddercResult
 import com.normation.rudder.ncf.RuddercService
 import com.normation.rudder.ncf.RuddercTechniqueCompiler
-import com.normation.rudder.ncf.TechniqueCompilationOutput
-import com.normation.rudder.ncf.TechniqueCompiler
+import com.normation.rudder.ncf.TechniqueCompilationErrorsCache
+import com.normation.rudder.ncf.TechniqueCompilationStatusService
 import com.normation.rudder.ncf.TechniqueWriterImpl
+import com.normation.rudder.ncf.yaml.YamlTechniqueSerializer
 import com.normation.rudder.repository.GitModificationRepository
 import com.normation.rudder.repository.xml.RudderPrettyPrinter
 import com.normation.rudder.repository.xml.TechniqueArchiverImpl
 import com.normation.rudder.repository.xml.TechniqueFiles
+import com.normation.rudder.rest.RestTestSetUp
 import com.normation.rudder.services.user.TrivialPersonIdentService
 import com.normation.zio.*
 import org.junit.runner.*
@@ -88,6 +99,8 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
 
   val techMock: MockTechniques = MockTechniques(gitMock)
 
+  val restTestSetUp = new RestTestSetUp
+
   val xmlPrettyPrinter = new RudderPrettyPrinter(Int.MaxValue, 2)
 
   val deleteEditorTechnique: DeleteEditorTechnique = new DeleteEditorTechnique {
@@ -108,6 +121,7 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
       } else {
         // replace content to be sure we get there
         IOResult.attempt {
+          println("technique " + techniqueDir)
           // we need to keep metadata.xml, it's parsed in technique writer for technique registration
           val metadata        = (techniqueDir / TechniqueFiles.Generated.metadata)
           val metadataContent = techniqueDir.parent.name match {
@@ -126,17 +140,6 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
         }
       }
     }
-  }
-
-  val webappCompiler: TechniqueCompiler = new TechniqueCompiler {
-    override def compileTechnique(technique: EditorTechnique): IOResult[TechniqueCompilationOutput] = {
-      // this should not be called because we force rudderc via compilation config, so here we failed loudly if exec
-      throw new IllegalArgumentException(s"Test is calling fallback compiler for technique: ${technique.path}")
-    }
-
-    override def getCompilationOutputFile(technique: EditorTechnique): File = null
-
-    override def getCompilationConfigFile(technique: EditorTechnique): File = null
   }
 
   val techniqueCompiler = new RuddercTechniqueCompiler(
@@ -158,18 +161,44 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
     techniqueCompiler,
     "root"
   )
+  val compilationCache  = TechniqueCompilationErrorsCache.make(restTestSetUp.asyncDeploymentAgent).runNow
   val techniqueWriter   = new TechniqueWriterImpl(
     techniqueArchiver,
     techMock.techniqueRepo,
     deleteEditorTechnique,
     techniqueCompiler,
+    compilationCache,
     gitMock.configurationRepositoryRoot.pathAsString
+  )
+
+  val editorTechniqueReader:    EditorTechniqueReader                   = new EditorTechniqueReaderImpl(
+    null,
+    null,
+    gitMock.gitRepo,
+    null,
+    null,
+    "UTF-8",
+    "test",
+    new YamlTechniqueSerializer(new GitResourceFileService(gitMock.gitRepo)),
+    null,
+    "no-cmd",
+    "no-methods",
+    "no-methods"
+  ) {
+    override def getMethodsMetadata:        IOResult[Map[BundleName, GenericMethod]] = Map.empty.succeed
+    override def updateMethodsMetadataFile: IOResult[CmdResult]                      = Inconsistency("this should not be called").fail
+  }
+  val compilationStatusService: ReloadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
+    editorTechniqueReader,
+    techniqueCompiler,
+    compilationCache
   )
 
   val migration = new MigrateJsonTechniquesToYaml(
     techniqueWriter,
     techMock.stringUuidGen,
     techMock.techniqueRepo,
+    compilationStatusService,
     gitMock.configurationRepositoryRoot.pathAsString
   )
 
@@ -215,6 +244,21 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
     val referenceDir = gitMock.configurationRepositoryRoot / "post-migration"
 
     resultDir.toJava must haveSameFilesAs(referenceDir.toJava)
+  }
+
+  "Compilation status should be error" in {
+    compilationStatusService.reload().runNow must beEqualTo(
+      CompilationStatusErrors(
+        NonEmptyChunk(
+          EditorTechniqueError(
+            BundleName("technique_with_error"),
+            new Version("1.0"),
+            "technique with compile error",
+            "error stderr"
+          )
+        )
+      )
+    )
   }
 
 }
