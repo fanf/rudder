@@ -105,7 +105,7 @@ class TestTechniqueCompilationCache extends Specification with BeforeAfterAll {
   }
 
   // the SUT
-  private val compilationStatusService: ReloadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
+  private val compilationStatusService: ReadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
     editorTechniqueReader,
     techniqueCompiler,
     writeCache
@@ -154,9 +154,9 @@ class TestTechniqueCompilationCache extends Specification with BeforeAfterAll {
     compilationDir.delete()
   }
 
-  "ReloadTechniqueCompilationStatusService" should {
-    "reload by cumulating errors" in {
-      compilationStatusService.reload().runNow must beEqualTo(
+  "ReadTechniqueCompilationStatusService" should {
+    "read with cumulated errors" in {
+      compilationStatusService.get().runNow must beEqualTo(
         CompilationStatusErrors(
           NonEmptyChunk(
             EditorTechniqueError(

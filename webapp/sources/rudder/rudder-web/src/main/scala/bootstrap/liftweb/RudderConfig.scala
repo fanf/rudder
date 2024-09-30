@@ -1792,9 +1792,9 @@ object RudderConfigInit {
       RUDDER_GIT_ROOT_CONFIG_REPO
     )
 
-    lazy val techniqueCompilationCache:         WriteTechniqueCompilationStatusService  =
+    lazy val techniqueCompilationCache:         WriteTechniqueCompilationStatusService =
       TechniqueCompilationErrorsCache.make(asyncDeploymentAgent).runNow
-    lazy val techniqueCompilationStatusService: ReloadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
+    lazy val techniqueCompilationStatusService: ReadTechniqueCompilationStatusService  = new TechniqueCompilationStatusService(
       ncfTechniqueReader,
       techniqueCompiler,
       techniqueCompilationCache

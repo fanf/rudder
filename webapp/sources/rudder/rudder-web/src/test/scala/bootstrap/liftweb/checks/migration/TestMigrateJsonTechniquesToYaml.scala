@@ -55,7 +55,7 @@ import com.normation.rudder.ncf.EditorTechniqueReader
 import com.normation.rudder.ncf.EditorTechniqueReaderImpl
 import com.normation.rudder.ncf.GenericMethod
 import com.normation.rudder.ncf.GitResourceFileService
-import com.normation.rudder.ncf.ReloadTechniqueCompilationStatusService
+import com.normation.rudder.ncf.ReadTechniqueCompilationStatusService
 import com.normation.rudder.ncf.ResourceFile
 import com.normation.rudder.ncf.ResourceFileState
 import com.normation.rudder.ncf.RuddercOptions
@@ -171,7 +171,7 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
     gitMock.configurationRepositoryRoot.pathAsString
   )
 
-  val editorTechniqueReader:    EditorTechniqueReader                   = new EditorTechniqueReaderImpl(
+  val editorTechniqueReader:    EditorTechniqueReader                 = new EditorTechniqueReaderImpl(
     null,
     null,
     gitMock.gitRepo,
@@ -188,7 +188,7 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
     override def getMethodsMetadata:        IOResult[Map[BundleName, GenericMethod]] = Map.empty.succeed
     override def updateMethodsMetadataFile: IOResult[CmdResult]                      = Inconsistency("this should not be called").fail
   }
-  val compilationStatusService: ReloadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
+  val compilationStatusService: ReadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
     editorTechniqueReader,
     techniqueCompiler,
     compilationCache
@@ -247,7 +247,7 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
   }
 
   "Compilation status should be error" in {
-    compilationStatusService.reload().runNow must beEqualTo(
+    compilationStatusService.get().runNow must beEqualTo(
       CompilationStatusErrors(
         NonEmptyChunk(
           EditorTechniqueError(

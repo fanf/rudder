@@ -5,7 +5,7 @@ import bootstrap.liftweb.BootstrapLogger
 import com.normation.rudder.domain.logger.ConfigurationStatusLoggerPure
 import com.normation.rudder.ncf.CompilationStatusAllSuccess
 import com.normation.rudder.ncf.CompilationStatusErrors
-import com.normation.rudder.ncf.ReloadTechniqueCompilationStatusService
+import com.normation.rudder.ncf.ReadTechniqueCompilationStatusService
 import com.normation.zio.UnsafeRun
 
 /**
@@ -14,14 +14,14 @@ import com.normation.zio.UnsafeRun
   * are not supposed to prevent Rudder startup.
   */
 class CheckTechniqueCompilationStatus(
-    techniqueCompilationStatusService: ReloadTechniqueCompilationStatusService
+    techniqueCompilationStatusService: ReadTechniqueCompilationStatusService
 ) extends BootstrapChecks {
 
   override def description: String = "Check for technique compilation errors"
 
   override def checks(): Unit = {
     techniqueCompilationStatusService
-      .reload()
+      .get()
       .flatMap {
         case CompilationStatusAllSuccess => ConfigurationStatusLoggerPure.info("All techniques have success compilation result")
         case e: CompilationStatusErrors => {

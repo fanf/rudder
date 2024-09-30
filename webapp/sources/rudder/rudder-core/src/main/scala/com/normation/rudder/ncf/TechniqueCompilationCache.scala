@@ -57,11 +57,11 @@ case object CompilationStatusAllSuccess                                         
 case class CompilationStatusErrors(techniquesInError: NonEmptyChunk[EditorTechniqueError]) extends CompilationStatus
 
 /**
-  * Update global techniques compilation status
+  * Update and get latest global techniques compilation status
   */
-trait ReloadTechniqueCompilationStatusService {
+trait ReadTechniqueCompilationStatusService {
 
-  def reload(): IOResult[CompilationStatus]
+  def get(): IOResult[CompilationStatus]
 
 }
 
@@ -75,15 +75,15 @@ trait WriteTechniqueCompilationStatusService {
 }
 
 /**
-  * Service to update global technique compilation status
+  * Service to update global technique compilation status and get the latest one from filesystem
   */
 class TechniqueCompilationStatusService(
     readTechniques:           EditorTechniqueReader,
     techniqueCompiler:        TechniqueCompiler,
     compilationStatusService: WriteTechniqueCompilationStatusService
-) extends ReloadTechniqueCompilationStatusService {
+) extends ReadTechniqueCompilationStatusService {
 
-  override def reload(): IOResult[CompilationStatus] = {
+  override def get(): IOResult[CompilationStatus] = {
     readTechniques.readTechniquesMetadataFile.flatMap {
       // _._3 errors are not compilation errors but error on techniques, we ignore them for status
       case (techniques, _, _) => {
@@ -92,7 +92,7 @@ class TechniqueCompilationStatusService(
           case Nil        =>
             ConfigurationStatusLoggerPure
               .trace(
-                s"Reload compilation status : no technique found"
+                s"Get compilation status : no technique found"
               )
               .as(CompilationStatusAllSuccess)
           case c @ _ :: _ =>
@@ -108,7 +108,7 @@ class TechniqueCompilationStatusService(
               })
             outputs.map(_.reverse.collectFirst { case Some(out) => out }
               .getOrElse(CompilationStatusAllSuccess)) <* ConfigurationStatusLoggerPure.trace(
-              s"Reload compilation status : read ${techniques.size} editor techniques to update compilation status with"
+              s"Get compilation status : read ${techniques.size} editor techniques to update compilation status with"
             )
         }
       }

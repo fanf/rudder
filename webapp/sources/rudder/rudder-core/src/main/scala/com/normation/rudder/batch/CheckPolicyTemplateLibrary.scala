@@ -43,7 +43,7 @@ import com.normation.eventlog.ModificationId
 import com.normation.rudder.domain.Constants.TECHLIB_MINIMUM_UPDATE_INTERVAL
 import com.normation.rudder.domain.eventlog.RudderEventActor
 import com.normation.rudder.domain.logger.ScheduledJobLogger
-import com.normation.rudder.ncf.ReloadTechniqueCompilationStatusService
+import com.normation.rudder.ncf.ReadTechniqueCompilationStatusService
 import com.normation.utils.StringUuidGenerator
 import com.normation.zio.UnsafeRun
 import net.liftweb.actor.LAPinger
@@ -65,7 +65,7 @@ final case class StartLibUpdate(actor: EventActor)
  */
 class CheckTechniqueLibrary(
     policyPackageUpdater:              UpdateTechniqueLibrary,
-    techniqueCompilationStatusService: ReloadTechniqueCompilationStatusService,
+    techniqueCompilationStatusService: ReadTechniqueCompilationStatusService,
     uuidGen:                           StringUuidGenerator,
     updateInterval:                    Int // in minutes
 ) {
@@ -121,7 +121,7 @@ class CheckTechniqueLibrary(
           case Full(t) =>
             logger.trace(s"***** udpate successful for ${t.size} techniques")
             // Update techniques compilation status even if there are no updated techniques : compilation status may have been updated
-            techniqueCompilationStatusService.reload().runNow
+            techniqueCompilationStatusService.get().runNow
           case eb: EmptyBox =>
             val msg = (eb ?~! ("An error occured while updating")).messageChain
             logger.warn(

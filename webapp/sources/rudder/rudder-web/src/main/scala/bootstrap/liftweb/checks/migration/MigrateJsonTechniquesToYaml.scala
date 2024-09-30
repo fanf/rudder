@@ -61,7 +61,7 @@ class MigrateJsonTechniquesToYaml(
     techniqueWriter:                   TechniqueWriter,
     uuidGen:                           StringUuidGenerator,
     techLibUpdate:                     UpdateTechniqueLibrary,
-    techniqueCompilationStatusService: ReloadTechniqueCompilationStatusService,
+    techniqueCompilationStatusService: ReadTechniqueCompilationStatusService,
     rootConfigRepoDir:                 String
 ) extends BootstrapChecks {
 
@@ -141,7 +141,7 @@ class MigrateJsonTechniquesToYaml(
                           .toIO
                           .chainError(s"An error occurred during techniques update after update of all techniques from the editor")
       // Update compilation status after every library change
-      _              <- techniqueCompilationStatusService.reload().unless(libUpdate.isEmpty)
+      _              <- techniqueCompilationStatusService.get().unless(libUpdate.isEmpty)
 
     } yield ()
   }
