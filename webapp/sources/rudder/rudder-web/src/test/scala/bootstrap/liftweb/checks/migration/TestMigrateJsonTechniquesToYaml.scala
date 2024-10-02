@@ -161,15 +161,6 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
     techniqueCompiler,
     "root"
   )
-  val compilationCache  = TechniqueCompilationErrorsCache.make(restTestSetUp.asyncDeploymentAgent).runNow
-  val techniqueWriter   = new TechniqueWriterImpl(
-    techniqueArchiver,
-    techMock.techniqueRepo,
-    deleteEditorTechnique,
-    techniqueCompiler,
-    compilationCache,
-    gitMock.configurationRepositoryRoot.pathAsString
-  )
 
   val editorTechniqueReader:    EditorTechniqueReader                 = new EditorTechniqueReaderImpl(
     null,
@@ -190,8 +181,17 @@ class TestMigrateJsonTechniquesToYaml extends Specification with ContentMatchers
   }
   val compilationStatusService: ReadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
     editorTechniqueReader,
+    techniqueCompiler
+  )
+  val compilationCache:         TechniqueCompilationErrorsCache       =
+    TechniqueCompilationErrorsCache.make(restTestSetUp.asyncDeploymentAgent, compilationStatusService).runNow
+  val techniqueWriter = new TechniqueWriterImpl(
+    techniqueArchiver,
+    techMock.techniqueRepo,
+    deleteEditorTechnique,
     techniqueCompiler,
-    compilationCache
+    compilationCache,
+    gitMock.configurationRepositoryRoot.pathAsString
   )
 
   val migration = new MigrateJsonTechniquesToYaml(

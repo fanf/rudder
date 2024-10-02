@@ -55,10 +55,10 @@ import zio.syntax.*
 @RunWith(classOf[JUnitRunner])
 class TestTechniqueCompilationCache extends Specification with BeforeAfterAll {
 
+  /*
+   * Reading things
+   */
   private val compilationDir = File.newTemporaryDirectory("rudder-test-technique-compilation-service")
-
-  private val mockActor  = new MockLiftActor
-  private val writeCache = TechniqueCompilationErrorsCache.make(mockActor).runNow
 
   private val technique1 = EditorTechnique(
     BundleName("tech1"),
@@ -107,8 +107,7 @@ class TestTechniqueCompilationCache extends Specification with BeforeAfterAll {
   // the SUT
   private val compilationStatusService: ReadTechniqueCompilationStatusService = new TechniqueCompilationStatusService(
     editorTechniqueReader,
-    techniqueCompiler,
-    writeCache
+    techniqueCompiler
   )
 
   private val fakeCompilationOutput: PartialFunction[EditorTechnique, TechniqueCompilationOutput] = {
@@ -141,6 +140,10 @@ class TestTechniqueCompilationCache extends Specification with BeforeAfterAll {
       )
   }
 
+  // sync with actor
+  private val mockActor  = new MockLiftActor
+  private val writeCache = TechniqueCompilationErrorsCache.make(mockActor, compilationStatusService).runNow
+
   // create output test files for each technique
   override def beforeAll(): Unit = {
     import TechniqueCompilationIO.*
@@ -150,13 +153,25 @@ class TestTechniqueCompilationCache extends Specification with BeforeAfterAll {
       .runNow
   }
 
+  val expectedListOfOutputs: List[EditorTechniqueResult] = List(
+    EditorTechniqueResult(technique1.id, technique1.version, technique1.name, CompilationResult.Error("tech1 error")),
+    EditorTechniqueResult(technique2.id, technique2.version, technique2.name, CompilationResult.Success),
+    EditorTechniqueResult(technique3.id, technique3.version, technique3.name, CompilationResult.Error("tech3 error"))
+  )
+
   override def afterAll(): Unit = {
     compilationDir.delete()
   }
 
   "ReadTechniqueCompilationStatusService" should {
     "read with cumulated errors" in {
-      compilationStatusService.get().runNow must beEqualTo(
+      compilationStatusService.get().runNow must beEqualTo(expectedListOfOutputs)
+    }
+  }
+
+  "Error repository" should {
+    "Correctly build the status" in {
+      writeCache.updateStatus(expectedListOfOutputs).runNow must beEqualTo(
         CompilationStatusErrors(
           NonEmptyChunk(
             EditorTechniqueError(

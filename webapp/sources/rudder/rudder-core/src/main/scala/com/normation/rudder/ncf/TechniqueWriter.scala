@@ -150,7 +150,7 @@ class TechniqueWriterImpl(
       _        <-
         TimingDebugLoggerPure.trace(s"writeTechnique: writing yaml for technique '${technique.name}' took ${time_1 - time_0}ms")
       compiled <- compiler.compileTechnique(techniqueWithResourceUpdated)
-      _        <- compilationStatusService.update(techniqueWithResourceUpdated, compiled)
+      _        <- compilationStatusService.updateAndSync(List(EditorTechniqueResult.from(techniqueWithResourceUpdated, compiled)))
       time_3   <- currentTimeMillis
       id       <- TechniqueVersion.parse(technique.version.value).toIO.map(v => TechniqueId(TechniqueName(technique.id.value), v))
       // resources files are missing the the "resources/" prefix

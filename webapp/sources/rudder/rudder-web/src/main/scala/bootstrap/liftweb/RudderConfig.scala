@@ -1792,13 +1792,13 @@ object RudderConfigInit {
       RUDDER_GIT_ROOT_CONFIG_REPO
     )
 
-    lazy val techniqueCompilationCache:         WriteTechniqueCompilationStatusService =
-      TechniqueCompilationErrorsCache.make(asyncDeploymentAgent).runNow
     lazy val techniqueCompilationStatusService: ReadTechniqueCompilationStatusService  = new TechniqueCompilationStatusService(
       ncfTechniqueReader,
-      techniqueCompiler,
-      techniqueCompilationCache
+      techniqueCompiler
     )
+
+    lazy val techniqueCompilationCache:         WriteTechniqueCompilationStatusService =
+      TechniqueCompilationErrorsCache.make(asyncDeploymentAgent, techniqueCompilationStatusService).runNow
 
     lazy val ncfTechniqueWriter: TechniqueWriter = new TechniqueWriterImpl(
       techniqueArchiver,
@@ -3232,7 +3232,7 @@ object RudderConfigInit {
         techniqueRepositoryImpl,
         uuidGen
       ),
-      new CheckTechniqueCompilationStatus(techniqueCompilationStatusService),
+      new CheckTechniqueCompilationStatus(techniqueCompilationCache),
       new CheckAddSpecialNodeGroupsDescription(rwLdap),
       new CheckRemoveRuddercSetting(rwLdap),
       new CheckDIT(pendingNodesDitImpl, acceptedNodesDitImpl, removedNodesDitImpl, rudderDitImpl, rwLdap),
