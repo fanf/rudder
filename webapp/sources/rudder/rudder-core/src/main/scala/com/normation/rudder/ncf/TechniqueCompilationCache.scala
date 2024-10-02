@@ -128,16 +128,16 @@ class TechniqueCompilationStatusService(
   * when technique library is reloaded
   */
 class TechniqueCompilationErrorsCache(
-    actor: SimpleActor[UpdateCompilationStatus],
-    ref:   Ref[Map[(BundleName, Version), EditorTechniqueError]]
+    actor:     SimpleActor[UpdateCompilationStatus],
+    errorBase: Ref[Map[(BundleName, Version), EditorTechniqueError]]
 ) extends WriteTechniqueCompilationStatusService {
 
   override def update(technique: EditorTechnique, output: TechniqueCompilationOutput): UIO[CompilationStatus] = {
     val key = (technique.id, technique.version)
     (if (output.isError) {
-       ref.updateAndGet(_ + (key -> EditorTechniqueError(technique.id, technique.version, technique.name, output.stderr)))
+       errorBase.updateAndGet(_ + (key -> EditorTechniqueError(technique.id, technique.version, technique.name, output.stderr)))
      } else {
-       ref.updateAndGet(_ - key)
+       errorBase.updateAndGet(_ - key)
      })
       .map(m => {
         val status = getStatus(m.values)
