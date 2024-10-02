@@ -86,6 +86,11 @@ trait TechniqueWriter {
   ): IOResult[EditorTechnique]
 }
 
+/**
+  * The implementation of that handles updating or creating the technique YAML file
+  * which is kept on the file system. It delegates to other services for update and delete,
+  * and archives to keep the file system up-to-date, and synces the global compilation state
+  */
 class TechniqueWriterImpl(
     archiver:                 TechniqueArchiver,
     techLibUpdate:            UpdateTechniqueLibrary,

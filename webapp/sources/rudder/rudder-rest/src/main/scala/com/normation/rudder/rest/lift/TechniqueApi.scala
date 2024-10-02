@@ -887,9 +887,8 @@ class TechniqueAPIService14(
     import zio.json.*
     import TechniqueCompilationIO.codecTechniqueCompilationOutput
     import com.normation.zio.*
-    val output = techniqueCompiler.getCompilationOutput(editorTechnique)
-    val json   = (for {
-      content <- output.notOptional("error when reading compilation output")
+    val json = (for {
+      content <- techniqueCompiler.getCompilationOutput(editorTechnique).notOptional("error when reading compilation output")
       json    <- content.toJsonAST.toIO
     } yield {
       ("output", json) :: Nil

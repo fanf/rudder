@@ -40,7 +40,7 @@ package com.normation.rudder.ncf
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.Version
 import com.normation.rudder.batch.UpdateCompilationStatus
-import com.normation.rudder.domain.logger.ConfigurationStatusLoggerPure
+import com.normation.rudder.domain.logger.StatusLoggerPure
 import com.normation.rudder.ncf.CompilationResult.Success
 import net.liftweb.common.SimpleActor
 import zio.*
@@ -128,10 +128,9 @@ class TechniqueCompilationStatusService(
               }
           }
 
-        outputs <* ConfigurationStatusLoggerPure.trace(
+        outputs <* StatusLoggerPure.Techniques.trace(
           s"Get compilation status : read ${techniques.size} editor techniques to update compilation status with"
         )
-
       }
     }
   }
@@ -166,10 +165,10 @@ class TechniqueCompilationErrorsCache(
           current - ((id, version))
       }
     }.map(m => getStatus(m.values)).tap {
-      case CompilationStatusAllSuccess => ConfigurationStatusLoggerPure.info("All techniques have success compilation result")
+      case CompilationStatusAllSuccess => StatusLoggerPure.Techniques.info("All techniques have success compilation result")
       case e: CompilationStatusErrors =>
         val techniques = e.techniquesInError.map(t => s"${t.id.value}(v${t.version.value})").toList.mkString(",")
-        ConfigurationStatusLoggerPure.warn(
+        StatusLoggerPure.Techniques.warn(
           s"Found ${e.techniquesInError.size} techniques with compilation errors when starting server : ${techniques}"
         )
     }

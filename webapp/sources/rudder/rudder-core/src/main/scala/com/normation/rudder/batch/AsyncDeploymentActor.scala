@@ -47,9 +47,9 @@ import com.normation.eventlog.EventLogDetails
 import com.normation.eventlog.ModificationId
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.eventlog.*
-import com.normation.rudder.domain.logger.ConfigurationStatusLoggerPure
 import com.normation.rudder.domain.logger.PolicyGenerationLogger
 import com.normation.rudder.domain.logger.PolicyGenerationLoggerPure
+import com.normation.rudder.domain.logger.StatusLoggerPure
 import com.normation.rudder.ncf.CompilationStatus
 import com.normation.rudder.ncf.CompilationStatusAllSuccess
 import com.normation.rudder.ncf.CompilationStatusErrors
@@ -456,16 +456,16 @@ final class AsyncDeploymentActor(
     // Updating state from technique compilation output result
     //
     case UpdateCompilationStatus(status)                                                   => {
-      ConfigurationStatusLoggerPure.logEffect.trace(
+      StatusLoggerPure.Techniques.logEffect.trace(
         s"Compilation status has a new update command with payload : ${status}"
       )
       if (compilationStatus != status) {
         compilationStatus = status
         status match {
           case CompilationStatusErrors(techniquesInError) =>
-            ConfigurationStatusLoggerPure.logEffect.info(s"Status of technique compilation has ${techniquesInError.size} errors")
+            StatusLoggerPure.Techniques.logEffect.info(s"Status of technique compilation has ${techniquesInError.size} errors")
           case CompilationStatusAllSuccess                =>
-            ConfigurationStatusLoggerPure.logEffect.debug(
+            StatusLoggerPure.Techniques.logEffect.debug(
               s"Status of technique compilation has changed to success from previous : ${compilationStatus}"
             )
         }
