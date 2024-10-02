@@ -40,7 +40,7 @@ package com.normation.rudder.ncf
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.Version
 import com.normation.rudder.batch.UpdateCompilationStatus
-import com.normation.rudder.domain.logger.ConfigurationStatusLoggerPure
+import com.normation.rudder.domain.logger.StatusLoggerPure
 import net.liftweb.common.SimpleActor
 import zio.*
 import zio.NonEmptyChunk
@@ -90,7 +90,7 @@ class TechniqueCompilationStatusService(
 
         techniques match {
           case Nil        =>
-            ConfigurationStatusLoggerPure
+            StatusLoggerPure.Techniques
               .trace(
                 s"Get compilation status : no technique found"
               )
@@ -107,7 +107,7 @@ class TechniqueCompilationStatusService(
                   .flatMap(ZIO.foreach(_)(compilationStatusService.update(technique, _)))
               })
             outputs.map(_.reverse.collectFirst { case Some(out) => out }
-              .getOrElse(CompilationStatusAllSuccess)) <* ConfigurationStatusLoggerPure.trace(
+              .getOrElse(CompilationStatusAllSuccess)) <* StatusLoggerPure.Techniques.trace(
               s"Get compilation status : read ${techniques.size} editor techniques to update compilation status with"
             )
         }

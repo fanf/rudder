@@ -2,7 +2,7 @@ package bootstrap.liftweb.checks.action
 
 import bootstrap.liftweb.BootstrapChecks
 import bootstrap.liftweb.BootstrapLogger
-import com.normation.rudder.domain.logger.ConfigurationStatusLoggerPure
+import com.normation.rudder.domain.logger.StatusLoggerPure
 import com.normation.rudder.ncf.CompilationStatusAllSuccess
 import com.normation.rudder.ncf.CompilationStatusErrors
 import com.normation.rudder.ncf.ReadTechniqueCompilationStatusService
@@ -23,10 +23,10 @@ class CheckTechniqueCompilationStatus(
     techniqueCompilationStatusService
       .get()
       .flatMap {
-        case CompilationStatusAllSuccess => ConfigurationStatusLoggerPure.info("All techniques have success compilation result")
+        case CompilationStatusAllSuccess => StatusLoggerPure.Techniques.info("All techniques have success compilation result")
         case e: CompilationStatusErrors => {
           val techniques = e.techniquesInError.map(t => s"${t.id.value}(v${t.version.value})").toList.mkString(",")
-          ConfigurationStatusLoggerPure.warn(
+          StatusLoggerPure.Techniques.warn(
             s"Found ${e.techniquesInError.size} techniques with compilation errors when starting server : ${techniques}"
           )
         }
