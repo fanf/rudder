@@ -595,7 +595,6 @@ final case class NodeCriterionMatcherDouble(extractor: CoreNodeFact => Chunk[Dou
 
 /*
  * This one is able to parse the user input value from a Memory string (ie with bytes units etc).
- * The only difference with the long matcher is the input parsing.
  */
 final case class NodeCriterionMatcherMemory(extractor: CoreNodeFact => Chunk[MemorySize])
     extends NodeCriterionOrderedValueMatcher[MemorySize] {
