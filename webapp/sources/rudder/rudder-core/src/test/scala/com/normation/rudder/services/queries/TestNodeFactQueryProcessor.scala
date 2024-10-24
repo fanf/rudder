@@ -147,10 +147,10 @@ class TestNodeFactQueryProcessor {
   case class TestQuery(name: String, query: Query, awaited: Seq[NodeId])
 
   // when one need to debug search, you can just uncomment that to set log-level to trace
-//  org.slf4j.LoggerFactory
-//    .getLogger("query.node-fact")
-//    .asInstanceOf[ch.qos.logback.classic.Logger]
-//    .setLevel(ch.qos.logback.classic.Level.TRACE)
+  org.slf4j.LoggerFactory
+    .getLogger("query.node-fact")
+    .asInstanceOf[ch.qos.logback.classic.Logger]
+    .setLevel(ch.qos.logback.classic.Level.TRACE)
 
   val s: Seq[NodeId] = Seq(
     new NodeId("node0"),
@@ -219,6 +219,16 @@ class TestNodeFactQueryProcessor {
       s(1) :: Nil
     )
 
+    val q2_0_1 = TestQuery(
+      "q2_0_1",
+      parser("""
+      {  "select":"node", "where":[
+        { "objectType":"node", "attribute":"ram", "comparator":"gt", "value":"1kb" }
+      ] }
+      """).openOrThrowException("For tests"),
+      s(1) :: Nil
+    )
+
     val q2_0_ = TestQuery(
       "q2_0_",
       query = q2_0.query.copy(composition = Or),
@@ -257,7 +267,7 @@ class TestNodeFactQueryProcessor {
       q2_2.awaited
     )
 
-    testQueries(q2_0 :: q2_0_ :: q2_1 :: q2_1_ :: q2_2 :: q2_2_ :: Nil, doInternalQueryTest = true)
+    testQueries(q2_0 :: q2_0_1 :: q2_0_ :: q2_1 :: q2_1_ :: q2_2 :: q2_2_ :: Nil, doInternalQueryTest = true)
   }
 
   @Test def testMachineType(): Unit = {
