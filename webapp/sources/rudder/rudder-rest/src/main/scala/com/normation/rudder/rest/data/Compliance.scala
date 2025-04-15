@@ -265,14 +265,15 @@ final case class SkippedDetails(
     overridingRuleId:   RuleId,
     overridingRuleName: String
 )
+
 final case class DirectiveComplianceOverride(
-    overriddenRuleId: RuleId,
-    directiveId:      DirectiveId,
-    directiveName:    String,
-    overridingRuleId: RuleId
+    overriddenRuleId:   RuleId,
+    directiveId:        DirectiveId,
+    directiveName:      String,
+    overridingRuleId:   RuleId,
+    overridingRuleName: String
 ) {
-  def toComplianceByRule(rules: Map[RuleId, Rule]): ByRuleDirectiveCompliance = {
-    val overridingRuleName = rules.get(overridingRuleId).map(_.name).getOrElse("unknown rule")
+  def toComplianceByRule: ByRuleDirectiveCompliance = {
     ByRuleDirectiveCompliance(
       directiveId,
       directiveName,
@@ -285,8 +286,7 @@ final case class DirectiveComplianceOverride(
     )
   }
 
-  def toComplianceByNodeRule(rules: Map[RuleId, Rule]): ByNodeDirectiveCompliance = {
-    val overridingRuleName = rules.get(overridingRuleId).map(_.name).getOrElse("unknown rule")
+  def toComplianceByNodeRule: ByNodeDirectiveCompliance = {
     ByNodeDirectiveCompliance(
       directiveId,
       directiveName,
@@ -294,7 +294,7 @@ final case class DirectiveComplianceOverride(
       ComputePolicyMode.skipped(
         s"This directive is skipped because it is overridden by the rule <b>${overridingRuleName}</b> (with id ${overridingRuleId.serialize})."
       ),
-      Some(SkippedDetails(overridingRuleId, rules.get(overridingRuleId).map(_.name).getOrElse("unknown rule"))),
+      Some(SkippedDetails(overridingRuleId, overridingRuleName)),
       List.empty
     )
   }
@@ -303,7 +303,8 @@ final case class DirectiveComplianceOverride(
 object ComplianceOverrides {
   def getOverriddenDirective(
       overrides:  List[OverriddenPolicy],
-      directives: Map[DirectiveId, (FullActiveTechnique, Directive)]
+      directives: Map[DirectiveId, (FullActiveTechnique, Directive)],
+      allRules:   Iterable[Rule]
   ): List[DirectiveComplianceOverride] = {
     val overridesData = for {
       over               <- overrides
@@ -314,9 +315,9 @@ object ComplianceOverrides {
         over.policy.ruleId,
         over.policy.directiveId,
         overriddenDir.name,
-        over.overriddenBy.ruleId
+        over.overriddenBy.ruleId,
+        allRules.collectFirst { case r if r.id.uid == over.overriddenBy.ruleId.uid => r.name }.getOrElse("unknown rule")
       )
-
     }
     overridesData
   }
