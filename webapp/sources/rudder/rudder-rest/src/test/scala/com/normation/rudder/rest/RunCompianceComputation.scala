@@ -109,10 +109,10 @@ object SetUpCompliance {
   private val mockDirectives = new MockDirectives(mockTechniques)
   private val directives     = mockDirectives.directives
 
-  val numNodes  = 500
+  val numNodes  = 5000
   val kindNodes = 6
   val nodeRange = (1 to numNodes).by(kindNodes)
-  val numRules  = 100
+  val numRules  = 300
   val kindRules = 6
   val ruleRange = (1 to numRules).by(kindRules)
 
@@ -555,6 +555,7 @@ object SetUpCompliance {
         directiveId -> DirectiveStatusReport(
           directiveId,
           PolicyTypes.rudderBase,
+          None,
           List(
             ValueStatusReport(
               s"${directiveId.serialize}-component-${ruleId.serialize}-${nodeId.value}",

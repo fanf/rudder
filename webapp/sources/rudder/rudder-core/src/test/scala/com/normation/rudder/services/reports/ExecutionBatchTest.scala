@@ -106,7 +106,7 @@ class ExecutionBatchTest extends Specification {
       nbRules:         Int,
       nbDirectives:    Int,
       nbReportsPerDir: Int
-  ): (MergeInfo, IndexedSeq[ResultSuccessReport], NodeExpectedReports, NodeExpectedReports) = {
+  ): (MergeInfo, IndexedSeq[ResultSuccessReport], NodeExpectedReports, NodeExpectedReports, List[OverriddenPolicy]) = {
     val ruleIds      = (1 to nbRules).map("rule_id_" + _ + nodeId).toSeq
     val directiveIds = (1 to nbDirectives).map("directive_id_" + _ + nodeId).toSeq
     val dirPerRule   = ruleIds.map(rule => (RuleId(rule), directiveIds.map(dir => DirectiveId(DirectiveUid(dir + "@@" + rule)))))
@@ -174,7 +174,7 @@ class ExecutionBatchTest extends Specification {
 
     val mergeInfo = MergeInfo(NodeId(nodeId), Some(now), Some(nodeConfigId), now.plus(100))
 
-    (mergeInfo, executionReports, nodeExpectedReport, nodeExpectedReport)
+    (mergeInfo, executionReports, nodeExpectedReport, nodeExpectedReport, Nil)
 
   }
 
@@ -1382,7 +1382,8 @@ class ExecutionBatchTest extends Specification {
         reports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
     val withBad  = ExecutionBatch
@@ -1391,7 +1392,8 @@ class ExecutionBatchTest extends Specification {
         badReports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -1560,7 +1562,8 @@ class ExecutionBatchTest extends Specification {
         reportsWithLoop,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -1705,7 +1708,8 @@ class ExecutionBatchTest extends Specification {
         reportsWithLoop,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -1922,7 +1926,8 @@ class ExecutionBatchTest extends Specification {
         reports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -1932,7 +1937,8 @@ class ExecutionBatchTest extends Specification {
         badReports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -2137,7 +2143,8 @@ class ExecutionBatchTest extends Specification {
         reports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -2147,7 +2154,8 @@ class ExecutionBatchTest extends Specification {
         badReports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -2312,7 +2320,8 @@ class ExecutionBatchTest extends Specification {
         reports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -2473,7 +2482,8 @@ class ExecutionBatchTest extends Specification {
         reports,
         mode,
         ruleExpectedReports,
-        new ComputeComplianceTimer()
+        new ComputeComplianceTimer(),
+        Nil
       )
       .collect { case r => r.directives("policy") }
 
@@ -3098,7 +3108,8 @@ class ExecutionBatchTest extends Specification {
       reports,
       mode,
       ruleExpectedReports,
-      new ComputeComplianceTimer()
+      new ComputeComplianceTimer(),
+      Nil
     )
 
     (result.size === 1) and
