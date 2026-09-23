@@ -268,8 +268,8 @@ object BootProgress {
         s"elapsed_sec=${elapsed.toSeconds}",
         s"no_progress_sec=${stalledFor.toSeconds}"
       ).mkString("", "\n", "\n")
-      val tmp     = File(progressFile.path.resolveSibling(progressFile.pathAsString + ".tmp"))
-      progressFile.createDirectories()
+      val tmp     = progressFile.sibling(progressFile.name + ".tmp")
+      progressFile.parent.createDirectories()
       tmp.write(content)
       tmp.moveTo(progressFile)(using File.CopyOptions(overwrite = true) ++ File.CopyOptions.atomically)
     } catch {
@@ -279,8 +279,15 @@ object BootProgress {
   }
 
   private def deleteProgressFile(): Unit = {
-    try progressFile.delete(swallowIOExceptions = false)
-    catch { case ex: Exception => logger.debug(s"Can not delete boot progress file ${progressFile}: ${ex.getMessage}") }
+    try {
+      if (progressFile.exists) progressFile.delete(swallowIOExceptions = false)
+      val tmp = progressFile.sibling(progressFile.name + ".tmp")
+      if (tmp.exists) tmp.delete(swallowIOExceptions = true)
+    } catch {
+      case ex: Exception =>
+        val msg = if (ex.getCause == null) ex.getMessage else ex.getCause.getMessage
+        logger.debug(s"Can not delete boot progress file ${progressFile}: ${msg}")
+    }
   }
 
   private def threadDump(): String = {
@@ -314,7 +321,6 @@ object BootProgress {
       () => {
         var lastSteps = -1L
         while (!bootDone.get()) {
-          Thread.sleep(logInterval.toMillis)
           if (!bootDone.get()) {
             val step          = currentLabel.get()
             val currentSteps  = steps.get()
@@ -326,8 +332,7 @@ object BootProgress {
                 lastSteps = currentSteps
                 writeProgressFile("booting", step, noProgressFor)
                 logger.info(
-                  s"Rudder is still booting, please wait: ${currentSteps} steps done in ${fmt(elapsed)}, " +
-                  s"currently in phase ${step.display}"
+                  s"Rudder is booting: ${currentSteps} steps done in ${fmt(elapsed)}, currently in phase ${step.display}"
                 )
 
               case BootWatchdogVerdict.SameStep =>
@@ -352,6 +357,8 @@ object BootProgress {
                 java.lang.Runtime.getRuntime.halt(1)
             }
           }
+          // sleep after a first write to have at least the boot-progress written once
+          Thread.sleep(logInterval.toMillis)
         }
         deleteProgressFile()
       },

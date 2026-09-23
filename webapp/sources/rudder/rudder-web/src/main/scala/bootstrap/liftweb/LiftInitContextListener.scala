@@ -100,9 +100,8 @@ class LiftInitContextListener extends ContextLoaderListener {
     org.slf4j.LoggerFactory.getLogger("-").info(s"- - - - - - - - - - - - - - - - - - - - - - - - - - -")
 
     /*
-     * Boot takes minutes on big installations. Start reporting progress before anything else, so
-     * that whoever waits for Rudder (ops, service manager, migration script) can tell a slow boot
-     * from a dead one - and so that we know where boot time goes.
+     * Start reporting progress before anything else so that /var/rudder/run/rudder-boot-progress
+     * is created and log can be accurate
      */
     BootProgress.startWatchdog(BootProgressProperties.logInterval, BootProgressProperties.stallTimeout)
 
