@@ -320,7 +320,7 @@ object BootProgress {
   def startWatchdog(logInterval: Duration, stallTimeout: Duration): Unit = {
     if (logInterval.toMillis < 1000) {
       logger.info(
-        s"Rudder startup freeze watchdog is disabled (${BootProgressProperties.logIntervalKey}=${logInterval.toMillis}ms < 1000ms"
+        s"Rudder startup freeze watchdog is disabled (${BootProgressProperties.logIntervalKey}=${logInterval.toMillis}ms < 1000ms)"
       )
     } else {
       val t = new Thread(
