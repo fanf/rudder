@@ -226,7 +226,6 @@ object BootProgress {
 
     if (bootDone.compareAndSet(false, true)) {
       val all             = done.asScala.toList
-      val measured        = Duration.ofMillis(all.map(_.duration.toMillis).sum)
       val (slowest, next) = slowestSteps(NUMBER_SLOW_STEPS_LOGGED)
       logger.info(
         s"Rudder booted in ${fmt(elapsed)}: ${all.size} steps. Slowest steps:"
