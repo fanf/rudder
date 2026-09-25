@@ -366,7 +366,7 @@ class LdapRepositoryTenantTest extends Specification with SetupLdapRepositories 
       res.either.runNow.left.map(_.msg) must beLeft(
         beEqualTo(
           "Security tag of object 'test-group-node1' can not change from '[zoneA,zoneB]' to '[zoneA]': " +
-          "visibility can only grow (add tenants, or set 'open'), never shrink. " +
+          "visibility can only grow (add tenants, or open the object), never shrink. " +
           "To narrow the scope, create a new object with the wanted tenant list"
         )
       )
