@@ -229,7 +229,7 @@ object BootProgress {
       val measured        = Duration.ofMillis(all.map(_.duration.toMillis).sum)
       val (slowest, next) = slowestSteps(NUMBER_SLOW_STEPS_LOGGED)
       logger.info(
-        s"Rudder booted in ${fmt(elapsed)}: ${all.size} steps, ${fmt(measured)} of measured steps. Slowest steps:"
+        s"Rudder booted in ${fmt(elapsed)}: ${all.size} steps. Slowest steps:"
       )
       log(logger.info, slowest)
       log(logger.debug, next)
