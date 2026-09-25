@@ -151,8 +151,8 @@ object BootProgress {
     val now = Instant.now()
     lastProgressAt.set(now)
     currentLabel.set(step)
-    steps.incrementAndGet()
-    logger.debug(s"boot step [${steps.get()}] ${step.display}")
+    val s   = steps.incrementAndGet()
+    logger.debug(s"boot step [${s}] ${step.display}")
     now
   }
 
@@ -312,59 +312,66 @@ object BootProgress {
   /*
    * Start watching boot progress.
    * `logInterval` is how often we report, `stallTimeout` how long boot may stay on the same step before being declared
-   *  dead (0 disables that check, for the cases where an ops knowingly runs a very long one-shot migration).
+   * dead (0 disables that check, for the cases where an ops knowingly runs a very long one-shot migration).
    *
+   * If `logInterval` is shorter than 1s, the whatchdog is disabled.
    * This is a plain daemon independent thread on purpose so that we also can surveil ZIO dead-lock.
    */
   def startWatchdog(logInterval: Duration, stallTimeout: Duration): Unit = {
-    val t = new Thread(
-      () => {
-        var lastSteps = -1L
-        while (!bootDone.get()) {
-          if (!bootDone.get()) {
-            val step          = currentLabel.get()
-            val currentSteps  = steps.get()
-            val noProgressFor = Duration.between(lastProgressAt.get(), Instant.now())
+    if (logInterval.toMillis < 1000) {
+      logger.info(
+        s"Rudder startup freeze watchdog is disabled (${BootProgressProperties.logIntervalKey}=${logInterval.toMillis}ms < 1000ms"
+      )
+    } else {
+      val t = new Thread(
+        () => {
+          var lastSteps = -1L
+          while (!bootDone.get()) {
+            if (!bootDone.get()) {
+              val step          = currentLabel.get()
+              val currentSteps  = steps.get()
+              val noProgressFor = Duration.between(lastProgressAt.get(), Instant.now())
 
-            verdict(currentSteps, lastSteps, noProgressFor, stallTimeout) match {
-              case BootWatchdogVerdict.Progressing =>
-                // boot moved since last time we looked: that is real progress, report it
-                lastSteps = currentSteps
-                writeProgressFile("booting", step, noProgressFor)
-                logger.info(
-                  s"Rudder is booting: ${currentSteps} steps done in ${fmt(elapsed)}, currently in phase ${step.display}"
-                )
+              verdict(currentSteps, lastSteps, noProgressFor, stallTimeout) match {
+                case BootWatchdogVerdict.Progressing =>
+                  // boot moved since last time we looked: that is real progress, report it
+                  lastSteps = currentSteps
+                  writeProgressFile("booting", step, noProgressFor)
+                  logger.info(
+                    s"Rudder is booting: ${currentSteps} steps done in ${fmt(elapsed)}, currently in phase ${step.display}"
+                  )
 
-              case BootWatchdogVerdict.SameStep =>
-                writeProgressFile("booting", step, noProgressFor)
-                logger.warn(
-                  s"Rudder boot has been on the same step for ${fmt(noProgressFor)}: phase ${step.display} " +
-                  s"(${fmt(elapsed)} since start)"
-                )
+                case BootWatchdogVerdict.SameStep =>
+                  writeProgressFile("booting", step, noProgressFor)
+                  logger.warn(
+                    s"Rudder boot has been on the same step for ${fmt(noProgressFor)}: phase ${step.display} " +
+                    s"(${fmt(elapsed)} since start)"
+                  )
 
-              case BootWatchdogVerdict.Stalled =>
-                // no progress at all for too long: say so, dump what everyone is doing, and stop.
-                // An infinite "still booting" on a dead boot is what we are trying to avoid here.
-                writeProgressFile("stalled", step, noProgressFor)
-                logger.error(
-                  s"Rudder boot made no progress for ${fmt(noProgressFor)} while in phase ${step.display} " +
-                  s"(${fmt(elapsed)} since start): boot is considered stalled and Rudder will stop now. " +
-                  s"Thread dump follows, it should show what boot is waiting for. This check can be tuned with " +
-                  s"property '${BootProgressProperties.stallTimeoutKey}' ('0' disables it)."
-                )
-                logger.error(threadDump())
-                // halt and not exit: shutdown hooks would themselves wait on the wedged services
-                java.lang.Runtime.getRuntime.halt(1)
+                case BootWatchdogVerdict.Stalled =>
+                  // no progress at all for too long: say so, dump what everyone is doing, and stop.
+                  // An infinite "still booting" on a dead boot is what we are trying to avoid here.
+                  writeProgressFile("stalled", step, noProgressFor)
+                  logger.error(
+                    s"Rudder boot made no progress for ${fmt(noProgressFor)} while in phase ${step.display} " +
+                    s"(${fmt(elapsed)} since start): boot is considered stalled and Rudder will stop now. " +
+                    s"Thread dump follows, it should show what boot is waiting for. This check can be tuned with " +
+                    s"property '${BootProgressProperties.stallTimeoutKey}' ('0' disables it)."
+                  )
+                  logger.error(threadDump())
+                  // halt and not exit: shutdown hooks would themselves wait on the wedged services
+                  java.lang.Runtime.getRuntime.halt(1)
+              }
             }
+            // sleep after a first write to have at least the boot-progress written once
+            Thread.sleep(logInterval.toMillis)
           }
-          // sleep after a first write to have at least the boot-progress written once
-          Thread.sleep(logInterval.toMillis)
-        }
-        deleteProgressFile()
-      },
-      "rudder-boot-progress"
-    )
-    t.setDaemon(true)
-    t.start()
+          deleteProgressFile()
+        },
+        "rudder-boot-progress"
+      )
+      t.setDaemon(true)
+      t.start()
+    }
   }
 }
