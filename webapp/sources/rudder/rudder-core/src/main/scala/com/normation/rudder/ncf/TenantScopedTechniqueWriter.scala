@@ -102,9 +102,20 @@ class TenantScopedTechniqueWriter(
     save(technique)(underlying.writeTechnique)
   }
 
+  /*
+   * Each technique is authorized on its own but the batch reaches the writer in one call (`Authorize` then traverse).
+   *
+   * The law may grant different change contexts to different techniques (a creation runs under the actor's
+   * writable tenants, an update under the ambient context), so the authorized techniques are grouped by the
+   * context they were granted. In practice there is one group because the restriction depends on the actor.
+   */
   override def writeTechniques(techniques: List[EditorTechnique])(implicit cc: ChangeContext): IOResult[List[EditorTechnique]] = {
-    // each technique is authorized on its own: a batch is not a way to write one the actor may not write
-    ZIO.foreach(techniques)(t => save(t)(x => underlying.writeTechniques(x :: Nil).map(_.head)))
+    for {
+      authorized <- checkTenant.decideSaveAll(techniques, t => stored(t.id.value), t => into(t.category))
+      written    <- ZIO.foreach(authorized.groupBy(_.cc).toList) {
+                      case (granted, group) => underlying.writeTechniques(group.map(_.value))(using granted)
+                    }
+    } yield written.flatten
   }
 
   /*

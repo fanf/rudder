@@ -494,9 +494,7 @@ class MockTechniques(configurationRepositoryRoot: File, mockGit: MockGitConfigRe
   }
 
   val techniqueCompilationCache: TechniqueCompilationSyncService = new TechniqueCompilationSyncService {
-    override def syncOneCompilation(result: EditorTechniqueCompilationResult):     IOResult[EditorTechniqueStatus] =
-      EditorTechniqueStatus.AllSuccess.succeed
-    override def syncCompilation(results: List[EditorTechniqueCompilationResult]): IOResult[EditorTechniqueStatus] =
+    override def syncOneCompilation(result: EditorTechniqueCompilationResult): IOResult[EditorTechniqueStatus] =
       EditorTechniqueStatus.AllSuccess.succeed
   }
 

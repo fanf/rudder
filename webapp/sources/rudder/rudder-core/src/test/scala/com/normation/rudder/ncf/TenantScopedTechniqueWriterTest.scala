@@ -132,8 +132,11 @@ class TenantScopedTechniqueWriterTest extends Specification {
     override def writeTechnique(t: EditorTechnique)(implicit cc: ChangeContext): IOResult[EditorTechnique] =
       written.set(Some(t)).as(t)
 
+    // how many calls the batch port received, and with what: one call with everything is the contract
+    val batches: Ref[List[List[EditorTechnique]]] = Ref.make(List.empty[List[EditorTechnique]]).runNow
+
     override def writeTechniques(ts: List[EditorTechnique])(implicit cc: ChangeContext): IOResult[List[EditorTechnique]] =
-      ZIO.foreach(ts)(t => written.set(Some(t)).as(t))
+      batches.update(_ :+ ts).as(ts)
   }
 
   private class RecordingCategoryWriter extends TechniqueCategoryWriter {
@@ -225,6 +228,27 @@ class TenantScopedTechniqueWriterTest extends Specification {
       val writer = new RecordingWriter
       val proxy  = techniqueProxy(technique("backup", "1.0", zoneBTag) :: Nil, writer)
       proxy.writeTechniques(editor("backup", None) :: Nil)(using zoneA).either.runNow must beLeft
+    }
+
+    // the port is given the collection it was given: one call, not one per element, so whatever it pays
+    // per batch it pays once
+    "reach the writer in a single call" in {
+      val writer = new RecordingWriter
+      val proxy  = techniqueProxy(Nil, writer)
+      proxy.writeTechniques(editor("a", None) :: editor("b", None) :: editor("c", None) :: Nil)(using zoneA).either.runNow
+      writer.batches.get.runNow.map(_.size) must beEqualTo(List(3))
+    }
+
+    // one refusal fails the batch, and every refusal is reported: a batch is all or nothing, and the
+    // caller should not discover its problems one run at a time
+    "refuse the whole batch, naming every technique it may not write" in {
+      val writer = new RecordingWriter
+      val proxy  = techniqueProxy(technique("x", "1.0", zoneBTag) :: technique("y", "1.0", zoneBTag) :: Nil, writer)
+      val res    = proxy.writeTechniques(editor("x", None) :: editor("y", None) :: Nil)(using zoneA).either.runNow
+      (res must beLeft((e: RudderError) => {
+        (e.fullMsg must contain("'x/1.0'")) and (e.fullMsg must contain("'y/1.0'"))
+      })) and
+      (writer.batches.get.runNow must beEmpty)
     }
   }
 
